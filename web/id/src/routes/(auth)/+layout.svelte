@@ -1,8 +1,14 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
 	import { Icon, ThemeToggle } from '$lib/components';
+	import { supportLinks } from '$lib/utils/legal';
+	import type { LayoutProps } from './$types';
 
-	let { children }: { children: Snippet } = $props();
+	let { data, children }: LayoutProps = $props();
+
+	// Whom to ask when signing in is not working. It is the organisation's
+	// contact rather than any application's: someone who cannot get in has no
+	// application to ask.
+	const support = $derived(supportLinks(data.organization));
 </script>
 
 <div class="shell">
@@ -15,8 +21,22 @@
 	</main>
 
 	<footer>
-		<Icon name="shield" size="0.9375rem" />
-		<span>Secured by <strong>xermess</strong></span>
+		{#if support.length > 0}
+			<p class="help">
+				Trouble signing in?
+				{#each support as link, index (link.href)}
+					{#if index > 0}<span aria-hidden="true">·</span>{/if}
+					<!-- An address to write to, or a number to ring. -->
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href={link.href}>{link.label}</a>
+				{/each}
+			</p>
+		{/if}
+
+		<p class="secured">
+			<Icon name="shield" size="0.9375rem" />
+			<span>Secured by <strong>xermess</strong></span>
+		</p>
 	</footer>
 </div>
 
@@ -54,12 +74,32 @@
 
 	footer {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		gap: var(--space-1);
+		gap: var(--space-2);
 		padding: var(--space-4) 0 var(--space-5);
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
+		text-align: center;
+	}
+
+	.help {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: var(--space-1) var(--space-2);
+	}
+
+	.help a {
+		color: var(--color-text);
+		font-weight: 600;
+	}
+
+	.secured {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
 	}
 
 	/* On a phone the page itself is the surface. */

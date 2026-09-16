@@ -8,6 +8,12 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<!-- The icon is named here rather than imported by the app, so it is
+		     in the first byte of every page. A path that answers with
+		     something other than a page has no head to name it in, and the
+		     browser asks for /favicon.ico instead — which is a route of its
+		     own, leading back to this same file. -->
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

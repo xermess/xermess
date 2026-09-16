@@ -109,58 +109,6 @@ export const demoFlows: DemoFlow[] = [
 	}
 ];
 
-export type DemoUser = {
-	id: string;
-	name: string;
-	email: string;
-	connection: string;
-	lastLogin: string;
-	status: 'active' | 'invited' | 'blocked';
-};
-
-export const demoUsers: DemoUser[] = [
-	{
-		id: 'u1',
-		name: 'Mira Chen',
-		email: 'mira@acme.com',
-		connection: 'Google',
-		lastLogin: '4 minutes ago',
-		status: 'active'
-	},
-	{
-		id: 'u2',
-		name: 'Tomas Neal',
-		email: 'tomas@globex.io',
-		connection: 'Username & password',
-		lastLogin: '2 hours ago',
-		status: 'active'
-	},
-	{
-		id: 'u3',
-		name: 'Priya Raman',
-		email: 'priya@acme.com',
-		connection: 'SAML · Acme Corp',
-		lastLogin: 'Yesterday',
-		status: 'active'
-	},
-	{
-		id: 'u4',
-		name: 'Jonas Weber',
-		email: 'jonas@initech.co',
-		connection: 'Username & password',
-		lastLogin: 'Never',
-		status: 'invited'
-	},
-	{
-		id: 'u5',
-		name: 'Ade Oyelaran',
-		email: 'ade@globex.io',
-		connection: 'GitHub',
-		lastLogin: '3 weeks ago',
-		status: 'blocked'
-	}
-];
-
 export type DemoLanguage = {
 	id: string;
 	name: string;
@@ -176,14 +124,3 @@ export const demoLanguages: DemoLanguage[] = [
 	{ id: 'l3', name: 'Russian', code: 'ru', translated: 88, isDefault: false, status: 'active' },
 	{ id: 'l4', name: 'Turkish', code: 'tr', translated: 41, isDefault: false, status: 'draft' }
 ];
-
-/** The organisation this panel administers. */
-export const demoOrganization = {
-	name: 'Xermess',
-	slug: 'xermess',
-	domain: 'xermess.dev',
-	region: 'eu-central',
-	plan: 'Growth',
-	created: '4 February 2026',
-	supportEmail: 'support@xermess.dev'
-};

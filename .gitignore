@@ -20,6 +20,10 @@ go.work.sum
 /.logs/
 *.log
 
+# Claude Code: the project's own settings and commands are committed; a
+# personal override of them is not.
+.claude/settings.local.json
+
 # Editors and OS
 .idea/
 .vscode/*

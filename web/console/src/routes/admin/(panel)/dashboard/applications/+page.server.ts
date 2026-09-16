@@ -7,7 +7,7 @@ import type { PageServerLoad } from './$types';
  * application is enough to open the page; the list is narrowed to what their
  * roles reach. The search and the type filter live in the URL.
  */
-export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
+export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	requireAnywhere((await parent()).admin, 'applications.read');
 
 	const search = url.searchParams.get('search')?.trim() ?? '';
@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
 	if (search) query.set('search', search);
 	if (type) query.set('type', type);
 
-	const page = await apiGet<ApplicationPage>(`/admin/applications?${query}`, cookies, fetch);
+	const page = await apiGet<ApplicationPage>(`/admin/applications?${query}`, fetch);
 
 	return { page, search, type };
 };

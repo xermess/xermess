@@ -59,9 +59,14 @@ export const keys = {
 		permissions: ['admins', 'permissions'] as const
 	},
 
+	organization: {
+		/** There is one organisation, so this key is the whole of it. */
+		settings: ['organization', 'settings'] as const
+	},
+
 	admin: {
-		sessions: ['admin', 'sessions'] as const,
-		logs: (limit: number) => ['admin', 'logs', limit] as const,
+		/** The dashboard's counts and recent activity, which a change to
+		    anything it counts invalidates. */
 		overview: ['admin', 'overview'] as const
 	}
 } as const;

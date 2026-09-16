@@ -17,15 +17,14 @@ import type {
 	AdminRecord,
 	AdminRole,
 	AdminRoleInput,
-	AdminSession,
 	LoginResult,
 	MfaEnrolment,
 	MfaStatus,
 	SessionState,
 	FieldInput,
 	FieldRules,
-	LogEntry,
-	Overview,
+	Organization,
+	OrganizationInput,
 	Role,
 	RoleInput,
 	RoleMapping,
@@ -45,7 +44,9 @@ export const setupApi = {
 	create: (input: SetupInput) => api.post<{ admin: { id: string } }>('/admin/setup', input)
 };
 
-/** Every call the admin panel makes. */
+/** Signing in and out, from the browser. What the panel *reads* — the
+    administrator, the overview, the log — is fetched by the server loads
+    instead (lib/server/api.ts), so it is not here. */
 export const adminApi = {
 	/** A right password signs in, or says which step is still to go. */
 	login: (username: string, password: string) =>
@@ -58,16 +59,7 @@ export const adminApi = {
 	/** Finishes a sign-in waiting for a code, or a recovery code. */
 	verifyMfa: (code: string) => api.post<{ admin: Admin }>('/admin/auth/mfa', { code }),
 
-	logout: () => api.post<{ status: string }>('/admin/auth/logout'),
-
-	me: (fetcher?: Fetch) => api.get<{ admin: Admin }>('/admin/me', fetcher),
-
-	overview: (fetcher?: Fetch) => api.get<Overview>('/admin/overview', fetcher),
-
-	sessions: (fetcher?: Fetch) => api.get<{ sessions: AdminSession[] }>('/admin/sessions', fetcher),
-
-	logs: (limit = 50, fetcher?: Fetch) =>
-		api.get<{ logs: LogEntry[] }>(`/admin/logs?limit=${limit}`, fetcher)
+	logout: () => api.post<{ status: string }>('/admin/auth/logout')
 };
 
 /** The users an organisation manages, and the shape of their records. */
@@ -112,6 +104,15 @@ export const usersApi = {
 		api.patch<{ field: UserField }>(`/admin/user-fields/${id}`, rules),
 
 	removeField: (id: string) => api.delete<void>(`/admin/user-fields/${id}`)
+};
+
+/** The organisation this installation belongs to: one record of settings,
+    read and written back. */
+export const organizationApi = {
+	get: (fetcher?: Fetch) => api.get<{ organization: Organization }>('/admin/organization', fetcher),
+
+	update: (input: OrganizationInput) =>
+		api.patch<{ organization: Organization }>('/admin/organization', input)
 };
 
 /** The roles users hold. */

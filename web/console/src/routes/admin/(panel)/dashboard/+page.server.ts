@@ -8,14 +8,14 @@ import type { PageServerLoad } from './$types';
  * asked for when the administrator's roles allow reading activity: this is
  * everyone's landing page, so it shows what it can rather than refusing.
  */
-export const load: PageServerLoad = async ({ cookies, fetch, parent }) => {
+export const load: PageServerLoad = async ({ fetch, parent }) => {
 	const { admin } = await parent();
 
 	const [overview, sessions] = await Promise.all([
 		can(admin, 'activity.read')
-			? apiGet<Overview>('/admin/overview', cookies, fetch).then(withLists)
+			? apiGet<Overview>('/admin/overview', fetch).then(withLists)
 			: Promise.resolve(null),
-		apiGet<{ sessions: AdminSession[] | null }>('/admin/sessions', cookies, fetch)
+		apiGet<{ sessions: AdminSession[] | null }>('/admin/sessions', fetch)
 	]);
 
 	return { overview, sessions: sessions.sessions ?? [] };

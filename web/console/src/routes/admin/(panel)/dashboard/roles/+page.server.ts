@@ -14,7 +14,7 @@ import type { PageServerLoad } from './$types';
  * Every role the administrator can see is loaded as well as the page: the tab
  * counts come from it, and a role can include roles of other scopes.
  */
-export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
+export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const { admin } = await parent();
 
 	if (!canAnywhere(admin, 'users.read') && !canAnywhere(admin, 'applications.read')) {
@@ -31,18 +31,17 @@ export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
 	// The API scopes a role can grant, for an administrator who may see APIs;
 	// null otherwise, so the role panel leaves grants alone.
 	const apis = can(admin, 'apis.read')
-		? (await apiGet<{ apis: API[] }>('/admin/apis', cookies, fetch)).apis
+		? (await apiGet<{ apis: API[] }>('/admin/apis', fetch)).apis
 		: null;
 
 	const [applications, choices] = await Promise.all([
 		seesApplications
 			? apiGet<ApplicationPage>(
 					`/admin/applications?limit=${APPLICATION_CHOICES_LIMIT}`,
-					cookies,
 					fetch
 				).then((it) => it.applications)
 			: Promise.resolve<Application[]>([]),
-		apiGet<RolePage>(`/admin/user-roles?limit=${ROLE_CHOICES_LIMIT}`, cookies, fetch)
+		apiGet<RolePage>(`/admin/user-roles?limit=${ROLE_CHOICES_LIMIT}`, fetch)
 	]);
 
 	const named = url.searchParams.get('application') ?? '';
@@ -54,7 +53,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
 	if (search) query.set('search', search);
 	if (isDefault === 'true' || isDefault === 'false') query.set('default', isDefault);
 
-	const page = await apiGet<RolePage>(`/admin/user-roles?${query}`, cookies, fetch);
+	const page = await apiGet<RolePage>(`/admin/user-roles?${query}`, fetch);
 
 	return {
 		page,

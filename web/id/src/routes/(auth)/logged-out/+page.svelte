@@ -12,7 +12,7 @@
 	<title>Signed out</title>
 </svelte:head>
 
-<AuthCard application={app} title="You’re signed out">
+<AuthCard organization={data.organization} application={app} title="You’re signed out">
 	<Alert tone="success">You have been signed out on this device.</Alert>
 
 	{#if app?.client_uri}

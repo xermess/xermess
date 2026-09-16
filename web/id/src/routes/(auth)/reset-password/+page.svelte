@@ -44,7 +44,7 @@
 </svelte:head>
 
 {#if done}
-	<AuthCard application={app} title="Password updated">
+	<AuthCard organization={data.organization} application={app} title="Password updated">
 		<Alert tone="success">
 			Your password has been changed, and you’ve been signed out everywhere else.
 		</Alert>
@@ -57,7 +57,7 @@
 		</div>
 	</AuthCard>
 {:else if !data.valid}
-	<AuthCard application={app} title="This link has expired">
+	<AuthCard organization={data.organization} application={app} title="This link has expired">
 		<Alert tone="info">
 			Reset links work once, for one hour. Ask for a new one and use the latest email.
 		</Alert>
@@ -70,6 +70,7 @@
 	</AuthCard>
 {:else}
 	<AuthCard
+		organization={data.organization}
 		application={app}
 		title="Choose a new password"
 		subtitle={data.temporary

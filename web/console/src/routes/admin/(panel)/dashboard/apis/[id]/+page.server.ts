@@ -8,14 +8,10 @@ export type ApiTab = (typeof tabs)[number];
 
 /** One API, on tabs. The tab lives in the URL, so a link opens the same one;
     what each tab lists beyond the API itself is fetched when it is opened. */
-export const load: PageServerLoad = async ({ cookies, fetch, params, parent, url }) => {
+export const load: PageServerLoad = async ({ fetch, params, parent, url }) => {
 	requireAnywhere((await parent()).admin, 'apis.read');
 
-	const { api } = await apiGet<{ api: API }>(
-		`/admin/apis/${encodeURIComponent(params.id)}`,
-		cookies,
-		fetch
-	);
+	const { api } = await apiGet<{ api: API }>(`/admin/apis/${encodeURIComponent(params.id)}`, fetch);
 
 	const asked = url.searchParams.get('tab') as ApiTab | null;
 	const tab: ApiTab = asked && tabs.includes(asked) ? asked : 'overview';

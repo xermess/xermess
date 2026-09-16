@@ -1,13 +1,19 @@
 <script lang="ts">
 	import { signIn, messageOf } from '$lib/api';
 	import { Alert, AuthCard, Button, Checkbox, PasswordField, TextField } from '$lib/components';
+	import { legalLinks } from '$lib/utils/legal';
 	import { authHref, leaveTo } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const app = $derived(data.signInRequest?.application ?? null);
-	const needsConsent = $derived(Boolean(app?.tos_uri || app?.policy_uri));
+
+	/** What the account is being made under: the application's agreements
+	    where it has them, and the organisation's otherwise. With neither
+	    there is nothing to agree to, and no box to tick. */
+	const agreements = $derived(legalLinks(app, data.organization));
+	const needsConsent = $derived(agreements.length > 0);
 
 	/** The shortest password the server takes. */
 	const minLength = 8;
@@ -67,13 +73,14 @@
 
 {#if data.expired || !data.request}
 	<AuthCard
+		organization={data.organization}
 		title={data.expired ? 'This sign-in has expired' : 'Start from an application'}
 		subtitle="Accounts are created while signing in to an application."
 	>
 		<Alert tone="info">Go back to the application and choose “Sign in” again.</Alert>
 	</AuthCard>
 {:else if app && !app.allow_registration}
-	<AuthCard application={app} title="Registration is closed">
+	<AuthCard organization={data.organization} application={app} title="Registration is closed">
 		<Alert tone="info">
 			{app.name} does not allow creating accounts here. Ask whoever runs it for access.
 		</Alert>
@@ -85,6 +92,7 @@
 	</AuthCard>
 {:else}
 	<AuthCard
+		organization={data.organization}
 		application={app}
 		title="Create your account"
 		subtitle={app ? `to continue to ${app.name}` : undefined}
@@ -133,18 +141,16 @@
 				error={mismatch ? 'The passwords do not match' : undefined}
 			/>
 
-			{#if needsConsent && app}
+			{#if needsConsent}
 				<Checkbox bind:checked={accepted} disabled={submitting}>
 					I agree to the
-					{#if app.tos_uri}
+					{#each agreements as agreement, index (agreement.href)}
+						{#if index > 0}and{/if}
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={app.tos_uri} target="_blank" rel="noopener noreferrer">Terms of service</a>
-					{/if}
-					{#if app.tos_uri && app.policy_uri}and{/if}
-					{#if app.policy_uri}
-						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={app.policy_uri} target="_blank" rel="noopener noreferrer">Privacy policy</a>
-					{/if}
+						<a href={agreement.href} target="_blank" rel="noopener noreferrer">
+							{agreement.label}
+						</a>
+					{/each}
 				</Checkbox>
 			{/if}
 

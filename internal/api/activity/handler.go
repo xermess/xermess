@@ -5,6 +5,7 @@ package activity
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -180,6 +181,8 @@ func maySeeName(c *gin.Context, targetType string, name store.TargetName) bool {
 		return admin.HasPermission(model.PermAPIsRead)
 	case "admin_user", "admin_role":
 		return admin.IsSuperAdmin()
+	case "organization":
+		return admin.HasPermission(model.PermOrganizationRead)
 	default:
 		return false
 	}
@@ -193,12 +196,32 @@ func detail(c *gin.Context, event model.AuditLog) string {
 		return value
 	}
 
+	// A list comes back from the log as JSON did: whatever was stored, in
+	// whatever type it decoded to.
+	list := func(key string) string {
+		values, _ := event.Metadata[key].([]any)
+
+		parts := make([]string, 0, len(values))
+		for _, value := range values {
+			if part, ok := value.(string); ok {
+				parts = append(parts, part)
+			}
+		}
+
+		return strings.Join(parts, ", ")
+	}
+
 	switch event.Action {
 	case "admin.login_failed", "admin.login_blocked", "admin.mfa_failed", "user.login_failed", "user.login_blocked":
 		return text("reason")
 	case "application.api_authorized", "application.api_revoked":
 		if admin := session.Admin(c); admin != nil && admin.HasPermission(model.PermAPIsRead) {
 			return text("api")
+		}
+	case "organization.updated":
+		// Which settings moved, for whoever may see them at all.
+		if admin := session.Admin(c); admin != nil && admin.HasPermission(model.PermOrganizationRead) {
+			return list("fields")
 		}
 	}
 

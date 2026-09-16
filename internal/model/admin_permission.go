@@ -27,6 +27,9 @@ const (
 	PermAPIsRead  = "apis.read"
 	PermAPIsWrite = "apis.write"
 
+	PermOrganizationRead  = "organization.read"
+	PermOrganizationWrite = "organization.write"
+
 	PermApplicationsRead     = "applications.read"
 	PermApplicationsWrite    = "applications.write"
 	PermUserRolesWrite       = "user_roles.write"
@@ -57,6 +60,16 @@ var AdminPermissions = []AdminPermission{
 		Name:        PermUserFieldsWrite,
 		Group:       "Users",
 		Description: "Add, change and remove user fields",
+	},
+	{
+		Name:        PermOrganizationRead,
+		Group:       "Organization",
+		Description: "See the organisation this installation belongs to",
+	},
+	{
+		Name:        PermOrganizationWrite,
+		Group:       "Organization",
+		Description: "Change the organisation's name, domain, support address and logo",
 	},
 	{
 		Name:        PermAPIsRead,

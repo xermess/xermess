@@ -10,13 +10,13 @@ import type { PageServerLoad } from './$types';
  * sign-in goes to do that, someone waiting for a code is asked for it, and a
  * panel with no administrator yet sends the reader to make the first one.
  */
-export const load: PageServerLoad = async ({ cookies, fetch }) => {
+export const load: PageServerLoad = async ({ fetch }) => {
 	const { state } = await adminApi.session(fetch).catch(() => ({ state: 'none' as const }));
 
 	if (state === 'signed_in') redirect(307, resolve('/admin/dashboard'));
 	if (state === 'enroll') redirect(307, resolve('/admin/mfa-setup'));
 
-	if (state === 'none' && (await setupRequired(cookies, fetch))) {
+	if (state === 'none' && (await setupRequired(fetch))) {
 		redirect(307, resolve('/admin/new-super-admin'));
 	}
 

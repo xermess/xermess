@@ -13,12 +13,12 @@
 // auth signs administrators in, users manages user records, fields the
 // columns those records are made of, applications the OAuth clients that sign
 // users in, roles the roles users hold in each application, admins and
-// adminroles the administrators and what they may do, activity reports on
-// what has happened, oauth and account are the provider and the users' own
-// API. Each of those packages is the same four files — the handler, the
-// requests it accepts, the answers it gives, and the rules it holds them to —
-// so finding your way around a new one is the same as finding your way
-// around the last.
+// adminroles the administrators and what they may do, organization the
+// settings of the installation itself, activity reports on what has happened,
+// oauth and account are the provider and the users' own API. Each of those
+// packages is the same four files — the handler, the requests it accepts, the
+// answers it gives, and the rules it holds them to — so finding your way
+// around a new one is the same as finding your way around the last.
 package api
 
 import (
@@ -44,6 +44,7 @@ import (
 	"xermess/internal/api/mfa"
 	"xermess/internal/api/middleware"
 	"xermess/internal/api/oauth"
+	"xermess/internal/api/organization"
 	"xermess/internal/api/ratelimit"
 	"xermess/internal/api/roles"
 	"xermess/internal/api/session"
@@ -103,6 +104,7 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		admins:       admins.New(st, service, recorder, log),
 		adminRoles:   adminroles.New(st, recorder, log),
 		applications: applications.New(st, recorder, log, cfg.Issuer),
+		organization: organization.New(st, recorder, log),
 		apis:         apis.New(st, recorder, log, cfg.Issuer),
 		activity:     activity.New(st, log),
 		keys:         keys.New(provider, recorder, log),
@@ -170,6 +172,7 @@ type adminHandlers struct {
 	adminRoles   *adminroles.Handler
 	applications *applications.Handler
 	apis         *apis.Handler
+	organization *organization.Handler
 	activity     *activity.Handler
 	keys         *keys.Handler
 	limit        gin.HandlerFunc
@@ -205,6 +208,7 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 		// handle it was given, and by the password. The routes that take a
 		// password or send an email are rate limited per address.
 		accounts := v1.Group("/account")
+		accounts.GET("/organization", h.account.Organization)
 		accounts.GET("/requests/:handle", h.account.Request)
 		accounts.GET("/applications/:client_id", h.account.Application)
 		accounts.POST("/login", h.limit, h.account.Login)
@@ -298,6 +302,12 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			writeFields.POST("/user-fields", h.fields.Create)
 			writeFields.PATCH("/user-fields/:id", h.fields.Update)
 			writeFields.DELETE("/user-fields/:id", h.fields.Delete)
+
+			// The organisation the installation belongs to: one record of
+			// settings, read by anyone whose roles allow the page and
+			// written by anyone allowed to change it.
+			signedIn.GET("/organization", session.Can(model.PermOrganizationRead), h.organization.Get)
+			signedIn.PATCH("/organization", session.Can(model.PermOrganizationWrite), h.organization.Update)
 
 			// Applications, the roles each defines, and who holds them. A
 			// role can grant these for one application, so the routes only

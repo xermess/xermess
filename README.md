@@ -83,6 +83,7 @@ internal/api/applications/     OAuth 2.0 / OIDC clients: settings, secrets
 internal/api/roles/            the roles users hold in each application
 internal/api/admins/           administrators, managed by a super admin
 internal/api/adminroles/       admin roles and the permissions they grant
+internal/api/organization/     the organisation this installation belongs to
 internal/api/activity/         the dashboard counts and the log
 internal/api/middleware/       request logging, recovery, and their order
 internal/api/cors/             which browser origins may call the API
@@ -96,6 +97,9 @@ internal/api/audit/            recording what an administrator did
 internal/model/                one file per table, listed in model.All
 
 migrations/                    one Go file per migration, applied in order
+
+AGENTS.md                      how to work in this repository, for people and agents
+.claude/                       Claude Code's settings, formatting hook and commands
 
 scripts/setup.sh               prepare a fresh checkout
 scripts/start.sh               run the API and the apps, --dev or --prod
@@ -119,6 +123,7 @@ web/console/src/lib/components/roles/  roles, their mappings and pickers
 web/console/src/lib/components/applications/ applications, their API access, token preview
 web/console/src/lib/components/apis/   APIs, their scopes and settings
 web/console/src/lib/components/admins/ administrators and admin roles
+web/console/src/lib/components/organization/ the organisation's settings, and the plans
 web/console/src/lib/components/activity/ the dashboard: chart, sign-ins, feed, what the log's actions mean
 web/console/src/lib/components/profile/  the account: its sessions and signing out
 web/console/src/lib/state/             what the panel remembers: the theme, the sidebar's width
@@ -130,6 +135,7 @@ web/console/src/lib/styles/            fonts.css, tokens.css, base.css, ark.css
 web/console/src/routes/admin/login/    the sign-in page
 web/console/src/routes/admin/(panel)/  everything behind a session
 
+web/id/src/routes/favicon.ico/ the icon for the paths that answer with something other than a page
 web/id/src/routes/(auth)/     the sign-in pages users reach from an application
 web/id/src/routes/(account)/  a signed-in user's profile, security and connected apps
 web/id/src/lib/components/    its own small component set, on Svelte alone
@@ -192,6 +198,7 @@ internal/store/applications.go OAuth clients and what they may reach
 internal/store/apis.go         APIs and their scopes
 internal/store/admins.go       administrators, for signing in
 internal/store/admin_roles.go  admin roles and their permissions
+internal/store/organizations.go the organisation's settings, the one row of them
 internal/store/sessions.go     sessions: start, find, revoke, list
 internal/store/mfa.go          authenticators and recovery codes
 internal/store/oauth.go        codes, refresh tokens, user sessions, signing keys
@@ -243,6 +250,8 @@ Sign-in, registration, setup and password resets are rate limited per address
 | `GET`  | `/api/v1/admin/user-fields`   | yes             | The fields a user record has   |
 | `POST` | `/api/v1/admin/user-fields`   | yes             | Add a field                    |
 | `DELETE`| `/api/v1/admin/user-fields/:id` | yes          | Remove a field                 |
+| `GET`  | `/api/v1/admin/organization`  | yes             | The organisation               |
+| `PATCH`| `/api/v1/admin/organization`  | yes             | Change its settings            |
 | `GET`  | `/api/v1/admin/sessions`      | yes             | The caller's own sessions      |
 
 The table above is the start of the admin API; the full list, with the
@@ -252,7 +261,7 @@ permission each route needs, is in `registerRoutes` in `internal/api/server.go`.
 
 | Method | Path                                  | Description                                  |
 | ------ | ------------------------------------- | -------------------------------------------- |
-| `GET`  | `/.well-known/openid-configuration`   | Discovery document                           |
+| `GET`  | `/.well-known/openid-configuration`   | Discovery document, with the organisation's `op_tos_uri` and `op_policy_uri` |
 | `GET`  | `/.well-known/jwks.json`              | Public signing keys                          |
 | `GET`  | `/oauth2/authorize`                   | Start a sign-in; redirects to the sign-in page or back with a code |
 | `POST` | `/oauth2/token`                       | `authorization_code`, `refresh_token`, `client_credentials` |
@@ -287,6 +296,7 @@ account:
 
 | Method   | Path                                                 | Description                       |
 | -------- | ---------------------------------------------------- | --------------------------------- |
+| `GET`    | `/api/v1/account/organization`                       | Who this server signs users in for |
 | `GET`    | `/api/v1/account/me`                                 | The signed-in user                |
 | `PATCH`  | `/api/v1/account/me`                                 | Change their name                 |
 | `POST`   | `/api/v1/account/password`                           | Change the password; signs out everywhere else |
@@ -337,9 +347,9 @@ Settings         Organization · Languages
 Each link is shown only to an administrator whose roles allow the page. The
 logs live at `/admin/dashboard/logs`; the old `/admin/logs` redirects there.
 SSO integrations is marked "Soon" and its page says what is planned. Database,
-Social, Login flows, Organization and Languages still render placeholder rows
-from `lib/data/demo.ts`, marked with a dot in the sidebar and a badge on the
-page. Delete a block from that file as soon as its section talks to the API.
+Social, Login flows and Languages still render placeholder rows from
+`lib/data/demo.ts`, marked with a dot in the sidebar and a badge on the page.
+Delete a block from that file as soon as its section talks to the API.
 
 ### Users and their fields
 
@@ -465,6 +475,71 @@ directly, which keeps sizing and alignment in one place:
 Give `Icon` a `label` only when the icon carries meaning on its own; beside
 text it stays `aria-hidden` so a screen reader does not read the same thing
 twice.
+
+### The organisation
+
+Settings · Organization is the installation itself, and a super admin's alone:
+what the organisation running it is called, its identifier, its primary
+domain, its logo, where users write or ring for help, and the terms and
+privacy policy they accept by making an account.
+
+There is one of it, so it is a record of settings rather than a list. The
+`organizations` table holds a single row, seeded by the migration from
+`model.DefaultOrganization` — which is also what the store writes if it ever
+finds none, so a fresh installation and a repaired one start the same. The two
+endpoints read it and write it back; nothing creates or deletes one.
+
+It is not a page of notes: everything on it is used.
+
+| Setting                | Where it shows                                                        |
+| ---------------------- | --------------------------------------------------------------------- |
+| Terms, privacy policy  | `op_tos_uri` and `op_policy_uri` in the discovery document; linked under every sign-in card, and agreed to when registering |
+| Name, logo             | The sign-in card, for an application that carries neither             |
+| Support email, number  | The foot of every sign-in page: whom to ask when signing in fails      |
+| Identifier, domain     | The panel, as what the organisation is called where a name will not do |
+
+An application's own links, name and logo come first where it has them
+(`internal/oidc/logout.go`), and each falls back on its own: an application
+with terms but no privacy policy shows its terms and the organisation's
+policy. The sign-in pages read all of it from `GET
+/api/v1/account/organization`, which takes no session — the pages are shown to
+people who have not signed in yet — and publishes only what a stranger may
+see.
+
+`PATCH /api/v1/admin/organization` is a true PATCH: a setting the request
+leaves out keeps the value it has, and an empty string clears one that may be
+empty. What a name, a domain, an address, a number or a link may be is
+`model.Organization.Validate`, in one place because it is one question; a
+refused change writes nothing. Each change is recorded as
+`organization.updated`, and the log line says which settings moved.
+
+Reading the page takes `organization.read` and changing it
+`organization.write`. Neither is scopable — these are the whole
+installation's settings, not one application's — and no seeded role grants
+them, so a new installation shows the page to super admins until a role hands
+it out.
+
+### The icon
+
+There is one icon file per app, `static/favicon.svg`, and every page names it
+in `app.html` — in the first byte, rather than importing it in a layout, so it
+is there before the app boots and on the error pages too.
+
+A path that answers with something other than a page has no head to name it
+in, and the browser asks for `/favicon.ico` instead: the provider's JSON at
+`/.well-known/openid-configuration`, `/oauth2/*` and the account API all answer
+on the app's own origin, so before there was anything there they showed no
+icon at all. That path is a route now
+(`src/routes/favicon.ico/+server.ts`), and it redirects to the same SVG.
+
+It is a redirect rather than a second file because of the type. Both static
+handlers — Vite's in development, the Node adapter's in production — look one
+up through mrmime, which has no entry for `.ico`, and the edge sets
+`X-Content-Type-Options: nosniff` (`deploy/Caddyfile`), so an icon served
+without a type would be refused rather than guessed at. Pointing at the file
+in `static/`, which is served as `image/svg+xml`, keeps one icon to change and
+one type to be right. A browser too old for SVG icons — Safari before 17 —
+shows none, as it did before.
 
 ## Database
 

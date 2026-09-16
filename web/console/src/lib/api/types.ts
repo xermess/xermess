@@ -52,6 +52,8 @@ export type AdminPermissionName =
 	| 'user_fields.write'
 	| 'apis.read'
 	| 'apis.write'
+	| 'organization.read'
+	| 'organization.write'
 	| 'applications.read'
 	| 'applications.write'
 	| 'user_roles.write'
@@ -579,3 +581,29 @@ export type TokenPreview = {
 	access_token?: Record<string, unknown>;
 	id_token?: Record<string, unknown>;
 };
+
+/** The organisation this installation belongs to. There is one, so it is a
+    record of settings rather than a list: it is read and written back.
+
+    It is also what the server shows the outside world: the terms and privacy
+    links are published in the discovery document, and the sign-in pages fall
+    back to all of it for an application that carries none of its own. */
+export type Organization = {
+	name: string;
+	slug: string;
+	/** A host name on its own, or empty. */
+	domain: string;
+	logo_url: string;
+	support_email: string;
+	support_phone: string;
+	terms_url: string;
+	privacy_url: string;
+	created_at: string;
+};
+
+/** The settings the panel may change: the record without its own bookkeeping. */
+export type OrganizationSettings = Omit<Organization, 'created_at'>;
+
+/** What the panel sends for it. Every field is optional because the endpoint
+    is a PATCH: what is left out keeps the value it has. */
+export type OrganizationInput = Partial<OrganizationSettings>;

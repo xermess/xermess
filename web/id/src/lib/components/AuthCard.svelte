@@ -1,12 +1,17 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { Application } from '$lib/api';
+	import type { Application, Organization } from '$lib/api';
+	import { legalLinks } from '$lib/utils/legal';
 	import AppMark from './AppMark.svelte';
 
 	type Props = {
 		/** The application being signed in to. Without one the page speaks for
 		    the account itself: a reset link opened on its own, an error. */
 		application?: Application | null;
+		/** The organisation the server signs users in for, whose name stands
+		    in where there is no application and whose agreements are linked
+		    where the application publishes none. */
+		organization?: Organization | null;
 		title: string;
 		subtitle?: string;
 		children: Snippet;
@@ -14,19 +19,24 @@
 		below?: Snippet;
 	};
 
-	let { application = null, title, subtitle, children, below }: Props = $props();
+	let {
+		application = null,
+		organization = null,
+		title,
+		subtitle,
+		children,
+		below
+	}: Props = $props();
 
-	const legal = $derived(
-		[
-			application?.tos_uri ? { label: 'Terms of service', href: application.tos_uri } : null,
-			application?.policy_uri ? { label: 'Privacy policy', href: application.policy_uri } : null
-		].filter((link) => link !== null)
-	);
+	const legal = $derived(legalLinks(application, organization));
 </script>
 
 <section class="card" aria-labelledby="auth-title">
 	<header>
-		<AppMark name={application?.name} logo={application?.logo_uri} />
+		<AppMark
+			name={application?.name ?? organization?.name}
+			logo={application?.logo_uri || organization?.logo_url}
+		/>
 		<h1 id="auth-title">{title}</h1>
 		{#if subtitle}<p class="subtitle">{subtitle}</p>{/if}
 	</header>
@@ -41,7 +51,8 @@
 {#if legal.length > 0}
 	<nav class="legal" aria-label="Legal">
 		{#each legal as link (link.href)}
-			<!-- The application's own pages, on its own site. -->
+			<!-- The application's own pages, or the organisation's, on their
+			     own sites. -->
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>
 		{/each}

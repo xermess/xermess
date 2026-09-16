@@ -19,7 +19,7 @@ export function scopeRow(from?: Partial<ScopeRow>): ScopeRow {
 }
 
 /** A scope name as the server will store it. */
-export const tidyScope = (value: string) => value.trim().toLowerCase();
+const tidyScope = (value: string) => value.trim().toLowerCase();
 
 const pattern = /^[a-z][a-z0-9]*([:._-][a-z0-9]+)*$/;
 

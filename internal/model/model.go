@@ -44,6 +44,7 @@ func newID() (uuid.UUID, error) {
 // a table.
 func All() []any {
 	return []any{
+		&Organization{},
 		&Role{},
 		&Application{},
 		&AdminUser{},

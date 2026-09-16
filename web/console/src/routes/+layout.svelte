@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { QueryClientProvider } from '@tanstack/svelte-query';
-	import favicon from '$lib/assets/favicon.svg';
 	import { createQueryClient } from '$lib/query';
 	import '$lib/styles/app.css';
 
@@ -16,10 +15,6 @@
      the app has booted, so it lands between the one the browser already has
      and the one the page sets, which shows as a second flicker. The default
      lives in app.html instead, where it is in the very first byte. -->
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
-
 <QueryClientProvider client={queryClient}>
 	{@render children()}
 </QueryClientProvider>

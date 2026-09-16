@@ -42,7 +42,7 @@
 </svelte:head>
 
 {#if sentTo}
-	<AuthCard application={app} title="Check your email">
+	<AuthCard organization={data.organization} application={app} title="Check your email">
 		<!-- The same words whether or not the address has an account, so the
 		     page cannot be used to find out which ones do. -->
 		<Alert tone="success">
@@ -58,6 +58,7 @@
 	</AuthCard>
 {:else}
 	<AuthCard
+		organization={data.organization}
 		application={app}
 		title="Forgot your password?"
 		subtitle="Enter your email and we’ll send you a link to choose a new one."

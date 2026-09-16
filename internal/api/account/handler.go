@@ -66,6 +66,20 @@ func (h *Handler) Application(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"application": app})
 }
 
+// Organization describes the organisation these pages sign users in for: who
+// the account belongs to, where to ask for help, and the agreements accepted
+// by making one. Every sign-in page asks for it, with or without a sign-in
+// under way, so it needs no session and names nothing about the caller.
+func (h *Handler) Organization(c *gin.Context) {
+	organization, err := h.provider.Organization(c.Request.Context())
+	if err != nil {
+		h.fail(c, err, "loading the organization failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"organization": organization})
+}
+
 // Login signs a user in and, for a sign-in under way, says where to go next.
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest

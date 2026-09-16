@@ -14,7 +14,7 @@ import type { LayoutServerLoad } from './$types';
  * group needs to know its width, and the first frame is already right.
  */
 export const load: LayoutServerLoad = async ({ cookies, fetch }) => {
-	const { admin } = await apiGet<{ admin: Admin }>('/admin/me', cookies, fetch);
+	const { admin } = await apiGet<{ admin: Admin }>('/admin/me', fetch);
 
 	const saved = cookies.get(COOKIES.sidebar);
 	const sidebar: SidebarState = isSidebarState(saved) ? saved : 'wide';

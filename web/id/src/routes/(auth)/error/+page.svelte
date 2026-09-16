@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { Alert, AuthCard } from '$lib/components';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
 
 	/** A sentence for the errors a person can do something about; what the
 	    server said is kept underneath for whoever has to debug it. */
@@ -21,12 +24,15 @@
 	<title>Sign-in error</title>
 </svelte:head>
 
-<AuthCard title="We couldn’t sign you in" subtitle={explanation}>
+<AuthCard organization={data.organization} title="We couldn’t sign you in" subtitle={explanation}>
 	{#if description}
 		<Alert tone="warning"><code>{code}</code> {description}</Alert>
 	{/if}
 	<p class="muted">
-		Go back to the application and try again. If it keeps happening, contact its support.
+		Go back to the application and try again. If it keeps happening, contact its support{data
+			.organization?.support_email
+			? ', or ours below'
+			: ''}.
 	</p>
 </AuthCard>
 

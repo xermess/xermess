@@ -146,15 +146,36 @@ type Discovery struct {
 	CodeChallengeMethodsSupported              []string `json:"code_challenge_methods_supported"`
 	PromptValuesSupported                      []string `json:"prompt_values_supported"`
 	AuthorizationResponseIssParameterSupported bool     `json:"authorization_response_iss_parameter_supported"`
-	ClaimsParameterSupported                   bool     `json:"claims_parameter_supported"`
-	RequestParameterSupported                  bool     `json:"request_parameter_supported"`
-	RequestURIParameterSupported               bool     `json:"request_uri_parameter_supported"`
+
+	// The organisation's agreements, which OpenID Provider Metadata names
+	// op_tos_uri and op_policy_uri: what a client's users accept by signing
+	// in here. Left out when the organisation has published neither.
+	OpTosURI    string `json:"op_tos_uri,omitempty"`
+	OpPolicyURI string `json:"op_policy_uri,omitempty"`
+
+	ClaimsParameterSupported     bool `json:"claims_parameter_supported"`
+	RequestParameterSupported    bool `json:"request_parameter_supported"`
+	RequestURIParameterSupported bool `json:"request_uri_parameter_supported"`
 }
 
 // Discovery describes the provider. Every list is read from the model, so it
 // cannot claim a grant, scope or method the server does not offer.
-func (s *Service) Discovery() Discovery {
+//
+// The organisation's terms and privacy links are read from the database: they
+// are settings an administrator changes in the panel, and the document has to
+// say what they are now rather than what they were when the server started.
+// A database that cannot be reached still yields a document — the rest of it
+// is what a client needs to reach the endpoints at all — with those two left
+// out and the failure logged.
+func (s *Service) Discovery(ctx context.Context) Discovery {
 	secretMethods := []string{string(model.AuthClientSecretBasic), string(model.AuthClientSecretPost)}
+
+	var tos, policy string
+	if organization, err := s.store.Organization(ctx); err == nil {
+		tos, policy = organization.TermsURL, organization.PrivacyURL
+	} else {
+		s.log.Error("reading the organization for the discovery document failed", "error", err)
+	}
 
 	return Discovery{
 		Issuer:                                     s.issuer,
@@ -178,6 +199,8 @@ func (s *Service) Discovery() Discovery {
 		CodeChallengeMethodsSupported:              []string{model.PKCES256},
 		PromptValuesSupported:                      []string{"none", "login"},
 		AuthorizationResponseIssParameterSupported: true,
+		OpTosURI:    tos,
+		OpPolicyURI: policy,
 	}
 }
 

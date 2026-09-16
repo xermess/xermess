@@ -36,7 +36,7 @@ func New(provider *oidc.Service, log *slog.Logger, secure bool) *Handler {
 // Discovery answers the OpenID Connect discovery document.
 func (h *Handler) Discovery(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=300")
-	c.JSON(http.StatusOK, h.provider.Discovery())
+	c.JSON(http.StatusOK, h.provider.Discovery(c.Request.Context()))
 }
 
 // JWKS answers the public keys tokens are signed with.

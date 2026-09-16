@@ -718,3 +718,150 @@ func TestLiveOverviewListsAreNeverNull(t *testing.T) {
 		}
 	}
 }
+
+// The organisation is one record of settings every installation starts with:
+// an update changes what it names and leaves the rest as it was, and the log
+// says which settings moved.
+func TestLiveOrganizationSettings(t *testing.T) {
+	s := newLiveServer(t)
+	super := s.superAdmin()
+
+	type organizationBody struct {
+		Organization struct {
+			Name         string `json:"name"`
+			Slug         string `json:"slug"`
+			Domain       string `json:"domain"`
+			SupportEmail string `json:"support_email"`
+			SupportPhone string `json:"support_phone"`
+			TermsURL     string `json:"terms_url"`
+			PrivacyURL   string `json:"privacy_url"`
+		} `json:"organization"`
+	}
+
+	// The migration seeds the row, so the page has something to open on.
+	var seeded organizationBody
+	super.must(http.StatusOK, http.MethodGet, "/organization", nil, &seeded)
+
+	if seeded.Organization.Name != "xermess" || seeded.Organization.Slug != "xermess" {
+		t.Errorf("seeded = %+v, want the default organization", seeded.Organization)
+	}
+
+	var updated organizationBody
+	super.must(http.StatusOK, http.MethodPatch, "/organization", map[string]any{
+		"name":          "  Acme Inc  ",
+		"slug":          "acme",
+		"domain":        "Acme.Example.COM",
+		"support_email": "support@acme.example.com",
+		"support_phone": "+996 555 123456",
+		"terms_url":     "https://acme.example.com/terms",
+		"privacy_url":   "https://acme.example.com/privacy",
+	}, &updated)
+
+	if got := updated.Organization; got.Name != "Acme Inc" || got.Slug != "acme" || got.Domain != "acme.example.com" {
+		t.Errorf("updated = %+v, want the values trimmed and lower cased", got)
+	}
+
+	// A second update says nothing about the domain, which therefore stays.
+	var kept organizationBody
+	super.must(http.StatusOK, http.MethodPatch, "/organization", map[string]any{
+		"support_phone": "+996 555 999888",
+	}, &kept)
+
+	if kept.Organization.Domain != "acme.example.com" || kept.Organization.SupportPhone != "+996 555 999888" {
+		t.Errorf("kept = %+v, want the domain left alone and the new number", kept.Organization)
+	}
+
+	// A refused change writes nothing.
+	super.must(http.StatusBadRequest, http.MethodPatch, "/organization", map[string]any{
+		"slug": "acme inc",
+	}, nil)
+
+	var reread organizationBody
+	super.must(http.StatusOK, http.MethodGet, "/organization", nil, &reread)
+	if reread.Organization.Slug != "acme" {
+		t.Errorf("slug = %q, want the stored one after a refused change", reread.Organization.Slug)
+	}
+
+	// The log says which settings moved, newest first.
+	var logs struct {
+		Logs []struct {
+			Action string `json:"action"`
+			Target *struct {
+				Type string `json:"type"`
+				ID   string `json:"id"`
+			} `json:"target"`
+			Detail string `json:"detail"`
+		} `json:"logs"`
+	}
+	super.must(http.StatusOK, http.MethodGet, "/logs?limit=50", nil, &logs)
+
+	var changed []string
+	for _, entry := range logs.Logs {
+		if entry.Action == "organization.updated" {
+			if entry.Target == nil || entry.Target.Type != "organization" || entry.Target.ID != "acme" {
+				t.Errorf("target = %+v, want the organization by its slug", entry.Target)
+			}
+			changed = append(changed, entry.Detail)
+		}
+	}
+	if len(changed) != 2 {
+		t.Fatalf("organization.updated entries = %d, want one per change that took", len(changed))
+	}
+	if changed[0] != "support_phone" {
+		t.Errorf("the last change recorded %q, want the number alone", changed[0])
+	}
+
+	// A role scoped to one application grants nothing here: these are the
+	// whole installation's settings.
+	manager := s.appManager(super, super.application("shop"))
+	manager.must(http.StatusForbidden, http.MethodGet, "/organization", nil, nil)
+	manager.must(http.StatusForbidden, http.MethodPatch, "/organization", map[string]any{"name": "Theirs"}, nil)
+
+	// What an administrator saved is what the outside world is told. The
+	// agreements are the provider's own metadata, and the sign-in pages read
+	// the rest from the public API, which takes no session.
+	discovery := map[string]any{}
+	getJSON(t, s.root+"/.well-known/openid-configuration", &discovery)
+
+	if discovery["op_tos_uri"] != "https://acme.example.com/terms" {
+		t.Errorf("op_tos_uri = %v, want the organization's terms", discovery["op_tos_uri"])
+	}
+	if discovery["op_policy_uri"] != "https://acme.example.com/privacy" {
+		t.Errorf("op_policy_uri = %v, want the organization's privacy policy", discovery["op_policy_uri"])
+	}
+
+	var public struct {
+		Organization struct {
+			Name         string `json:"name"`
+			SupportEmail string `json:"support_email"`
+			SupportPhone string `json:"support_phone"`
+			TermsURL     string `json:"terms_url"`
+		} `json:"organization"`
+	}
+	getJSON(t, s.root+"/api/v1/account/organization", &public)
+
+	if got := public.Organization; got.Name != "Acme Inc" || got.SupportEmail != "support@acme.example.com" {
+		t.Errorf("the sign-in pages are told %+v, want the saved name and address", got)
+	}
+	if public.Organization.SupportPhone != "+996 555 999888" {
+		t.Errorf("support_phone = %q, want the number saved last", public.Organization.SupportPhone)
+	}
+}
+
+// getJSON reads a public endpoint, which needs no session and no cookie.
+func getJSON(t *testing.T, url string, out any) {
+	t.Helper()
+
+	res, err := http.Get(url)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("GET %s = %d, want 200", url, res.StatusCode)
+	}
+	if err := json.NewDecoder(res.Body).Decode(out); err != nil {
+		t.Fatalf("GET %s: decode: %v", url, err)
+	}
+}

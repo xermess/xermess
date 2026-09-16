@@ -149,7 +149,7 @@ export const sections: SidebarGroup[] = [
 				route: '/admin/(panel)/dashboard/organization',
 				label: 'Organization',
 				icon: RiBuildingLine,
-				status: 'preview'
+				allowed: (admin) => can(admin, 'organization.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/languages',

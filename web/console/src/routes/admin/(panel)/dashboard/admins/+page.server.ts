@@ -8,7 +8,7 @@ import type { PageServerLoad } from './$types';
  * users page. Every admin role and the permission catalog are loaded too, for
  * the role filter and for the panel, which offers the roles to hold.
  */
-export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
+export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	requirePermission((await parent()).admin, 'super_admin');
 
 	const search = url.searchParams.get('search')?.trim() ?? '';
@@ -21,14 +21,10 @@ export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
 	if (role) query.set('role', role);
 
 	const [page, roles, catalog, applications] = await Promise.all([
-		apiGet<AdminPage>(`/admin/admins?${query}`, cookies, fetch),
-		apiGet<{ roles: AdminRole[] }>('/admin/admin-roles', cookies, fetch),
-		apiGet<{ permissions: AdminPermission[] }>('/admin/admin-permissions', cookies, fetch),
-		apiGet<ApplicationPage>(
-			`/admin/applications?limit=${APPLICATION_CHOICES_LIMIT}`,
-			cookies,
-			fetch
-		)
+		apiGet<AdminPage>(`/admin/admins?${query}`, fetch),
+		apiGet<{ roles: AdminRole[] }>('/admin/admin-roles', fetch),
+		apiGet<{ permissions: AdminPermission[] }>('/admin/admin-permissions', fetch),
+		apiGet<ApplicationPage>(`/admin/applications?limit=${APPLICATION_CHOICES_LIMIT}`, fetch)
 	]);
 
 	return {

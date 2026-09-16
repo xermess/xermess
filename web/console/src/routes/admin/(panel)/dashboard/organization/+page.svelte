@@ -1,75 +1,54 @@
 <script lang="ts">
-	import { Badge, Card, PageHeading } from '$lib/components/ui';
-	import { demoOrganization as org } from '$lib/data/demo';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { RiRefreshLine } from 'svelte-remixicon';
+	import { IconButton, PageContainer, PageHeader } from '$lib/components/ui';
+	import OrganizationSettings from '$lib/components/organization/OrganizationSettings.svelte';
+	import { can } from '$lib/permissions';
+	import { keys, organizationOptions } from '$lib/query';
+	import type { PageData } from './$types';
 
-	const details = [
-		{ label: 'Name', value: org.name },
-		{ label: 'Identifier', value: org.slug, mono: true },
-		{ label: 'Primary domain', value: org.domain, mono: true },
-		{ label: 'Region', value: org.region, mono: true },
-		{ label: 'Support email', value: org.supportEmail },
-		{ label: 'Created', value: org.created }
-	];
+	let { data }: { data: PageData } = $props();
+
+	const queryClient = useQueryClient();
+
+	const settings = createQuery(() => organizationOptions({ organization: data.organization }));
+
+	const canWrite = $derived(can(data.admin, 'organization.write'));
 </script>
 
 <svelte:head><title>Organization · xermess admin</title></svelte:head>
 
-<PageHeading
-	title="Organization"
-	description="Who this tenant belongs to and where it runs."
-	demo
-/>
+<PageContainer>
+	<div class="page">
+		<PageHeader crumbs={['Settings', 'Organization']}>
+			{#snippet secondary()}
+				<IconButton
+					icon={RiRefreshLine}
+					label="Reload these settings"
+					onclick={() => queryClient.invalidateQueries({ queryKey: keys.organization.settings })}
+				/>
+			{/snippet}
+		</PageHeader>
 
-<div class="gutter">
-	<Card>
-		<dl>
-			{#each details as detail (detail.label)}
-				<div class="row">
-					<dt>{detail.label}</dt>
-					<dd class:mono={detail.mono}>{detail.value}</dd>
-				</div>
-			{/each}
-			<div class="row">
-				<dt>Plan</dt>
-				<dd><Badge tone="success">{org.plan}</Badge></dd>
-			</div>
-		</dl>
-	</Card>
-</div>
+		<p class="lead">
+			Who this installation belongs to: what the sign-in pages show, whom users ask for help, and
+			the agreements they accept.
+		</p>
+
+		<OrganizationSettings organization={settings.data.organization} editable={canWrite} />
+	</div>
+</PageContainer>
 
 <style>
-	dl {
-		margin: 0;
-	}
-
-	.row {
-		display: grid;
-		grid-template-columns: 10rem 1fr;
+	.page {
+		display: flex;
+		flex-direction: column;
 		gap: var(--space-4);
-		align-items: center;
-		padding: var(--space-3) var(--space-4);
-		font-size: var(--text-base);
 	}
 
-	.row + .row {
-		border-top: 1px solid var(--color-border);
-	}
-
-	dt {
+	.lead {
+		margin: calc(var(--space-3) * -1) 0 0;
 		color: var(--color-text-hint);
-	}
-	dd {
-		margin: 0;
-	}
-	.mono {
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-	}
-
-	@media (max-width: 40rem) {
-		.row {
-			grid-template-columns: 1fr;
-			gap: var(--space-1);
-		}
+		font-size: var(--text-base);
 	}
 </style>

@@ -70,7 +70,11 @@
 </svelte:head>
 
 {#if data.expired}
-	<AuthCard title="This sign-in has expired" subtitle="Sign-in links only work for a short while.">
+	<AuthCard
+		organization={data.organization}
+		title="This sign-in has expired"
+		subtitle="Sign-in links only work for a short while."
+	>
 		<Alert tone="info">Go back to the application and choose “Sign in” again.</Alert>
 
 		{#snippet below()}
@@ -79,6 +83,7 @@
 	</AuthCard>
 {:else}
 	<AuthCard
+		organization={data.organization}
 		application={app}
 		title="Sign in"
 		subtitle={app ? `to continue to ${app.name}` : 'to manage your account'}

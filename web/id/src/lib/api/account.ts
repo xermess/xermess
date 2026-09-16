@@ -12,6 +12,21 @@ export type Application = {
 	allow_registration: boolean;
 };
 
+/** The organisation this server signs users in for: who the account belongs
+    to, where to ask for help, and the agreements accepted by making one. An
+    application's own name, logo and links come first where it has them; these
+    are what is shown for one that has none. Any of it may be empty, and what
+    is empty is left out rather than shown blank. */
+export type Organization = {
+	name: string;
+	logo_url: string;
+	domain: string;
+	support_email: string;
+	support_phone: string;
+	terms_url: string;
+	privacy_url: string;
+};
+
 /** A sign-in under way, known to the pages by the handle in `?request=`. */
 export type SignInRequest = {
 	application: Application;
@@ -75,6 +90,9 @@ export const signIn = {
 
 	application: (clientId: string, fetch?: Fetch) =>
 		request<{ application: Application }>(`/account/applications/${encode(clientId)}`, { fetch }),
+
+	organization: (fetch?: Fetch) =>
+		request<{ organization: Organization }>('/account/organization', { fetch }),
 
 	login: (body: { request: string; email: string; password: string }) =>
 		request<SignedIn>('/account/login', { method: 'POST', body }),

@@ -13,7 +13,7 @@ import type { PageServerLoad } from './$types';
  * the roles of any application their roles reach — with those applications:
  * the table names each role's scope, and the role mapping offers the roles.
  */
-export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
+export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const { admin } = await parent();
 	requirePermission(admin, 'users.read');
 
@@ -29,18 +29,15 @@ export const load: PageServerLoad = async ({ cookies, fetch, parent, url }) => {
 	const seesApplications = canAnywhere(admin, 'applications.read');
 
 	const [page, fields, applications, roles] = await Promise.all([
-		apiGet<UserPage>(`/admin/users?${query}`, cookies, fetch),
-		apiGet<{ fields: UserField[] }>('/admin/user-fields', cookies, fetch),
+		apiGet<UserPage>(`/admin/users?${query}`, fetch),
+		apiGet<{ fields: UserField[] }>('/admin/user-fields', fetch),
 		seesApplications
 			? apiGet<ApplicationPage>(
 					`/admin/applications?limit=${APPLICATION_CHOICES_LIMIT}`,
-					cookies,
 					fetch
 				).then((it) => it.applications)
 			: Promise.resolve<Application[]>([]),
-		apiGet<RolePage>(`/admin/user-roles?limit=${ROLE_CHOICES_LIMIT}`, cookies, fetch).then(
-			(it) => it.roles
-		)
+		apiGet<RolePage>(`/admin/user-roles?limit=${ROLE_CHOICES_LIMIT}`, fetch).then((it) => it.roles)
 	]);
 
 	return { page, fields: fields.fields, applications, roles, search, verified, role };
