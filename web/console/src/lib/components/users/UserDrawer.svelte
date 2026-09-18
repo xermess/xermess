@@ -17,11 +17,17 @@
 		Drawer,
 		FormSection,
 		Input,
+		List,
+		ListItem,
 		PasswordInput,
 		SwitchField,
-		Tabs
+		Tabs,
+		Tag,
+		Thumb
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
+	import { markFor as providerMark } from '$lib/components/social/providers';
+	import { formatDate, formatRelative } from '$lib/utils/format';
 	import RoleMappings from '$lib/components/roles/RoleMappings.svelte';
 	import { additional } from './fields';
 	import FieldInput from './FieldInput.svelte';
@@ -87,6 +93,32 @@
 	let saving = $state(false);
 
 	const editing = $derived(current !== null);
+
+	/** The connection being disconnected, so only its own button spins. */
+	let disconnecting = $state('');
+
+	async function disconnect(identity: string) {
+		if (!current) return;
+
+		error = '';
+		disconnecting = identity;
+
+		try {
+			await usersApi.disconnect(current.id, identity);
+			await queryClient.invalidateQueries({ queryKey: keys.users.all });
+
+			// The drawer is looking at the record it was given, so the
+			// provider goes from it here too rather than after a reopen.
+			current = {
+				...current,
+				social_accounts: current.social_accounts.filter((account) => account.id !== identity)
+			};
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : 'Could not disconnect this provider';
+		} finally {
+			disconnecting = '';
+		}
+	}
 
 	/** How many roles the user holds, for the tab's count. The role mapping
 	    shares this query, so opening the tab asks for nothing more. */
@@ -328,6 +360,45 @@
 							disabled={!hasPassword}
 						/>
 					</FormSection>
+
+					{#if editing && (current?.social_accounts ?? []).length > 0}
+						<FormSection
+							title="Signs in with"
+							description="Accounts elsewhere that reach this one. Disconnecting one leaves the account itself alone."
+						>
+							<List bordered label="Connected providers">
+								{#each current?.social_accounts ?? [] as account (account.id)}
+									<ListItem
+										title={account.provider}
+										description={account.email || `Connected ${formatDate(account.connected_at)}`}
+									>
+										{#snippet lead()}
+											<Thumb icon={providerMark(account.kind)} />
+										{/snippet}
+
+										{#snippet end()}
+											{#if account.last_login_at}
+												<Tag small>used {formatRelative(account.last_login_at)}</Tag>
+											{/if}
+
+											{#if editable}
+												<Button
+													size="sm"
+													variant="subtle"
+													colorPalette="danger"
+													loading={disconnecting === account.id}
+													disabled={disconnecting !== ''}
+													onclick={() => disconnect(account.id)}
+												>
+													Disconnect
+												</Button>
+											{/if}
+										{/snippet}
+									</ListItem>
+								{/each}
+							</List>
+						</FormSection>
+					{/if}
 
 					<FormSection title="Status">
 						<div class="switches">

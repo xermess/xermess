@@ -5,6 +5,7 @@ import {
 	RiCodeBoxLine,
 	RiErrorWarningLine,
 	RiFileList3Line,
+	RiGitBranchLine,
 	RiKey2Line,
 	RiLockLine,
 	RiLoginBoxLine,
@@ -384,6 +385,25 @@ const actions: Record<string, Action> = {
 		category: 'admins',
 		tone: 'danger',
 		icon: RiShieldKeyholeLine
+	},
+	'login_flow.created': {
+		label: 'Login flow created',
+		verb: 'created login flow',
+		category: 'access',
+		icon: RiGitBranchLine
+	},
+	'login_flow.updated': {
+		label: 'Login flow updated',
+		verb: 'updated login flow',
+		category: 'access',
+		icon: RiGitBranchLine
+	},
+	'login_flow.deleted': {
+		label: 'Login flow deleted',
+		verb: 'deleted login flow',
+		category: 'access',
+		tone: 'danger',
+		icon: RiGitBranchLine
 	}
 };
 

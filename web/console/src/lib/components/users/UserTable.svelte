@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { RiShieldUserLine } from 'svelte-remixicon';
-	import type { Application, UserField, UserRecord } from '$lib/api';
-	import { Badge, DataTable, type Column } from '$lib/components/ui';
+	import { RiKey2Line, RiShareLine, RiShieldUserLine } from 'svelte-remixicon';
+	import type { Application, SocialKind, UserField, UserRecord } from '$lib/api';
+	import { Badge, DataTable, Icon, Tooltip, type Column } from '$lib/components/ui';
+	import { markFor as providerMark } from '$lib/components/social/providers';
 	import FieldValue from './FieldValue.svelte';
 	import { valueOf } from './fields';
 	import { fieldIcons, idIcon } from './fieldIcons';
@@ -34,10 +35,17 @@
 			icon: fieldIcons[field.type],
 			min: field.type === 'email' ? '13rem' : field.type === 'bool' ? '8rem' : '9rem'
 		})),
-		{ key: 'roles', label: 'roles', icon: RiShieldUserLine, min: '10rem' }
+		{ key: 'roles', label: 'roles', icon: RiShieldUserLine, min: '10rem' },
+		{ key: 'signs_in_with', label: 'signs_in_with', icon: RiShareLine, min: '9rem' }
 	]);
 
 	/** The first characters of the id, which is all anyone reads of it. */
+	/** The mark for a provider is the panel's own, so a row and the drawer
+	    show the same thing. */
+	function markFor(kind: SocialKind) {
+		return providerMark(kind);
+	}
+
 	function shortId(id: string): string {
 		return id.replace(/-/g, '').slice(0, 15);
 	}
@@ -76,10 +84,56 @@
 				{/each}
 			</span>
 		</td>
+
+		<!-- How this person gets in: a password, an account somewhere else,
+		     or both. A record with neither cannot sign in at all. -->
+		<td>
+			<span class="ways">
+				{#each user.social_accounts ?? [] as account (account.id)}
+					<Tooltip label="{account.provider} · {account.email || 'no address'}">
+						{#snippet children(trigger)}
+							<span class="way" {...trigger()}>
+								<Icon icon={markFor(account.kind)} size="1rem" />
+							</span>
+						{/snippet}
+					</Tooltip>
+				{/each}
+
+				{#if user.has_password}
+					<Tooltip label="Signs in with a password">
+						{#snippet children(trigger)}
+							<span class="way" {...trigger()}><Icon icon={RiKey2Line} size="1rem" /></span>
+						{/snippet}
+					</Tooltip>
+				{/if}
+
+				{#if !user.has_password && (user.social_accounts ?? []).length === 0}
+					<span class="empty">N/A</span>
+				{/if}
+			</span>
+		</td>
 	{/snippet}
 </DataTable>
 
 <style>
+	/* The ways in, side by side: one small mark each. */
+	.ways {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.way {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 26px;
+		height: 26px;
+		border: 1px solid var(--color-secondary-alt);
+		border-radius: var(--radius-sm);
+		color: var(--color-text-hint);
+	}
+
 	.roles {
 		display: inline-flex;
 		gap: var(--space-1);

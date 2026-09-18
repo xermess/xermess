@@ -1,9 +1,12 @@
 <script lang="ts">
-	import { Icon, ThemeToggle } from '$lib/components';
+	import { Icon, LanguagePicker, ThemeToggle } from '$lib/components';
+	import { useTranslator } from '$lib/i18n';
 	import { supportLinks } from '$lib/utils/legal';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
+
+	const t = useTranslator();
 
 	// Whom to ask when signing in is not working. It is the organisation's
 	// contact rather than any application's: someone who cannot get in has no
@@ -12,7 +15,12 @@
 </script>
 
 <div class="shell">
-	<div class="corner"><ThemeToggle /></div>
+	<!-- Where somebody who cannot read the page looks first: the corner, not
+	     the footer below a form in a language they do not know. -->
+	<div class="corner">
+		<LanguagePicker languages={data.languages} current={data.language} />
+		<ThemeToggle />
+	</div>
 
 	<main>
 		<div class="column">
@@ -23,7 +31,7 @@
 	<footer>
 		{#if support.length > 0}
 			<p class="help">
-				Trouble signing in?
+				{t('shell.trouble')}
 				{#each support as link, index (link.href)}
 					{#if index > 0}<span aria-hidden="true">·</span>{/if}
 					<!-- An address to write to, or a number to ring. -->
@@ -35,7 +43,7 @@
 
 		<p class="secured">
 			<Icon name="shield" size="0.9375rem" />
-			<span>Secured by <strong>xermess</strong></span>
+			<span>{t('shell.secured_by')} <strong>xermess</strong></span>
 		</p>
 	</footer>
 </div>
@@ -59,6 +67,10 @@
 		position: fixed;
 		top: var(--space-3);
 		right: var(--space-3);
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
 	}
 
 	main {

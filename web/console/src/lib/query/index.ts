@@ -17,4 +17,8 @@ export {
 	type ApplicationListParams
 } from './applications';
 export { apiOptions, apisOptions } from './apis';
+export { databaseTableOptions, databaseTablesOptions, DATABASE_PAGE_SIZE } from './database';
+export { loginFlowChoicesOptions, loginFlowsOptions } from './flows';
+export { languagesOptions, translationOptions } from './languages';
 export { organizationOptions } from './organization';
+export { socialProvidersOptions } from './social';

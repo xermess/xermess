@@ -8,7 +8,7 @@
 		RiToggleLine
 	} from 'svelte-remixicon';
 	import type { AdminRecord, AdminStatus } from '$lib/api';
-	import { Badge, DataTable, type Column } from '$lib/components/ui';
+	import { Badge, DataTable, Tag, type Column } from '$lib/components/ui';
 	import { formatDateTime } from '$lib/utils/format';
 
 	type Props = {
@@ -27,6 +27,7 @@
 		{ key: 'email', label: 'email', icon: RiMailLine, min: '14rem' },
 		{ key: 'name', label: 'name', icon: RiText, min: '10rem' },
 		{ key: 'status', label: 'status', icon: RiToggleLine, min: '8rem' },
+		{ key: 'mfa', label: 'two-factor', icon: RiShieldKeyholeLine, min: '8rem' },
 		{ key: 'roles', label: 'roles', icon: RiShieldKeyholeLine, min: '12rem' },
 		{ key: 'last_login_at', label: 'last_login_at', icon: RiTimeLine, min: '11rem' }
 	];
@@ -65,6 +66,14 @@
 		<td><span class="text">{admin.full_name}</span></td>
 
 		<td><Badge tone={tones[admin.status]}>{admin.status}</Badge></td>
+
+		<td>
+			{#if admin.mfa_enabled}
+				<Tag tone="success" dot strong>on</Tag>
+			{:else}
+				<Tag dot>off</Tag>
+			{/if}
+		</td>
 
 		<td>
 			<span class="badges">

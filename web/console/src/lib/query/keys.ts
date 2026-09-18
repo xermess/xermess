@@ -64,6 +64,35 @@ export const keys = {
 		settings: ['organization', 'settings'] as const
 	},
 
+	social: {
+		all: ['social'] as const,
+		/** Every configured provider, and the kinds one may be. */
+		providers: ['social', 'providers'] as const
+	},
+
+	flows: {
+		all: ['flows'] as const,
+		/** Every login flow, and the steps one can be made of. */
+		list: ['flows', 'list'] as const
+	},
+
+	languages: {
+		all: ['languages'] as const,
+		/** Every language, with how much of each app it covers. */
+		list: ['languages', 'list'] as const,
+		/** Every language's text, and one language's text for one app. */
+		translations: ['languages', 'translation'] as const,
+		translation: (code: string, app: string) => ['languages', 'translation', code, app] as const
+	},
+
+	database: {
+		all: ['database'] as const,
+		/** The tables, with how big each is. */
+		tables: ['database', 'tables'] as const,
+		/** One page of one table. */
+		table: (name: string, offset: number) => ['database', 'table', name, offset] as const
+	},
+
 	admin: {
 		/** The dashboard's counts and recent activity, which a change to
 		    anything it counts invalidates. */

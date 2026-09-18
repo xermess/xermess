@@ -2,10 +2,13 @@
 	import { resolve } from '$app/paths';
 	import { signIn, messageOf } from '$lib/api';
 	import { Alert, AuthCard, Button, PasswordField } from '$lib/components';
+	import { useTranslator } from '$lib/i18n';
 	import { authHref } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const t = useTranslator();
 
 	const app = $derived(data.signInRequest?.application ?? null);
 	const request = $derived(data.signInRequest ? data.request : null);
@@ -40,64 +43,58 @@
 </script>
 
 <svelte:head>
-	<title>Choose a new password{app ? ` · ${app.name}` : ''}</title>
+	<title>{t('reset.head')}{app ? ` · ${app.name}` : ''}</title>
 </svelte:head>
 
 {#if done}
-	<AuthCard organization={data.organization} application={app} title="Password updated">
-		<Alert tone="success">
-			Your password has been changed, and you’ve been signed out everywhere else.
-		</Alert>
+	<AuthCard organization={data.organization} application={app} title={t('reset.done_title')}>
+		<Alert tone="success">{t('reset.done_body')}</Alert>
 
 		<div class="action">
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a class="primary" href={authHref('/login', request)}>
-				Sign in{app ? ` to ${app.name}` : ''}
+				{app ? t('reset.done_action_app', { app: app.name }) : t('reset.done_action')}
 			</a>
 		</div>
 	</AuthCard>
 {:else if !data.valid}
-	<AuthCard organization={data.organization} application={app} title="This link has expired">
-		<Alert tone="info">
-			Reset links work once, for one hour. Ask for a new one and use the latest email.
-		</Alert>
+	<AuthCard organization={data.organization} application={app} title={t('reset.expired_title')}>
+		<Alert tone="info">{t('reset.expired_body')}</Alert>
 
 		{#snippet below()}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={authHref('/forgot-password', request)}>Send a new link</a>
-			· <a href={resolve('/login')}>Sign in</a>
+			<a href={authHref('/forgot-password', request)}>{t('reset.expired_new')}</a>
+			· <a href={resolve('/login')}>{t('action.sign_in')}</a>
 		{/snippet}
 	</AuthCard>
 {:else}
 	<AuthCard
 		organization={data.organization}
 		application={app}
-		title="Choose a new password"
-		subtitle={data.temporary
-			? 'Your password was set by an administrator. Choose your own to continue.'
-			: undefined}
+		title={t('reset.title')}
+		subtitle={data.temporary ? t('reset.temporary') : undefined}
 	>
 		<form onsubmit={submit} novalidate>
 			{#if error}<Alert>{error}</Alert>{/if}
 
 			<PasswordField
-				label="New password"
+				label={t('field.new_password')}
 				bind:value={password}
 				autocomplete="new-password"
 				disabled={submitting}
-				hint="At least {minLength} characters"
+				hint={t('field.password_hint', { count: minLength })}
 			/>
 
 			<PasswordField
-				label="Confirm new password"
+				label={t('field.confirm_new_password')}
 				bind:value={confirm}
 				autocomplete="new-password"
 				disabled={submitting}
-				error={mismatch ? 'The passwords do not match' : undefined}
+				error={mismatch ? t('field.password_mismatch') : undefined}
 			/>
 
 			<Button type="submit" block loading={submitting} disabled={!canSubmit}>
-				{submitting ? 'Saving…' : 'Update password'}
+				{submitting ? t('reset.submitting') : t('reset.submit')}
 			</Button>
 		</form>
 	</AuthCard>

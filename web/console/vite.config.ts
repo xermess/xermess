@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
@@ -21,7 +22,16 @@ const proxy = {
 
 export default defineConfig({
 	// id 5173, console 5174 — in both modes of scripts/start.sh.
-	server: { port: 5174, strictPort: true, proxy },
+	//
+	// The translations are read from locales/ at the top of the repository,
+	// which is outside this app, so the dev server is told it may serve that
+	// directory. A build inlines the files and needs nothing.
+	server: {
+		port: 5174,
+		strictPort: true,
+		proxy,
+		fs: { allow: [fileURLToPath(new URL('../../locales', import.meta.url))] }
+	},
 
 	// The query library ships its components as .svelte files. Node cannot
 	// import those, so while rendering on the server Vite has to compile it

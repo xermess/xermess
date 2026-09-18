@@ -28,6 +28,11 @@ type User struct {
 	// it anything about the password.
 	HasPassword bool `gorm:"-" json:"has_password"`
 
+	// SocialAccounts are the providers this user signs in with. Like
+	// HasPassword it is no column: the panel is told what a record amounts
+	// to, and the rows themselves are user_identities.
+	SocialAccounts []SocialAccount `gorm:"-" json:"social_accounts"`
+
 	// LastLoginAt is when the user last signed in to an application.
 	LastLoginAt *time.Time `json:"last_login_at"`
 	// FailedLoginCount and LockedUntil lock the account for a while after

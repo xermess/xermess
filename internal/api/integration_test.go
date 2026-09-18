@@ -25,6 +25,7 @@ import (
 	"xermess/internal/mail"
 	"xermess/internal/oidc"
 	"xermess/internal/store"
+	"xermess/locales"
 )
 
 // These tests run the whole server — routes, permission checks, store and
@@ -162,6 +163,21 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	}
 	change(&serverCfg)
 	st := store.New(db)
+
+	// What main does on a fresh installation: write the settings for
+	// administrators' sign-ins from the configuration, so these servers
+	// behave the way a started one does.
+	if err := st.EnsureAdminSecurity(context.Background(), serverCfg.AdminMFARequired); err != nil {
+		t.Fatal(err)
+	}
+
+	shipped, err := locales.Shipped()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.EnsureLanguages(context.Background(), shipped); err != nil {
+		t.Fatal(err)
+	}
 
 	provider, err := oidc.New(context.Background(), serverCfg, st, mailer, log)
 	if err != nil {

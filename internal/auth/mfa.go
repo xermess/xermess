@@ -56,7 +56,7 @@ type MFAStatus struct {
 
 // Status describes an administrator's second factor.
 func (s *Service) Status(ctx context.Context, admin *model.AdminUser) (MFAStatus, error) {
-	status := MFAStatus{Required: s.mfaRequired}
+	status := MFAStatus{Required: s.MFARequired(ctx)}
 
 	factor, err := s.confirmedFactor(ctx, admin)
 	if errors.Is(err, ErrMFADisabled) {
@@ -222,7 +222,7 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.AdminUser, token
 // administrator asking. Every other session they have ends. Where a second
 // factor is required it cannot be turned off.
 func (s *Service) DisableTOTP(ctx context.Context, admin *model.AdminUser, token, code string, req Request) error {
-	if s.mfaRequired {
+	if s.MFARequired(ctx) {
 		return ErrMFARequired
 	}
 

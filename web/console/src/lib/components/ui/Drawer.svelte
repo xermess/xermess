@@ -75,6 +75,14 @@
 	{/if}
 {/snippet}
 
+<!-- The panel is built when it opens and taken down once it has finished
+     leaving: a drawer that opens is a drawer that starts fresh — nothing
+     scrolled, nothing still focused, no half-finished form from last time.
+
+     That is what `lazyMount` and `unmountOnExit` say together, and Ark only
+     honours the second of them if it can tell there is a leaving animation to
+     wait for. It tells by watching the animation name change, which is why
+     arriving and leaving have separate keyframes (styles/ark.css). -->
 <Dialog.Root bind:open lazyMount unmountOnExit initialFocusEl={() => panelEl}>
 	<Portal>
 		<Dialog.Backdrop />
@@ -85,7 +93,9 @@
 						{@render panel()}
 					</form>
 				{:else}
-					<div class="layout" bind:this={panelEl} tabindex="-1">{@render panel()}</div>
+					<div class="layout" bind:this={panelEl} tabindex="-1">
+						{@render panel()}
+					</div>
 				{/if}
 			</Dialog.Content>
 		</Dialog.Positioner>
@@ -106,11 +116,15 @@
 		outline: none;
 	}
 
+	/* PocketBase's isolated panel header: the faint tint and a hairline under
+	   it, so the title stays a title however far the form below has been
+	   scrolled. */
 	header {
 		position: relative;
 		padding: var(--space-4) var(--space-5);
 		padding-right: var(--space-6);
 		border-bottom: 1px solid var(--color-border);
+		background: var(--color-surface-alt);
 	}
 
 	.heading {
@@ -130,15 +144,17 @@
 		min-height: 0;
 		padding: var(--space-5);
 		overflow-y: auto;
+		/* The room for the scrollbar is kept whether or not there is one, so
+		   a form does not shift sideways as it grows past the panel. */
+		scrollbar-gutter: stable;
 	}
 
 	footer {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-3) var(--space-5);
+		padding: var(--space-4) var(--space-5);
 		border-top: 1px solid var(--color-border);
-		background: var(--color-surface);
 	}
 
 	.close {

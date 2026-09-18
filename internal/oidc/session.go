@@ -209,6 +209,18 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 		return nil, ErrRegistrationClosed
 	}
 
+	// The login flow has to allow it too. The application says whether it
+	// wants new accounts; the flow says whether this installation takes them
+	// at all, so a flow with registration turned off closes the door rather
+	// than only hiding the link to it.
+	flow, err := s.store.EffectiveLoginFlow(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	if !flow.AllowRegistration {
+		return nil, ErrRegistrationClosed
+	}
+
 	if (app.TosURI != "" || app.PolicyURI != "") && !r.AcceptedTerms {
 		return nil, &FieldError{Message: "you have to accept the terms and privacy policy to create an account"}
 	}
@@ -261,6 +273,23 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 // out which addresses have accounts; the email is sent in the background for
 // the same reason, since sending takes a noticeable time.
 func (s *Service) ForgotPassword(ctx context.Context, email, request string, client Client) error {
+	// A flow that does not offer password resets does not send one. It says
+	// nothing about it either: the answer is the same whatever happened here,
+	// which is what keeps this page from telling anybody which addresses have
+	// accounts.
+	var app *model.Application
+	if pending, err := s.pending(ctx, request); err == nil {
+		app = pending.Application
+	}
+
+	flow, err := s.store.EffectiveLoginFlow(ctx, app)
+	if err != nil {
+		return err
+	}
+	if !flow.AllowPasswordReset {
+		return nil
+	}
+
 	user, err := s.store.UserByEmail(ctx, strings.TrimSpace(email))
 	if errors.Is(err, store.ErrNotFound) {
 		return nil

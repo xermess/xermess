@@ -83,7 +83,10 @@ export function blank(type: ApplicationType): ApplicationInput {
 		assert_roles: true,
 		require_role_assignment: false,
 		enabled: true,
-		allow_registration: type !== 'm2m'
+		allow_registration: type !== 'm2m',
+		// Empty is the default flow, which is what a new application should
+		// sign people in with until somebody says otherwise.
+		login_flow_id: ''
 	};
 }
 

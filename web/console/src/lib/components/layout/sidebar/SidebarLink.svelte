@@ -3,6 +3,7 @@
 	import type { ComponentType } from 'svelte';
 	import { Icon, Tooltip } from '$lib/components/ui';
 	import type { Section } from './sections';
+	import { useTranslator } from '$lib/i18n';
 
 	type Props = {
 		route: Section;
@@ -23,6 +24,8 @@
 				? `${label} · placeholder data`
 				: label
 	);
+
+	const t = useTranslator();
 </script>
 
 <!-- Unfolded, the tooltip would only repeat the name, so it is off. -->
@@ -40,7 +43,7 @@
 			<span class="label">{label}</span>
 
 			{#if status === 'soon'}
-				<span class="soon">Soon</span>
+				<span class="soon">{t('shell.soon')}</span>
 			{:else if status === 'preview'}
 				<span class="dot" aria-hidden="true"></span>
 			{/if}

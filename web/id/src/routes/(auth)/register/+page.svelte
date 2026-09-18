@@ -1,11 +1,22 @@
 <script lang="ts">
 	import { signIn, messageOf } from '$lib/api';
-	import { Alert, AuthCard, Button, Checkbox, PasswordField, TextField } from '$lib/components';
+	import {
+		Alert,
+		AuthCard,
+		Button,
+		Checkbox,
+		PasswordField,
+		TextField,
+		SocialButtons
+	} from '$lib/components';
 	import { legalLinks } from '$lib/utils/legal';
+	import { useTranslator } from '$lib/i18n';
 	import { authHref, leaveTo } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const t = useTranslator();
 
 	const app = $derived(data.signInRequest?.application ?? null);
 
@@ -68,47 +79,45 @@
 </script>
 
 <svelte:head>
-	<title>Create an account{app ? ` · ${app.name}` : ''}</title>
+	<title>{t('register.head')}{app ? ` · ${app.name}` : ''}</title>
 </svelte:head>
 
 {#if data.expired || !data.request}
 	<AuthCard
 		organization={data.organization}
-		title={data.expired ? 'This sign-in has expired' : 'Start from an application'}
-		subtitle="Accounts are created while signing in to an application."
+		title={data.expired ? t('login.expired_title') : t('register.start_title')}
+		subtitle={t('register.start_subtitle')}
 	>
-		<Alert tone="info">Go back to the application and choose “Sign in” again.</Alert>
+		<Alert tone="info">{t('login.expired_body')}</Alert>
 	</AuthCard>
 {:else if app && !app.allow_registration}
-	<AuthCard organization={data.organization} application={app} title="Registration is closed">
-		<Alert tone="info">
-			{app.name} does not allow creating accounts here. Ask whoever runs it for access.
-		</Alert>
+	<AuthCard organization={data.organization} application={app} title={t('register.closed_title')}>
+		<Alert tone="info">{t('register.closed_body', { app: app.name })}</Alert>
 
 		{#snippet below()}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={authHref('/login', data.request)}>Back to sign in</a>
+			<a href={authHref('/login', data.request)}>{t('action.back_to_sign_in')}</a>
 		{/snippet}
 	</AuthCard>
 {:else}
 	<AuthCard
 		organization={data.organization}
 		application={app}
-		title="Create your account"
-		subtitle={app ? `to continue to ${app.name}` : undefined}
+		title={t('register.title')}
+		subtitle={app ? t('register.subtitle_app', { app: app.name }) : undefined}
 	>
 		<form onsubmit={submit} novalidate>
 			{#if error}<Alert>{error}</Alert>{/if}
 
 			<div class="names">
 				<TextField
-					label="First name"
+					label={t('field.first_name')}
 					bind:value={firstName}
 					autocomplete="given-name"
 					disabled={submitting}
 				/>
 				<TextField
-					label="Last name"
+					label={t('field.last_name')}
 					bind:value={lastName}
 					autocomplete="family-name"
 					disabled={submitting}
@@ -116,7 +125,7 @@
 			</div>
 
 			<TextField
-				label="Email"
+				label={t('field.email')}
 				bind:value={email}
 				type="email"
 				autocomplete="email"
@@ -126,43 +135,50 @@
 			/>
 
 			<PasswordField
-				label="Password"
+				label={t('field.password')}
 				bind:value={password}
 				autocomplete="new-password"
 				disabled={submitting}
-				hint="At least {minLength} characters"
+				hint={t('field.password_hint', { count: minLength })}
 			/>
 
 			<PasswordField
-				label="Confirm password"
+				label={t('field.confirm_password')}
 				bind:value={confirm}
 				autocomplete="new-password"
 				disabled={submitting}
-				error={mismatch ? 'The passwords do not match' : undefined}
+				error={mismatch ? t('field.password_mismatch') : undefined}
 			/>
 
 			{#if needsConsent}
 				<Checkbox bind:checked={accepted} disabled={submitting}>
-					I agree to the
+					{t('register.consent')}
 					{#each agreements as agreement, index (agreement.href)}
-						{#if index > 0}and{/if}
+						{#if index > 0}{t('register.consent_and')}{/if}
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a href={agreement.href} target="_blank" rel="noopener noreferrer">
-							{agreement.label}
+							{t(agreement.key)}
 						</a>
 					{/each}
 				</Checkbox>
 			{/if}
 
 			<Button type="submit" block loading={submitting} disabled={!canSubmit}>
-				{submitting ? 'Creating account…' : 'Create account'}
+				{submitting ? t('register.submitting') : t('register.submit')}
 			</Button>
 		</form>
 
+		<SocialButtons
+			providers={data.socialProviders}
+			request={data.request}
+			label={t('register.social')}
+			disabled={submitting}
+		/>
+
 		{#snippet below()}
-			Already have an account?
+			{t('register.have_account')}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={authHref('/login', data.request)}>Sign in</a>
+			<a href={authHref('/login', data.request)}>{t('action.sign_in')}</a>
 		{/snippet}
 	</AuthCard>
 {/if}

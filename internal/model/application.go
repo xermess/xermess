@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Application is an app or service that signs its users in through this
@@ -82,6 +84,12 @@ type Application struct {
 	// project settings of the same names.
 	AssertRoles           bool `gorm:"not null" json:"assert_roles"`
 	RequireRoleAssignment bool `gorm:"not null;default:false" json:"require_role_assignment"`
+
+	// LoginFlowID is the login flow this application signs people in with.
+	// Nil means the default flow, which is also what an application holding
+	// a flow that has since been turned off falls back to — so a flow can be
+	// withdrawn without taking the applications using it down with it.
+	LoginFlowID *uuid.UUID `gorm:"type:uuid;index" json:"login_flow_id"`
 
 	// Enabled is false for an application that may not sign anyone in.
 	Enabled bool `gorm:"not null;index" json:"enabled"`

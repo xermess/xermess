@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { signIn, messageOf } from '$lib/api';
 	import { Alert, AuthCard, Button, TextField } from '$lib/components';
+	import { useTranslator } from '$lib/i18n';
 	import { authHref } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const t = useTranslator();
 
 	const app = $derived(data.signInRequest?.application ?? null);
 	// An expired handle is not passed on: the emailed link would lead back to
@@ -38,36 +41,33 @@
 </script>
 
 <svelte:head>
-	<title>Reset your password{app ? ` · ${app.name}` : ''}</title>
+	<title>{t('forgot.head')}{app ? ` · ${app.name}` : ''}</title>
 </svelte:head>
 
 {#if sentTo}
-	<AuthCard organization={data.organization} application={app} title="Check your email">
+	<AuthCard organization={data.organization} application={app} title={t('forgot.sent_title')}>
 		<!-- The same words whether or not the address has an account, so the
 		     page cannot be used to find out which ones do. -->
-		<Alert tone="success">
-			If an account exists for <strong>{sentTo}</strong>, we’ve sent a link to reset its password.
-			It works for one hour.
-		</Alert>
-		<p class="muted">Didn’t get it? Check your spam folder, or try again in a few minutes.</p>
+		<Alert tone="success">{t('forgot.sent_body', { email: sentTo })}</Alert>
+		<p class="muted">{t('forgot.sent_hint')}</p>
 
 		{#snippet below()}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={authHref('/login', request)}>Back to sign in</a>
+			<a href={authHref('/login', request)}>{t('action.back_to_sign_in')}</a>
 		{/snippet}
 	</AuthCard>
 {:else}
 	<AuthCard
 		organization={data.organization}
 		application={app}
-		title="Forgot your password?"
-		subtitle="Enter your email and we’ll send you a link to choose a new one."
+		title={t('forgot.title')}
+		subtitle={t('forgot.subtitle')}
 	>
 		<form onsubmit={submit} novalidate>
 			{#if error}<Alert>{error}</Alert>{/if}
 
 			<TextField
-				label="Email"
+				label={t('field.email')}
 				bind:value={email}
 				type="email"
 				autocomplete="email"
@@ -77,14 +77,14 @@
 			/>
 
 			<Button type="submit" block loading={submitting} disabled={!canSubmit}>
-				{submitting ? 'Sending…' : 'Send reset link'}
+				{submitting ? t('forgot.submitting') : t('forgot.submit')}
 			</Button>
 		</form>
 
 		{#snippet below()}
-			Remembered it?
+			{t('forgot.remembered')}
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={authHref('/login', request)}>Back to sign in</a>
+			<a href={authHref('/login', request)}>{t('action.back_to_sign_in')}</a>
 		{/snippet}
 	</AuthCard>
 {/if}

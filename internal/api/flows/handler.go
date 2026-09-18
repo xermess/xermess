@@ -1,0 +1,211 @@
+// Package flows answers the endpoints for login flows: the named sets of
+// steps an application signs its users in with, and the catalog of steps a
+// flow can be made of.
+//
+// Nothing here signs anybody in. A flow is a record of what a sign-in should
+// be, which internal/oidc reads the options from and the sign-in pages draw
+// themselves by; walking the steps themselves is not built yet, and the
+// catalog says which of them the server runs today so the panel can mark the
+// rest rather than pretending.
+package flows
+
+import (
+	"errors"
+	"log/slog"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
+	"xermess/internal/api/audit"
+	"xermess/internal/api/respond"
+	"xermess/internal/model"
+	"xermess/internal/store"
+)
+
+// Handler holds what these endpoints need.
+type Handler struct {
+	store *store.Store
+	audit audit.Recorder
+	log   *slog.Logger
+}
+
+// New returns a Handler.
+func New(st *store.Store, recorder audit.Recorder, log *slog.Logger) *Handler {
+	return &Handler{store: st, audit: recorder, log: log}
+}
+
+// List returns every flow, the steps one can be made of, and how many
+// applications each flow signs people in for.
+func (h *Handler) List(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Asking for the default first creates one on an installation that has
+	// none, so the page is never empty of the flow everything falls back to.
+	if _, err := h.store.DefaultLoginFlow(ctx); err != nil {
+		respond.Failure(c, h.log, err, "loading the default login flow failed")
+		return
+	}
+
+	flows, err := h.store.LoginFlows(ctx)
+	if err != nil {
+		respond.Failure(c, h.log, err, "listing login flows failed")
+		return
+	}
+
+	counts, err := h.store.LoginFlowApplications(ctx)
+	if err != nil {
+		respond.Failure(c, h.log, err, "counting the applications on each login flow failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, newListResponse(flows, counts))
+}
+
+// Get returns one flow.
+func (h *Handler) Get(c *gin.Context) {
+	flow, ok := h.find(c)
+	if !ok {
+		return
+	}
+
+	h.answer(c, http.StatusOK, flow)
+}
+
+// Create adds a flow. A new one is off until an administrator turns it on:
+// pointing an application at a half-written sign-in is not something a save
+// should be able to do by accident.
+func (h *Handler) Create(c *gin.Context) {
+	var req flowRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.BadRequest(c, "the request body is not valid")
+		return
+	}
+
+	// What a new flow is before anything is typed in: the default one's
+	// shape, under its own name, and not yet offered.
+	flow := model.DefaultLoginFlow()
+	flow.IsDefault = false
+	flow.Enabled = false
+	flow.Name, flow.Slug, flow.Description = "", "", ""
+
+	if err := req.applyTo(&flow, true); err != nil {
+		respond.Failure(c, h.log, err, "validating a login flow failed")
+		return
+	}
+
+	if err := h.store.CreateLoginFlow(c.Request.Context(), &flow); err != nil {
+		if errors.Is(err, store.ErrDuplicate) {
+			respond.Conflict(c, "a flow with that identifier already exists")
+			return
+		}
+
+		respond.Failure(c, h.log, err, "creating a login flow failed")
+		return
+	}
+
+	h.audit.RecordWith(c, "login_flow.created", targetType, flow.ID.String(), map[string]any{
+		"flow": flow.Name,
+	})
+
+	h.answer(c, http.StatusCreated, &flow)
+}
+
+// Update changes a flow. Its identifier is not among them: an application and
+// an export both name a flow by it.
+func (h *Handler) Update(c *gin.Context) {
+	flow, ok := h.find(c)
+	if !ok {
+		return
+	}
+
+	var req flowRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.BadRequest(c, "the request body is not valid")
+		return
+	}
+
+	// A flow that is the default stays the default until another is made
+	// one: unmarking it here would leave nothing to fall back to.
+	wasDefault := flow.IsDefault
+
+	if err := req.applyTo(flow, false); err != nil {
+		respond.Failure(c, h.log, err, "validating a login flow failed")
+		return
+	}
+
+	if wasDefault && !flow.IsDefault {
+		respond.BadRequest(c, "make another flow the default rather than unmarking this one")
+		return
+	}
+
+	if err := h.store.SaveLoginFlow(c.Request.Context(), flow); err != nil {
+		respond.Failure(c, h.log, err, "updating a login flow failed")
+		return
+	}
+
+	h.audit.RecordWith(c, "login_flow.updated", targetType, flow.ID.String(), map[string]any{
+		"flow": flow.Name, "enabled": flow.Enabled, "is_default": flow.IsDefault,
+	})
+
+	h.answer(c, http.StatusOK, flow)
+}
+
+// Delete removes a flow. The applications signing people in with it fall back
+// to the default, which is why the default itself cannot go.
+func (h *Handler) Delete(c *gin.Context) {
+	flow, ok := h.find(c)
+	if !ok {
+		return
+	}
+
+	err := h.store.DeleteLoginFlow(c.Request.Context(), flow)
+	switch {
+	case errors.Is(err, store.ErrDefaultLoginFlow):
+		respond.BadRequest(c, "make another flow the default before removing this one")
+		return
+	case err != nil:
+		respond.Failure(c, h.log, err, "deleting a login flow failed")
+		return
+	}
+
+	h.audit.RecordWith(c, "login_flow.deleted", targetType, flow.ID.String(), map[string]any{
+		"flow": flow.Name,
+	})
+
+	c.Status(http.StatusNoContent)
+}
+
+// find loads the flow named in the path, answering the request itself if
+// there is no such flow.
+func (h *Handler) find(c *gin.Context) (*model.LoginFlow, bool) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		respond.BadRequest(c, "that is not a flow id")
+		return nil, false
+	}
+
+	flow, err := h.store.LoginFlow(c.Request.Context(), id)
+
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		respond.NotFound(c, "no such flow")
+		return nil, false
+	case err != nil:
+		respond.Failure(c, h.log, err, "loading a login flow failed")
+		return nil, false
+	}
+
+	return flow, true
+}
+
+// answer writes one flow, with how many applications sign people in with it.
+func (h *Handler) answer(c *gin.Context, status int, flow *model.LoginFlow) {
+	counts, err := h.store.LoginFlowApplications(c.Request.Context())
+	if err != nil {
+		respond.Failure(c, h.log, err, "counting the applications on each login flow failed")
+		return
+	}
+
+	c.JSON(status, response{Flow: newFlowResponse(*flow, counts[flow.ID])})
+}

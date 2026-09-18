@@ -189,6 +189,8 @@ var targetTables = map[string]struct{ table, name, application string }{
 	"api":         {table: "apis", name: "name"},
 	"admin_user":  {table: "admin_users", name: "username"},
 	"admin_role":  {table: "roles", name: "name"},
+	"login_flow":  {table: "login_flows", name: "name"},
+	"language":    {table: "languages", name: "name"},
 }
 
 // TargetNames looks up what the targets of one kind are called, by id. A

@@ -15,5 +15,14 @@ export const COOKIES = {
 	theme: 'xermess-theme',
 
 	/** Whether the dashboard sidebar is folded, read the same way. */
-	sidebar: 'xermess-sidebar'
+	sidebar: 'xermess-sidebar',
+
+	/** The language this panel is shown in, read while rendering so the page
+	    arrives in it. It is one administrator's own preference on one
+	    machine, not a setting of the installation. */
+	language: 'xermess-language'
 } as const;
+
+/** What the root layout's load depends on, so switching language re-runs it —
+    and nothing else — through invalidate(). */
+export const LANGUAGE_DEPENDENCY = 'xermess:language';

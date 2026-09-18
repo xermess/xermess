@@ -39,8 +39,11 @@ import (
 	apiauth "xermess/internal/api/auth"
 	"xermess/internal/api/cors"
 	"xermess/internal/api/csrf"
+	"xermess/internal/api/database"
 	"xermess/internal/api/fields"
+	"xermess/internal/api/flows"
 	"xermess/internal/api/keys"
+	"xermess/internal/api/languages"
 	"xermess/internal/api/mfa"
 	"xermess/internal/api/middleware"
 	"xermess/internal/api/oauth"
@@ -49,6 +52,7 @@ import (
 	"xermess/internal/api/roles"
 	"xermess/internal/api/session"
 	"xermess/internal/api/setup"
+	"xermess/internal/api/social"
 	"xermess/internal/api/users"
 	"xermess/internal/auth"
 	"xermess/internal/config"
@@ -91,7 +95,7 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		return nil, err
 	}
 
-	service := auth.New(st, sealer, log, cfg.AdminMFARequired, adminIssuer(cfg.AdminURL))
+	service := auth.New(st, sealer, log, adminIssuer(cfg.AdminURL))
 	recorder := audit.New(st, log)
 
 	registerAdminRoutes(r, service, adminHandlers{
@@ -105,6 +109,10 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		adminRoles:   adminroles.New(st, recorder, log),
 		applications: applications.New(st, recorder, log, cfg.Issuer),
 		organization: organization.New(st, recorder, log),
+		social:       social.New(st, sealer, recorder, log, cfg.Issuer),
+		flows:        flows.New(st, recorder, log),
+		database:     database.New(st, log),
+		languages:    languages.New(st, recorder, log),
 		apis:         apis.New(st, recorder, log, cfg.Issuer),
 		activity:     activity.New(st, log),
 		keys:         keys.New(provider, recorder, log),
@@ -173,6 +181,10 @@ type adminHandlers struct {
 	applications *applications.Handler
 	apis         *apis.Handler
 	organization *organization.Handler
+	social       *social.Handler
+	flows        *flows.Handler
+	database     *database.Handler
+	languages    *languages.Handler
 	activity     *activity.Handler
 	keys         *keys.Handler
 	limit        gin.HandlerFunc
@@ -199,6 +211,14 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	r.POST(oidc.PathRevoke, h.oauth.Revoke)
 	r.POST(oidc.PathIntrospect, h.oauth.Introspect)
 
+	// Signing in with an account somewhere else. The callback answers POST
+	// as well, because Apple posts its answer rather than redirecting with
+	// it; it is outside the CSRF group for the same reason — the form comes
+	// from Apple, not from this server's own app.
+	r.GET(oidc.PathSocialStart, h.oauth.SocialStart)
+	r.GET(oidc.PathSocialCallback, h.oauth.SocialCallback)
+	r.POST(oidc.PathSocialCallback, h.oauth.SocialCallback)
+
 	// Everything under /api/v1 is called by the id app with the user's
 	// session cookie, so it only takes changes from the id app's origin.
 	v1 := r.Group("/api/v1", h.csrf)
@@ -209,7 +229,11 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 		// password or send an email are rate limited per address.
 		accounts := v1.Group("/account")
 		accounts.GET("/organization", h.account.Organization)
+		accounts.GET("/social-providers", h.account.SocialProviders)
 		accounts.GET("/requests/:handle", h.account.Request)
+		accounts.GET("/login-options", h.account.LoginOptions)
+		accounts.GET("/languages", h.account.Languages)
+		accounts.GET("/languages/:code", h.account.LanguageText)
 		accounts.GET("/applications/:client_id", h.account.Application)
 		accounts.POST("/login", h.limit, h.account.Login)
 		accounts.POST("/register", h.limit, h.account.Register)
@@ -250,6 +274,12 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 		v1.GET("/admin/setup", h.setup.Status)
 		v1.POST("/admin/setup", h.limit, h.setup.Create)
 		v1.POST("/admin/auth/login", h.limit, h.auth.Login)
+
+		// The panel's own text, which the sign-in page is drawn in before
+		// there is anybody to be signed in. It is the words on the page and
+		// nothing more.
+		v1.GET("/admin/panel/languages", h.languages.PanelLanguages)
+		v1.GET("/admin/panel/languages/:code", h.languages.PanelText)
 
 		// Signing in, the rest of the way. The state says which step a
 		// session is at; a code finishes a sign-in waiting for one; signing
@@ -297,6 +327,7 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			writeUsers.POST("/users", h.users.Create)
 			writeUsers.PATCH("/users/:id", h.users.Update)
 			writeUsers.DELETE("/users/:id", h.users.Delete)
+			writeUsers.DELETE("/users/:id/social-accounts/:identity", h.users.Disconnect)
 
 			writeFields := signedIn.Group("", session.Can(model.PermUserFieldsWrite))
 			writeFields.POST("/user-fields", h.fields.Create)
@@ -308,6 +339,53 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			// written by anyone allowed to change it.
 			signedIn.GET("/organization", session.Can(model.PermOrganizationRead), h.organization.Get)
 			signedIn.PATCH("/organization", session.Can(model.PermOrganizationWrite), h.organization.Update)
+
+			// The providers users may sign in with. Registering one decides
+			// which accounts elsewhere reach this server, so changing them is
+			// its own permission, apart from reading them.
+			readSocial := signedIn.Group("", session.Can(model.PermSocialRead))
+			readSocial.GET("/social-providers", h.social.List)
+			readSocial.GET("/social-providers/:id", h.social.Get)
+
+			// Reading a secret back takes the permission that could replace
+			// it, and is recorded like a change.
+			writeSocial := signedIn.Group("", session.Can(model.PermSocialWrite))
+			writeSocial.GET("/social-providers/:id/secret", h.social.Secret)
+			writeSocial.POST("/social-providers", h.social.Create)
+			writeSocial.PATCH("/social-providers/:id", h.social.Update)
+			writeSocial.DELETE("/social-providers/:id", h.social.Delete)
+
+			// The login flows applications sign their users in with, and the
+			// steps one can be made of. Writing a flow decides what a
+			// sign-in asks for, so it is its own permission.
+			readFlows := signedIn.Group("", session.Can(model.PermLoginFlowsRead))
+			readFlows.GET("/login-flows", h.flows.List)
+			readFlows.GET("/login-flows/:id", h.flows.Get)
+
+			writeFlows := signedIn.Group("", session.Can(model.PermLoginFlowsWrite))
+			writeFlows.POST("/login-flows", h.flows.Create)
+			writeFlows.PATCH("/login-flows/:id", h.flows.Update)
+			writeFlows.DELETE("/login-flows/:id", h.flows.Delete)
+
+			// The languages, and their text for each app. Adding, rewording
+			// and removing one changes what every sign-in page says, so it
+			// takes languages.write; reading the text back takes only read.
+			readLanguages := signedIn.Group("", session.Can(model.PermLanguagesRead))
+			readLanguages.GET("/languages", h.languages.List)
+			readLanguages.GET("/languages/:code/translations/:app", h.languages.Translation)
+
+			writeLanguages := signedIn.Group("", session.Can(model.PermLanguagesWrite))
+			writeLanguages.POST("/languages", h.languages.Create)
+			writeLanguages.PATCH("/languages/:code", h.languages.Update)
+			writeLanguages.DELETE("/languages/:code", h.languages.Delete)
+			writeLanguages.PUT("/languages/:code/translations/:app", h.languages.SaveTranslation)
+
+			// The server's own tables, read row by row. There is no endpoint
+			// here that writes one: a record is changed on the page that
+			// knows what it is.
+			readDatabase := signedIn.Group("", session.Can(model.PermDatabaseRead))
+			readDatabase.GET("/database/tables", h.database.Tables)
+			readDatabase.GET("/database/tables/:table", h.database.Table)
 
 			// Applications, the roles each defines, and who holds them. A
 			// role can grant these for one application, so the routes only
@@ -372,6 +450,11 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			// The administrators themselves, and their roles: a super
 			// admin's alone, whatever other roles grant.
 			super := signedIn.Group("", session.RequireSuperAdmin())
+			// How administrators are made to sign in, which is the panel's
+			// setting rather than the configuration's after the first start.
+			super.GET("/security", h.admins.Security)
+			super.PATCH("/security", h.admins.UpdateSecurity)
+
 			super.GET("/admins", h.admins.List)
 			super.POST("/admins", h.admins.Create)
 			super.GET("/admins/:id", h.admins.Get)

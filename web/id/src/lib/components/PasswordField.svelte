@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { useTranslator } from '$lib/i18n';
 	import Icon from './Icon.svelte';
 
 	type Props = {
@@ -21,6 +22,8 @@
 		error,
 		aside
 	}: Props = $props();
+
+	const t = useTranslator();
 
 	let visible = $state(false);
 
@@ -54,7 +57,7 @@
 			type="button"
 			class="reveal"
 			onclick={() => (visible = !visible)}
-			aria-label={visible ? 'Hide password' : 'Show password'}
+			aria-label={visible ? t('field.hide_password') : t('field.show_password')}
 			aria-pressed={visible}
 			{disabled}
 		>

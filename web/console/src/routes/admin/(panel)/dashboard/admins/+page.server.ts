@@ -1,4 +1,10 @@
-import type { AdminPage, AdminPermission, AdminRole, ApplicationPage } from '$lib/api';
+import type {
+	AdminPage,
+	AdminPermission,
+	AdminRole,
+	AdminSecurity,
+	ApplicationPage
+} from '$lib/api';
 import { APPLICATION_CHOICES_LIMIT } from '$lib/query';
 import { apiGet, requirePermission } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
@@ -20,11 +26,12 @@ export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	if (status) query.set('status', status);
 	if (role) query.set('role', role);
 
-	const [page, roles, catalog, applications] = await Promise.all([
+	const [page, roles, catalog, applications, security] = await Promise.all([
 		apiGet<AdminPage>(`/admin/admins?${query}`, fetch),
 		apiGet<{ roles: AdminRole[] }>('/admin/admin-roles', fetch),
 		apiGet<{ permissions: AdminPermission[] }>('/admin/admin-permissions', fetch),
-		apiGet<ApplicationPage>(`/admin/applications?limit=${APPLICATION_CHOICES_LIMIT}`, fetch)
+		apiGet<ApplicationPage>(`/admin/applications?limit=${APPLICATION_CHOICES_LIMIT}`, fetch),
+		apiGet<AdminSecurity>('/admin/security', fetch)
 	]);
 
 	return {
@@ -32,6 +39,7 @@ export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 		roles: roles.roles,
 		catalog: catalog.permissions,
 		applications: applications.applications,
+		security,
 		search,
 		status,
 		role

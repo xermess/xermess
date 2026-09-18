@@ -80,6 +80,62 @@ func (h *Handler) Organization(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"organization": organization})
 }
 
+// LoginOptions says what these pages may offer: the options of the login flow
+// the sign-in belongs to. `request` is the handle of a sign-in under way,
+// which names the application whose flow applies; without one, or with one
+// that has expired, it is the installation's default flow.
+func (h *Handler) LoginOptions(c *gin.Context) {
+	options, err := h.provider.LoginOptions(c.Request.Context(), c.Query("request"))
+	if err != nil {
+		h.fail(c, err, "loading the login options failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"login": options})
+}
+
+// Languages says which languages these pages may be shown in, and which one
+// somebody gets before they have chosen.
+func (h *Handler) Languages(c *gin.Context) {
+	languages, fallback, err := h.provider.Languages(c.Request.Context())
+	if err != nil {
+		h.fail(c, err, "listing languages failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"languages": languages, "default": fallback})
+}
+
+// LanguageText is the text of these pages in one offered language, every key
+// filled in. The pages ask for it while rendering, so a language added or
+// reworded in the panel is on the next page anybody opens.
+func (h *Handler) LanguageText(c *gin.Context) {
+	language, messages, err := h.provider.LanguageText(c.Request.Context(), c.Param("code"))
+	if errors.Is(err, store.ErrNotFound) {
+		respond.NotFound(c, "no such language")
+		return
+	}
+	if err != nil {
+		h.fail(c, err, "loading a language failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"language": language, "messages": messages})
+}
+
+// SocialProviders lists the accounts elsewhere that users may sign in with,
+// as the buttons on the sign-in pages. It says nothing about any of them
+// beyond what the button needs.
+func (h *Handler) SocialProviders(c *gin.Context) {
+	providers, err := h.provider.SocialButtons(c.Request.Context())
+	if err != nil {
+		h.fail(c, err, "listing social providers failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"providers": providers})
+}
+
 // Login signs a user in and, for a sign-in under way, says where to go next.
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest

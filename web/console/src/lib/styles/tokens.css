@@ -54,7 +54,9 @@
 	/* Motion */
 	--speed-fast: 70ms;
 	--speed: 140ms;
-	--speed-drawer: 220ms;
+	/* A drawer arrives and leaves over the same length of time, and it is
+	   PocketBase's: --modalAnimationSpeed. */
+	--speed-drawer: 200ms;
 
 	/* How wide a drawer opens. It never passes the edge of a narrow screen. */
 	--drawer-width: 40rem;
@@ -101,7 +103,15 @@
 	/* The drop under an open panel, PocketBase's --boxShadow. */
 	--shadow-panel: 0 8px 5px -5px rgb(34 36 36 / 10%);
 	--shadow-md: 0 2px 12px 0 rgb(0 0 0 / 8%);
+	/* The hairline down the left of an open drawer, PocketBase's
+	   --leftBoxShadow. It stands in for a border: a line that is part of the
+	   panel would travel with it as it slides. */
+	--shadow-drawer: -1px 0 5px 0 rgb(34 36 36 / 10%);
 	--selection: #465a7340;
+	/* What the page behind an open drawer is washed with: PocketBase's
+	   --modalOverlayColor, a blue-grey rather than black, so the page under
+	   it reads as dimmed instead of switched off. */
+	--color-overlay: rgb(70 90 115 / 25%);
 
 	--scrollbar-thumb: color-mix(in srgb, #25272d, transparent 78%);
 	--scrollbar-thumb-hover: color-mix(in srgb, #25272d, transparent 58%);
@@ -152,6 +162,8 @@
 	--shadow-sm: 0 2px 5px 0 rgb(0 0 0 / 30%);
 	--shadow-panel: 0 8px 5px -5px rgb(0 0 0 / 30%);
 	--shadow-md: 0 2px 12px 0 rgb(0 0 0 / 40%);
+	--shadow-drawer: -1px 0 5px 0 rgb(0 0 0 / 30%);
+	--color-overlay: rgb(18 18 18 / 50%);
 
 	--scrollbar-thumb: color-mix(in srgb, #ebebeb, transparent 80%);
 	--scrollbar-thumb-hover: color-mix(in srgb, #ebebeb, transparent 60%);
@@ -196,6 +208,8 @@
 		--shadow-sm: 0 2px 5px 0 rgb(0 0 0 / 30%);
 		--shadow-panel: 0 8px 5px -5px rgb(0 0 0 / 30%);
 		--shadow-md: 0 2px 12px 0 rgb(0 0 0 / 40%);
+		--shadow-drawer: -1px 0 5px 0 rgb(0 0 0 / 30%);
+		--color-overlay: rgb(18 18 18 / 50%);
 
 		--scrollbar-thumb: color-mix(in srgb, #ebebeb, transparent 80%);
 		--scrollbar-thumb-hover: color-mix(in srgb, #ebebeb, transparent 60%);

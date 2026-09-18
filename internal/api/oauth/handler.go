@@ -79,6 +79,71 @@ func (h *Handler) Authorize(c *gin.Context) {
 	c.Redirect(http.StatusFound, location)
 }
 
+// SocialStart sends the browser to a provider to sign in there.
+func (h *Handler) SocialStart(c *gin.Context) {
+	location, err := h.provider.StartSocial(
+		c.Request.Context(),
+		c.Param("slug"),
+		c.Query("request"),
+		c.Query("next"),
+	)
+	if err != nil {
+		h.socialFailed(c, err, "starting a social sign-in failed")
+		return
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, location)
+}
+
+// SocialCallback is where the provider sends the browser back to.
+//
+// It answers GET and POST: nearly every provider redirects with the code in
+// the query, and Apple posts it as a form when a name or an address was asked
+// for.
+func (h *Handler) SocialCallback(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	code, state := c.Query("code"), c.Query("state")
+	if c.Request.Method == http.MethodPost {
+		code, state = c.PostForm("code"), c.PostForm("state")
+	}
+
+	// The provider refused, or the person changed their mind there. What it
+	// said is for the log; the page says the sign-in did not happen.
+	if refused := c.Query("error"); refused != "" {
+		h.log.Info("a social provider refused a sign-in",
+			"provider", c.Param("slug"), "error", refused,
+			"description", c.Query("error_description"))
+
+		c.Redirect(http.StatusFound, h.provider.SocialErrorPage(oidc.ErrSocialUpstream))
+		return
+	}
+
+	result, err := h.provider.CompleteSocial(ctx, c.Param("slug"), code, state, client(c))
+	if err != nil {
+		h.socialFailed(c, err, "completing a social sign-in failed")
+		return
+	}
+
+	session.SetUser(c, result.SignIn.Token, h.secure)
+
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, h.provider.SocialLanding(ctx, result))
+}
+
+// socialFailed sends the browser to the sign-in app's error page. What the
+// person is told is the provider service's to decide; anything that is not
+// one of its own errors is the server's fault and is logged.
+func (h *Handler) socialFailed(c *gin.Context, err error, note string) {
+	if !oidc.IsSocialFailure(err) {
+		h.log.Error(note, "provider", c.Param("slug"), "error", err)
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, h.provider.SocialErrorPage(err))
+}
+
 // Token issues tokens.
 func (h *Handler) Token(c *gin.Context) {
 	noStore(c)

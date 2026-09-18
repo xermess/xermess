@@ -5,33 +5,31 @@
 		RiLockPasswordLine,
 		RiMailLine,
 		RiPaletteLine,
-		RiShieldCheckLine,
 		RiShieldKeyholeLine,
 		RiUserSettingsLine
 	} from 'svelte-remixicon';
-	import { invalidateAll } from '$app/navigation';
-	import { ApiError, mfaApi } from '$lib/api';
-	import RecoveryCodes from '$lib/components/mfa/RecoveryCodes.svelte';
-	import TotpSetup from '$lib/components/mfa/TotpSetup.svelte';
 	import SessionList from '$lib/components/profile/SessionList.svelte';
 	import SignOutButton from '$lib/components/profile/SignOutButton.svelte';
 	import {
-		Alert,
 		Button,
-		Input,
 		List,
 		ListItem,
 		PageContainer,
 		PageHeader,
 		Panel,
+		Select,
 		Tag,
 		Thumb
 	} from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
+	import { setLanguage } from '$lib/state/language.svelte';
 	import { theme } from '$lib/state/theme.svelte';
 	import { formatDateTime, formatRelative } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const admin = $derived(data.admin);
 
@@ -47,62 +45,20 @@
 	);
 
 	const activeSessions = $derived(data.sessions.filter((session) => session.active).length);
-
-	/** What the two-factor panel is doing: showing its status, setting up or
-	    replacing an authenticator, or asking for a code for something else. */
-	type Mode = 'status' | 'setup' | 'replace' | 'codes' | 'disable' | 'show-codes';
-
-	let mode = $state<Mode>('status');
-	let code = $state('');
-	let codes = $state<string[]>([]);
-	let mfaError = $state('');
-	let busy = $state(false);
-
-	function reset() {
-		mode = 'status';
-		code = '';
-		mfaError = '';
-	}
-
-	async function withCode(action: 'codes' | 'disable') {
-		busy = true;
-		mfaError = '';
-
-		try {
-			if (action === 'codes') {
-				({ recovery_codes: codes } = await mfaApi.recoveryCodes(code.trim()));
-				mode = 'show-codes';
-			} else {
-				await mfaApi.disable(code.trim());
-				reset();
-				await invalidateAll();
-			}
-		} catch (err) {
-			mfaError = err instanceof ApiError ? err.message : 'Something went wrong';
-		} finally {
-			code = '';
-			busy = false;
-		}
-	}
-
-	async function finished() {
-		reset();
-		await invalidateAll();
-	}
 </script>
 
-<svelte:head><title>Profile · xermess admin</title></svelte:head>
+<svelte:head><title>{t('profile.head')} · xermess admin</title></svelte:head>
 
 <PageContainer>
 	<div class="page">
-		<PageHeader crumbs={['Account', 'Profile']}>
+		<PageHeader crumbs={[t('profile.crumb_account'), t('profile.head')]}>
 			{#snippet actions()}
 				<SignOutButton />
 			{/snippet}
 		</PageHeader>
 
 		<!-- Who is signed in, at a glance. -->
-		<List bordered label="Account">
+		<List bordered label={t('profile.account')}>
 			<ListItem title={admin.full_name} description={admin.email}>
 				{#snippet lead()}<Thumb text={initials} size="md" />{/snippet}
 				{#snippet end()}
@@ -110,23 +66,23 @@
 						{admin.status}
 					</Tag>
 					{#if admin.is_super_admin}
-						<Tag tone="info">super admin</Tag>
+						<Tag tone="info">{t('profile.super_admin')}</Tag>
 					{/if}
 				{/snippet}
 			</ListItem>
 		</List>
 
-		<Panel title="Profile information" icon={RiUserSettingsLine} flush>
-			<List label="Profile information">
+		<Panel title={t('profile.information')} icon={RiUserSettingsLine} flush>
+			<List label={t('profile.information')}>
 				<ListItem>
-					<span class="detail"><span>Username</span><b>{admin.username}</b></span>
+					<span class="detail"><span>{t('profile.username')}</span><b>{admin.username}</b></span>
 				</ListItem>
 				<ListItem>
-					<span class="detail"><span>Name</span><b>{admin.full_name}</b></span>
+					<span class="detail"><span>{t('profile.name')}</span><b>{admin.full_name}</b></span>
 				</ListItem>
 				<ListItem>
 					<span class="detail">
-						<span>Roles</span>
+						<span>{t('profile.roles')}</span>
 						<span class="tags">
 							{#each admin.roles as role (role)}
 								<Tag small>{role}</Tag>
@@ -138,137 +94,47 @@
 				</ListItem>
 				<ListItem>
 					<span class="detail">
-						<span>Last signed in</span>
+						<span>{t('profile.last_signed_in')}</span>
 						{#if admin.last_login_at}
 							<b title={formatDateTime(admin.last_login_at)}>
 								{formatDateTime(admin.last_login_at)}
 								<small>· {formatRelative(admin.last_login_at)}</small>
 							</b>
 						{:else}
-							<b>Never</b>
+							<b>{t('profile.never')}</b>
 						{/if}
 					</span>
 				</ListItem>
 			</List>
 		</Panel>
 
-		<Panel title="Sign-in & security" icon={RiShieldKeyholeLine} flush>
-			{#snippet meta()}<Tag small>Not available yet</Tag>{/snippet}
-			<List label="Sign-in and security">
+		<Panel title={t('profile.security')} icon={RiShieldKeyholeLine} flush>
+			{#snippet meta()}<Tag small>{t('profile.not_available')}</Tag>{/snippet}
+			<List label={t('profile.security')}>
 				<ListItem
-					title="Email"
-					description="{admin.email} · changing it asks for confirmation at the new address."
+					title={t('profile.email')}
+					description={t('profile.email_hint', { email: admin.email })}
 				>
 					{#snippet lead()}<Thumb icon={RiMailLine} />{/snippet}
-					{#snippet end()}<Button size="sm" variant="subtle" disabled>Change</Button>{/snippet}
+					{#snippet end()}
+						<Button size="sm" variant="subtle" disabled>{t('action.change')}</Button>
+					{/snippet}
 				</ListItem>
-				<ListItem title="Password" description="Set · changing it signs out every other session.">
+				<ListItem title={t('profile.password')} description={t('profile.password_hint')}>
 					{#snippet lead()}<Thumb icon={RiLockPasswordLine} />{/snippet}
-					{#snippet end()}<Button size="sm" variant="subtle" disabled>Change</Button>{/snippet}
+					{#snippet end()}
+						<Button size="sm" variant="subtle" disabled>{t('action.change')}</Button>
+					{/snippet}
 				</ListItem>
 			</List>
 		</Panel>
 
-		<Panel title="Two-factor sign-in" icon={RiShieldCheckLine} flush={mode === 'status'}>
-			{#snippet meta()}
-				<Tag tone={data.mfa.enabled ? 'success' : 'warning'} dot>
-					{data.mfa.enabled ? 'On' : 'Off'}
-				</Tag>
-				{#if data.mfa.required}<Tag small>Required</Tag>{/if}
-			{/snippet}
-
-			{#if mode === 'status'}
-				<List label="Two-factor sign-in">
-					<ListItem
-						title="Authenticator app"
-						description={data.mfa.enabled
-							? `On since ${formatDateTime(data.mfa.confirmed_at ?? '')}${data.mfa.last_used_at ? ` · last used ${formatRelative(data.mfa.last_used_at)}` : ''}`
-							: 'Off · a code from an app on your phone as well as your password.'}
-					>
-						{#snippet lead()}<Thumb icon={RiShieldCheckLine} />{/snippet}
-						{#snippet end()}
-							{#if data.mfa.enabled}
-								<Button size="sm" variant="subtle" onclick={() => (mode = 'replace')}
-									>Replace</Button
-								>
-								{#if !data.mfa.required}
-									<Button
-										size="sm"
-										variant="subtle"
-										colorPalette="danger"
-										onclick={() => (mode = 'disable')}>Turn off</Button
-									>
-								{/if}
-							{:else}
-								<Button size="sm" onclick={() => (mode = 'setup')}>Set up</Button>
-							{/if}
-						{/snippet}
-					</ListItem>
-					{#if data.mfa.enabled}
-						<ListItem
-							title="Recovery codes"
-							description="{data.mfa
-								.recovery_codes_left} of 10 left · each signs you in once without your phone."
-						>
-							{#snippet lead()}<Thumb icon={RiLockPasswordLine} />{/snippet}
-							{#snippet end()}
-								<Button size="sm" variant="subtle" onclick={() => (mode = 'codes')}
-									>New codes</Button
-								>
-							{/snippet}
-						</ListItem>
-					{/if}
-				</List>
-			{:else if mode === 'setup' || mode === 'replace'}
-				<div class="mfa-body">
-					<TotpSetup replacing={mode === 'replace'} onDone={finished} onCancel={reset} />
-				</div>
-			{:else if mode === 'show-codes'}
-				<div class="mfa-body">
-					<RecoveryCodes {codes} onDone={finished} />
-				</div>
-			{:else}
-				<form
-					class="mfa-body"
-					onsubmit={(event) => {
-						event.preventDefault();
-						withCode(mode === 'codes' ? 'codes' : 'disable');
-					}}
-				>
-					<p class="mfa-text">
-						{mode === 'codes'
-							? 'Enter a code from your authenticator to make new recovery codes. The old ones stop working.'
-							: 'Enter a code from your authenticator to turn two-factor sign-in off. Your other sessions are signed out.'}
-					</p>
-					{#if mfaError}<Alert>{mfaError}</Alert>{/if}
-					<Input
-						label="Code"
-						bind:value={code}
-						inputmode="numeric"
-						autocomplete="one-time-code"
-						disabled={busy}
-					/>
-					<div class="mfa-actions">
-						<Button variant="subtle" onclick={reset} disabled={busy}>Cancel</Button>
-						<Button
-							type="submit"
-							colorPalette={mode === 'disable' ? 'danger' : 'neutral'}
-							loading={busy}
-							disabled={code.trim().length < 6}
-						>
-							{mode === 'codes' ? 'Make new codes' : 'Turn off'}
-						</Button>
-					</div>
-				</form>
-			{/if}
-		</Panel>
-
-		<Panel title="Preferences" icon={RiPaletteLine} flush>
-			<List label="Preferences">
-				<ListItem title="Theme" description="Light or dark, remembered on this device.">
+		<Panel title={t('profile.preferences')} icon={RiPaletteLine} flush>
+			<List label={t('profile.preferences')}>
+				<ListItem title={t('profile.theme')} description={t('profile.theme_hint')}>
 					{#snippet lead()}<Thumb icon={RiPaletteLine} />{/snippet}
 					{#snippet end()}
-						<span class="choices" role="group" aria-label="Theme">
+						<span class="choices" role="group" aria-label={t('profile.theme')}>
 							{#each ['light', 'dark'] as const as option (option)}
 								<button
 									type="button"
@@ -281,29 +147,39 @@
 									onclick={() => theme.set(option)}
 								>
 									<span class="swatch {option}"></span>
-									{option === 'light' ? 'Light' : 'Dark'}
+									{option === 'light' ? t('profile.theme_light') : t('profile.theme_dark')}
 								</button>
 							{/each}
 						</span>
 					{/snippet}
 				</ListItem>
-				<ListItem
-					title="Language"
-					description="English · Kyrgyz and Russian are translated but not offered here yet."
-				>
+				<ListItem title={t('profile.language')} description={t('profile.language_hint')}>
 					{#snippet lead()}<Thumb icon={RiGlobalLine} />{/snippet}
 					{#snippet end()}
-						<Tag small>Soon</Tag>
-						<Button size="sm" variant="subtle" disabled>Change</Button>
+						<!-- Every language with some of the panel translated, as the
+						     server lists them. What users are offered on the sign-in
+						     pages is the Languages page's business, not this one's. -->
+						<div class="language">
+							<Select
+								label={t('profile.language')}
+								value={data.language}
+								options={data.panelLanguages.map((language) => ({
+									value: language.code,
+									label: language.native,
+									description: language.name === language.native ? undefined : language.name
+								}))}
+								onChange={(code) => code && setLanguage(code)}
+							/>
+						</div>
 					{/snippet}
 				</ListItem>
 			</List>
 		</Panel>
 
-		<Panel title="Sessions" icon={RiComputerLine} flush>
+		<Panel title={t('profile.sessions')} icon={RiComputerLine} flush>
 			{#snippet meta()}
 				<Tag tone={activeSessions > 0 ? 'success' : 'neutral'} dot>
-					{activeSessions} active
+					{t('profile.active_sessions', { count: activeSessions })}
 				</Tag>
 			{/snippet}
 			<SessionList sessions={data.sessions} />
@@ -340,23 +216,6 @@
 		font-size: var(--text-sm);
 	}
 
-	.mfa-body {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		max-width: 30rem;
-	}
-
-	.mfa-text {
-		line-height: 1.5;
-	}
-
-	.mfa-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: var(--space-2);
-	}
-
 	.tags {
 		display: flex;
 		flex-wrap: wrap;
@@ -366,6 +225,12 @@
 	.choices {
 		display: flex;
 		gap: 5px;
+	}
+
+	/* A list that grows with every language added, so a select rather than a
+	   row of buttons. */
+	.language {
+		width: 14rem;
 	}
 
 	/* The shape is the shared control; being the chosen one is this page's

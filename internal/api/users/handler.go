@@ -63,6 +63,11 @@ func (h *Handler) List(c *gin.Context) {
 		visibleRoles(c, &users[i])
 	}
 
+	if err := h.fillSocialAccounts(c, pointersTo(users)...); err != nil {
+		respond.Failure(c, h.log, err, "listing the providers users sign in with failed")
+		return
+	}
+
 	c.JSON(http.StatusOK, newPageResponse(users, total, query))
 }
 
@@ -75,7 +80,81 @@ func (h *Handler) Get(c *gin.Context) {
 
 	visibleRoles(c, user)
 
+	if err := h.fillSocialAccounts(c, user); err != nil {
+		respond.Failure(c, h.log, err, "listing the providers this user signs in with failed")
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"user": user})
+}
+
+// fillSocialAccounts says, for each of these users, which providers they sign
+// in with. It is one query for the whole page: the panel marks the rows that
+// have one, and the record itself lists them.
+func (h *Handler) fillSocialAccounts(c *gin.Context, users ...*model.User) error {
+	ids := make([]uuid.UUID, 0, len(users))
+	for _, user := range users {
+		ids = append(ids, user.ID)
+	}
+
+	accounts, err := h.store.SocialAccountsFor(c.Request.Context(), ids)
+	if err != nil {
+		return err
+	}
+
+	for _, user := range users {
+		user.SocialAccounts = accounts[user.ID]
+	}
+
+	return nil
+}
+
+// pointersTo is the page's users as pointers, so what is filled in reaches
+// the rows that are about to be written out rather than copies of them.
+func pointersTo(users []model.User) []*model.User {
+	out := make([]*model.User, len(users))
+	for i := range users {
+		out[i] = &users[i]
+	}
+
+	return out
+}
+
+// Disconnect takes away a provider a user signs in with: an account of
+// theirs somewhere else that should no longer reach this one. Their account
+// stays, and so does every other way into it.
+func (h *Handler) Disconnect(c *gin.Context) {
+	user, ok := h.find(c)
+	if !ok {
+		return
+	}
+
+	id, err := uuid.Parse(c.Param("identity"))
+	if err != nil {
+		respond.BadRequest(c, "that is not a connection id")
+		return
+	}
+
+	identity, err := h.store.UserIdentityByID(c.Request.Context(), id)
+	switch {
+	case errors.Is(err, store.ErrNotFound) || err == nil && identity.UserID != user.ID:
+		respond.NotFound(c, "this user does not sign in with that")
+		return
+	case err != nil:
+		respond.Failure(c, h.log, err, "loading the connection failed")
+		return
+	}
+
+	if err := h.store.DeleteUserIdentity(c.Request.Context(), identity); err != nil {
+		respond.Failure(c, h.log, err, "disconnecting a provider failed")
+		return
+	}
+
+	h.audit.RecordWith(c, "user.identity_disconnected", targetType, user.ID.String(), map[string]any{
+		"email": user.Email,
+	})
+
+	c.Status(http.StatusNoContent)
 }
 
 // Create adds a user.
@@ -134,6 +213,11 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	visibleRoles(c, user)
+
+	if err := h.fillSocialAccounts(c, user); err != nil {
+		respond.Failure(c, h.log, err, "listing the providers this user signs in with failed")
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }

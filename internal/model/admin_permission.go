@@ -30,6 +30,17 @@ const (
 	PermOrganizationRead  = "organization.read"
 	PermOrganizationWrite = "organization.write"
 
+	PermSocialRead  = "social.read"
+	PermSocialWrite = "social.write"
+
+	PermLoginFlowsRead  = "login_flows.read"
+	PermLoginFlowsWrite = "login_flows.write"
+
+	PermDatabaseRead = "database.read"
+
+	PermLanguagesRead  = "languages.read"
+	PermLanguagesWrite = "languages.write"
+
 	PermApplicationsRead     = "applications.read"
 	PermApplicationsWrite    = "applications.write"
 	PermUserRolesWrite       = "user_roles.write"
@@ -70,6 +81,44 @@ var AdminPermissions = []AdminPermission{
 		Name:        PermOrganizationWrite,
 		Group:       "Organization",
 		Description: "Change the organisation's name, domain, support address and logo",
+	},
+	{
+		Name:        PermSocialRead,
+		Group:       "Authentication",
+		Description: "See the providers users can sign in with",
+	},
+	{
+		Name:  PermSocialWrite,
+		Group: "Authentication",
+		Description: "Register providers users can sign in with, and change their keys: " +
+			"whoever holds this decides which accounts elsewhere reach this server",
+	},
+	{
+		Name:        PermLoginFlowsRead,
+		Group:       "Authentication",
+		Description: "See the login flows applications sign their users in with",
+	},
+	{
+		Name:  PermLoginFlowsWrite,
+		Group: "Authentication",
+		Description: "Write login flows and decide which is the default: " +
+			"whoever holds this decides what a sign-in asks for",
+	},
+	{
+		Name:  PermDatabaseRead,
+		Group: "Authentication",
+		Description: "Read the server's own tables row by row, passwords and keys left out: " +
+			"every account and every application is visible through it",
+	},
+	{
+		Name:        PermLanguagesRead,
+		Group:       "Languages",
+		Description: "See the languages and read their text",
+	},
+	{
+		Name:        PermLanguagesWrite,
+		Group:       "Languages",
+		Description: "Add, translate and remove languages, and decide which are offered and the default",
 	},
 	{
 		Name:        PermAPIsRead,

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Application, Organization } from '$lib/api';
+	import { useTranslator } from '$lib/i18n';
 	import { legalLinks } from '$lib/utils/legal';
 	import AppMark from './AppMark.svelte';
 
@@ -28,6 +29,8 @@
 		below
 	}: Props = $props();
 
+	const t = useTranslator();
+
 	const legal = $derived(legalLinks(application, organization));
 </script>
 
@@ -49,12 +52,12 @@
 {/if}
 
 {#if legal.length > 0}
-	<nav class="legal" aria-label="Legal">
+	<nav class="legal" aria-label={t('legal.label')}>
 		{#each legal as link (link.href)}
 			<!-- The application's own pages, or the organisation's, on their
 			     own sites. -->
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a>
+			<a href={link.href} target="_blank" rel="noopener noreferrer">{t(link.key)}</a>
 		{/each}
 	</nav>
 {/if}

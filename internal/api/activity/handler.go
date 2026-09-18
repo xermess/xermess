@@ -183,6 +183,10 @@ func maySeeName(c *gin.Context, targetType string, name store.TargetName) bool {
 		return admin.IsSuperAdmin()
 	case "organization":
 		return admin.HasPermission(model.PermOrganizationRead)
+	case "login_flow":
+		return admin.HasPermission(model.PermLoginFlowsRead)
+	case "language":
+		return admin.HasPermission(model.PermLanguagesRead)
 	default:
 		return false
 	}
@@ -222,6 +226,11 @@ func detail(c *gin.Context, event model.AuditLog) string {
 		// Which settings moved, for whoever may see them at all.
 		if admin := session.Admin(c); admin != nil && admin.HasPermission(model.PermOrganizationRead) {
 			return list("fields")
+		}
+	case "language.translated":
+		// Which of the two apps the text was for.
+		if admin := session.Admin(c); admin != nil && admin.HasPermission(model.PermLanguagesRead) {
+			return text("app")
 		}
 	}
 

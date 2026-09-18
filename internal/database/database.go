@@ -3,7 +3,10 @@ package database
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strings"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -24,8 +27,18 @@ func Open(cfg config.DB) (*gorm.DB, error) {
 		level = logger.Info
 	}
 
+	// GORM's own default, but for one thing: a lookup that finds nothing is
+	// not an error here. The store asks "is there one?" with First all over —
+	// is this address taken, has this language been imported — and turns
+	// the answer into store.ErrNotFound for the caller to act on. Logged, each
+	// of those would read as a failure on a server that is working.
 	db, err := gorm.Open(postgres.Open(dsn(cfg)), &gorm.Config{
-		Logger: logger.Default.LogMode(level),
+		Logger: logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  level,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  true,
+		}),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("connect to database: %w", err)

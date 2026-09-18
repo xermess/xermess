@@ -64,6 +64,9 @@ type Config struct {
 	KeyRotation time.Duration
 
 	// AdminMFARequired makes every administrator sign in with a second factor.
+	// It is what a fresh installation starts with — off, so the first
+	// administrator can get in and turn it on deliberately — and after that
+	// the setting lives in the database, where a super admin owns it.
 	// An administrator without one is made to set it up at their next sign-in,
 	// before they can do anything else.
 	AdminMFARequired bool
@@ -156,7 +159,7 @@ func Load() (Config, error) {
 	v.SetDefault("XERMESS_CORS_ORIGINS", "")
 	v.SetDefault("XERMESS_TRUSTED_PROXIES", "")
 	v.SetDefault("XERMESS_RATE_LIMIT", 20)
-	v.SetDefault("XERMESS_ADMIN_MFA", "required")
+	v.SetDefault("XERMESS_ADMIN_MFA", "optional")
 	v.SetDefault("XERMESS_KEY_ROTATION_DAYS", 90)
 	// In development the id app serves the provider on its own origin,
 	// through Vite's proxy, the same way the reverse proxy does in

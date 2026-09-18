@@ -27,6 +27,40 @@ export type Organization = {
 	privacy_url: string;
 };
 
+/** One step a login flow is made of. The names mirror the constants in
+    internal/model/login_flow.go. */
+export type LoginStep =
+	'identifier' | 'password' | 'social' | 'email_code' | 'totp' | 'terms' | 'consent';
+
+/** What these pages may offer, from the login flow the sign-in belongs to:
+    the application's own flow where it names one, and the installation's
+    default otherwise.
+
+    It says what is allowed, never how anything is checked — the server
+    refuses what it refuses whatever a page shows. */
+export type LoginOptions = {
+	steps: LoginStep[];
+	/** Offer "Create an account". */
+	allow_registration: boolean;
+	/** Offer "Forgotten your password". */
+	allow_password_reset: boolean;
+};
+
+/** One language the sign-in pages may be shown in, as the picker lists it. */
+export type PublicLanguage = {
+	code: string;
+	/** The language in English, and in itself. */
+	name: string;
+	native: string;
+};
+
+/** An account elsewhere that can be signed in with, as its button. */
+export type SocialProvider = {
+	slug: string;
+	name: string;
+	kind: string;
+};
+
 /** A sign-in under way, known to the pages by the handle in `?request=`. */
 export type SignInRequest = {
 	application: Application;
@@ -93,6 +127,31 @@ export const signIn = {
 
 	organization: (fetch?: Fetch) =>
 		request<{ organization: Organization }>('/account/organization', { fetch }),
+
+	socialProviders: (fetch?: Fetch) =>
+		request<{ providers: SocialProvider[] }>('/account/social-providers', { fetch }),
+
+	/** The languages this installation offers, and the one somebody gets
+	    before they have chosen. The text itself is built into this app. */
+	languages: (fetch?: Fetch) =>
+		request<{ languages: PublicLanguage[]; default: string }>('/account/languages', { fetch }),
+
+	/** One offered language's text, every key filled in: its own where it
+	    has one, the base language's where it does not. */
+	languageText: (code: string, fetch?: Fetch) =>
+		request<{ language: PublicLanguage; messages: Record<string, string> }>(
+			`/account/languages/${encodeURIComponent(code)}`,
+			{ fetch }
+		),
+
+	/** What the flow behind this sign-in lets these pages offer. The handle
+	    names the application whose flow applies; without one it is the
+	    installation's default. */
+	loginOptions: (handle: string, fetch?: Fetch) =>
+		request<{ login: LoginOptions }>(
+			handle ? `/account/login-options?request=${encode(handle)}` : '/account/login-options',
+			{ fetch }
+		),
 
 	login: (body: { request: string; email: string; password: string }) =>
 		request<SignedIn>('/account/login', { method: 'POST', body }),

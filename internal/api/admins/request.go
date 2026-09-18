@@ -71,3 +71,10 @@ func listQuery(c *gin.Context) store.AdminQuery {
 
 	return q
 }
+
+// securityRequest is what a change to the settings that apply to every
+// administrator sends. The flag is a pointer so a request that does not
+// mention it leaves it alone.
+type securityRequest struct {
+	MFARequired *bool `json:"mfa_required"`
+}

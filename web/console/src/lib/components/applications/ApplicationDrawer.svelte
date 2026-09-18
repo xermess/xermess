@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		RiArrowRightLine,
 		RiCodeBoxLine,
@@ -34,7 +34,7 @@
 		type SelectOption
 	} from '$lib/components/ui';
 	import Choice from '$lib/components/roles/Choice.svelte';
-	import { keys } from '$lib/query';
+	import { keys, loginFlowChoicesOptions } from '$lib/query';
 	import { formatDateTime } from '$lib/utils/format';
 	import { authMethods, blank, grants, lines, scopes, types } from './applications';
 	import ApplicationApis from './ApplicationApis.svelte';
@@ -83,6 +83,45 @@
 	const kind = $derived(types[form.type]);
 	const machine = $derived(form.type === 'm2m');
 
+	/** The flows this application can be pointed at: the default one, and any
+	    that is offered. A flow that has been turned off is still listed when
+	    this application is the one holding it, so the picker shows what is
+	    stored rather than silently reading as the default.
+
+	    An administrator who may not read flows gets none, and the picker is
+	    left out: the application keeps whichever flow it has. */
+	const flows = createQuery(() => loginFlowChoicesOptions());
+
+	/** What the picker calls "no flow of its own". The request says that with
+	    an empty string, which a select reads as nothing chosen — and a flow id
+	    is always a uuid, so this cannot be one. */
+	const DEFAULT_FLOW = 'default';
+
+	const flowOptions = $derived.by<SelectOption<string>[]>(() => {
+		const all = flows.data?.flows ?? [];
+
+		const options: SelectOption<string>[] = [
+			{
+				value: DEFAULT_FLOW,
+				label: 'The default flow',
+				description: all.find((flow) => flow.is_default)?.name ?? 'Whichever flow is the default'
+			}
+		];
+
+		for (const flow of all) {
+			if (flow.is_default) continue;
+			if (!flow.enabled && flow.id !== form.login_flow_id) continue;
+
+			options.push({
+				value: flow.id,
+				label: flow.name,
+				description: flow.enabled ? flow.description : `${flow.description} · turned off`
+			});
+		}
+
+		return options;
+	});
+
 	const typeOptions: SelectOption<ApplicationType>[] = (
 		Object.entries(types) as [ApplicationType, (typeof types)[ApplicationType]][]
 	).map(([value, meta]) => ({
@@ -103,8 +142,15 @@
 		secret = '';
 		error = '';
 		confirmingRotate = false;
-		fill(application ? { ...application } : blank('web'));
+		fill(application ? asInput(application) : blank('web'));
 	});
+
+	/** An application as the form edits it. The flow is the one field the two
+	    shapes spell differently: an application that names none has null, and
+	    the form — like the request — says so with an empty string. */
+	function asInput(app: Application): ApplicationInput {
+		return { ...app, login_flow_id: app.login_flow_id ?? '' };
+	}
 
 	function fill(input: ApplicationInput) {
 		form = {
@@ -151,7 +197,7 @@
 		await queryClient.invalidateQueries({ queryKey: keys.applications.all });
 
 		current = result.application;
-		fill({ ...result.application });
+		fill(asInput(result.application));
 
 		if (result.client_secret) {
 			secret = result.client_secret;
@@ -469,6 +515,16 @@
 					description="Offer “Create an account” on the sign-in page. New users get the default roles."
 					bind:checked={form.allow_registration}
 				/>
+
+				{#if flowOptions.length > 1}
+					<Select
+						label="Login flow"
+						value={form.login_flow_id || DEFAULT_FLOW}
+						onChange={(chosen) => (form.login_flow_id = chosen === DEFAULT_FLOW ? '' : chosen)}
+						options={flowOptions}
+						hint="What this application's users are taken through when they sign in. Manage the flows themselves on the Login flows page."
+					/>
+				{/if}
 			</FormSection>
 
 			<FormSection title="Roles" description="How the application's roles reach its tokens.">

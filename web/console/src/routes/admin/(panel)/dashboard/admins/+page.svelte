@@ -22,6 +22,7 @@
 	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
 	import AdminDrawer from '$lib/components/admins/AdminDrawer.svelte';
 	import AdminTable from '$lib/components/admins/AdminTable.svelte';
+	import SecurityPanel from '$lib/components/admins/SecurityPanel.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -154,6 +155,10 @@
 	</div>
 </header>
 
+<div class="gutter policy">
+	<SecurityPanel security={data.security} selfHasMFA={data.admin.mfa_enabled} />
+</div>
+
 <div class="toolbar">
 	<form
 		class="search"
@@ -252,6 +257,11 @@
 />
 
 <style>
+	/* The panel's own security sits above the list of who has it. */
+	.policy {
+		margin-bottom: var(--space-4);
+	}
+
 	header {
 		display: flex;
 		align-items: center;

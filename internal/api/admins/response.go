@@ -101,3 +101,22 @@ func newPageResponse(admins []model.AdminUser, total int64, query store.AdminQue
 
 	return pageResponse{Admins: out, Total: total, Limit: query.Limit, Offset: query.Offset}
 }
+
+// securityResponse is how administrators are made to sign in, and what that
+// means for the ones there are: the panel says how many would be asked to set
+// an authenticator up before it turns the requirement on.
+type securityResponse struct {
+	MFARequired bool `json:"mfa_required"`
+	// Administrators is how many there are, and WithMFA how many of those
+	// already sign in with a second factor.
+	Administrators int64 `json:"administrators"`
+	WithMFA        int64 `json:"with_mfa"`
+}
+
+func newSecurityResponse(security model.AdminSecurity, total, withMFA int64) securityResponse {
+	return securityResponse{
+		MFARequired:    security.MFARequired,
+		Administrators: total,
+		WithMFA:        withMFA,
+	}
+}

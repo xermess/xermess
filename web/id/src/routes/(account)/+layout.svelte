@@ -4,16 +4,19 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { signIn } from '$lib/api';
-	import { Brand, Icon, ThemeToggle, type IconName } from '$lib/components';
+	import { Brand, Icon, LanguagePicker, ThemeToggle, type IconName } from '$lib/components';
+	import { useTranslator } from '$lib/i18n';
 	import { initials } from '$lib/utils/format';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps & { children: Snippet } = $props();
 
-	const sections: { href: '/' | '/security' | '/applications'; label: string; icon: IconName }[] = [
-		{ href: '/', label: 'Profile', icon: 'user' },
-		{ href: '/security', label: 'Security', icon: 'lock' },
-		{ href: '/applications', label: 'Connected apps', icon: 'apps' }
+	const t = useTranslator();
+
+	const sections: { href: '/' | '/security' | '/applications'; key: string; icon: IconName }[] = [
+		{ href: '/', key: 'account.profile', icon: 'user' },
+		{ href: '/security', key: 'account.security', icon: 'lock' },
+		{ href: '/applications', key: 'account.applications', icon: 'apps' }
 	];
 
 	let signingOut = $state(false);
@@ -35,9 +38,10 @@
 <div class="frame">
 	<header>
 		<div class="bar">
-			<a class="home" href={resolve('/')} aria-label="Your account"><Brand /></a>
+			<a class="home" href={resolve('/')} aria-label={t('account.your_account')}><Brand /></a>
 
 			<div class="end">
+				<LanguagePicker languages={data.languages} current={data.language} />
 				<ThemeToggle />
 				<div class="who">
 					<span class="avatar" aria-hidden="true">{initials(data.user)}</span>
@@ -48,19 +52,19 @@
 				</div>
 				<button class="signout" type="button" onclick={signOut} disabled={signingOut}>
 					<Icon name="logout" />
-					<span>Sign out</span>
+					<span>{t('action.sign_out')}</span>
 				</button>
 			</div>
 		</div>
 
-		<nav aria-label="Account">
+		<nav aria-label={t('account.nav')}>
 			{#each sections as section (section.href)}
 				<a
 					href={resolve(section.href)}
 					aria-current={page.url.pathname === section.href ? 'page' : undefined}
 				>
 					<Icon name={section.icon} size="1rem" />
-					{section.label}
+					{t(section.key)}
 				</a>
 			{/each}
 		</nav>
@@ -71,8 +75,10 @@
 	</main>
 
 	<footer>
-		<Icon name="shield" size="0.9375rem" />
-		<span>Secured by <strong>xermess</strong></span>
+		<span class="secured">
+			<Icon name="shield" size="0.9375rem" />
+			<span>{t('shell.secured_by')} <strong>xermess</strong></span>
+		</span>
 	</footer>
 </div>
 
@@ -213,12 +219,18 @@
 
 	footer {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		gap: var(--space-1);
+		gap: var(--space-2);
 		padding: var(--space-5) 0;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
+	}
+
+	.secured {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
 	}
 
 	@media (max-width: 40rem) {

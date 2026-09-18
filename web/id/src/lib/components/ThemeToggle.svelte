@@ -1,6 +1,9 @@
 <script lang="ts">
+	import { useTranslator } from '$lib/i18n';
 	import { COOKIES } from '$lib/constants';
 	import Icon from './Icon.svelte';
+
+	const t = useTranslator();
 
 	/**
 	 * Switches between light and dark, and remembers it in a cookie the server
@@ -20,7 +23,7 @@
 	}
 </script>
 
-<button type="button" class="toggle" onclick={toggle} aria-label="Switch between light and dark">
+<button type="button" class="toggle" onclick={toggle} aria-label={t('shell.theme')}>
 	<span class="moon"><Icon name="moon" /></span>
 	<span class="sun"><Icon name="sun" /></span>
 </button>

@@ -45,6 +45,11 @@ func newID() (uuid.UUID, error) {
 func All() []any {
 	return []any{
 		&Organization{},
+		&AdminSecurity{},
+		&LoginFlow{},
+		&Language{},
+		&Translation{},
+		&SocialProvider{},
 		&Role{},
 		&Application{},
 		&AdminUser{},
@@ -65,5 +70,7 @@ func All() []any {
 		&RefreshToken{},
 		&UserSession{},
 		&PasswordReset{},
+		&UserIdentity{},
+		&SocialLogin{},
 	}
 }

@@ -3,6 +3,9 @@ package applications
 import (
 	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/google/uuid"
 
 	"xermess/internal/api/respond"
 	"xermess/internal/api/validate"
@@ -51,6 +54,20 @@ func (r *applicationRequest) applyTo(app *model.Application, creating bool) erro
 	app.Enabled = validate.Flag(r.Enabled, app.Enabled)
 	app.AllowRegistration = validate.Flag(r.AllowRegistration, app.AllowRegistration)
 
+	// The flow is set by id, cleared by an empty string, and left alone when
+	// the request says nothing about it. A flow that has since been removed
+	// or turned off is not an error here — the store falls back to the
+	// default — so the only thing worth refusing is something that is not an
+	// id at all.
+	if r.LoginFlowID != nil {
+		flow, err := flowID(*r.LoginFlowID)
+		if err != nil {
+			return err
+		}
+
+		app.LoginFlowID = flow
+	}
+
 	app.Normalise()
 
 	// A client moving from one secret method to the other keeps its secret;
@@ -70,4 +87,20 @@ func (r *applicationRequest) applyTo(app *model.Application, creating bool) erro
 
 func badRequest(message string) error {
 	return respond.Fault{Status: http.StatusBadRequest, Message: message}
+}
+
+// flowID reads the login flow an application was pointed at: nil for the
+// empty string, which is how an application is put back on the default.
+func flowID(sent string) (*uuid.UUID, error) {
+	trimmed := strings.TrimSpace(sent)
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	id, err := uuid.Parse(trimmed)
+	if err != nil {
+		return nil, badRequest("login_flow_id must be the id of a login flow")
+	}
+
+	return &id, nil
 }

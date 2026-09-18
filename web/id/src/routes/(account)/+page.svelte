@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { useTranslator } from '$lib/i18n';
 	import { invalidateAll } from '$app/navigation';
 	import { account, messageOf } from '$lib/api';
 	import { Alert, Button, Icon, Panel, TextField } from '$lib/components';
@@ -6,6 +7,8 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const t = useTranslator();
 
 	const user = $derived(data.user);
 
@@ -47,43 +50,43 @@
 </script>
 
 <svelte:head>
-	<title>Profile · Account</title>
+	<title>{t('profile.head')} · {t('account.nav')}</title>
 </svelte:head>
 
 <div class="page">
 	<div class="intro">
 		<span class="avatar" aria-hidden="true">{initials(user)}</span>
 		<div>
-			<h1>{`${user.first_name} ${user.last_name}`.trim() || 'Your account'}</h1>
+			<h1>{`${user.first_name} ${user.last_name}`.trim() || t('account.your_account')}</h1>
 			<p>
 				{user.email}
 				{#if user.email_verified}
-					<span class="badge verified"><Icon name="check" size="0.8rem" /> Verified</span>
+					<span class="badge verified">
+						<Icon name="check" size="0.8rem" />
+						{t('profile.verified')}
+					</span>
 				{:else}
-					<span class="badge">Not verified</span>
+					<span class="badge">{t('profile.not_verified')}</span>
 				{/if}
 			</p>
 		</div>
 	</div>
 
 	<form onsubmit={save}>
-		<Panel
-			title="Personal information"
-			description="Your name, as applications you sign in to see it."
-		>
+		<Panel title={t('profile.personal_title')} description={t('profile.personal_description')}>
 			{#if error}<Alert>{error}</Alert>{/if}
-			{#if saved && !changed}<Alert tone="success">Your profile has been saved.</Alert>{/if}
+			{#if saved && !changed}<Alert tone="success">{t('profile.saved')}</Alert>{/if}
 
 			<div class="pair">
 				<TextField
-					label="First name"
+					label={t('field.first_name')}
 					bind:value={firstName}
 					autocomplete="given-name"
 					maxlength={100}
 					disabled={saving}
 				/>
 				<TextField
-					label="Last name"
+					label={t('field.last_name')}
 					bind:value={lastName}
 					autocomplete="family-name"
 					maxlength={100}
@@ -92,10 +95,10 @@
 			</div>
 
 			<TextField
-				label="Email"
+				label={t('field.email')}
 				value={user.email}
 				readonly
-				hint="Your email is your sign-in. To change it, contact the administrator of your organization."
+				hint={t('profile.email_hint')}
 			/>
 
 			{#snippet footer()}
@@ -105,25 +108,27 @@
 					onclick={() => {
 						firstName = user.first_name;
 						lastName = user.last_name;
-					}}>Cancel</Button
+					}}>{t('action.cancel')}</Button
 				>
-				<Button type="submit" loading={saving} disabled={!changed}>Save changes</Button>
+				<Button type="submit" loading={saving} disabled={!changed}>
+					{t('action.save_changes')}
+				</Button>
 			{/snippet}
 		</Panel>
 	</form>
 
-	<Panel title="Account details">
+	<Panel title={t('profile.details_title')}>
 		<dl>
 			<div>
-				<dt>Member since</dt>
+				<dt>{t('profile.member_since')}</dt>
 				<dd>{formatDate(user.created_at)}</dd>
 			</div>
 			<div>
-				<dt>Last sign-in</dt>
+				<dt>{t('profile.last_sign_in')}</dt>
 				<dd>{formatDate(user.last_login_at)}</dd>
 			</div>
 			<div>
-				<dt>Account ID</dt>
+				<dt>{t('profile.account_id')}</dt>
 				<dd><code>{user.id}</code></dd>
 			</div>
 		</dl>

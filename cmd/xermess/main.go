@@ -17,6 +17,7 @@ import (
 	"xermess/internal/mail"
 	"xermess/internal/oidc"
 	"xermess/internal/store"
+	"xermess/locales"
 )
 
 // version and commit are stamped in at build time by `make build` and
@@ -65,6 +66,24 @@ func run(log *slog.Logger) error {
 	// The store is the only thing that queries the database; the servers are
 	// handed that rather than the connection itself.
 	st := store.New(db)
+
+	// What a fresh installation starts with for administrators' sign-ins,
+	// from the configuration. An installation that already has the setting
+	// keeps it: after the first start it is the panel's, not the file's.
+	if err := st.EnsureAdminSecurity(context.Background(), cfg.AdminMFARequired); err != nil {
+		return err
+	}
+
+	// The languages the server ships with: all of them on the first start,
+	// and afterwards only the keys a release added. What an administrator has
+	// written is never overwritten.
+	shipped, err := locales.Shipped()
+	if err != nil {
+		return err
+	}
+	if err := st.EnsureLanguages(context.Background(), shipped); err != nil {
+		return err
+	}
 
 	// The provider loads its signing keys, and makes any that are missing,
 	// before anything is served: a wrong XERMESS_SECRET_KEY stops the server

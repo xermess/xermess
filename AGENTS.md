@@ -37,7 +37,7 @@ internal/auth           signing administrators in, and what they may do
 internal/oidc           the provider: authorize, tokens, userinfo, logout
 internal/api/server.go  the engine, and the table of every route
 internal/api/<subject>/ handler.go, request.go, response.go, validation.go
-migrations/             one Go file per migration, applied in order
+migrations/             the schema; one file today, applied in order
 web/console/src/lib/    api/, query/, components/ui/, components/<feature>/
 web/console/src/routes/admin/(panel)/  everything behind a session
 ```
@@ -58,9 +58,16 @@ and the permission it needs. Add it to the API table in `README.md`.
 
 **A model.** A struct in `internal/model`, embedding `Base`, registered in
 `model.All()` — and bump the count in `TestAllListsEveryModel`, which exists to
-catch a model that never got a table. Add a migration for it: a Go file in
-`migrations/` whose `up` calls `AutoMigrate` on the new models and whose `down`
-undoes it. Never edit a migration that has already run.
+catch a model that never got a table.
+
+While `migrations/` holds only the schema migration, that is all a new model
+needs: it builds from `model.All()`, so the table follows, and a development
+database is rebuilt rather than stepped forward (`make db-reset`). Add the
+`down` entry for it, in an order that drops children first. Once a database
+exists that cannot be rebuilt, the schema file stops being editable and a new
+migration is written instead — `AutoMigrate` on the new models in `up`, the
+undo in `down` — and from then on no migration that has run anywhere is ever
+edited.
 
 **A permission.** A constant and a catalog entry in
 `internal/model/admin_permission.go`, guarding the routes with `session.Can` or
@@ -81,6 +88,47 @@ the sign-in pages read the rest from `GET /api/v1/account/organization`, which
 takes no session — so only what a stranger may see goes in `PublicOrganization`.
 A setting nothing reads is a note, not a setting; wire it somewhere or leave it
 out.
+
+**A provider users can sign in with.** The kinds live in `model.SocialSpecs`,
+one entry per provider: its endpoints, the scopes to ask for, where the
+identity is in the answer, and the quirks (Apple posts its answer and signs
+its own secret; Yandex reads `OAuth` rather than `Bearer`; VK puts the profile
+under `response.0` and the address beside the token). Adding one is an entry
+there — the flow, the panel and the sign-in pages all read it. Nothing about a
+provider belongs in the database except what that installation was given:
+credentials, and the addresses of a provider this server does not know.
+
+**A setting that decides how people sign in.** Two exist to copy: the
+organisation's, and `admin_security`, which says whether administrators need a
+second factor. Both are a singleton row, seeded from the configuration on the
+first start and owned by the panel afterwards, and both are read where they
+matter rather than held in a field from startup — so a change takes effect on
+the next request instead of the next restart.
+
+**A step a login flow can name.** The catalog is `model.LoginStepSpecs`, one
+entry per step: what it is called, what it does, and `Implemented` — whether
+this server runs it yet. The panel builds its step picker from the catalog and
+marks the rest "not run yet", so a step can be offered as a plan before it is
+built. Implementing one is flipping that flag and writing the step; nothing
+else reads a hard-coded list of steps.
+
+**A language.** An installation adds its own on the Languages page: the text
+lives in the database (`languages`, and a `translations` row per app) and the
+apps fetch it while rendering, so nothing is rebuilt. To *ship* one with the
+server, add a JSON file under `locales/<app>/`, named after the language tag,
+copied from `en.json` with the values translated and `$name`/`$native` naming
+the language. The first start imports every shipped file
+(`store.EnsureLanguages`), and later starts copy in keys a release added
+without touching anything an administrator wrote.
+`TestTranslationsAreComplete` fails when a shipped language falls behind `en`,
+so a key added to the base has to be added to every file before it ships.
+
+**Text in the apps.** Never a literal in the markup: `const t = useTranslator()`
+at the top of the component and `t('area.thing')` where the words go, with the
+key added to every file under `locales/<app>/`. Parameters are `{braces}` in
+the text and an object at the call — `t('login.subtitle_app', { app: name })`.
+The sign-in pages are fully moved over; the panel's shell is, and its other
+pages are not yet.
 
 **A panel page.** A `+page.server.ts` that checks the permission
 (`requirePermission` / `requireAnywhere`) and fetches with `apiGet`, a

@@ -17,6 +17,7 @@ import (
 	"xermess/internal/api/audit"
 	"xermess/internal/api/respond"
 	"xermess/internal/api/session"
+	"xermess/internal/api/validate"
 	"xermess/internal/auth"
 	"xermess/internal/model"
 	"xermess/internal/store"
@@ -138,6 +139,66 @@ func (h *Handler) answer(c *gin.Context, status int, admin *model.AdminUser) {
 	}
 
 	c.JSON(status, gin.H{"admin": newAdminResponse(*stored)})
+}
+
+// Security answers how administrators are made to sign in, and how many of
+// them have an authenticator, so the panel can say what turning it on would
+// mean for the people who have not set one up.
+func (h *Handler) Security(c *gin.Context) {
+	h.answerSecurity(c)
+}
+
+// UpdateSecurity changes those settings. Requiring a second factor takes
+// effect at once: an administrator without one can do nothing but set one up
+// the next time they load a page.
+func (h *Handler) UpdateSecurity(c *gin.Context) {
+	var req securityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.BadRequest(c, "the request body is not valid")
+		return
+	}
+
+	security, err := h.store.AdminSecurity(c.Request.Context())
+	if err != nil {
+		respond.Failure(c, h.log, err, "loading the admin security settings failed")
+		return
+	}
+
+	was := security.MFARequired
+	security.MFARequired = validate.Flag(req.MFARequired, security.MFARequired)
+
+	if err := h.store.SaveAdminSecurity(c.Request.Context(), security); err != nil {
+		respond.Failure(c, h.log, err, "saving the admin security settings failed")
+		return
+	}
+
+	if was != security.MFARequired {
+		h.audit.RecordWith(c, "admin_security.updated", "admin_security", "", map[string]any{
+			"mfa_required": security.MFARequired,
+		})
+	}
+
+	h.answerSecurity(c)
+}
+
+// answerSecurity writes the settings together with what they mean for the
+// administrators there are.
+func (h *Handler) answerSecurity(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	security, err := h.store.AdminSecurity(ctx)
+	if err != nil {
+		respond.Failure(c, h.log, err, "loading the admin security settings failed")
+		return
+	}
+
+	total, withMFA, err := h.store.AdminMFACounts(ctx)
+	if err != nil {
+		respond.Failure(c, h.log, err, "counting administrators failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, newSecurityResponse(*security, total, withMFA))
 }
 
 // ResetMFA removes another administrator's second factor and signs them out

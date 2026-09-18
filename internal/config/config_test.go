@@ -116,8 +116,11 @@ func TestLoadUsesDefaults(t *testing.T) {
 	if cfg.SecureUserCookies || cfg.SecureAdminCookies {
 		t.Error("cookies are secure on plain http localhost")
 	}
-	if !cfg.AdminMFARequired {
-		t.Error("AdminMFARequired = false, want two-factor sign-in required by default")
+	// A fresh installation does not make anybody set up an authenticator:
+	// each administrator turns one on for themselves, and a super admin can
+	// require them of everybody once there is somebody to ask.
+	if cfg.AdminMFARequired {
+		t.Error("AdminMFARequired = true, want two-factor sign-in optional by default")
 	}
 	if cfg.Mail.Host != "" {
 		t.Errorf("Mail.Host = %q, want none: email is logged by default", cfg.Mail.Host)

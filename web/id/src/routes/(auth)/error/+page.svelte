@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { useTranslator } from '$lib/i18n';
 	import { page } from '$app/state';
 	import { Alert, AuthCard } from '$lib/components';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const t = useTranslator();
 
 	/** A sentence for the errors a person can do something about; what the
 	    server said is kept underneath for whoever has to debug it. */
@@ -21,18 +24,15 @@
 </script>
 
 <svelte:head>
-	<title>Sign-in error</title>
+	<title>{t('error.head')}</title>
 </svelte:head>
 
-<AuthCard organization={data.organization} title="We couldn’t sign you in" subtitle={explanation}>
+<AuthCard organization={data.organization} title={t('error.title')} subtitle={explanation}>
 	{#if description}
 		<Alert tone="warning"><code>{code}</code> {description}</Alert>
 	{/if}
 	<p class="muted">
-		Go back to the application and try again. If it keeps happening, contact its support{data
-			.organization?.support_email
-			? ', or ours below'
-			: ''}.
+		{data.organization?.support_email ? t('error.body_support') : t('error.body')}
 	</p>
 </AuthCard>
 

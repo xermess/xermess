@@ -45,6 +45,11 @@ type applicationResponse struct {
 	Enabled               bool `json:"enabled"`
 	AllowRegistration     bool `json:"allow_registration"`
 
+	// LoginFlowID is the flow this application signs people in with, null
+	// for the default one. The panel has the flows themselves; what belongs
+	// here is which of them this application named.
+	LoginFlowID *uuid.UUID `json:"login_flow_id"`
+
 	// RoleCount is how many roles the application defines.
 	RoleCount int64     `json:"role_count"`
 	CreatedAt time.Time `json:"created_at"`
@@ -80,6 +85,7 @@ func newApplicationResponse(app model.Application, roles int64) applicationRespo
 		RequireRoleAssignment:   app.RequireRoleAssignment,
 		Enabled:                 app.Enabled,
 		AllowRegistration:       app.AllowRegistration,
+		LoginFlowID:             app.LoginFlowID,
 		RoleCount:               roles,
 		CreatedAt:               app.CreatedAt,
 		UpdatedAt:               app.UpdatedAt,

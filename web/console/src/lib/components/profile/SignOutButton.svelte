@@ -5,11 +5,13 @@
 	import { RiLogoutBoxRLine } from 'svelte-remixicon';
 	import { adminApi } from '$lib/api';
 	import { Button, type Variant } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 
 	type Props = { variant?: Variant };
 
 	let { variant = 'subtle' }: Props = $props();
 
+	const t = useTranslator();
 	const queryClient = useQueryClient();
 
 	let signingOut = $state(false);
@@ -32,5 +34,5 @@
 </script>
 
 <Button {variant} icon={RiLogoutBoxRLine} loading={signingOut} onclick={signOut}>
-	{signingOut ? 'Signing out…' : 'Sign out'}
+	{signingOut ? t('shell.signing_out') : t('shell.sign_out')}
 </Button>

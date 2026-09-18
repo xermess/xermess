@@ -13,6 +13,7 @@ package oidc
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -61,6 +62,13 @@ type Service struct {
 	issuer     string
 	accountURL string
 
+	// sealer encrypts what is stored and cannot be hashed: the signing keys,
+	// and the secrets of the providers users sign in with.
+	sealer *jose.Sealer
+	// social is the client for the calls this server makes to those
+	// providers. It is a field so a test can answer them itself.
+	social *http.Client
+
 	// now is time.Now, and a test's clock when it needs one.
 	now func() time.Time
 }
@@ -85,6 +93,8 @@ func New(ctx context.Context, cfg config.Config, st *store.Store, mailer mail.Se
 		log:        log,
 		issuer:     cfg.Issuer,
 		accountURL: cfg.AccountURL,
+		sealer:     sealer,
+		social:     &http.Client{Timeout: socialTimeout},
 		now:        time.Now,
 	}, nil
 }

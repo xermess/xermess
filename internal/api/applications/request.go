@@ -56,6 +56,11 @@ type applicationRequest struct {
 	// AllowRegistration may be left out too: a new application then offers
 	// registration on its sign-in page.
 	AllowRegistration *bool `json:"allow_registration"`
+
+	// LoginFlowID is the flow this application signs people in with. An
+	// empty string puts it back on the default flow; leaving it out leaves
+	// the flow it has.
+	LoginFlowID *string `json:"login_flow_id"`
 }
 
 // clean tidies what can be tidied, so the rules see the values that would

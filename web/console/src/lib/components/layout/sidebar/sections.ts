@@ -30,7 +30,9 @@ export type Section = Extract<
 
 export type SidebarItem = {
 	route: Section;
-	label: string;
+	/** The message key its name is looked up by, not the name: the sidebar
+	    has the translator, and this list is read on the server too. */
+	key: string;
 	icon: ComponentType;
 	/** How finished the section is: `preview` shows placeholder data, `soon`
 	    is not built yet. Left out, it is the real thing. */
@@ -39,8 +41,8 @@ export type SidebarItem = {
 	allowed?: (admin: Admin) => boolean;
 };
 
-/** A group with no label sits at the top, on its own. */
-export type SidebarGroup = { label?: string; items: SidebarItem[] };
+/** A group with no heading sits at the top, on its own. */
+export type SidebarGroup = { key?: string; items: SidebarItem[] };
 
 /** The dashboard's sections, in the order the sidebar lists them. The page
     checks permissions again on the server; this only decides what is shown. */
@@ -49,76 +51,76 @@ export const sections: SidebarGroup[] = [
 		items: [
 			{
 				route: '/admin/(panel)/dashboard',
-				label: 'Activity',
+				key: 'nav.activity',
 				icon: RiPulseLine,
 				allowed: (admin) => can(admin, 'activity.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/logs',
-				label: 'Logs',
+				key: 'nav.logs',
 				icon: RiFileList3Line,
 				allowed: (admin) => can(admin, 'activity.read')
 			}
 		]
 	},
 	{
-		label: 'Applications',
+		key: 'nav.applications',
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/applications',
-				label: 'Applications',
+				key: 'nav.applications',
 				icon: RiAppsLine,
 				allowed: (admin) => canAnywhere(admin, 'applications.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/apis',
-				label: 'APIs',
+				key: 'nav.apis',
 				icon: RiCodeBoxLine,
 				allowed: (admin) => can(admin, 'apis.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/sso',
-				label: 'SSO integrations',
+				key: 'nav.sso',
 				icon: RiLinksLine,
 				status: 'soon'
 			}
 		]
 	},
 	{
-		label: 'Authentication',
+		key: 'nav.authentication',
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/database',
-				label: 'Database',
+				key: 'nav.database',
 				icon: RiDatabase2Line,
-				status: 'preview'
+				allowed: (admin) => can(admin, 'database.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/social',
-				label: 'Social',
+				key: 'nav.social',
 				icon: RiShareLine,
-				status: 'preview'
+				allowed: (admin) => can(admin, 'social.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/flows',
-				label: 'Login flows',
+				key: 'nav.flows',
 				icon: RiGitBranchLine,
-				status: 'preview'
+				allowed: (admin) => can(admin, 'login_flows.read')
 			}
 		]
 	},
 	{
-		label: 'User management',
+		key: 'nav.user_management',
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/users',
-				label: 'Users',
+				key: 'nav.users',
 				icon: RiGroupLine,
 				allowed: (admin) => can(admin, 'users.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/roles',
-				label: 'Roles',
+				key: 'nav.roles',
 				icon: RiShieldUserLine,
 				allowed: (admin) =>
 					canAnywhere(admin, 'users.read') || canAnywhere(admin, 'applications.read')
@@ -126,36 +128,36 @@ export const sections: SidebarGroup[] = [
 		]
 	},
 	{
-		label: 'Administration',
+		key: 'nav.administration',
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/admins',
-				label: 'Administrators',
+				key: 'nav.admins',
 				icon: RiAdminLine,
 				allowed: (admin) => admin.is_super_admin
 			},
 			{
 				route: '/admin/(panel)/dashboard/admin-roles',
-				label: 'Admin roles',
+				key: 'nav.admin_roles',
 				icon: RiShieldKeyholeLine,
 				allowed: (admin) => admin.is_super_admin
 			}
 		]
 	},
 	{
-		label: 'Settings',
+		key: 'nav.settings',
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/organization',
-				label: 'Organization',
+				key: 'nav.organization',
 				icon: RiBuildingLine,
 				allowed: (admin) => can(admin, 'organization.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/languages',
-				label: 'Languages',
+				key: 'nav.languages',
 				icon: RiTranslate2,
-				status: 'preview'
+				allowed: (admin) => can(admin, 'languages.read')
 			}
 		]
 	}

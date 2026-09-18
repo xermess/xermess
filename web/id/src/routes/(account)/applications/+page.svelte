@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { useTranslator } from '$lib/i18n';
 	import { invalidateAll } from '$app/navigation';
 	import { account, messageOf } from '$lib/api';
 	import { Alert, AppMark, Button, Icon, Panel } from '$lib/components';
@@ -7,13 +8,18 @@
 
 	let { data }: PageProps = $props();
 
+	const t = useTranslator();
+
 	/** What each scope lets an application do, said plainly. */
-	const scopeNames: Record<string, string> = {
-		openid: 'Sign you in',
-		profile: 'See your name',
-		email: 'See your email address',
-		offline_access: 'Stay signed in when you are away',
-		roles: 'See your roles'
+	/** What each scope lets an application do, said to the person whose
+	    account it is. The scope's own name is shown for one nobody has
+	    written a sentence for. */
+	const scopeKeys: Record<string, string> = {
+		openid: 'apps.scope_openid',
+		profile: 'apps.scope_profile',
+		email: 'apps.scope_email',
+		offline_access: 'apps.scope_offline',
+		roles: 'apps.scope_roles'
 	};
 
 	let confirming = $state<string | null>(null);
@@ -40,65 +46,71 @@
 </script>
 
 <svelte:head>
-	<title>Connected apps · Account</title>
+	<title>{t('apps.head')} · {t('account.nav')}</title>
 </svelte:head>
 
 <div class="page">
 	<div class="heading">
-		<h1>Connected apps</h1>
-		<p>Applications that can keep you signed in and act for you while you are away.</p>
+		<h1>{t('apps.title')}</h1>
+		<p>{t('apps.description')}</p>
 	</div>
 
 	{#if error}<Alert>{error}</Alert>{/if}
 	{#if notice}<Alert tone="success">{notice}</Alert>{/if}
 
 	{#if data.applications.length === 0}
-		<Panel title="No connected apps">
-			<p class="empty">
-				No application is keeping you signed in right now. Applications appear here when you allow
-				them to stay signed in.
-			</p>
+		<Panel title={t('apps.empty')}>
+			<p class="empty">{t('apps.empty_body')}</p>
 		</Panel>
 	{:else}
 		{#each data.applications as app (app.client_id)}
-			<Panel title={app.name} description="Last used {timeAgo(app.last_used_at)}">
+			<Panel
+				title={app.name}
+				description={t('apps.last_used', { when: timeAgo(app.last_used_at) })}
+			>
 				{#snippet aside()}
 					<AppMark name={app.name} logo={app.logo_uri} size={44} />
 				{/snippet}
 
 				<div class="access">
-					<h3>It can</h3>
+					<h3>{t('apps.it_can')}</h3>
 					<ul>
 						{#each app.scopes as scope (scope)}
-							<li><Icon name="check" size="1rem" /> {scopeNames[scope] ?? scope}</li>
+							<li>
+								<Icon name="check" size="1rem" />
+								{scopeKeys[scope] ? t(scopeKeys[scope]) : scope}
+							</li>
 						{/each}
 					</ul>
 				</div>
 
 				<p class="meta">
-					Connected since {formatDate(app.authorized_at)}
+					{t('apps.connected_since', { when: formatDate(app.authorized_at) })}
 					{#if app.client_uri}
 						·
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 						<a href={app.client_uri} target="_blank" rel="noopener noreferrer">
-							Visit <Icon name="external" size="0.8rem" />
+							{t('apps.visit')}
+							<Icon name="external" size="0.8rem" />
 						</a>
 					{/if}
 				</p>
 
 				{#snippet footer()}
 					{#if confirming === app.client_id}
-						<span class="confirm">Disconnect {app.name}?</span>
-						<Button variant="secondary" size="sm" onclick={() => (confirming = null)}>Keep</Button>
+						<span class="confirm">{t('apps.disconnect_confirm', { app: app.name })}</span>
+						<Button variant="secondary" size="sm" onclick={() => (confirming = null)}>
+							{t('apps.keep')}
+						</Button>
 						<Button
 							variant="danger"
 							size="sm"
 							loading={disconnecting === app.client_id}
-							onclick={() => disconnect(app.client_id, app.name)}>Disconnect</Button
+							onclick={() => disconnect(app.client_id, app.name)}>{t('apps.disconnect')}</Button
 						>
 					{:else}
 						<Button variant="danger" size="sm" onclick={() => (confirming = app.client_id)}
-							>Disconnect</Button
+							>{t('apps.disconnect')}</Button
 						>
 					{/if}
 				{/snippet}

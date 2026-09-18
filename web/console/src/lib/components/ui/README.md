@@ -90,6 +90,36 @@ is what makes every `Input` and `Textarea` in the panel match without any of
 them saying so, and `[data-scope='select']` gives the select the same filled
 block so it lines up with them.
 
+## Drawers
+
+A record opens in a drawer, the way PocketBase opens one: a full-height panel
+against the right edge, over a washed-out page.
+
+```svelte
+<Drawer bind:open title="Edit user" meta={user.id} width="44rem" onsubmit={save}>
+	<FormSection title="Account">…</FormSection>
+
+	{#snippet footer()}
+		<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
+		<Button type="submit" loading={saving}>Save changes</Button>
+	{/snippet}
+</Drawer>
+```
+
+`onsubmit` makes the body a form, so the footer's submit button belongs to it
+and Enter saves. Without it the drawer is a plain container.
+
+It is built when it opens and taken down once it has finished leaving, so a
+drawer that opens always starts fresh — nothing scrolled, no tab still on the
+one it was left on, no half-finished form from last time. A component inside
+one may assume it is mounted for a single visit.
+
+Arriving and leaving are 200ms, and the panel travels the last 30px rather
+than its whole width: PocketBase's motion, to the millisecond. Both are in
+`styles/ark.css`, and they are two named animations rather than one reversed
+on purpose — Ark waits for an exit animation only when it can see the
+animation _name_ change, and a reversed one never changes it.
+
 ## Adding a component
 
 1. If it is shaped like a button, give it `class="control"` and pass the three

@@ -79,7 +79,7 @@ func (h *Handler) State(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"state": state, "mfa_required": h.auth.MFARequired()})
+	c.JSON(http.StatusOK, gin.H{"state": state, "mfa_required": h.auth.MFARequired(c.Request.Context())})
 }
 
 // VerifyMFA finishes a sign-in waiting for a second factor.

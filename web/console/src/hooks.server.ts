@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 
 import { COOKIES } from '$lib/constants';
+import { BASE } from '$lib/i18n';
 
 export { handleFetch } from '$lib/server/proxy';
 
@@ -15,6 +16,11 @@ export { handleFetch } from '$lib/server/proxy';
  * A reader who has not chosen yet gets no attribute at all, which leaves the
  * prefers-color-scheme rules in tokens.css to decide — also without a flash,
  * because that happens in CSS rather than after it.
+ *
+ * The language goes in the same way and for the same reason, and `<html lang>`
+ * is what a screen reader reads the page's words with. The root layout's load
+ * decides it, from the languages the API has, and leaves it in `locals`; the
+ * page is only transformed once the loads have run.
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const saved = event.cookies.get(COOKIES.theme);
@@ -25,7 +31,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 		: '';
 
 	const response = await resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('__THEME__', attributes)
+		transformPageChunk: ({ html }) =>
+			html.replace('__THEME__', attributes).replace('__LANG__', event.locals.language ?? BASE)
 	});
 
 	// The panel takes an administrator's password and acts on their behalf,

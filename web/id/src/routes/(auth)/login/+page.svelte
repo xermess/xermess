@@ -2,13 +2,30 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { signIn, messageOf } from '$lib/api';
-	import { Alert, AuthCard, Button, PasswordField, TextField } from '$lib/components';
+	import {
+		Alert,
+		AuthCard,
+		Button,
+		PasswordField,
+		TextField,
+		SocialButtons
+	} from '$lib/components';
+	import { useTranslator } from '$lib/i18n';
 	import { authHref, leaveTo } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
+	const t = useTranslator();
+
 	const app = $derived(data.signInRequest?.application ?? null);
+
+	/** What the login flow behind this sign-in lets the page offer. The
+	    application's own "allow registration" still has to agree: a flow says
+	    what this installation allows, an application what it wants. */
+	const flow = $derived(data.login);
+	const offerSocial = $derived(flow.steps.includes('social'));
+	const offerRegistration = $derived(flow.allow_registration && app?.allow_registration === true);
 
 	// The application may already know who is signing in (login_hint).
 	// svelte-ignore state_referenced_locally
@@ -66,33 +83,34 @@
 </script>
 
 <svelte:head>
-	<title>Sign in{app ? ` · ${app.name}` : ''}</title>
+	<title>{t('login.head')}{app ? ` · ${app.name}` : ''}</title>
 </svelte:head>
 
 {#if data.expired}
 	<AuthCard
 		organization={data.organization}
-		title="This sign-in has expired"
-		subtitle="Sign-in links only work for a short while."
+		title={t('login.expired_title')}
+		subtitle={t('login.expired_subtitle')}
 	>
-		<Alert tone="info">Go back to the application and choose “Sign in” again.</Alert>
+		<Alert tone="info">{t('login.expired_body')}</Alert>
 
 		{#snippet below()}
-			Or <a href={resolve('/login')}>sign in to your account</a>
+			{t('login.expired_or')}
+			<a href={resolve('/login')}>{t('login.expired_link')}</a>
 		{/snippet}
 	</AuthCard>
 {:else}
 	<AuthCard
 		organization={data.organization}
 		application={app}
-		title="Sign in"
-		subtitle={app ? `to continue to ${app.name}` : 'to manage your account'}
+		title={t('login.title')}
+		subtitle={app ? t('login.subtitle_app', { app: app.name }) : t('login.subtitle_account')}
 	>
 		<form onsubmit={submit} novalidate>
 			{#if error}<Alert>{error}</Alert>{/if}
 
 			<TextField
-				label="Email"
+				label={t('field.email')}
 				bind:value={email}
 				type="email"
 				name="email"
@@ -103,22 +121,32 @@
 			/>
 
 			<PasswordField
-				label="Password"
+				label={t('field.password')}
 				bind:value={password}
 				disabled={submitting}
-				aside={{ label: 'Forgot password?', href: authHref('/forgot-password', data.request) }}
+				aside={flow.allow_password_reset
+					? { label: t('login.forgot'), href: authHref('/forgot-password', data.request) }
+					: undefined}
 			/>
 
 			<Button type="submit" block loading={submitting} disabled={!canSubmit}>
-				{submitting ? 'Signing in…' : 'Continue'}
+				{submitting ? t('login.submitting') : t('login.submit')}
 			</Button>
 		</form>
 
+		<SocialButtons
+			providers={offerSocial ? data.socialProviders : []}
+			request={data.request}
+			next={data.next ?? null}
+			label={t('login.social')}
+			disabled={submitting}
+		/>
+
 		{#snippet below()}
-			{#if app?.allow_registration && data.request}
-				Don’t have an account?
+			{#if offerRegistration && data.request}
+				{t('login.no_account')}
 				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a href={authHref('/register', data.request)}>Create one</a>
+				<a href={authHref('/register', data.request)}>{t('login.create_one')}</a>
 			{/if}
 		{/snippet}
 	</AuthCard>

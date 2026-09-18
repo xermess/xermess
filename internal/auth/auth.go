@@ -88,23 +88,36 @@ type Service struct {
 	sealer *jose.Sealer
 	log    *slog.Logger
 
-	// mfaRequired makes every administrator set up a second factor.
-	mfaRequired bool
 	// issuer names the panel in authenticator apps.
 	issuer string
 }
 
 // New returns a Service backed by the given store. `sealer` encrypts TOTP
-// secrets; `mfaRequired` makes two-factor sign-in compulsory; `issuer` is what
-// authenticator apps list the account under; `log` reports what cannot be
-// returned, such as a failed audit write.
-func New(st *store.Store, sealer *jose.Sealer, log *slog.Logger, mfaRequired bool, issuer string) *Service {
-	return &Service{store: st, sealer: sealer, log: log, mfaRequired: mfaRequired, issuer: issuer}
+// secrets; `issuer` is what authenticator apps list the account under; `log`
+// reports what cannot be returned, such as a failed audit write.
+//
+// Whether a second factor is compulsory is not passed in: it is a setting a
+// super admin changes in the panel, read from the database each time it
+// matters, so turning it on takes effect on the next sign-in rather than on
+// the next restart.
+func New(st *store.Store, sealer *jose.Sealer, log *slog.Logger, issuer string) *Service {
+	return &Service{store: st, sealer: sealer, log: log, issuer: issuer}
 }
 
 // MFARequired reports whether every administrator must use a second factor.
-func (s *Service) MFARequired() bool {
-	return s.mfaRequired
+//
+// An installation that has not said starts with no — see
+// model.DefaultAdminSecurity. A database that cannot be *read* is not the
+// same thing: the answer is unknown, and an unknown answer to "must this
+// person prove who they are twice" is yes.
+func (s *Service) MFARequired(ctx context.Context) bool {
+	security, err := s.store.AdminSecurity(ctx)
+	if err != nil {
+		s.log.Error("reading the admin security settings failed", "error", err)
+		return true
+	}
+
+	return security.MFARequired
 }
 
 // Request describes where a call came from, which is recorded on the session
@@ -164,7 +177,7 @@ func (s *Service) Login(ctx context.Context, username, password string, req Requ
 	switch {
 	case admin.HasMFA():
 		state, lifetime = StateMFA, challengeLifetime
-	case s.mfaRequired:
+	case s.MFARequired(ctx):
 		state, lifetime = StateEnroll, enrolmentLifetime
 	}
 
@@ -232,7 +245,7 @@ func (s *Service) Session(ctx context.Context, token string) (*model.AdminUser, 
 	}
 
 	switch {
-	case session.MFAPassed && s.mfaRequired && !admin.HasMFA():
+	case session.MFAPassed && s.MFARequired(ctx) && !admin.HasMFA():
 		// Signed in before two-factor sign-in was required, or had it reset:
 		// the session is good for setting it up and nothing else.
 		return admin, session, StateEnroll, nil
@@ -240,7 +253,7 @@ func (s *Service) Session(ctx context.Context, token string) (*model.AdminUser, 
 		return admin, session, StateSignedIn, nil
 	case admin.HasMFA():
 		return admin, session, StateMFA, nil
-	case s.mfaRequired:
+	case s.MFARequired(ctx):
 		return admin, session, StateEnroll, nil
 	default:
 		// Waiting for a factor that has since been removed, where none is

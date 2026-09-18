@@ -54,6 +54,13 @@ export type AdminPermissionName =
 	| 'apis.write'
 	| 'organization.read'
 	| 'organization.write'
+	| 'social.read'
+	| 'social.write'
+	| 'login_flows.read'
+	| 'login_flows.write'
+	| 'database.read'
+	| 'languages.read'
+	| 'languages.write'
 	| 'applications.read'
 	| 'applications.write'
 	| 'user_roles.write'
@@ -193,6 +200,8 @@ export type Application = {
 	enabled: boolean;
 	/** Offer "Create an account" on its sign-in page. */
 	allow_registration: boolean;
+	/** The login flow it signs people in with, null for the default one. */
+	login_flow_id: string | null;
 	role_count: number;
 	created_at: string;
 	updated_at: string;
@@ -222,7 +231,10 @@ export type ApplicationInput = Pick<
 	| 'require_role_assignment'
 	| 'enabled'
 	| 'allow_registration'
->;
+> & {
+	/** The flow to sign people in with: an id, or "" for the default one. */
+	login_flow_id?: string;
+};
 
 /** An application, with the client secret that was just made for it. The
     secret is only ever in this one answer. */
@@ -360,6 +372,18 @@ export type UserBuiltins = {
 	is_temporary_password: boolean;
 };
 
+/** One provider a user signs in with, as their record shows it. */
+export type SocialAccount = {
+	/** The connection's own id, which disconnecting it names. */
+	id: string;
+	provider: string;
+	slug: string;
+	kind: SocialKind;
+	email: string;
+	connected_at: string;
+	last_login_at: string | null;
+};
+
 /** A user. The built-in fields are its own properties; everything an
     organisation added lives in `data`, keyed by field name. */
 export type UserRecord = UserBuiltins & {
@@ -370,6 +394,8 @@ export type UserRecord = UserBuiltins & {
 	    every application the administrator can see. What they add up to is
 	    the role mapping, `usersApi.roleMappings`. */
 	roles: UserRoleRef[];
+	/** The providers this user signs in with, if any. */
+	social_accounts: SocialAccount[];
 	data: Record<string, unknown> | null;
 	created_at: string;
 	updated_at: string;
@@ -607,3 +633,251 @@ export type OrganizationSettings = Omit<Organization, 'created_at'>;
 /** What the panel sends for it. Every field is optional because the endpoint
     is a PATCH: what is left out keeps the value it has. */
 export type OrganizationInput = Partial<OrganizationSettings>;
+
+/** Which provider a social login record is for. A kind whose provider this
+    server knows carries its own endpoints; the two custom ones ask for them. */
+export type SocialKind = 'google' | 'apple' | 'facebook' | 'yandex' | 'vk' | 'oidc' | 'oauth2';
+
+/** How the client secret is presented at a provider's token endpoint. */
+export type SocialTokenAuth = 'basic' | 'post';
+
+/** What this server knows about a kind of provider, which is what the form
+    fills in and what it asks for. */
+export type SocialSpec = {
+	kind: SocialKind;
+	label: string;
+	authorize_url: string;
+	token_url: string;
+	userinfo_url: string;
+	scopes: string[];
+	/** Whether the endpoints come from the record rather than from the kind. */
+	custom: boolean;
+	/** Whether the secret is a key this server signs with, as Apple's is. */
+	signed_secret: boolean;
+	token_auth: SocialTokenAuth;
+	/** Where an administrator registers this server with the provider. */
+	docs: string;
+};
+
+/** A configured provider. The secrets are never sent back: what is stored is
+    only ever reported as stored. */
+export type SocialProvider = {
+	id: string;
+	kind: SocialKind;
+	slug: string;
+	name: string;
+	client_id: string;
+	has_client_secret: boolean;
+	team_id: string;
+	key_id: string;
+	has_private_key: boolean;
+	scopes: string[];
+	token_auth: SocialTokenAuth | '';
+	/** What that comes to once the kind's default is applied. */
+	token_auth_used: SocialTokenAuth;
+	authorize_url: string;
+	token_url: string;
+	userinfo_url: string;
+	enabled: boolean;
+	link_verified_emails: boolean;
+	allow_registration: boolean;
+	position: number;
+	/** What to register with the provider as the redirect URI. */
+	callback_url: string;
+	/** How many users sign in with it. */
+	identities: number;
+	created_at: string;
+};
+
+/** What the panel sends for one.
+
+    Everything is optional because the endpoint is a PATCH: a request that
+    does not mention a setting leaves it as it is — so turning a provider off
+    is `{ enabled: false }` and nothing else. The kind and the slug are read
+    when it is registered and never again. */
+export type SocialProviderInput = {
+	kind?: SocialKind;
+	slug?: string;
+	name?: string;
+	client_id?: string;
+	client_secret?: string;
+	private_key?: string;
+	team_id?: string;
+	key_id?: string;
+	scopes?: string[];
+	token_auth?: SocialTokenAuth | '';
+	authorize_url?: string;
+	token_url?: string;
+	userinfo_url?: string;
+	enabled?: boolean;
+	link_verified_emails?: boolean;
+	allow_registration?: boolean;
+};
+
+/** How administrators are made to sign in, and what that means for the ones
+    there are. */
+export type AdminSecurity = {
+	mfa_required: boolean;
+	administrators: number;
+	with_mfa: number;
+};
+
+/** One step a login flow can be made of. The names mirror the constants in
+    internal/model/login_flow.go; change them together. */
+export type LoginStep =
+	'identifier' | 'password' | 'social' | 'email_code' | 'totp' | 'terms' | 'consent';
+
+/** What the server knows about a step: what it is called, and whether the
+    sign-in pages run it yet. */
+export type LoginStepSpec = {
+	step: LoginStep;
+	label: string;
+	description: string;
+	/** Fixed steps cannot be removed or moved. */
+	fixed: boolean;
+	/** False for a step a flow may name but the server does not run yet. */
+	implemented: boolean;
+};
+
+/** A login flow: what somebody is taken through when they sign in. */
+export type LoginFlow = {
+	id: string;
+	name: string;
+	slug: string;
+	description: string;
+	/** The flow every application that names none falls back to. */
+	is_default: boolean;
+	enabled: boolean;
+	steps: LoginStep[];
+	allow_registration: boolean;
+	allow_password_reset: boolean;
+	require_verified_email: boolean;
+	session_lifetime_hours: number;
+	/** How many applications name this flow. */
+	applications: number;
+	/** The steps it names that the sign-in pages do not run yet. */
+	planned: LoginStep[];
+	created_at: string;
+	updated_at: string;
+};
+
+/** What the panel sends for one. Everything is optional because the endpoint
+    is a PATCH: a request that mentions one setting changes one setting. */
+export type LoginFlowInput = {
+	name?: string;
+	slug?: string;
+	description?: string;
+	is_default?: boolean;
+	enabled?: boolean;
+	steps?: LoginStep[];
+	allow_registration?: boolean;
+	allow_password_reset?: boolean;
+	require_verified_email?: boolean;
+	session_lifetime_hours?: number;
+};
+
+/** One of the server's own tables, as the Database page lists it. */
+export type DatabaseTable = {
+	name: string;
+	rows: number;
+	columns: number;
+};
+
+/** One column of a table. */
+export type DatabaseColumn = {
+	name: string;
+	type: string;
+	nullable: boolean;
+	primary_key: boolean;
+	/** True for a column holding a password, a key or a token: it is never
+	    read, so every row has null for it. */
+	hidden: boolean;
+};
+
+/** A page of one table: the columns it has, and the rows that were asked for.
+    A row is keyed by column name, and holds whatever the database had. */
+export type DatabasePage = {
+	table: string;
+	columns: DatabaseColumn[];
+	rows: Record<string, unknown>[];
+	total: number;
+	limit: number;
+	offset: number;
+};
+
+/** Which of the two apps a translation is for: the sign-in pages, or this
+    panel. */
+export type LocaleApp = 'id' | 'console';
+
+/** One language this installation has: its settings, and how much of each app
+    it translates. */
+export type Language = {
+	code: string;
+	/** The language in English, and in itself. */
+	name: string;
+	native: string;
+	/** How much of each app is translated, as a percentage of the base
+	    language's keys, and how many keys each is short. */
+	coverage: Record<LocaleApp, number>;
+	missing: Record<LocaleApp, number>;
+	/** Whether the sign-in pages offer it, and whether it is the one somebody
+	    gets before they have chosen. */
+	enabled: boolean;
+	is_default: boolean;
+	/** Where it comes in the picker, lowest first. */
+	position: number;
+	/** True for the language every other is a translation of: it cannot be
+	    turned off or removed. */
+	base: boolean;
+	/** True when the server ships a translation of it, so a key a release
+	    adds reaches it on the next start. */
+	shipped: boolean;
+	updated_at: string;
+};
+
+/** A language the server ships with that this installation does not have,
+    which the panel offers to bring back. */
+export type ShippedLanguage = {
+	code: string;
+	name: string;
+	native: string;
+};
+
+/** Everything the Languages page lists. */
+export type LanguageList = {
+	languages: Language[];
+	apps: LocaleApp[];
+	shipped: ShippedLanguage[];
+};
+
+/** What the panel sends to change one. Everything is optional because the
+    endpoint is a PATCH: a request that mentions one setting changes one
+    setting. */
+export type LanguageInput = {
+	name?: string;
+	native?: string;
+	enabled?: boolean;
+	is_default?: boolean;
+	position?: number;
+};
+
+/** What the panel sends to add one. `copy_from` names a language — here, or
+    one the server ships — whose text the new one starts as; without it the
+    new language starts with nothing translated. */
+export type NewLanguageInput = {
+	code: string;
+	name: string;
+	native: string;
+	enabled?: boolean;
+	is_default?: boolean;
+	copy_from?: string;
+};
+
+/** One language's text for one app, as the editor needs it: every key there
+    is, the base language's text for each, and what this language has. */
+export type Translation = {
+	app: LocaleApp;
+	keys: string[];
+	base: Record<string, string>;
+	messages: Record<string, string>;
+};

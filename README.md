@@ -60,13 +60,17 @@ Run `make` for the list:
 cmd/xermess/main.go            startup, in order, in one function
 cmd/migrate/main.go            runs migrations by hand: up, down, status
 
+locales/                       the translations the server ships with, imported into the
+                               database on its first start; en.json is the list of keys
+
 internal/config/config.go      reads .env
 internal/database/database.go  opens the connection
 internal/database/migrate.go   applies migrations
 internal/store/                every query in the project, one file per subject
 internal/auth/auth.go          signs administrators in and out, records what they do
 internal/oidc/                 the OAuth 2.0 / OpenID Connect provider: authorize, tokens,
-                               userinfo, logout, sessions, registration, password resets
+                               userinfo, logout, sessions, registration, password resets,
+                               and signing in with an account somewhere else
 internal/jose/                 signing and checking JWTs, publishing keys, sealing them
 internal/mail/                 sending email over SMTP, or into the log
 internal/api/server.go         the engine, and the table of every route
@@ -84,6 +88,10 @@ internal/api/roles/            the roles users hold in each application
 internal/api/admins/           administrators, managed by a super admin
 internal/api/adminroles/       admin roles and the permissions they grant
 internal/api/organization/     the organisation this installation belongs to
+internal/api/social/           the providers users may sign in with
+internal/api/flows/            the login flows applications sign their users in with
+internal/api/database/         the server's own tables, read only
+internal/api/languages/        the languages, their text, and the panel's own
 internal/api/activity/         the dashboard counts and the log
 internal/api/middleware/       request logging, recovery, and their order
 internal/api/cors/             which browser origins may call the API
@@ -96,7 +104,7 @@ internal/api/respond/          how an error is written, once for every endpoint
 internal/api/audit/            recording what an administrator did
 internal/model/                one file per table, listed in model.All
 
-migrations/                    one Go file per migration, applied in order
+migrations/                    the schema, as Go files applied in order
 
 AGENTS.md                      how to work in this repository, for people and agents
 .claude/                       Claude Code's settings, formatting hook and commands
@@ -123,7 +131,8 @@ web/console/src/lib/components/roles/  roles, their mappings and pickers
 web/console/src/lib/components/applications/ applications, their API access, token preview
 web/console/src/lib/components/apis/   APIs, their scopes and settings
 web/console/src/lib/components/admins/ administrators and admin roles
-web/console/src/lib/components/organization/ the organisation's settings, and the plans
+web/console/src/lib/components/organization/ the organisation's settings
+web/console/src/lib/components/social/ the providers users sign in with, and what each kind needs
 web/console/src/lib/components/activity/ the dashboard: chart, sign-ins, feed, what the log's actions mean
 web/console/src/lib/components/profile/  the account: its sessions and signing out
 web/console/src/lib/state/             what the panel remembers: the theme, the sidebar's width
@@ -199,6 +208,11 @@ internal/store/apis.go         APIs and their scopes
 internal/store/admins.go       administrators, for signing in
 internal/store/admin_roles.go  admin roles and their permissions
 internal/store/organizations.go the organisation's settings, the one row of them
+internal/store/social.go       the providers, the identities held at them, the sign-ins away at one
+internal/store/login_flows.go  the login flows, and which applications hold each
+internal/store/languages.go    the languages and their text, and importing the shipped ones
+internal/store/database.go     the read-only browser over the server's own tables
+internal/store/admin_security.go how administrators are made to sign in
 internal/store/sessions.go     sessions: start, find, revoke, list
 internal/store/mfa.go          authenticators and recovery codes
 internal/store/oauth.go        codes, refresh tokens, user sessions, signing keys
@@ -220,8 +234,24 @@ never on the public listener, which is what keeps it off the internet however
 the proxy in front is configured. Ctrl-C or SIGTERM stops both and lets
 requests under way finish, for up to 15 seconds.
 
-Administrators sign in with a second factor — a TOTP authenticator app, with
-single-use recovery codes — required by default (`XERMESS_ADMIN_MFA`). A
+Administrators can sign in with a second factor — a TOTP authenticator app,
+with single-use recovery codes. It is **off by default**, and requiring it is
+a super admin's decision on the Administrators page rather than each
+administrator's own: an administrator without one is then taken to
+`/admin/mfa-setup` to enrol before they may do anything else, and the same
+page lets a signed-in one set an authenticator up before it is compulsory.
+Whoever already has one shows as such on the Administrators page, where a
+super admin can also reset it.
+
+Whether it is compulsory for everybody is a setting on the Administrators
+page, not a line in a file: `XERMESS_ADMIN_MFA` is only what a fresh
+installation starts with, written to `admin_security` on the first start, and
+a super admin owns it from then on. Off is the default there too — the
+alternative decides for people who have not been asked, and would send the
+first administrator to set up an authenticator before they had seen the panel.
+Turning it on takes effect at once: an administrator without one can then do
+nothing but set one up, which is what the panel warns about before making the
+change, since that includes whoever is making it. A
 session whose password was right but whose code is still to come can do nothing
 but give the code; one that has to set an authenticator up can do nothing but
 that (`internal/auth/mfa.go`, `internal/totp`). Token signing keys rotate every
@@ -251,6 +281,24 @@ Sign-in, registration, setup and password resets are rate limited per address
 | `POST` | `/api/v1/admin/user-fields`   | yes             | Add a field                    |
 | `DELETE`| `/api/v1/admin/user-fields/:id` | yes          | Remove a field                 |
 | `GET`  | `/api/v1/admin/organization`  | yes             | The organisation               |
+| `GET`  | `/api/v1/admin/security`      | yes             | How administrators are made to sign in |
+| `PATCH`| `/api/v1/admin/security`      | yes             | Change it (a super admin's)    |
+| `GET`  | `/api/v1/admin/social-providers` | yes          | The providers, and the kinds one may be |
+| `POST` | `/api/v1/admin/social-providers` | yes          | Register a provider            |
+| `GET`  | `/api/v1/admin/login-flows`   | yes             | The login flows, and the steps one can be made of |
+| `POST` | `/api/v1/admin/login-flows`   | yes             | Write a flow                   |
+| `PATCH`| `/api/v1/admin/login-flows/:id` | yes           | Change a flow                  |
+| `DELETE`| `/api/v1/admin/login-flows/:id` | yes          | Remove a flow                  |
+| `GET`  | `/api/v1/admin/languages`     | yes             | The languages, and how much of each is translated |
+| `POST` | `/api/v1/admin/languages`     | yes             | Add one, empty or copied from another |
+| `PATCH`| `/api/v1/admin/languages/:code` | yes           | Rename it, offer it, or make it the default |
+| `DELETE`| `/api/v1/admin/languages/:code` | yes          | Remove it and its text         |
+| `GET`  | `/api/v1/admin/languages/:code/translations/:app` | yes | Its text for `id` or `console`, beside the English |
+| `PUT`  | `/api/v1/admin/languages/:code/translations/:app` | yes | Replace that text              |
+| `GET`  | `/api/v1/admin/panel/languages` | no            | The languages the panel can be shown in |
+| `GET`  | `/api/v1/admin/panel/languages/:code` | no      | The panel's text in one of them |
+| `GET`  | `/api/v1/admin/database/tables` | yes           | The server's own tables        |
+| `GET`  | `/api/v1/admin/database/tables/:table` | yes    | One table's columns and rows (`?limit=&offset=`) |
 | `PATCH`| `/api/v1/admin/organization`  | yes             | Change its settings            |
 | `GET`  | `/api/v1/admin/sessions`      | yes             | The caller's own sessions      |
 
@@ -269,6 +317,8 @@ permission each route needs, is in `registerRoutes` in `internal/api/server.go`.
 | `GET`  | `/oauth2/logout`                      | RP-initiated logout                          |
 | `POST` | `/oauth2/revoke`                      | Revoke a refresh token                       |
 | `POST` | `/oauth2/introspect`                  | Whether a token is active                    |
+| `GET`  | `/oauth2/social/:slug/start`          | Send the browser to a provider to sign in there |
+| `GET`/`POST` | `/oauth2/social/:slug/callback` | Where the provider sends it back             |
 | `GET`  | `/api/v1/account/requests/:handle`    | The sign-in under way, for the sign-in page  |
 | `POST` | `/api/v1/account/login`               | Sign a user in; answers where to go next     |
 | `POST` | `/api/v1/account/register`            | Create an account for a sign-in under way    |
@@ -297,6 +347,7 @@ account:
 | Method   | Path                                                 | Description                       |
 | -------- | ---------------------------------------------------- | --------------------------------- |
 | `GET`    | `/api/v1/account/organization`                       | Who this server signs users in for |
+| `GET`    | `/api/v1/account/social-providers`                   | The providers to offer as buttons |
 | `GET`    | `/api/v1/account/me`                                 | The signed-in user                |
 | `PATCH`  | `/api/v1/account/me`                                 | Change their name                 |
 | `POST`   | `/api/v1/account/password`                           | Change the password; signs out everywhere else |
@@ -346,10 +397,8 @@ Settings         Organization · Languages
 
 Each link is shown only to an administrator whose roles allow the page. The
 logs live at `/admin/dashboard/logs`; the old `/admin/logs` redirects there.
-SSO integrations is marked "Soon" and its page says what is planned. Database,
-Social, Login flows and Languages still render placeholder rows from
-`lib/data/demo.ts`, marked with a dot in the sidebar and a badge on the page.
-Delete a block from that file as soon as its section talks to the API.
+SSO integrations is the one section still marked "Soon", and its page says
+what is planned; every other page talks to the API.
 
 ### Users and their fields
 
@@ -383,10 +432,12 @@ text; the search and the verified filter live in the URL, so the server renders
 the result and a filtered list can be linked to.
 
 The profile page collects what belongs to the signed-in account, in a
-centred column: profile information, sign-in and security (email, password,
-two-factor), preferences (theme, language) and sessions. Theme and sign out
-work; the rest are marked as not available yet and their controls are
-disabled rather than pretending.
+centred column: profile information, sign-in and security (email, password),
+preferences (theme, language) and sessions. Theme, language and sign out work;
+the rest are marked as not available yet and their controls are disabled
+rather than pretending. Two-factor sign-in is not here — it belongs to the Administrators
+page, which is where the policy lives and where one administrator's factor is
+read and reset.
 
 `web/console/.env` names the admin API in `API_URL`. The browser never uses it:
 it calls `/api/v1/admin/...` on the panel's own origin, and the proxy routes
@@ -519,6 +570,257 @@ installation's settings, not one application's — and no seeded role grants
 them, so a new installation shows the page to super admins until a role hands
 it out.
 
+### Signing in with another account
+
+
+Authentication · Social is where an administrator registers this server with
+Google, Apple, Facebook, Yandex ID, VK, or any other OAuth 2.0 or OpenID
+Connect provider. Each one becomes a button beside the password form, on the
+sign-in and registration pages.
+
+This server is the client in that exchange, not the provider. `/oauth2/social/
+<slug>/start` sends the browser to the provider with `state` and a PKCE
+challenge; `/oauth2/social/<slug>/callback` — which answers POST as well,
+because Apple posts its answer — trades the code for a token, reads the
+identity, and starts the same session a password would have started. From
+there everything is the same: the sign-in under way continues back to the
+application that asked, and a person with no application waiting lands on
+their account page.
+
+```
+internal/model/social.go       the records, and SocialSpecs: what each kind's
+                               endpoints, scopes and claims are
+internal/oidc/social.go        the exchange, and who it signs in
+internal/api/social/           the panel's endpoints
+```
+
+**What is stored.** `social_providers` is one row per provider, with the
+client secret — or, for Apple, the .p8 signing key — encrypted with the
+server's secret key, as the token signing keys are. Neither ever leaves the
+server: the panel is told only whether one is stored. `user_identities` is one
+row per account at a provider, keyed by the provider's own subject, which is
+the only thing that identifies somebody reliably. `social_logins` is a sign-in
+that has gone to a provider and not come back: its `state` hashed, its PKCE
+verifier, and where the person was going, single use and short-lived.
+
+**What is not stored** is what every installation would have to keep the same:
+where Google's endpoints are, what Yandex calls an address, that VK sends the
+address with the token and puts the profile under `response.0`. That is
+`model.SocialSpecs`, one entry per kind, so a provider that moves an endpoint
+is a change to that file rather than to everybody's database. The two custom
+kinds — `oidc` and `oauth2` — have no entry to make: the record carries their
+endpoints, and the panel asks for them.
+
+**Which account a sign-in reaches**, in order: the one that already holds this
+identity; then the one with the same address, if the provider says it has
+verified it *and* the provider is one this installation trusts to say so
+(`link_verified_emails`); then a new account, if the provider and the
+application both take registrations. An address that is taken and unproved is
+refused with a sentence saying to sign in with a password and connect the
+provider from the account page — otherwise anybody who could make an account
+at a provider with somebody else's address could take over theirs here.
+
+**An id_token that came straight from the token endpoint is not checked for a
+signature.** It arrived over TLS from the provider's own endpoint, in answer
+to a request carrying this client's secret, which OpenID Connect Core section
+3.1.3.7 accepts in place of checking it. What is checked is that it names this
+client and has not expired.
+
+Reading the page takes `social.read` and changing it `social.write`. The
+second is worth guarding: whoever holds it decides which accounts elsewhere
+reach this server.
+
+`PATCH /api/v1/admin/social-providers/:id` is a true PATCH, as the
+organisation's is: a request that does not mention a setting leaves it as it
+is. That is what lets the panel's list turn a provider off with
+`{"enabled": false}` and nothing else, without emptying the endpoints and keys
+around it. The kind and the identifier are read when a provider is registered
+and never again — both are in the address registered with the provider.
+
+**The secrets can be read back.** They are encrypted rather than hashed —
+this server has to send them to the provider — so the panel offers to reveal
+one, for checking against the provider's console. It takes `social.write`, the
+permission that could replace the secret anyway, and every reading is written
+to the log as `social_provider.secret_read` with who asked.
+
+**A user's record says which providers they sign in with.** The users table
+marks each row with what gets that person in — a password, an account
+somewhere else, or both — and their record lists the providers with the
+address each gave and when it was last used. A provider can be disconnected
+there (`users.write`), which leaves the account itself alone: it is one way in
+that goes, not the person.
+
+### Login flows
+
+Authentication · Login flows is where an administrator writes what a sign-in
+asks for: an ordered list of steps, and the things a person is allowed to do
+along the way. There are as many flows as somebody has written, one of them is
+the default, and an application either names a flow of its own or falls back
+to that one.
+
+```
+Identify → Password → Another account        offered to everything else
+Identify → Password → Emailed code           offered to the staff tools
+```
+
+A flow carries the steps, whether an account can be made, whether a password
+can be reset, whether an address has to be confirmed first, and how long a
+session it makes lasts. The steps come from a catalog in
+`internal/model/login_flow.go` — the model owns what a step is, what it is
+called and what it does, so adding one is an entry there and the panel's
+picker follows.
+
+**What the server runs today is not the whole catalog, and it says so.** The
+sign-in pages read a flow's options: `GET /api/v1/account/login-options`
+answers with the effective flow for the sign-in under way, and the pages use
+it to decide whether to offer "Create an account", whether to offer
+"Forgotten your password", and whether to show the provider buttons. The
+server holds the same two: a registration is refused when the flow does not
+allow one (`oidc.Register`), and a reset link is not sent when it does not
+offer resets (`oidc.ForgotPassword`) — silently, so the page still cannot be
+used to find out which addresses have accounts.
+
+Walking the steps themselves is not built. A flow may name `email_code`,
+`totp`, `terms` or `consent`, and those steps are marked "not run yet" in the
+catalog, in the list and in the drawer, so a flow reads as the plan it is
+rather than a promise. `LoginStepSpec.Implemented` is the one place that says
+which is which: implementing a step is flipping it there and writing the step.
+
+The default flow is what everything falls back to, so it cannot be turned off
+or removed; making another flow the default takes the mark from it. A flow
+that is turned off keeps its applications — they fall back to the default —
+and removing one clears the column rather than taking its applications with
+it. Reading the page takes `login_flows.read` and writing takes
+`login_flows.write`.
+
+### The database browser
+
+Authentication · Database is what the migration built, as the database holds
+it: every table with how many rows and columns it has, and a page of any one
+of them. It is the place to look when a panel page is not showing what you
+expected, and the only place that shows the tables a page has no editor for —
+the codes, the tokens and the sessions the provider issues.
+
+It reads and nothing else. There is no endpoint behind it that writes a row,
+and there is not meant to be: a user, an application or a role is changed on
+the page that knows what one is and what changing it costs.
+
+**A password, a key, a one-time code or the hash standing in for a token is
+never read.** Those columns are dropped from the SELECT rather than blanked
+afterwards, so a value that is not shown is a value that never left the
+database; the panel still lists the column and marks it hidden, which is
+truer than leaving it out and looking like the table has no such thing. Which
+columns those are is a rule on the name rather than a list of columns —
+anything ending in `_hash` or `_secret`, and `secret`, `password`,
+`private_key` and `recovery_codes` — so a model added later is covered by the
+naming this project already follows. `TestHiddenColumn` holds it in both
+directions: `secret_hint` and `allow_password_reset` are not secrets.
+
+Nothing a request sends ever reaches a query's text. A table is only read
+after its name has been found in the list of tables the database actually has,
+and the columns are named through the driver's quoting — `api_scopes` has a
+column called `default`, which is a syntax error unquoted.
+
+It takes `database.read`, which is the strongest of the read permissions: every
+account and every application is visible through it, so no seeded role but
+`admin` grants it.
+
+### Languages
+
+Every word either app shows is looked up by key — `t('login.title')` — and the
+text for each language lives in the database: a `languages` row with its names
+and settings, and a `translations` row per app holding one JSON object of text
+by key. **Settings · Languages** is where languages are added, translated,
+offered, made the default and removed, and a change is on the next page
+anybody opens: both apps ask the API for their text while rendering, so
+nothing is rebuilt.
+
+**The files under `locales/` are what the server ships with:**
+
+```
+locales/
+  id/       en.json  ky.json  ru.json     the sign-in pages and a user's own account
+  console/  en.json  ky.json  ru.json     the admin panel
+```
+
+They are embedded in the binary (`locales/locales.go`) and have three jobs:
+
+- **The first start imports them.** `store.EnsureLanguages` runs in `main`: on
+  a database with no text at all it writes every shipped language, English on
+  and the rest off. From then on the database is the panel's.
+- **A release reaches a shipped language.** Each start copies a key a shipped
+  file has into the database's copy of that language when the copy lacks it,
+  and never touches a message that is there. The one consequence: a message
+  cleared in the panel, in a language that ships, comes back on the next
+  start — a shipped language can be reworded, and the way to empty one is to
+  remove it. A removed language is never brought back by a start; the New
+  language drawer offers it back instead.
+- **`en.json` is the contract.** Its keys are the keys there are: coverage is
+  counted against them, a key they do not have is dropped on save, and a key
+  a language has no text for is sent in English — the database's English, and
+  under that the shipped file's, so a page never shows a bare key.
+
+**Adding a language** is **New language** on the page. Typing a tag — `uz`,
+`pt-BR` — fills in both names from the browser's own list, and the language
+starts from nothing, from a copy of another one here, or from the shipped
+translation if the server has one. It starts off, so it can be translated
+before anybody is offered it, and opens on its first untranslated app.
+
+**Translating** is the language's drawer: a tab per app, every key with the
+English beside a field for the translation, a search over keys and both
+texts, and a switch for only what is left. A translation that drops a
+`{parameter}` the English has is flagged under the field. **Export JSON**
+writes a file of every key — empty values for what is left to do — with
+`$name` and `$native` on top, which is the shape of the shipped files, so it
+can go to a translator and come back through **Import JSON**. An import is
+merged over what is there: keys it has text for are replaced, the rest are
+kept, and keys this version does not use are skipped and counted.
+
+The drawer's **Settings** tab renames a language, offers it on the sign-in
+pages, makes it the default — which takes the mark from whichever language
+had it — and sets its place in the picker. The default is always offered; the
+base language, English, is always offered and cannot be removed; and the
+default cannot be removed until another language is. Reading the page takes
+`languages.read`; everything that changes it takes `languages.write`. Each
+change is in the activity log.
+
+**On the sign-in pages** the picker is in the top corner, beside the theme
+toggle, and names each language in itself with its English name under it.
+Choosing one redraws the page where it is — the root layout asks for the new
+text and every component re-renders, so a half-typed address survives — with
+a cross-fade where the browser has view transitions. Without JavaScript the
+entries are links to `?lang=ky`, remembered in a cookie and redirected away,
+so a shared address carries nobody's choice. Which language somebody gets is
+their saved choice, then their browser's `Accept-Language` (by exact tag,
+then by its language part, so `ru-RU` is served `ru`), then the
+installation's default — and only ever one that is offered, so a choice of a
+language since turned off falls through. `GET /api/v1/account/languages` is
+the list and `GET /api/v1/account/languages/:code` one language's text, every
+key filled in; a language that is off is a 404 there.
+
+**In the admin panel** the language is one administrator's own preference on
+one machine — a cookie, set on the Profile page beside the theme — rather
+than a setting of the installation. Every language with some of the panel
+translated is offered there, whatever the Languages page says: that page
+decides what *users* see. Saving the text of the language the panel is shown
+in redraws the panel.
+
+Both apps resolve the language and fetch its text while rendering on the
+server, so the first response is already translated and `<html lang>` is
+right in the first byte, which is what a screen reader reads the page's words
+with. Each app bundles English alone, for when the API cannot be reached.
+
+What is translated today: all of the sign-in pages and a user's own account,
+and the admin panel's shell — its sidebar, its account menu, the Profile page
+and the Languages page. The rest of the panel's pages are still English in the
+markup; moving one over is replacing its strings with `t('key')` and adding
+the keys to `locales/console/*.json`. `TestTranslationsAreComplete` fails the
+build if a shipped language falls behind the base, so a key added without a
+translation is caught rather than shipped.
+
+Kyrgyz and Russian were written alongside the machinery and would be worth a
+native speaker's eye before an installation offers them.
+
 ### The icon
 
 There is one icon file per app, `static/favicon.svg`, and every page names it
@@ -546,6 +848,14 @@ shows none, as it did before.
 Migrations are Go files in `migrations/`, run by
 [goose](https://github.com/pressly/goose). The server applies pending ones on
 start unless `XERMESS_DB_MIGRATE=false`.
+
+Right now there is one: `20260917150000_schema.go` builds the whole schema
+from `model.All()`, adds the indexes a struct tag cannot describe, and seeds
+the admin roles, the organisation, the default login flow and the base
+language. While nothing is deployed, that is the
+better shape — the models are the schema, and one file cannot disagree with
+them. The first database that has to be brought forward without being rebuilt
+is when the second migration gets written; from then on the rule below holds.
 
 ```sh
 make migrate-new name=add_admin_phone   # create an empty migration
@@ -588,7 +898,9 @@ Because the migrations are Go, the `goose` command-line tool cannot run them —
 only a binary that imports them can. That is what `cmd/migrate` is for, and
 what the make targets above use.
 
-Never edit a migration that has already run anywhere. Add a new one.
+Never edit a migration that has already run anywhere. Add a new one. (The
+schema migration is the exception only while no database is running it: a
+rebuilt development database is not "has already run".)
 
 ### The first administrator
 

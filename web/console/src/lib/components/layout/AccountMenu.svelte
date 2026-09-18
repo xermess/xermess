@@ -7,6 +7,7 @@
 	import { RiArrowDownSLine, RiLogoutBoxRLine, RiUserSettingsLine } from 'svelte-remixicon';
 	import { adminApi, type Admin } from '$lib/api';
 	import { Icon, type Size } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 
 	type Props = { admin: Admin; size?: Size };
 
@@ -43,6 +44,8 @@
 			await goto(resolve('/admin/login'), { replaceState: true });
 		}
 	}
+
+	const t = useTranslator();
 </script>
 
 <Menu.Root
@@ -75,12 +78,12 @@
 
 				<Menu.Item value="profile">
 					<Icon icon={RiUserSettingsLine} />
-					Profile
+					{t('shell.profile')}
 				</Menu.Item>
 
 				<Menu.Item value="sign-out">
 					<Icon icon={RiLogoutBoxRLine} />
-					{signingOut ? 'Signing out…' : 'Sign out'}
+					{signingOut ? t('shell.signing_out') : t('shell.sign_out')}
 				</Menu.Item>
 			</Menu.Content>
 		</Menu.Positioner>

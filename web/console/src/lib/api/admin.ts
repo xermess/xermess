@@ -17,14 +17,29 @@ import type {
 	AdminRecord,
 	AdminRole,
 	AdminRoleInput,
+	DatabasePage,
+	DatabaseTable,
+	Language,
+	LanguageInput,
+	LanguageList,
+	LocaleApp,
+	NewLanguageInput,
+	Translation,
+	LoginFlow,
+	LoginFlowInput,
 	LoginResult,
+	LoginStepSpec,
 	MfaEnrolment,
 	MfaStatus,
 	SessionState,
 	FieldInput,
 	FieldRules,
+	AdminSecurity,
 	Organization,
 	OrganizationInput,
+	SocialProvider,
+	SocialProviderInput,
+	SocialSpec,
 	Role,
 	RoleInput,
 	RoleMapping,
@@ -103,7 +118,11 @@ export const usersApi = {
 	updateField: (id: string, rules: FieldRules & { label: string }) =>
 		api.patch<{ field: UserField }>(`/admin/user-fields/${id}`, rules),
 
-	removeField: (id: string) => api.delete<void>(`/admin/user-fields/${id}`)
+	removeField: (id: string) => api.delete<void>(`/admin/user-fields/${id}`),
+
+	/** Takes away a provider the user signs in with. Their account stays. */
+	disconnect: (id: string, identity: string) =>
+		api.delete<void>(`/admin/users/${id}/social-accounts/${identity}`)
 };
 
 /** The organisation this installation belongs to: one record of settings,
@@ -113,6 +132,85 @@ export const organizationApi = {
 
 	update: (input: OrganizationInput) =>
 		api.patch<{ organization: Organization }>('/admin/organization', input)
+};
+
+/** The accounts elsewhere users may sign in with. The kinds come with the
+    list so the form can offer them, and fill in what it already knows. */
+export const socialApi = {
+	list: (fetcher?: Fetch) =>
+		api.get<{ providers: SocialProvider[]; kinds: SocialSpec[] }>(
+			'/admin/social-providers',
+			fetcher
+		),
+
+	create: (input: SocialProviderInput) =>
+		api.post<{ provider: SocialProvider }>('/admin/social-providers', input),
+
+	update: (id: string, input: SocialProviderInput) =>
+		api.patch<{ provider: SocialProvider }>(`/admin/social-providers/${id}`, input),
+
+	remove: (id: string) => api.delete<void>(`/admin/social-providers/${id}`),
+
+	/** The secret itself, for checking it against the provider's console.
+	    Reading it is recorded in the activity log. */
+	secret: (id: string) =>
+		api.get<{ secret: string; kind: string }>(`/admin/social-providers/${id}/secret`)
+};
+
+/** The login flows applications sign their users in with. */
+export const flowsApi = {
+	list: (fetcher?: Fetch) =>
+		api.get<{ flows: LoginFlow[]; step_kinds: LoginStepSpec[] }>('/admin/login-flows', fetcher),
+
+	create: (input: LoginFlowInput) => api.post<{ flow: LoginFlow }>('/admin/login-flows', input),
+
+	update: (id: string, input: LoginFlowInput) =>
+		api.patch<{ flow: LoginFlow }>(`/admin/login-flows/${id}`, input),
+
+	remove: (id: string) => api.delete<void>(`/admin/login-flows/${id}`)
+};
+
+/** The server's own tables, read only. Nothing here writes a row: a record is
+    changed on the page that knows what it is. */
+export const databaseApi = {
+	tables: (fetcher?: Fetch) =>
+		api.get<{ tables: DatabaseTable[] }>('/admin/database/tables', fetcher),
+
+	table: (name: string, params: { limit?: number; offset?: number } = {}, fetcher?: Fetch) => {
+		const query = new URLSearchParams();
+		if (params.limit) query.set('limit', String(params.limit));
+		if (params.offset) query.set('offset', String(params.offset));
+
+		const path = `/admin/database/tables/${encodeURIComponent(name)}`;
+
+		return api.get<DatabasePage>(query.size ? `${path}?${query}` : path, fetcher);
+	}
+};
+
+/** The languages, and their text for each app. */
+export const languagesApi = {
+	list: (fetcher?: Fetch) => api.get<LanguageList>('/admin/languages', fetcher),
+
+	create: (input: NewLanguageInput) => api.post<{ language: Language }>('/admin/languages', input),
+
+	update: (code: string, input: LanguageInput) =>
+		api.patch<{ language: Language }>(`/admin/languages/${encodeURIComponent(code)}`, input),
+
+	remove: (code: string) => api.delete<void>(`/admin/languages/${encodeURIComponent(code)}`),
+
+	translation: (code: string, app: LocaleApp, fetcher?: Fetch) =>
+		api.get<Translation>(
+			`/admin/languages/${encodeURIComponent(code)}/translations/${app}`,
+			fetcher
+		),
+
+	/** Replaces the language's whole text for one app. Keys the app does not
+	    look up are dropped, and counted in `ignored`. */
+	saveTranslation: (code: string, app: LocaleApp, messages: Record<string, string>) =>
+		api.put<{ language: Language; ignored: number }>(
+			`/admin/languages/${encodeURIComponent(code)}/translations/${app}`,
+			{ messages }
+		)
 };
 
 /** The roles users hold. */
@@ -190,6 +288,12 @@ export const adminsApi = {
 	remove: (id: string) => api.delete<void>(`/admin/admins/${id}`),
 
 	/** Removes another administrator's second factor and signs them out. */
+	/** How administrators are made to sign in, for the whole panel. */
+	security: (fetcher?: Fetch) => api.get<AdminSecurity>('/admin/security', fetcher),
+
+	updateSecurity: (input: { mfa_required: boolean }) =>
+		api.patch<AdminSecurity>('/admin/security', input),
+
 	resetMfa: (id: string) => api.delete<{ admin: AdminRecord }>(`/admin/admins/${id}/mfa`),
 
 	roles: (search = '', fetcher?: Fetch) =>

@@ -6,6 +6,7 @@
 	import { Icon, Tooltip } from '$lib/components/ui';
 	import SidebarLink from './sidebar/SidebarLink.svelte';
 	import { visibleSections, type Section } from './sidebar/sections';
+	import { useTranslator } from '$lib/i18n';
 
 	type Props = {
 		/** Folded to icons only. The width itself is set by the panel layout. */
@@ -27,14 +28,16 @@
 			? path === href
 			: path === href || path.startsWith(`${href}/`);
 	}
+
+	const t = useTranslator();
 </script>
 
 <aside class:collapsed>
-	<nav aria-label="Sections">
-		{#each groups as group (group.label ?? 'top')}
-			<div class="group" role="group" aria-label={group.label}>
-				{#if group.label}
-					<h2>{group.label}</h2>
+	<nav aria-label={t('shell.sections')}>
+		{#each groups as group (group.key ?? 'top')}
+			<div class="group" role="group" aria-label={group.key ? t(group.key) : undefined}>
+				{#if group.key}
+					<h2>{t(group.key)}</h2>
 				{/if}
 
 				<ul>
@@ -42,7 +45,7 @@
 						<li>
 							<SidebarLink
 								route={item.route}
-								label={item.label}
+								label={t(item.key)}
 								icon={item.icon}
 								status={item.status}
 								current={isCurrent(item.route)}
@@ -56,7 +59,7 @@
 	</nav>
 
 	<div class="foot">
-		<Tooltip label="Expand the sidebar" placement="right" disabled={!collapsed}>
+		<Tooltip label={t('shell.expand')} placement="right" disabled={!collapsed}>
 			{#snippet children(trigger)}
 				<button
 					{...trigger()}
@@ -64,12 +67,12 @@
 					class="fold"
 					onclick={onToggle}
 					aria-expanded={!collapsed}
-					aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
+					aria-label={collapsed ? t('shell.expand') : t('shell.collapse')}
 				>
 					<span class="icon">
 						<Icon icon={collapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine} />
 					</span>
-					<span class="label">Collapse</span>
+					<span class="label">{t('shell.collapse')}</span>
 				</button>
 			{/snippet}
 		</Tooltip>

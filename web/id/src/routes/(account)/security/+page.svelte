@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { useTranslator } from '$lib/i18n';
 	import { invalidateAll } from '$app/navigation';
 	import { account, messageOf } from '$lib/api';
 	import { Alert, Button, Icon, Panel, PasswordField } from '$lib/components';
@@ -6,6 +7,8 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const t = useTranslator();
 
 	const minLength = 8;
 
@@ -63,55 +66,49 @@
 </script>
 
 <svelte:head>
-	<title>Security · Account</title>
+	<title>{t('security.head')} · {t('account.nav')}</title>
 </svelte:head>
 
 <div class="page">
 	<div class="heading">
-		<h1>Security</h1>
-		<p>Your password, and the devices you are signed in on.</p>
+		<h1>{t('security.title')}</h1>
+		<p>{t('security.description')}</p>
 	</div>
 
 	<form onsubmit={changePassword}>
-		<Panel
-			title="Change password"
-			description="Changing it signs you out on every other device, and from every connected app."
-		>
+		<Panel title={t('security.password_title')} description={t('security.password_description')}>
 			{#if passwordError}<Alert>{passwordError}</Alert>{/if}
 			{#if passwordChanged}
-				<Alert tone="success"
-					>Your password has been changed. Other devices have been signed out.</Alert
-				>
+				<Alert tone="success">{t('security.password_changed')}</Alert>
 			{/if}
 
-			<PasswordField label="Current password" bind:value={current} disabled={changing} />
+			<PasswordField label={t('field.current_password')} bind:value={current} disabled={changing} />
 			<div class="pair">
 				<PasswordField
-					label="New password"
+					label={t('field.new_password')}
 					bind:value={next}
 					autocomplete="new-password"
 					disabled={changing}
-					hint="At least {minLength} characters"
+					hint={t('field.password_hint', { count: minLength })}
 				/>
 				<PasswordField
-					label="Confirm new password"
+					label={t('field.confirm_new_password')}
 					bind:value={confirm}
 					autocomplete="new-password"
 					disabled={changing}
-					error={mismatch ? 'The passwords do not match' : undefined}
+					error={mismatch ? t('field.password_mismatch') : undefined}
 				/>
 			</div>
 
 			{#snippet footer()}
-				<Button type="submit" loading={changing} disabled={!canChange}>Change password</Button>
+				<Button type="submit" loading={changing} disabled={!canChange}>
+					{t('security.password_title')}
+				</Button>
 			{/snippet}
 		</Panel>
 	</form>
 
-	<Panel
-		title="Where you’re signed in"
-		description="Sign out of any device you don’t recognise, then change your password."
-	>
+	<Panel title={t('security.sessions_title')} description={t('security.sessions_description')}>
 		{#snippet aside()}
 			<span class="count">{data.sessions.length}</span>
 		{/snippet}
@@ -125,12 +122,14 @@
 					<div class="details">
 						<strong>
 							{describeDevice(session.user_agent)}
-							{#if session.current}<span class="current">This device</span>{/if}
+							{#if session.current}<span class="current">{t('security.this_device')}</span>{/if}
 						</strong>
 						<span>
-							{session.ip || 'Unknown address'} · signed in {timeAgo(session.signed_in_at)} · until {formatDate(
-								session.expires_at
-							)}
+							{t('security.session_line', {
+								ip: session.ip || t('security.unknown_address'),
+								when: timeAgo(session.signed_in_at),
+								until: formatDate(session.expires_at)
+							})}
 						</span>
 					</div>
 					{#if !session.current}
@@ -138,7 +137,7 @@
 							variant="danger"
 							size="sm"
 							loading={ending === session.id}
-							onclick={() => endSession(session.id)}>Sign out</Button
+							onclick={() => endSession(session.id)}>{t('action.sign_out')}</Button
 						>
 					{/if}
 				</li>
@@ -146,7 +145,7 @@
 		</ul>
 
 		{#if others === 0}
-			<p class="empty">You’re not signed in anywhere else.</p>
+			<p class="empty">{t('security.no_other_sessions')}</p>
 		{/if}
 	</Panel>
 </div>
