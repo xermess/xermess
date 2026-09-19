@@ -43,6 +43,7 @@ const (
 const (
 	PageLogin     = "/login"
 	PageReset     = "/reset-password"
+	PageVerify    = "/verify-email"
 	PageError     = "/error"
 	PageLoggedOut = "/logged-out"
 )
@@ -236,7 +237,17 @@ func (s *Service) JWKS(ctx context.Context) (JWKS, error) {
 type Client struct {
 	IP        string
 	UserAgent string
+	// Language is the one the sign-in pages were shown in, for an email the
+	// server writes on the way — a link to verify the address. Empty is the
+	// installation's default.
+	Language string
 }
+
+// LanguageCookie is where the sign-in pages keep the language somebody chose
+// (web/id/src/lib/constants.ts). The pages and the provider are one origin,
+// so every request to the provider carries it — the callback from a social
+// provider included, which has no body to say it in.
+const LanguageCookie = "xermess-account-language"
 
 // withQuery appends parameters to a URL that may already have a query.
 func withQuery(base string, values url.Values) string {

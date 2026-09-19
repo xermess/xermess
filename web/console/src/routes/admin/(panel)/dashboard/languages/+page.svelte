@@ -2,7 +2,7 @@
 	import { RiAddLine, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { Language, LocaleApp } from '$lib/api';
-	import { Button, Icon, IconButton } from '$lib/components/ui';
+	import { Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
 	import LanguageDrawer from '$lib/components/languages/LanguageDrawer.svelte';
 	import LanguageTable from '$lib/components/languages/LanguageTable.svelte';
 	import NewLanguageDrawer from '$lib/components/languages/NewLanguageDrawer.svelte';
@@ -73,29 +73,30 @@
 
 <svelte:head><title>{t('languages.head')} · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>{t('languages.title')}</h1>
-		<span class="total">{t('languages.total', { count: list.data.languages.length })}</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.languages')]}>
+		{#snippet secondary()}
+			<span class="total">{t('languages.total', { count: list.data.languages.length })}</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label={t('action.refresh')}
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label={t('action.refresh')}
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	{#if canWrite}
-		<div class="actions">
-			<Button onclick={() => (creating = true)}>
-				<Icon icon={RiAddLine} />
-				{t('languages.new')}
-			</Button>
-		</div>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canWrite}
+				<Button onclick={() => (creating = true)}>
+					<Icon icon={RiAddLine} />
+					{t('languages.new')}
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
+</div>
 
 <p class="lead">{t('languages.lead')}</p>
 
@@ -128,29 +129,9 @@
 />
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
-		margin-bottom: var(--space-2);
+	.heading {
+		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.total {
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.lead {

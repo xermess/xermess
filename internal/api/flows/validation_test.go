@@ -50,11 +50,11 @@ func TestFlowRequestApplyToCreating(t *testing.T) {
 		{
 			name: "steps with the blanks a form sends",
 			request: flowRequest{
-				Name:  ptr("Codes only"),
-				Steps: ptr([]model.LoginStep{"Identifier", "", " email_code "}),
+				Name:  ptr("Codes and a password"),
+				Steps: ptr([]model.LoginStep{"Identifier", "", " email_code ", "password"}),
 			},
 			check: func(f model.LoginFlow) error {
-				want := model.StepList{model.StepIdentifier, model.StepEmailCode}
+				want := model.StepList{model.StepIdentifier, model.StepEmailCode, model.StepPassword}
 				if !reflect.DeepEqual(f.Steps, want) {
 					return errors.New("the steps were not tidied")
 				}
@@ -79,7 +79,7 @@ func TestFlowRequestApplyToCreating(t *testing.T) {
 		{
 			name:    "a flow that asks for nothing",
 			request: flowRequest{Name: ptr("Open door"), Steps: ptr([]model.LoginStep{"identifier"})},
-			want:    "a flow must ask for at least one of: password, social, email_code, totp",
+			want:    "a flow must ask for at least one of: password, social",
 		},
 		{
 			name:    "a session that lasts a year",

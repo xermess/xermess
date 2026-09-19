@@ -2,7 +2,7 @@
 	import { RiAddLine, RiBuilding2Line, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { SSOConnection } from '$lib/api';
-	import { Button, Icon, IconButton } from '$lib/components/ui';
+	import { Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
 	import SSODrawer from '$lib/components/sso/SSODrawer.svelte';
 	import SSOTable from '$lib/components/sso/SSOTable.svelte';
 	import { useTranslator } from '$lib/i18n';
@@ -60,27 +60,30 @@
 
 <svelte:head><title>{t('sso.head')} · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>{t('sso.title')}</h1>
-		<span class="total">{t('sso.total', { count: list.data.connections.length })}</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.sso')]}>
+		{#snippet secondary()}
+			<span class="total">{t('sso.total', { count: list.data.connections.length })}</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label={t('action.refresh')}
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label={t('action.refresh')}
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	{#if canWrite}
-		<Button onclick={() => open(null)}>
-			<Icon icon={RiAddLine} />
-			{t('sso.new')}
-		</Button>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canWrite}
+				<Button onclick={() => open(null)}>
+					<Icon icon={RiAddLine} />
+					{t('sso.new')}
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
+</div>
 
 <p class="lead">{t('sso.lead')}</p>
 
@@ -123,24 +126,9 @@
 />
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
-		margin-bottom: var(--space-2);
+	.heading {
+		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.total {
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	.lead {

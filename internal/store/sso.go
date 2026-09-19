@@ -194,14 +194,9 @@ func (s *Store) MarkSSOIdentityUsed(ctx context.Context, identity *model.SSOIden
 		Updates(map[string]any{"last_login_at": at, "email": email}).Error)
 }
 
-// CreateSSOLogin records a sign-in sent to a connection's provider, and
-// forgets the ones nobody came back from while it is there.
+// CreateSSOLogin records a sign-in sent to a connection's provider. The ones
+// nobody came back from are swept once they expire (Sweep).
 func (s *Store) CreateSSOLogin(ctx context.Context, login *model.SSOLogin) error {
-	err := s.db.WithContext(ctx).Unscoped().Where("expires_at <= ?", time.Now()).Delete(&model.SSOLogin{}).Error
-	if err != nil {
-		return translate(err)
-	}
-
 	return translate(s.db.WithContext(ctx).Create(login).Error)
 }
 

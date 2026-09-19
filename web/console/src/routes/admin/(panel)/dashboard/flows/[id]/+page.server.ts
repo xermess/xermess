@@ -1,0 +1,20 @@
+import { error } from '@sveltejs/kit';
+import type { LoginFlow, LoginStepSpec } from '$lib/api';
+import { apiGet, requirePermission } from '$lib/server/api';
+import type { PageServerLoad } from './$types';
+
+/** One flow in the editor, with the steps a flow can be made of and every
+    identifier already taken, for the copy Duplicate makes. */
+export const load: PageServerLoad = async ({ fetch, parent, params }) => {
+	requirePermission((await parent()).admin, 'login_flows.read');
+
+	const { flows, step_kinds } = await apiGet<{ flows: LoginFlow[]; step_kinds: LoginStepSpec[] }>(
+		'/admin/login-flows',
+		fetch
+	);
+
+	const flow = flows.find((one) => one.id === params.id);
+	if (!flow) error(404, 'There is no such login flow.');
+
+	return { flow, stepKinds: step_kinds, taken: flows.map((one) => one.slug) };
+};

@@ -5,14 +5,14 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import {
 		RiAppsLine,
-		RiArrowLeftLine,
 		RiDashboardLine,
 		RiFileListLine,
 		RiLockLine,
 		RiSettings3Line,
 		RiShieldCheckLine
 	} from 'svelte-remixicon';
-	import { Badge, CopyButton, Icon, Tabs } from '$lib/components/ui';
+	import { Badge, CopyButton, Icon, PageHeader, Tabs } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import { can } from '$lib/permissions';
 	import { apiOptions } from '$lib/query';
 	import ApiApplications from '$lib/components/apis/ApiApplications.svelte';
@@ -23,6 +23,8 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const query = createQuery(() => apiOptions(data.api.id, data.api));
 	const api = $derived(query.data);
@@ -62,25 +64,26 @@
 <svelte:head><title>{api.name} · APIs · xermess admin</title></svelte:head>
 
 <div class="page">
-	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-	<a class="back" href={resolve('/admin/(panel)/dashboard/apis')}>
-		<Icon icon={RiArrowLeftLine} size="0.875rem" />
-		APIs
-	</a>
-
-	<header>
-		<div class="title">
-			<h1>{api.name}</h1>
-			<span class="badges">
-				{#if api.enforce_roles}
-					<Badge tone="success">
-						<Icon icon={RiShieldCheckLine} size="0.75rem" />
-						Role-based access
-					</Badge>
-				{/if}
-				<Badge>{api.signing_algorithm}</Badge>
-			</span>
-		</div>
+	<div class="heading">
+		<PageHeader
+			crumbs={[
+				t('nav.dashboard'),
+				{ label: t('nav.apis'), href: resolve('/admin/(panel)/dashboard/apis') },
+				api.name
+			]}
+		>
+			{#snippet secondary()}
+				<span class="badges">
+					{#if api.enforce_roles}
+						<Badge tone="success">
+							<Icon icon={RiShieldCheckLine} size="0.75rem" />
+							Role-based access
+						</Badge>
+					{/if}
+					<Badge>{api.signing_algorithm}</Badge>
+				</span>
+			{/snippet}
+		</PageHeader>
 
 		<div class="identifier">
 			<code title="Identifier (audience)">{api.identifier}</code>
@@ -90,7 +93,7 @@
 		{#if api.description}
 			<p class="description">{api.description}</p>
 		{/if}
-	</header>
+	</div>
 
 	<Tabs {tabs} bind:value={() => tab, show} label="API sections">
 		{#snippet panel(value)}
@@ -116,36 +119,11 @@
 		padding-inline: var(--page-gutter);
 	}
 
-	.back {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		margin-bottom: var(--space-2);
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-		text-decoration: none;
-	}
-
-	.back:hover {
-		color: var(--color-text);
-	}
-
-	header {
+	.heading {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
 		margin-bottom: var(--space-4);
-	}
-
-	.title {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-2) var(--space-3);
-	}
-
-	h1 {
-		overflow-wrap: anywhere;
 	}
 
 	.badges {

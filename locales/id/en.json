@@ -97,6 +97,17 @@
     "expired_body": "Reset links work once, for one hour. Ask for a new one and use the latest email.",
     "expired_new": "Send a new link"
   },
+  "verify": {
+    "head": "Confirm your email",
+    "title": "Confirm your email address",
+    "subtitle": "One click, and you can sign in.",
+    "submit": "Confirm my address",
+    "submitting": "Confirming…",
+    "done_title": "Your address is confirmed",
+    "done_body": "Thank you. You can sign in now.",
+    "continue": "Sign in",
+    "continue_app": "Continue to {app}"
+  },
   "logged_out": {
     "head": "Signed out",
     "title": "You’re signed out",
@@ -230,13 +241,21 @@
     "sso_link_refused": "An account with this email already exists and cannot be signed in to through your identity provider. Ask an administrator.",
     "sso_no_account": "There is no account for you here yet. Ask an administrator to create one.",
     "sso_required": "Your organisation signs you in through {name}.",
-    "no_sso_connection": "There is no single sign-on for that address. Sign in with your password instead."
+    "no_sso_connection": "There is no single sign-on for that address. Sign in with your password instead.",
+    "password_not_offered": "This sign-in does not use a password. Continue with one of the accounts below.",
+    "email_not_verified": "Confirm your email address first: we have just sent you a link. Open it, then sign in again.",
+    "verification_invalid": "This confirmation link has expired or has already been used. Sign in to get a new one.",
+    "social_not_offered": "This sign-in does not offer other accounts. Sign in with your email address instead."
   },
   "email": {
     "reset": {
       "your_account": "your account",
       "subject": "Reset your password",
       "body": "Someone asked to reset the password for {app} ({email}).\n\nChoose a new password here:\n{link}\n\nThe link works once, for {minutes} minutes. If it was not you, ignore this email: your password has not changed.\n"
+    },
+    "verify": {
+      "subject": "Confirm your email address",
+      "body": "Confirm that {email} is your address, to sign in to {app}:\n{link}\n\nThe link works for {hours} hours. If you did not try to sign in, ignore this email.\n"
     }
   }
 }

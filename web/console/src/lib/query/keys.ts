@@ -91,12 +91,11 @@ export const keys = {
 		translation: (code: string, app: string) => ['languages', 'translation', code, app] as const
 	},
 
-	database: {
-		all: ['database'] as const,
-		/** The tables, with how big each is. */
-		tables: ['database', 'tables'] as const,
-		/** One page of one table. */
-		table: (name: string, offset: number) => ['database', 'table', name, offset] as const
+	sessions: {
+		all: ['sessions'] as const,
+		/** The list, as the search box and the user filter describe it. */
+		list: (params: { search: string; user: string }) =>
+			['sessions', 'list', params.search, params.user] as const
 	},
 
 	admin: {

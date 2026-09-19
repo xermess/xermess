@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { requiredSSO, signIn } from '$lib/api';
+	import { ApiError, requiredSSO, signIn } from '$lib/api';
 	import {
 		Alert,
 		AuthCard,
@@ -37,6 +37,9 @@
 	let confirm = $state('');
 	let accepted = $state(false);
 	let error = $state('');
+	/** The account was made, and the flow wants its address confirmed before
+	    anybody signs in with it: a link has been sent. */
+	let sent = $state('');
 	let submitting = $state(false);
 
 	const mismatch = $derived(confirm !== '' && confirm !== password);
@@ -80,7 +83,11 @@
 				return;
 			}
 
-			error = messageOf(err, t);
+			if (err instanceof ApiError && err.code === 'email_not_verified') {
+				sent = messageOf(err, t);
+			} else {
+				error = messageOf(err, t);
+			}
 			submitting = false;
 		}
 	}
@@ -90,7 +97,16 @@
 	<title>{t('register.head')}{app ? ` · ${app.name}` : ''}</title>
 </svelte:head>
 
-{#if data.expired || !data.request}
+{#if sent}
+	<AuthCard organization={data.organization} application={app} title={t('verify.title')}>
+		<Alert tone="info">{sent}</Alert>
+
+		{#snippet below()}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a href={authHref('/login', data.request)}>{t('action.back_to_sign_in')}</a>
+		{/snippet}
+	</AuthCard>
+{:else if data.expired || !data.request}
 	<AuthCard
 		organization={data.organization}
 		title={data.expired ? t('login.expired_title') : t('register.start_title')}

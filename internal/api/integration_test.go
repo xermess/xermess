@@ -49,6 +49,8 @@ type liveServer struct {
 	// adminRoot is the admin server's.
 	adminRoot string
 	mail      *mailbox
+	// store is the server's own, for a test that checks what it keeps.
+	store *store.Store
 }
 
 // testAccountURL is where the provider sends browsers to sign in. Nothing is
@@ -205,7 +207,7 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	t.Cleanup(publicServer.Close)
 	t.Cleanup(adminServer.Close)
 
-	return &liveServer{t: t, url: adminRoot + "/api/v1/admin", root: root, adminRoot: adminRoot, mail: mailer}
+	return &liveServer{t: t, url: adminRoot + "/api/v1/admin", root: root, adminRoot: adminRoot, mail: mailer, store: st}
 }
 
 // client is one browser: it keeps its own session cookie.

@@ -1,0 +1,21 @@
+<script lang="ts">
+	import FlowEditor from '$lib/components/flows/editor/FlowEditor.svelte';
+	import { can } from '$lib/permissions';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+</script>
+
+<svelte:head><title>{data.flow.name} · Login flows · xermess admin</title></svelte:head>
+
+<!-- Keyed, so moving from one flow to another — after Duplicate — starts a
+     fresh editor rather than carrying the last one's draft across. -->
+{#key data.flow.id}
+	<FlowEditor
+		flow={data.flow}
+		initial={data.flow}
+		kinds={data.stepKinds}
+		taken={data.taken}
+		editable={can(data.admin, 'login_flows.write')}
+	/>
+{/key}

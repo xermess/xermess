@@ -3,8 +3,8 @@
    stands on its own. */
 
 :root {
-	--font-sans: 'Product Sans', 'Google Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-mono: 'Consolas', ui-monospace, 'SF Mono', Menlo, monospace;
+	--font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
 	--text-xs: 12px;
 	--text-sm: 13px;

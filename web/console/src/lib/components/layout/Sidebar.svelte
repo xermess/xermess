@@ -160,7 +160,7 @@
 		align-items: center;
 		gap: 10px;
 		width: 100%;
-		height: 32px;
+		height: var(--nav-item-height);
 		padding: 0 12px;
 		overflow: hidden;
 		border: none;

@@ -104,9 +104,11 @@ func (s *Store) EffectiveRoles(ctx context.Context, user *model.User) ([]model.U
 // ---- Users signing in -----------------------------------------------------
 
 // UserByEmail returns the user with this address, compared without case.
+// Addresses are stored normalized (model.NormalizeEmail), so this is one
+// lookup on the unique index rather than a scan of every user.
 func (s *Store) UserByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
-	err := s.db.WithContext(ctx).Preload("Roles", byName).First(&user, "LOWER(email) = LOWER(?)", email).Error
+	err := s.db.WithContext(ctx).Preload("Roles", byName).First(&user, "email = ?", model.NormalizeEmail(email)).Error
 	if err != nil {
 		return nil, translate(err)
 	}
@@ -341,11 +343,14 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 			return ErrAlreadyUsed
 		}
 
+		// The link was opened from the address's own inbox, which is as much
+		// proof the address is theirs as a verification link would be.
 		err := tx.Model(user).Updates(map[string]any{
 			"password_hash":         user.PasswordHash,
 			"is_temporary_password": false,
 			"failed_login_count":    0,
 			"locked_until":          nil,
+			"email_verified":        true,
 		}).Error
 		if err != nil {
 			return err
@@ -527,4 +532,47 @@ func (s *Store) DeleteSigningKeys(ctx context.Context, before time.Time) error {
 func (s *Store) DeleteSigningKeysExcept(ctx context.Context, keep []string) error {
 	// GORM names the KID field's column k_id.
 	return s.db.WithContext(ctx).Where("k_id NOT IN ?", keep).Delete(&model.SigningKey{}).Error
+}
+
+// ---- Email verifications ----------------------------------------------------
+
+// CreateEmailVerification stores a verification link that is about to be sent.
+func (s *Store) CreateEmailVerification(ctx context.Context, verification *model.EmailVerification) error {
+	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(verification).Error)
+}
+
+// EmailVerificationByHash returns the link a token belongs to.
+func (s *Store) EmailVerificationByHash(ctx context.Context, hash string) (*model.EmailVerification, error) {
+	var verification model.EmailVerification
+	if err := s.db.WithContext(ctx).First(&verification, "token_hash = ?", hash).Error; err != nil {
+		return nil, translate(err)
+	}
+
+	return &verification, nil
+}
+
+// VerifyEmail uses a verification link: it marks the link, and every other
+// one sent to the user, used, and the user's address verified, in one
+// transaction. A link already used is ErrAlreadyUsed.
+func (s *Store) VerifyEmail(ctx context.Context, verification *model.EmailVerification, at time.Time) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&model.EmailVerification{}).
+			Where("id = ? AND used_at IS NULL", verification.ID).
+			Update("used_at", at)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrAlreadyUsed
+		}
+
+		err := tx.Model(&model.EmailVerification{}).
+			Where("user_id = ? AND used_at IS NULL", verification.UserID).
+			Update("used_at", at).Error
+		if err != nil {
+			return err
+		}
+
+		return tx.Model(&model.User{}).Where("id = ?", verification.UserID).Update("email_verified", true).Error
+	})
 }

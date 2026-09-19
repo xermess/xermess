@@ -2,10 +2,9 @@ package session
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
-
-	"xermess/internal/model"
 )
 
 // UserCookie carries a user's session at this server: what lets the
@@ -15,9 +14,10 @@ import (
 // anyone in to the panel.
 const UserCookie = "xermess_user_session"
 
-// SetUser stores a user's session token in the browser.
-func SetUser(c *gin.Context, token string, secure bool) {
-	writeUser(c, token, int(model.UserSessionLifetime.Seconds()), secure)
+// SetUser stores a user's session token in the browser, until the session
+// expires — which the login flow that made it decides.
+func SetUser(c *gin.Context, token string, expires time.Time, secure bool) {
+	writeUser(c, token, int(time.Until(expires).Seconds()), secure)
 }
 
 // ClearUser removes it again.

@@ -14,12 +14,13 @@ import (
 // a code from an authenticator while the shop asks for a password alone,
 // without either of them holding a copy of the rules.
 //
-// What it is not, yet: the sign-in pages read a flow's options — whether an
-// account can be made, whether a password can be reset, whether the provider
-// buttons are offered — but they do not yet walk its steps, which are still
-// the fixed identifier-and-password pair. StepImplemented says which of the
-// steps a flow can name are run today, so the panel can be honest about it
-// rather than offering a setting that does nothing.
+// Every way in follows the flow of the application it is for: a flow without
+// the password step refuses a password, one without the social step refuses
+// a provider, an address the flow requires verified is sent a link instead
+// of a session, and the session lasts as long as the flow says. The steps
+// that are not run yet — Implemented false in the catalog — can be named as a
+// plan, but a flow has to include one that is, so nothing the panel saves
+// can leave everybody locked out.
 type LoginFlow struct {
 	Base
 
@@ -171,9 +172,11 @@ func LoginStepSpecOf(step LoginStep) (LoginStepSpec, bool) {
 	return LoginStepSpec{}, false
 }
 
-// proofSteps are the steps that prove the person is who they say. A flow
-// with none of them asks for an address and lets anybody in under it.
-var proofSteps = []LoginStep{StepPassword, StepSocial, StepEmailCode, StepTOTP}
+// proofSteps are the steps that prove the person is who they say and that
+// the sign-in pages run today. A flow with none of them would ask for an
+// address and let nobody in — or, if the planned steps counted, let nobody in
+// until they are built.
+var proofSteps = []LoginStep{StepPassword, StepSocial}
 
 // maxSessionLifetimeHours is ninety days: long enough for "stay signed in",
 // short enough that a session left behind on a shared machine expires.

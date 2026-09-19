@@ -102,6 +102,15 @@ var (
 	ErrDetailsRequired = problem("details_required", "accounts need fields the page cannot ask for")
 	// ErrPasswordTooLong is a password longer than bcrypt reads.
 	ErrPasswordTooLong = problem("password_too_long", "the password is too long")
+	// ErrPasswordNotOffered is a password where the login flow does not take
+	// one — a flow that signs people in through their other accounts alone.
+	ErrPasswordNotOffered = problem("password_not_offered", "this sign-in does not take a password")
+	// ErrEmailNotVerified is an account whose address is unproved, at a flow
+	// that requires it proved. A link to prove it has just been sent.
+	ErrEmailNotVerified = problem("email_not_verified", "the address is not verified; a link to verify it was sent")
+	// ErrVerificationInvalid is a verification link that has expired or been
+	// used.
+	ErrVerificationInvalid = problem("verification_invalid", "the verification link has expired or been used")
 
 	// The errors of signing in with an account somewhere else. They are shown
 	// on the sign-in pages, so each says what the person can do about it.
@@ -126,4 +135,7 @@ var (
 	// ErrSocialBlocked is an account found through a provider that may not
 	// sign in.
 	ErrSocialBlocked = problem("social_blocked", "the account may not sign in")
+	// ErrSocialNotOffered is a provider where the login flow does not offer
+	// signing in with another account.
+	ErrSocialNotOffered = problem("social_not_offered", "this sign-in does not offer other accounts")
 )

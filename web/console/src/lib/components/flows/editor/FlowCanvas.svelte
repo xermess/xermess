@@ -1,0 +1,286 @@
+<script lang="ts">
+	import '@xyflow/svelte/dist/style.css';
+	import {
+		Background,
+		Controls,
+		SvelteFlow,
+		useSvelteFlow,
+		type Edge,
+		type Node
+	} from '@xyflow/svelte';
+	import { RiFlagLine, RiLoginCircleLine } from 'svelte-remixicon';
+	import type { LoginStep, LoginStepSpec } from '$lib/api';
+	import { useTranslator } from '$lib/i18n';
+	import { describe, labelFor, markFor, specFor } from '../steps';
+	import EndNode, { type EndNodeData } from './EndNode.svelte';
+	import InsertEdge, { type InsertEdgeData } from './InsertEdge.svelte';
+	import StepNode, { type StepNodeData } from './StepNode.svelte';
+
+	/**
+	 * The flow drawn as what it is: a sign-in starting at the top, each step in
+	 * turn, and a session at the bottom. It is Svelte Flow underneath — pan,
+	 * zoom, drag — held to one column, since a login flow is a sequence rather
+	 * than a graph: dragging a step reorders it, a step dropped from the
+	 * palette goes into the gap nearest where it lands, and the "+" between
+	 * two steps asks the palette for one to put there.
+	 */
+	type Props = {
+		steps: LoginStep[];
+		kinds: LoginStepSpec[];
+		/** What each step's card says about its settings. */
+		summaryOf: (step: LoginStep) => string[];
+		/** What the start and end say: the flow's name, the session length. */
+		startDetail: string;
+		endDetail: string;
+		/** The node whose settings the inspector shows: 'start', 'end' or a step. */
+		selected: string;
+		editable: boolean;
+		/** The gap waiting for a step from the palette, if any. */
+		waiting: number | null;
+		onSelect: (id: string) => void;
+		onReorder: (steps: LoginStep[]) => void;
+		onInsert: (index: number, step: LoginStep) => void;
+		onRemove: (step: LoginStep) => void;
+		onWait: (index: number | null) => void;
+	};
+
+	let {
+		steps,
+		kinds,
+		summaryOf,
+		startDetail,
+		endDetail,
+		selected,
+		editable,
+		waiting,
+		onSelect,
+		onReorder,
+		onInsert,
+		onRemove,
+		onWait
+	}: Props = $props();
+
+	const t = useTranslator();
+	const { screenToFlowPosition, fitView } = useSvelteFlow();
+
+	/** How far apart the rows are drawn. */
+	const ROW = 150;
+	const nodeTypes = { step: StepNode, end: EndNode };
+	const edgeTypes = { insert: InsertEdge };
+
+	/** Bumped when a drag ends somewhere that changes nothing, so the nodes
+	    are laid out again rather than left where they were dropped. */
+	let revision = $state(0);
+
+	/** The flow laid out from its steps. Svelte Flow writes a node's position
+	    while it is dragged — a derived value can be overwritten for a while —
+	    and the next change to the steps lays it out afresh: the steps are the
+	    truth, and every change comes back through them. */
+	let nodes = $derived.by((): Node[] => {
+		void revision;
+		const drawn: Node[] = [
+			{
+				id: 'start',
+				type: 'end',
+				position: { x: 0, y: 0 },
+				draggable: false,
+				selected: selected === 'start',
+				data: {
+					kind: 'start',
+					label: t('flows.node_start'),
+					detail: startDetail,
+					icon: RiLoginCircleLine
+				} satisfies EndNodeData
+			}
+		];
+
+		steps.forEach((step, index) => {
+			const spec = specFor(step, kinds);
+			const fixed = spec?.fixed ?? index === 0;
+
+			drawn.push({
+				id: step,
+				type: 'step',
+				position: { x: 0, y: 90 + index * ROW },
+				draggable: editable && !fixed,
+				selected: selected === step,
+				data: {
+					step,
+					label: labelFor(step, kinds, t),
+					description: describe(step, kinds, t),
+					icon: markFor(step),
+					fixed,
+					planned: spec?.implemented === false,
+					summary: summaryOf(step),
+					onRemove: editable && !fixed ? () => onRemove(step) : undefined,
+					removeLabel: t('flows.remove_step'),
+					plannedLabel: t('flows.planned'),
+					fixedLabel: t('flows.fixed')
+				} satisfies StepNodeData
+			});
+		});
+
+		drawn.push({
+			id: 'end',
+			type: 'end',
+			position: { x: 0, y: 90 + steps.length * ROW + 10 },
+			draggable: false,
+			selected: selected === 'end',
+			data: {
+				kind: 'end',
+				label: t('flows.node_end'),
+				detail: endDetail,
+				icon: RiFlagLine
+			} satisfies EndNodeData
+		});
+
+		return drawn;
+	});
+
+	// Between every two nodes; the gap after the start is not a place for a
+	// step, since the first step is always the one that asks who it is.
+	let edges = $derived.by((): Edge[] =>
+		nodes.slice(1).map((node, index) => ({
+			id: `${nodes[index].id}->${node.id}`,
+			source: nodes[index].id,
+			target: node.id,
+			type: 'insert',
+			selectable: false,
+			data: {
+				index,
+				onInsert:
+					editable && index > 0 ? (at: number) => onWait(waiting === at ? null : at) : undefined,
+				waiting: waiting === index,
+				label: t('flows.insert_here')
+			} satisfies InsertEdgeData
+		}))
+	);
+
+	/** The index in the steps a point on the canvas falls into: after every
+	    step whose middle is above it, and never before the first. */
+	function gapAt(y: number): number {
+		let index = 1;
+		steps.forEach((_, at) => {
+			if (at > 0 && 90 + at * ROW + ROW / 2 < y) index = at + 1;
+		});
+		return Math.min(index, steps.length);
+	}
+
+	function reorder() {
+		const moved = nodes
+			.filter((node) => node.type === 'step' && node.id !== steps[0])
+			.sort((a, b) => a.position.y - b.position.y)
+			.map((node) => node.id as LoginStep);
+
+		const next = [steps[0], ...moved];
+		if (next.join() === steps.join()) revision++;
+		else onReorder(next);
+	}
+
+	function drop(event: DragEvent) {
+		event.preventDefault();
+		const step = event.dataTransfer?.getData('application/x-login-step') as LoginStep | undefined;
+		if (!step || !editable) return;
+
+		const point = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+		onInsert(gapAt(point.y), step);
+	}
+
+	function keydown(event: KeyboardEvent) {
+		if (!editable || (event.key !== 'Delete' && event.key !== 'Backspace')) return;
+
+		const step = steps.find((one) => one === selected);
+		const spec = step && specFor(step, kinds);
+		if (step && step !== steps[0] && !spec?.fixed) {
+			event.preventDefault();
+			onRemove(step);
+		}
+	}
+
+	let fitted = false;
+
+	// A step added or removed changes how tall the flow is: the view follows,
+	// so the end the flow arrives at never slides out of sight. Once the new
+	// nodes have been measured, which is after they are drawn.
+	let count = 0;
+	$effect(() => {
+		const now = steps.length;
+		if (count !== 0 && now !== count) {
+			setTimeout(() => fitView({ padding: 0.2, maxZoom: 1, duration: 250 }), 30);
+		}
+		count = now;
+	});
+</script>
+
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="canvas"
+	ondragover={(event) => {
+		if (editable) event.preventDefault();
+	}}
+	ondrop={drop}
+	onkeydown={keydown}
+>
+	<SvelteFlow
+		bind:nodes
+		bind:edges
+		{nodeTypes}
+		{edgeTypes}
+		nodesConnectable={false}
+		deleteKey={null}
+		elementsSelectable
+		minZoom={0.3}
+		maxZoom={1.5}
+		fitView
+		fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+		oninit={() => {
+			if (!fitted) fitView({ padding: 0.2, maxZoom: 1 });
+			fitted = true;
+		}}
+		onnodeclick={({ node }) => onSelect(node.id)}
+		onpaneclick={() => onSelect('start')}
+		onnodedragstop={reorder}
+		proOptions={{ hideAttribution: true }}
+	>
+		<Background gap={20} />
+		<Controls showLock={false} position="bottom-right" />
+	</SvelteFlow>
+</div>
+
+<style>
+	.canvas {
+		position: relative;
+		height: 100%;
+		min-height: 520px;
+		background: var(--color-body);
+	}
+
+	/* Svelte Flow's own look, told the panel's tokens, so it is one app in
+	   both themes rather than a white box in the dark one. */
+	.canvas :global(.svelte-flow) {
+		--xy-background-color: var(--color-body);
+		--xy-background-pattern-color: var(--color-border);
+		--xy-edge-stroke: var(--color-text-disabled);
+		--xy-edge-stroke-width: 1.5;
+		--xy-controls-button-background-color: var(--color-surface);
+		--xy-controls-button-background-color-hover: var(--color-secondary);
+		--xy-controls-button-color: var(--color-text);
+		--xy-controls-button-border-color: var(--color-border);
+		--xy-node-border-radius: var(--radius-md);
+		background: var(--color-body);
+	}
+
+	.canvas :global(.svelte-flow__node) {
+		padding: 0;
+		border: none;
+		background: transparent;
+		box-shadow: none;
+	}
+
+	.canvas :global(.svelte-flow__controls) {
+		overflow: hidden;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		box-shadow: none;
+	}
+</style>

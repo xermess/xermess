@@ -54,7 +54,7 @@ func TestLoginFlowValidate(t *testing.T) {
 		{
 			name:   "a flow that asks for an address and nothing else",
 			change: func(f *LoginFlow) { f.Steps = StepList{StepIdentifier, StepTerms} },
-			want:   "a flow must ask for at least one of: password, social, email_code, totp",
+			want:   "a flow must ask for at least one of: password, social",
 		},
 		{
 			name:   "a session that never ends",

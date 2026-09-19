@@ -3,38 +3,43 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { RiAddLine, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
+	import {
+		RiAddLine,
+		RiCloseLine,
+		RiRefreshLine,
+		RiSearchLine,
+		RiUpload2Line
+	} from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import type { LoginFlow } from '$lib/api';
-	import { Alert, Button, Icon, IconButton } from '$lib/components/ui';
-	import FlowDrawer from '$lib/components/flows/FlowDrawer.svelte';
+	import { flowsApi, type LoginFlow } from '$lib/api';
+	import { Alert, Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
+	import { messageOf, useTranslator } from '$lib/i18n';
 	import FlowTable from '$lib/components/flows/FlowTable.svelte';
+	import { TEMPLATES, freeSlug, fromFile } from '$lib/components/flows/steps';
 	import { can } from '$lib/permissions';
 	import { keys, loginFlowsOptions } from '$lib/query';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
+	const t = useTranslator();
 	const queryClient = useQueryClient();
 
-	// The list is a query seeded with what the server rendered, as on the
-	// social page: a save or the refresh button refills the cache rather than
-	// reloading the page.
+	// The list is a query seeded with what the server rendered: a save in the
+	// editor or the refresh button refills the cache rather than reloading.
 	const flows = createQuery(() =>
 		loginFlowsOptions({ flows: data.flows, step_kinds: data.stepKinds })
 	);
 
 	const canWrite = $derived(can(data.admin, 'login_flows.write'));
 
-	// A writable derived: typing updates it, and it follows the URL again
-	// whenever that changes, so the back button and a shared link both put the
-	// right term in the box.
+	// Typing updates it, and it follows the URL again whenever that changes,
+	// so the back button and a shared link both put the right term in the box.
 	let search = $derived(data.search);
 
 	/** The rows the search leaves. There are as many flows as somebody has
-	    written, so narrowing them here is cheaper than asking again — and it
-	    runs while the page is rendered on the server too, so a shared link
-	    arrives already filtered. */
+	    written — a handful — so narrowing them here is cheaper than asking
+	    again, and a shared link arrives already filtered. */
 	const visible = $derived.by(() => {
 		const term = data.search.trim().toLowerCase();
 		if (term === '') return flows.data.flows;
@@ -44,12 +49,10 @@
 		);
 	});
 
-	/** The steps named by some flow that the server does not run yet, so the
-	    page can say so once rather than every row saying it again. */
-	const planned = $derived(new Set(flows.data.flows.flatMap((flow) => flow.planned)));
-
-	let editing = $state<LoginFlow | null>(null);
-	let drawerOpen = $state(false);
+	let choosing = $state(false);
+	let error = $state('');
+	let importing = $state(false);
+	let file = $state<HTMLInputElement>();
 
 	async function apply(changes: { search?: string }) {
 		const params = new SvelteURLSearchParams(page.url.searchParams);
@@ -62,8 +65,6 @@
 		const query = params.toString();
 		const path = resolve('/admin/(panel)/dashboard/flows');
 
-		// resolve() has already applied any base path; the query is only ever
-		// appended to what it returned.
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		await goto(query ? `${path}?${query}` : path, { keepFocus: true, noScroll: true });
 	}
@@ -75,9 +76,43 @@
 		timer = setTimeout(() => apply({ search }), 250);
 	}
 
-	function open(flow: LoginFlow | null) {
-		editing = flow;
-		drawerOpen = true;
+	function open(flow: LoginFlow) {
+		goto(resolve('/admin/(panel)/dashboard/flows/[id]', { id: flow.id }));
+	}
+
+	/** A flow exported from here or another installation, made a flow of this
+	    one under an identifier nobody has, and opened. */
+	async function importFile(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const chosen = input.files?.[0];
+		input.value = '';
+		if (!chosen) return;
+
+		error = '';
+		importing = true;
+
+		try {
+			let draft;
+			try {
+				draft = fromFile(await chosen.text(), flows.data.step_kinds);
+			} catch (err) {
+				error = t((err as Error).message);
+				return;
+			}
+
+			const taken = flows.data.flows.map((flow) => flow.slug);
+			const result = await flowsApi.create({
+				...draft,
+				slug: freeSlug(draft.slug, taken),
+				is_default: false
+			});
+			await queryClient.invalidateQueries({ queryKey: keys.flows.all });
+			await goto(resolve('/admin/(panel)/dashboard/flows/[id]', { id: result.flow.id }));
+		} catch (err) {
+			error = messageOf(err, t);
+		} finally {
+			importing = false;
+		}
 	}
 
 	let refreshing = $state(false);
@@ -88,8 +123,6 @@
 		try {
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.flows.all }),
-				// A button that does something invisible in 20ms reads as one
-				// that did nothing.
 				new Promise((done) => setTimeout(done, 400))
 			]);
 		} finally {
@@ -98,48 +131,70 @@
 	}
 </script>
 
-<svelte:head><title>Login flows · xermess admin</title></svelte:head>
+<svelte:head><title>{t('nav.flows')} · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Login flows</h1>
-		<span class="total">{flows.data.flows.length} total</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.flows')]}>
+		{#snippet secondary()}
+			<span class="total">{t('flows.total', { count: flows.data.flows.length })}</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label={t('action.refresh')}
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	{#if canWrite}
-		<div class="actions">
-			<Button onclick={() => open(null)}>
-				<Icon icon={RiAddLine} />
-				New flow
-			</Button>
-		</div>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canWrite}
+				<input
+					bind:this={file}
+					type="file"
+					accept="application/json,.json"
+					hidden
+					onchange={importFile}
+				/>
+				<Button variant="subtle" loading={importing} onclick={() => file?.click()}>
+					<Icon icon={RiUpload2Line} />
+					{t('flows.import')}
+				</Button>
+				<Button onclick={() => (choosing = !choosing)}>
+					<Icon icon={choosing ? RiCloseLine : RiAddLine} />
+					{t('flows.new')}
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
 
-<!-- A flow is a record of what a sign-in should be. Most of it is read by the
-     sign-in pages already; the steps are not walked yet, and saying so here
-     once is better than every row hedging. -->
-<div class="gutter note">
-	<Alert tone="info">
-		The sign-in pages read a flow's options — whether an account can be made, whether a password can
-		be reset, and which providers are offered. Walking the steps themselves is still being built:
-		{#if planned.size > 0}
-			the {planned.size}
-			{planned.size === 1 ? 'step' : 'steps'} marked “not run yet”
-			{planned.size === 1 ? 'is' : 'are'} a plan.
-		{:else}
-			a flow that names a step marked “not run yet” is a plan.
-		{/if}
-	</Alert>
+	<p class="lead">{t('flows.lead')}</p>
 </div>
+
+{#if error}
+	<div class="gutter banner"><Alert>{error}</Alert></div>
+{/if}
+
+{#if choosing}
+	<section class="gutter templates" aria-label={t('flows.templates')}>
+		<h2>{t('flows.templates')}</h2>
+		<div class="cards">
+			{#each TEMPLATES as template (template.id)}
+				<!-- The path is resolved; only the query is added to it. -->
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a
+					class="card"
+					href={`${resolve('/admin/(panel)/dashboard/flows/new')}?template=${template.id}`}
+				>
+					<span class="mark"><Icon icon={template.icon} size="1.2rem" /></span>
+					<strong>{t(`flows.template_${template.id}`)}</strong>
+					<span>{t(`flows.template_${template.id}_hint`)}</span>
+				</a>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{/each}
+		</div>
+	</section>
+{/if}
 
 <div class="toolbar">
 	<form
@@ -152,10 +207,10 @@
 		<Icon icon={RiSearchLine} />
 		<input
 			type="search"
-			placeholder="Search name, identifier or description…"
+			placeholder={t('flows.search')}
 			bind:value={search}
 			oninput={debounced}
-			aria-label="Search login flows"
+			aria-label={t('flows.search_label')}
 		/>
 	</form>
 </div>
@@ -164,43 +219,79 @@
 	flows={visible}
 	kinds={flows.data.step_kinds}
 	onOpen={open}
-	empty={flows.data.flows.length === 0 ? 'No flows yet.' : 'No flows match this.'}
+	empty={flows.data.flows.length === 0 ? t('flows.empty') : t('flows.empty_search')}
 />
 
-<FlowDrawer bind:open={drawerOpen} flow={editing} kinds={flows.data.step_kinds} />
-
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
 	}
 
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.total {
+	.lead {
+		max-width: 90ch;
+		margin: var(--space-2) 0 0;
 		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
+		font-size: var(--text-base);
 	}
 
 	.gutter {
 		padding-inline: var(--page-gutter);
 	}
 
-	.note {
+	.banner {
 		margin-bottom: var(--space-3);
+	}
+
+	.templates {
+		margin-bottom: var(--space-4);
+	}
+
+	.templates h2 {
+		margin: 0 0 var(--space-2);
+		font-size: var(--text-base);
+	}
+
+	.cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: var(--space-3);
+	}
+
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		padding: var(--space-4);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		color: var(--color-text);
+		text-decoration: none;
+		transition:
+			border-color var(--speed-fast),
+			background-color var(--speed-fast);
+	}
+
+	.card:hover {
+		border-color: var(--color-info);
+		background: var(--surface-info);
+	}
+
+	.card span:last-child {
+		color: var(--color-text-hint);
+		font-size: var(--text-sm);
+	}
+
+	.mark {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		margin-bottom: var(--space-1);
+		border-radius: var(--radius-sm);
+		background: var(--color-secondary-alt);
 	}
 
 	.toolbar {

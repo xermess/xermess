@@ -70,6 +70,7 @@ func All() []any {
 		&RefreshToken{},
 		&UserSession{},
 		&PasswordReset{},
+		&EmailVerification{},
 		&UserIdentity{},
 		&SocialLogin{},
 		&SSOConnection{},

@@ -120,10 +120,12 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
-	// Signing keys rotate while the server runs; stopping the server stops it.
+	// Signing keys rotate, and expired records are swept, while the server
+	// runs; stopping the server stops both.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go provider.MaintainKeys(ctx)
+	go st.KeepSwept(ctx, cfg.AuditRetention, log)
 
 	return serve(ctx, log, []*http.Server{
 		{Addr: cfg.Addr, Handler: public, ReadHeaderTimeout: 10 * time.Second},

@@ -189,6 +189,10 @@ export const signIn = {
 	resetPassword: (body: { token: string; password: string }) =>
 		request<{ status: string }>('/account/reset-password', { method: 'POST', body }),
 
+	/** Uses a link sent to prove an address is the account's. */
+	verifyEmail: (body: { token: string }) =>
+		request<{ status: string }>('/account/verify-email', { method: 'POST', body }),
+
 	logout: () => request<{ status: string }>('/account/logout', { method: 'POST' })
 };
 

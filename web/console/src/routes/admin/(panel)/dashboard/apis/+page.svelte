@@ -8,12 +8,15 @@
 	import { ApiError, apisApi, type API } from '$lib/api';
 	import { apisOptions, keys } from '$lib/query';
 	import { can } from '$lib/permissions';
-	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import ApiDrawer from '$lib/components/apis/ApiDrawer.svelte';
 	import ApiTable from '$lib/components/apis/ApiTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -114,29 +117,30 @@
 
 <svelte:head><title>APIs · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>APIs</h1>
-		<span class="total">{apis.data.length} total</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.apis')]}>
+		{#snippet secondary()}
+			<span class="total">{apis.data.length} total</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label="Refresh the data"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	{#if canWrite}
-		<div class="actions">
-			<Button onclick={() => (drawerOpen = true)}>
-				<Icon icon={RiAddLine} />
-				New API
-			</Button>
-		</div>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canWrite}
+				<Button onclick={() => (drawerOpen = true)}>
+					<Icon icon={RiAddLine} />
+					New API
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
+</div>
 
 <p class="lead">
 	APIs represent the protected resources that applications can access. Applications request access
@@ -214,24 +218,9 @@
 {/if}
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.error {
@@ -290,7 +279,7 @@
 	}
 
 	@media (max-width: 40rem) {
-		header,
+		.heading,
 		.error {
 			margin-bottom: var(--space-3);
 		}

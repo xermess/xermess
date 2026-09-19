@@ -39,8 +39,6 @@ const (
 	PermLoginFlowsRead  = "login_flows.read"
 	PermLoginFlowsWrite = "login_flows.write"
 
-	PermDatabaseRead = "database.read"
-
 	PermLanguagesRead  = "languages.read"
 	PermLanguagesWrite = "languages.write"
 
@@ -106,12 +104,6 @@ var AdminPermissions = []AdminPermission{
 		Group: "Authentication",
 		Description: "Write login flows and decide which is the default: " +
 			"whoever holds this decides what a sign-in asks for",
-	},
-	{
-		Name:  PermDatabaseRead,
-		Group: "Authentication",
-		Description: "Read the server's own tables row by row, passwords and keys left out: " +
-			"every account and every application is visible through it",
 	},
 	{
 		Name:        PermSSORead,

@@ -93,7 +93,7 @@ internal/api/adminroles/       admin roles and the permissions they grant
 internal/api/organization/     the organisation this installation belongs to
 internal/api/social/           the providers users may sign in with
 internal/api/flows/            the login flows applications sign their users in with
-internal/api/database/         the server's own tables, read only
+internal/api/sessions/         everyone signed in, and signing them out
 internal/api/languages/        the languages, their text, and the panel's own
 internal/api/activity/         the dashboard counts and the log
 internal/api/middleware/       request logging, recovery, and their order
@@ -218,7 +218,8 @@ internal/store/organizations.go the organisation's settings, the one row of them
 internal/store/social.go       the providers, the identities held at them, the sign-ins away at one
 internal/store/login_flows.go  the login flows, and which applications hold each
 internal/store/languages.go    the languages and their text, and importing the shipped ones
-internal/store/database.go     the read-only browser over the server's own tables
+internal/store/user_sessions.go the Sessions page's list, and signing a user out everywhere
+internal/store/sweep.go        deleting what has expired, every hour
 internal/store/admin_security.go how administrators are made to sign in
 internal/store/sessions.go     sessions: start, find, revoke, list
 internal/store/mfa.go          authenticators and recovery codes
@@ -348,8 +349,9 @@ code is defining its problem and adding the sentence to
 | `PUT`  | `/api/v1/admin/languages/:code/translations/:app` | yes | Replace that text              |
 | `GET`  | `/api/v1/admin/panel/languages` | no            | The languages the panel can be shown in |
 | `GET`  | `/api/v1/admin/panel/languages/:code` | no      | The panel's text in one of them |
-| `GET`  | `/api/v1/admin/database/tables` | yes           | The server's own tables        |
-| `GET`  | `/api/v1/admin/database/tables/:table` | yes    | One table's columns and rows (`?limit=&offset=`) |
+| `GET`  | `/api/v1/admin/user-sessions` | yes             | Active sessions, newest first (`?search=&user=&after=&limit=`) |
+| `DELETE`| `/api/v1/admin/user-sessions/:id` | yes         | Sign one session out           |
+| `DELETE`| `/api/v1/admin/users/:id/sessions` | yes        | Sign a user out everywhere: every session, every application's tokens |
 | `PATCH`| `/api/v1/admin/organization`  | yes             | Change its settings            |
 | `GET`  | `/api/v1/admin/sessions`      | yes             | The caller's own sessions      |
 
@@ -375,6 +377,7 @@ permission each route needs, is in `registerRoutes` in `internal/api/server.go`.
 | `POST` | `/api/v1/account/register`            | Create an account for a sign-in under way    |
 | `POST` | `/api/v1/account/forgot-password`     | Email a reset link                           |
 | `POST` | `/api/v1/account/reset-password`      | Set a new password through a reset link      |
+| `POST` | `/api/v1/account/verify-email`        | Confirm an address through a verification link |
 
 What a token carries is decided in one place, `model.EvaluateToken`, which the
 panel's token preview runs too. Signing keys are made on first start, one per
@@ -442,8 +445,8 @@ column the header's logo block tops: the two are one width and fold together.
 ```
 Activity · Logs
 Applications     Applications · APIs · SSO integrations
-Authentication   Database · Social · Login flows
-User management  Users · Roles
+Authentication   Social · Login flows
+User management  Users · Sessions · Roles
 Administration   Administrators · Admin roles   (super admins only)
 Settings         Organization · Languages
 ```
@@ -559,12 +562,16 @@ Transitions API, rather than per-element transitions that each start at a
 slightly different moment. Browsers without it simply change. Both that and
 the toggle's own icon animation stop at `prefers-reduced-motion`.
 
-**Fonts.** Product Sans for text and Consolas for code, both loaded with
-`local()` only. Neither can be bundled — Product Sans is Google's corporate
-typeface and is not licensed for redistribution, and Consolas ships with
-Windows and Office — so a machine that has them uses them and one that does
-not falls back quietly. To self-host licensed copies, put the files in
-`static/fonts` and add a `url(...)` source in `lib/styles/fonts.css`.
+**Fonts.** Roboto for text and Roboto Mono for code, bundled with each app
+from `src/assets/fonts/Roboto` and `src/assets/fonts/Roboto Mono` under the
+SIL Open Font License (the `LICENSE` beside them), so every machine shows the
+same thing. Each is a variable font — every weight in one file — split by
+alphabet: Latin and Cyrillic and their extended sets, with `unicode-range` in
+`lib/styles/fonts.css` so a page downloads only what it shows. They come from
+[Fontsource](https://fontsource.org) (`@fontsource-variable/roboto` and
+`roboto-mono`, 5.3.0); a language in another alphabet needs that subset's
+files added the same way. The Product Sans files in the console's
+`assets/fonts` are kept for later and are not loaded.
 
 **Icons** are [Remix Icon](https://remixicon.com), through `svelte-remixicon`.
 They are components, so only the ones actually used are bundled — there is no
@@ -779,8 +786,9 @@ the default, and an application either names a flow of its own or falls back
 to that one.
 
 ```
-Identify → Password → Another account        offered to everything else
-Identify → Password → Emailed code           offered to the staff tools
+Identify → Password → Other accounts         the default: everything else
+Identify → Other accounts                    a shop with no passwords
+Identify → Password  (verified, 8 h)         the staff tools
 ```
 
 A flow carries the steps, whether an account can be made, whether a password
@@ -790,21 +798,47 @@ session it makes lasts. The steps come from a catalog in
 called and what it does, so adding one is an entry there and the panel's
 picker follows.
 
-**What the server runs today is not the whole catalog, and it says so.** The
-sign-in pages read a flow's options: `GET /api/v1/account/login-options`
-answers with the effective flow for the sign-in under way, and the pages use
-it to decide whether to offer "Create an account", whether to offer
-"Forgotten your password", and whether to show the provider buttons. The
-server holds the same two: a registration is refused when the flow does not
-allow one (`oidc.Register`), and a reset link is not sent when it does not
-offer resets (`oidc.ForgotPassword`) — silently, so the page still cannot be
-used to find out which addresses have accounts.
+**The editor is a canvas.** A flow opens full-page at
+`/dashboard/flows/<id>`, drawn with [Svelte Flow](https://svelteflow.dev): the
+sign-in starting at the top, each step as a card, and the session it ends in
+at the bottom. The steps that can be added sit in a palette beside it — drag
+one onto the flow, click it, or press **+** between two steps and pick one.
+Dragging a step reorders it; the first step, which asks who is signing in,
+stays first. Selecting a node shows its settings on the other side, and each
+setting sits on the node it governs: making an account and requiring a
+verified address on Identify, the reset link on Password, the session's
+length on "Signed in", the flow's name and whether it is on or the default on
+its start. What would stop it saving — no name, no step that lets anybody in
+— is said while it is drawn, not after Save, and leaving with changes unsaved
+asks first. A new flow starts from a template (Password, Other accounts only,
+Staff, Blank); any flow can be duplicated, exported as JSON, and a file
+exported here or from another installation imported as a new flow.
 
-Walking the steps themselves is not built. A flow may name `email_code`,
-`totp`, `terms` or `consent`, and those steps are marked "not run yet" in the
-catalog, in the list and in the drawer, so a flow reads as the plan it is
-rather than a promise. `LoginStepSpec.Implemented` is the one place that says
-which is which: implementing a step is flipping it there and writing the step.
+**Every way in follows the flow**, whichever application it is for
+(`oidc.flowFor`) — a password, a provider, an organisation's identity
+provider:
+
+- a flow without **Password** refuses a password before looking at it
+  (`password_not_offered`), makes no accounts with one, and sends no reset
+  links; the sign-in page shows the provider buttons alone;
+- a flow without **Other accounts** refuses a provider (`social_not_offered`);
+- **Require a verified address** sends an account whose address is
+  unconfirmed a link instead of a session (`email_not_verified`); the link
+  opens `/verify-email`, where a button — not the link itself, which a mail
+  scanner would use up — confirms it (`POST /api/v1/account/verify-email`).
+  Completing a password reset confirms the address too;
+- the session lasts as long as the flow says, and so does its cookie.
+
+The email is written in the language the pages were shown in, read from their
+cookie, so a provider's callback — which has no body to say it in — gets it
+right too.
+
+**Not every step in the catalog runs yet, and the editor says so.**
+`email_code`, `totp`, `terms` and `consent` can be placed as a plan, drawn
+dashed and marked "not run yet"; `LoginStepSpec.Implemented` is the one place
+that says which is which, and implementing a step is flipping it there and
+writing the step. A flow has to include Password or Other accounts, which do
+run, so nothing the panel saves can lock everybody out.
 
 The default flow is what everything falls back to, so it cannot be turned off
 or removed; making another flow the default takes the mark from it. A flow
@@ -813,37 +847,35 @@ and removing one clears the column rather than taking its applications with
 it. Reading the page takes `login_flows.read` and writing takes
 `login_flows.write`.
 
-### The database browser
+### Sessions
 
-Authentication · Database is what the migration built, as the database holds
-it: every table with how many rows and columns it has, and a page of any one
-of them. It is the place to look when a panel page is not showing what you
-expected, and the only place that shows the tables a page has no editor for —
-the codes, the tokens and the sessions the provider issues.
+User management · Sessions is everyone signed in right now — Keycloak's
+Sessions page: each browser session with its user, device, address, when it
+started and when it runs out, newest first. Search by the start of an
+address, or open one user's sessions from their name or from the Sessions
+link in their drawer.
 
-It reads and nothing else. There is no endpoint behind it that writes a row,
-and there is not meant to be: a user, an application or a role is changed on
-the page that knows what one is and what changing it costs.
+**Sign out** ends one session: that browser has to sign in again, and the
+user's applications keep their tokens, as when the user ends a session
+themselves on their Security page. **Sign out everywhere** is for a lost
+device or a compromised account: every session the user has ends and every
+refresh token their applications hold is revoked, in one transaction, so no
+application stays signed in until its tokens run out. Both are in the
+activity log (`user.session_ended`, `user.signed_out_everywhere`).
 
-**A password, a key, a one-time code or the hash standing in for a token is
-never read.** Those columns are dropped from the SELECT rather than blanked
-afterwards, so a value that is not shown is a value that never left the
-database; the panel still lists the column and marks it hidden, which is
-truer than leaving it out and looking like the table has no such thing. Which
-columns those are is a rule on the name rather than a list of columns —
-anything ending in `_hash` or `_secret`, and `secret`, `password`,
-`private_key` and `recovery_codes` — so a model added later is covered by the
-naming this project already follows. `TestHiddenColumn` holds it in both
-directions: `secret_hint` and `allow_password_reset` are not secrets.
+A session is part of a user's account, so reading the page takes
+`users.read` and signing anybody out takes `users.write`.
 
-Nothing a request sends ever reaches a query's text. A table is only read
-after its name has been found in the list of tables the database actually has,
-and the columns are named through the driver's quoting — `api_scopes` has a
-column called `default`, which is a syntax error unquoted.
+It is built for millions of sessions. The list is never counted and never
+paged by offset: it reads newest first by an index on `(created_at, id)` and
+continues after the last session shown, so the thousandth page costs what
+the first does, and the search is a prefix match on the address so it can
+use an index (`text_pattern_ops`) rather than read every user.
 
-It takes `database.read`, which is the strongest of the read permissions: every
-account and every application is visible through it, so no seeded role but
-`admin` grants it.
+This page replaced a raw browser over the server's own tables. Keycloak and
+authentik have nothing like one, and for good reason: it showed rows rather
+than what they mean, and it was the one page from which every account and
+every application could be read.
 
 ### Languages
 
@@ -1174,6 +1206,17 @@ address recorded for every request is the connection's own, so a caller cannot
 write a made-up one into the activity log — but behind a proxy it has to be
 set, or every request, and the rate limit, count as the proxy's.
 `XERMESS_ADMIN_ADDR` must differ from `XERMESS_ADDR`; never publish it.
+
+**At scale.** Nothing the server keeps grows without end. Every hour each
+process sweeps what has expired — sign-in requests and codes, refresh
+tokens, sessions, reset links, abandoned social and SSO sign-ins — in batches
+of 5,000, by an index on `expires_at`, so the sweep never holds up the
+sign-ins writing the same tables (`store.Sweep`). The activity log keeps
+`XERMESS_AUDIT_RETENTION_DAYS` (365; 0 keeps everything). Addresses are
+stored lower case, so signing in finds a user by the unique index whatever
+capitals were typed, and `Ada@x` cannot be a second account beside `ada@x`.
+`XERMESS_DB_MAX_CONNS` (25) caps each process's connections: all the API
+processes together have to stay under Postgres's `max_connections`.
 
 `make test-integration` runs the tests that need Postgres and Redis. They
 connect to the Postgres in `.env` only to create a database of their own for

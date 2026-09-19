@@ -4,10 +4,13 @@
 	import { IconButton, PageContainer, PageHeader } from '$lib/components/ui';
 	import OrganizationSettings from '$lib/components/organization/OrganizationSettings.svelte';
 	import { can } from '$lib/permissions';
+	import { useTranslator } from '$lib/i18n';
 	import { keys, organizationOptions } from '$lib/query';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -20,7 +23,7 @@
 
 <PageContainer>
 	<div class="page">
-		<PageHeader crumbs={['Settings', 'Organization']}>
+		<PageHeader crumbs={[t('nav.dashboard'), t('nav.organization')]}>
 			{#snippet secondary()}
 				<IconButton
 					icon={RiRefreshLine}

@@ -7,8 +7,8 @@
 
 :root {
 	/* Type */
-	--font-sans: 'Product Sans', 'Google Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-mono: 'Consolas', ui-monospace, 'SF Mono', Menlo, monospace;
+	--font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 	--text-xs: 12px;
 	--text-sm: 13px;
 	--text-base: 14px;
@@ -44,7 +44,7 @@
 	/* A row in a list of places to go, rather than a control to press: the
 	   sidebar is a column of these, and a column of 45px rows would be a
 	   column of buttons. */
-	--nav-item-height: 34px;
+	--nav-item-height: 38px;
 	--header-height: 55px;
 	--sidebar-width: 240px;
 	/* How far a page's text is inset. Tables run past it to the edges, the

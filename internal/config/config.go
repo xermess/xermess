@@ -63,6 +63,12 @@ type Config struct {
 	// takes over. Zero never rotates on its own.
 	KeyRotation time.Duration
 
+	// AuditRetention is how long the activity log keeps an entry. Everything
+	// else the server stores expires by itself and is swept once it has; the
+	// log would otherwise grow with every sign-in for as long as the server
+	// runs. Zero keeps every entry.
+	AuditRetention time.Duration
+
 	// AdminMFARequired makes every administrator sign in with a second factor.
 	// It is what a fresh installation starts with — off, so the first
 	// administrator can get in and turn it on deliberately — and after that
@@ -131,6 +137,12 @@ type DB struct {
 	LogQueries bool
 	Migrate    bool
 	MigrateDir string
+
+	// MaxConns is how many connections one server process may hold open. The
+	// database refuses connections past its own limit (100 on a default
+	// Postgres), so the processes together have to stay under it — with no
+	// cap, a burst of sign-ins opens one per request until it refuses.
+	MaxConns int
 }
 
 // Redis is the cache in front of the database, and where the rate limit
@@ -189,6 +201,7 @@ func Load() (Config, error) {
 	v.SetDefault("XERMESS_RATE_LIMIT", 20)
 	v.SetDefault("XERMESS_ADMIN_MFA", "optional")
 	v.SetDefault("XERMESS_KEY_ROTATION_DAYS", 90)
+	v.SetDefault("XERMESS_AUDIT_RETENTION_DAYS", 365)
 	// In development the id app serves the provider on its own origin,
 	// through Vite's proxy, the same way the reverse proxy does in
 	// production.
@@ -201,6 +214,7 @@ func Load() (Config, error) {
 	v.SetDefault("XERMESS_DB_LOG_QUERIES", false)
 	v.SetDefault("XERMESS_DB_MIGRATE", true)
 	v.SetDefault("XERMESS_DB_MIGRATE_DIR", "./migrations")
+	v.SetDefault("XERMESS_DB_MAX_CONNS", 25)
 	v.SetDefault("XERMESS_REDIS_PORT", 6379)
 	v.SetDefault("XERMESS_REDIS_DB", 0)
 	v.SetDefault("XERMESS_REDIS_PREFIX", "xermess:")
@@ -223,6 +237,7 @@ func Load() (Config, error) {
 		SecureAdminCookies: strings.HasPrefix(adminURL, "https://"),
 		AdminMFARequired:   v.GetString("XERMESS_ADMIN_MFA") == "required",
 		KeyRotation:        time.Duration(v.GetInt("XERMESS_KEY_ROTATION_DAYS")) * 24 * time.Hour,
+		AuditRetention:     time.Duration(v.GetInt("XERMESS_AUDIT_RETENTION_DAYS")) * 24 * time.Hour,
 		RateLimit:          v.GetInt("XERMESS_RATE_LIMIT"),
 		TrustedProxies:     splitList(v.GetString("XERMESS_TRUSTED_PROXIES")),
 		SecretKey:          v.GetString("XERMESS_SECRET_KEY"),
@@ -240,6 +255,7 @@ func Load() (Config, error) {
 			LogQueries: v.GetBool("XERMESS_DB_LOG_QUERIES"),
 			Migrate:    v.GetBool("XERMESS_DB_MIGRATE"),
 			MigrateDir: v.GetString("XERMESS_DB_MIGRATE_DIR"),
+			MaxConns:   v.GetInt("XERMESS_DB_MAX_CONNS"),
 		},
 		Redis: Redis{
 			Host:     strings.TrimSpace(v.GetString("XERMESS_REDIS_HOST")),
@@ -295,6 +311,14 @@ func Load() (Config, error) {
 
 	if cfg.RateLimit < 0 {
 		return Config{}, errors.New("XERMESS_RATE_LIMIT must be zero or more")
+	}
+
+	if cfg.AuditRetention < 0 {
+		return Config{}, errors.New("XERMESS_AUDIT_RETENTION_DAYS must be zero or more")
+	}
+
+	if cfg.DB.MaxConns < 1 {
+		return Config{}, errors.New("XERMESS_DB_MAX_CONNS must be one or more")
 	}
 
 	if cfg.Redis.Enabled() {

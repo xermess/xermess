@@ -33,6 +33,11 @@ type forgotRequest struct {
 }
 
 // resetRequest is the body of POST /account/reset-password.
+// verifyRequest is the body of POST /account/verify-email.
+type verifyRequest struct {
+	Token string `json:"token" validate:"required,max=64"`
+}
+
 type resetRequest struct {
 	Token    string `json:"token" validate:"required,max=64"`
 	Password string `json:"password" validate:"required,max=72"`

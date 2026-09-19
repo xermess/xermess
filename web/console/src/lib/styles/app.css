@@ -1,6 +1,6 @@
 /* The stylesheet the app imports once, in the root layout.
 
-   fonts   — Product Sans and Consolas, loaded from the reader's machine
+   fonts   — Roboto and Roboto Mono, bundled from assets/fonts
    tokens  — the values everything else refers to, light and dark
    base    — element defaults
    palettes— the colours a component asks for by name

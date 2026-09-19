@@ -22,13 +22,16 @@
 		usersOptions
 	} from '$lib/query';
 	import { can } from '$lib/permissions';
-	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import FieldsDrawer from '$lib/components/users/FieldsDrawer.svelte';
 	import UserDrawer from '$lib/components/users/UserDrawer.svelte';
 	import UserTable from '$lib/components/users/UserTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -195,37 +198,38 @@
 
 <svelte:head><title>Users · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Users</h1>
-		<span class="total">{users.data.total} total</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.users')]}>
+		{#snippet secondary()}
+			<span class="total">{users.data.total} total</span>
 
-		{#if canEditFields}
+			{#if canEditFields}
+				<IconButton
+					icon={RiSettings3Line}
+					label="Field settings"
+					onclick={() => (fieldsOpen = true)}
+				/>
+			{/if}
+
 			<IconButton
-				icon={RiSettings3Line}
-				label="Field settings"
-				onclick={() => (fieldsOpen = true)}
+				icon={RiRefreshLine}
+				label="Refresh the data"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
 			/>
-		{/if}
+		{/snippet}
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
-
-	{#if canWrite}
-		<div class="actions">
-			<Button onclick={() => openUser(null)}>
-				<Icon icon={RiAddLine} />
-				New user
-			</Button>
-		</div>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canWrite}
+				<Button onclick={() => openUser(null)}>
+					<Icon icon={RiAddLine} />
+					New user
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
+</div>
 
 <div class="toolbar">
 	<form
@@ -336,24 +340,9 @@
 {/if}
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.error {
@@ -456,7 +445,7 @@
 	}
 
 	@media (max-width: 40rem) {
-		header,
+		.heading,
 		.error {
 			margin-bottom: var(--space-3);
 		}

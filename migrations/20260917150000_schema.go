@@ -20,13 +20,11 @@ func init() {
 // describe, the indexes they cannot describe themselves, and the few rows an
 // installation starts with.
 //
-// There is one migration on purpose. The schema is the models — `model.All()`
-// is the list, and each struct says what its columns are — so a change is a
-// change to a struct, and this file only has to keep saying "make what the
-// models describe". A second migration would be worth writing when a database
-// somewhere is already running and has to be brought forward without being
-// rebuilt; until then, one file is the whole story and there is nowhere for
-// the two to disagree.
+// The schema is the models — `model.All()` is the list, and each struct says
+// what its columns are — so on a fresh database this builds everything the
+// models describe today. A database that already exists is brought forward
+// by the migrations after this one instead, each of them one change; on a
+// fresh one they find their change already made.
 //
 // What it creates, in order, because a table has to exist before the tables
 // that point at it: the organisation and the panel's own settings, the admin

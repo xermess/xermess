@@ -13,7 +13,8 @@
 	} from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, socialApi, type SocialProvider } from '$lib/api';
-	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import SocialDrawer from '$lib/components/social/SocialDrawer.svelte';
 	import SocialTable from '$lib/components/social/SocialTable.svelte';
 	import { can } from '$lib/permissions';
@@ -21,6 +22,8 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -209,29 +212,30 @@
 
 <svelte:head><title>Social · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Social providers</h1>
-		<span class="total">{social.data.providers.length} total</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.social')]}>
+		{#snippet secondary()}
+			<span class="total">{social.data.providers.length} total</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label="Refresh the data"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	{#if canWrite}
-		<div class="actions">
-			<Button onclick={() => open(null)}>
-				<Icon icon={RiAddLine} />
-				Add provider
-			</Button>
-		</div>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canWrite}
+				<Button onclick={() => open(null)}>
+					<Icon icon={RiAddLine} />
+					Add provider
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
+</div>
 
 <div class="toolbar">
 	<form
@@ -317,29 +321,9 @@
 <SocialDrawer bind:open={drawerOpen} provider={editing} kinds={social.data.kinds} />
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.total {
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.error {

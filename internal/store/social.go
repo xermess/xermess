@@ -222,14 +222,6 @@ func (s *Store) TakeSocialLogin(ctx context.Context, stateHash string, now time.
 	return &login, nil
 }
 
-// PurgeSocialLogins removes the sign-ins nobody came back from.
-func (s *Store) PurgeSocialLogins(ctx context.Context, now time.Time) error {
-	return s.db.WithContext(ctx).
-		Unscoped().
-		Where("expires_at <= ?", now).
-		Delete(&model.SocialLogin{}).Error
-}
-
 // SocialAccountsFor is the providers each of these users signs in with, by
 // user id. It is one query for a whole page of users rather than one each.
 func (s *Store) SocialAccountsFor(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID][]model.SocialAccount, error) {

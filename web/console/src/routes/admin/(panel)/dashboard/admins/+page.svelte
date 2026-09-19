@@ -19,13 +19,16 @@
 		applicationChoicesOptions,
 		keys
 	} from '$lib/query';
-	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import AdminDrawer from '$lib/components/admins/AdminDrawer.svelte';
 	import AdminTable from '$lib/components/admins/AdminTable.svelte';
 	import SecurityPanel from '$lib/components/admins/SecurityPanel.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -133,27 +136,28 @@
 
 <svelte:head><title>Administrators · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Administrators</h1>
-		<span class="total">{admins.data.total} total</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.admins')]}>
+		{#snippet secondary()}
+			<span class="total">{admins.data.total} total</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label="Refresh the data"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	<div class="actions">
-		<Button onclick={() => openAdmin(null)}>
-			<Icon icon={RiAddLine} />
-			New administrator
-		</Button>
-	</div>
-</header>
+		{#snippet actions()}
+			<Button onclick={() => openAdmin(null)}>
+				<Icon icon={RiAddLine} />
+				New administrator
+			</Button>
+		{/snippet}
+	</PageHeader>
+</div>
 
 <div class="gutter policy">
 	<SecurityPanel security={data.security} selfHasMFA={data.admin.mfa_enabled} />
@@ -262,24 +266,9 @@
 		margin-bottom: var(--space-4);
 	}
 
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.error {
@@ -387,7 +376,7 @@
 	}
 
 	@media (max-width: 40rem) {
-		header,
+		.heading,
 		.error {
 			margin-bottom: var(--space-3);
 		}

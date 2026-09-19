@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // clearEnv unsets every XERMESS_ variable for the duration of the test, so a
@@ -127,6 +128,36 @@ func TestLoadUsesDefaults(t *testing.T) {
 	}
 	if cfg.DB.MigrateDir != "./migrations" {
 		t.Errorf("MigrateDir = %q, want the default ./migrations", cfg.DB.MigrateDir)
+	}
+	if cfg.AuditRetention != 365*24*time.Hour || cfg.DB.MaxConns != 25 {
+		t.Errorf("AuditRetention, MaxConns = %v, %d, want a year and 25", cfg.AuditRetention, cfg.DB.MaxConns)
+	}
+}
+
+// What would leave the server unable to reach its database, or sweeping the
+// activity log backwards, stops it at startup.
+func TestLoadRefusesLimitsThatCannotWork(t *testing.T) {
+	const base = "XERMESS_DB_DSN=postgres://localhost/x\nXERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef\n"
+
+	tests := []struct {
+		name    string
+		env     string
+		wantErr bool
+	}{
+		{name: "an activity log kept forever", env: base + "XERMESS_AUDIT_RETENTION_DAYS=0\n"},
+		{name: "a retention that is negative", env: base + "XERMESS_AUDIT_RETENTION_DAYS=-1\n", wantErr: true},
+		{name: "one connection", env: base + "XERMESS_DB_MAX_CONNS=1\n"},
+		{name: "no connections at all", env: base + "XERMESS_DB_MAX_CONNS=0\n", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			writeEnv(t, tt.env)
+
+			if _, err := Load(); (err != nil) != tt.wantErr {
+				t.Errorf("Load() error = %v, want an error: %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 

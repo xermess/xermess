@@ -8,10 +8,13 @@
 		describe,
 		type Category
 	} from '$lib/components/activity/actions';
-	import { Icon, IconButton } from '$lib/components/ui';
+	import { Icon, IconButton, PageHeader } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	let category = $state<Category | 'all'>('all');
 	let search = $state('');
@@ -58,20 +61,22 @@
 	<title>Logs · xermess admin</title>
 </svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Logs</h1>
-		<span class="total">latest {data.logs.length}</span>
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.logs')]}>
+		{#snippet secondary()}
+			<span class="total">latest {data.logs.length}</span>
+			<IconButton
+				icon={RiRefreshLine}
+				label="Refresh"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
+	</PageHeader>
+
 	<p>Every sign-in and every change administrators made, newest first.</p>
-</header>
+</div>
 
 <div class="toolbar">
 	<div class="chips" role="group" aria-label="Filter by kind">
@@ -102,23 +107,12 @@
 />
 
 <style>
-	header {
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
 	}
 
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.total {
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	header p {
+	.heading p {
 		margin: var(--space-1) 0 0;
 		color: var(--color-text-hint);
 		font-size: var(--text-base);

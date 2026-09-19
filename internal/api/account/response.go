@@ -24,14 +24,17 @@ var (
 // pages' catalog, which the tests ask for. What differs is the status.
 var provided = func() map[string]respond.Problem {
 	statuses := map[string]int{
-		oidc.ErrInvalidCredentials.Code: http.StatusUnauthorized,
-		oidc.ErrRequestExpired.Code:     http.StatusGone,
-		oidc.ErrResetInvalid.Code:       http.StatusGone,
-		oidc.ErrRegistrationClosed.Code: http.StatusForbidden,
-		oidc.ErrEmailTaken.Code:         http.StatusConflict,
-		oidc.ErrNotYours.Code:           http.StatusNotFound,
-		oidc.ErrSSORequired.Code:        http.StatusForbidden,
-		oidc.ErrSSOUnknown.Code:         http.StatusNotFound,
+		oidc.ErrInvalidCredentials.Code:  http.StatusUnauthorized,
+		oidc.ErrRequestExpired.Code:      http.StatusGone,
+		oidc.ErrResetInvalid.Code:        http.StatusGone,
+		oidc.ErrRegistrationClosed.Code:  http.StatusForbidden,
+		oidc.ErrEmailTaken.Code:          http.StatusConflict,
+		oidc.ErrNotYours.Code:            http.StatusNotFound,
+		oidc.ErrSSORequired.Code:         http.StatusForbidden,
+		oidc.ErrSSOUnknown.Code:          http.StatusNotFound,
+		oidc.ErrPasswordNotOffered.Code:  http.StatusForbidden,
+		oidc.ErrEmailNotVerified.Code:    http.StatusForbidden,
+		oidc.ErrVerificationInvalid.Code: http.StatusGone,
 	}
 
 	out := map[string]respond.Problem{}

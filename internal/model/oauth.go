@@ -30,11 +30,12 @@ const (
 	// AuthorizationCodeLifetime is how long a client has to exchange a code.
 	// RFC 6749 recommends ten minutes at most; a client exchanges it at once.
 	AuthorizationCodeLifetime = 2 * time.Minute
-	// UserSessionLifetime is how long a user stays signed in at this server,
-	// which is what lets a second application sign them in without asking.
-	UserSessionLifetime = 7 * 24 * time.Hour
 	// PasswordResetLifetime is how long a reset link works.
 	PasswordResetLifetime = time.Hour
+	// EmailVerificationLifetime is how long a link confirming an address
+	// works. Longer than a reset: nobody is locked out while it waits, and it
+	// is often opened on another device, later.
+	EmailVerificationLifetime = 24 * time.Hour
 )
 
 // SigningKey is one private key tokens are signed with. The key is stored
@@ -111,7 +112,7 @@ type AuthorizationCode struct {
 	Audience            string    `gorm:"size:255"`
 	AuthTime            time.Time `gorm:"not null"`
 
-	ExpiresAt time.Time `gorm:"not null"`
+	ExpiresAt time.Time `gorm:"not null;index"`
 	// UsedAt is set when the code is exchanged. A code presented a second
 	// time is refused, and the tokens the first exchange issued are revoked
 	// (RFC 6749 section 4.1.2): the second presenter may be the thief.
@@ -145,7 +146,7 @@ type RefreshToken struct {
 
 	// ExpiresAt is the family's: a rotated token keeps its predecessor's, so
 	// rotating cannot keep a session alive for ever.
-	ExpiresAt time.Time `gorm:"not null"`
+	ExpiresAt time.Time `gorm:"not null;index"`
 	RevokedAt *time.Time
 }
 
@@ -169,7 +170,7 @@ type UserSession struct {
 	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
 	User      *User     `gorm:"constraint:OnDelete:CASCADE"`
 	AuthTime  time.Time `gorm:"not null"`
-	ExpiresAt time.Time `gorm:"not null"`
+	ExpiresAt time.Time `gorm:"not null;index"`
 	RevokedAt *time.Time
 	IP        string `gorm:"size:45"`
 	UserAgent string `gorm:"size:255"`
@@ -192,7 +193,7 @@ type PasswordReset struct {
 	TokenHash string    `gorm:"size:64;uniqueIndex;not null"`
 	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
 	User      *User     `gorm:"constraint:OnDelete:CASCADE"`
-	ExpiresAt time.Time `gorm:"not null"`
+	ExpiresAt time.Time `gorm:"not null;index"`
 	UsedAt    *time.Time
 }
 
@@ -204,6 +205,29 @@ func (PasswordReset) TableName() string {
 // Usable reports whether the link still works.
 func (r PasswordReset) Usable(now time.Time) bool {
 	return r.UsedAt == nil && now.Before(r.ExpiresAt)
+}
+
+// EmailVerification is a link sent to an address to prove it belongs to
+// whoever signs in with it: what a login flow that requires a verified
+// address sends an account that has not proved its own.
+type EmailVerification struct {
+	Base
+
+	TokenHash string    `gorm:"size:64;uniqueIndex;not null"`
+	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
+	User      *User     `gorm:"constraint:OnDelete:CASCADE"`
+	ExpiresAt time.Time `gorm:"not null;index"`
+	UsedAt    *time.Time
+}
+
+// TableName pins the table name.
+func (EmailVerification) TableName() string {
+	return "email_verifications"
+}
+
+// Usable reports whether the link still works.
+func (v EmailVerification) Usable(now time.Time) bool {
+	return v.UsedAt == nil && now.Before(v.ExpiresAt)
 }
 
 // NewSecret returns a secret to hand out — a code, a token, a handle — and the

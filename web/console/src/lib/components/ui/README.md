@@ -164,14 +164,14 @@ settings and logs pages. Reach for these before writing a box of your own.
 </PageContainer>
 ```
 
-| Component       | What it is                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------- |
-| `PageContainer` | A centred column for a page read top to bottom.                                                     |
-| `PageHeader`    | Breadcrumbs, controls beside them, and the page's actions at the far end.                           |
-| `Panel`         | A titled block: header strip with an icon and `meta`, then content. `flush` for lists.              |
-| `StatCard`      | A number with its name, an icon, tags under it, and a link when `href` is given.                    |
-| `List`          | Rows ruled off one under another. `bordered` makes it a box of its own.                             |
-| `ListItem`      | A row: `lead` (usually a `Thumb`), a title and description or any content, and `end`.               |
-| `Thumb`         | A small square holding an icon or a few letters.                                                    |
-| `Tag`           | A label in any palette; `dot` marks it with a coloured dot instead, `small` and `strong` size it.   |
-| `Alert`         | A message: `danger` (the default) is announced as an error; `warning`, `info`, `success` are notes. |
+| Component       | What it is                                                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageContainer` | A centred column for a page read top to bottom.                                                                                                           |
+| `PageHeader`    | Every page's heading: `Dashboard / <section>`, with a link crumb back on a detail page, the count and controls beside it, and the actions at the far end. |
+| `Panel`         | A titled block: header strip with an icon and `meta`, then content. `flush` for lists.                                                                    |
+| `StatCard`      | A number with its name, an icon, tags under it, and a link when `href` is given.                                                                          |
+| `List`          | Rows ruled off one under another. `bordered` makes it a box of its own.                                                                                   |
+| `ListItem`      | A row: `lead` (usually a `Thumb`), a title and description or any content, and `end`.                                                                     |
+| `Thumb`         | A small square holding an icon or a few letters.                                                                                                          |
+| `Tag`           | A label in any palette; `dot` marks it with a coloured dot instead, `small` and `strong` size it.                                                         |
+| `Alert`         | A message: `danger` (the default) is announced as an error; `warning`, `info`, `success` are notes.                                                       |

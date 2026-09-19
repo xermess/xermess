@@ -75,6 +75,14 @@ func (s *Service) StartSocial(ctx context.Context, slug, request, next string) (
 	if err != nil {
 		return "", err
 	}
+
+	flow, err := s.flowFor(ctx, request)
+	if err != nil {
+		return "", err
+	}
+	if !flow.Offers(model.StepSocial) {
+		return "", ErrSocialNotOffered
+	}
 	spec := provider.Spec()
 
 	state, stateHash, err := model.NewSecret()
@@ -520,6 +528,11 @@ func (s *Service) signInWithIdentity(
 	now := s.now()
 	email := strings.ToLower(strings.TrimSpace(who.Email))
 
+	flow, err := s.flowFor(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
 	// Someone who has signed in with this provider before.
 	identity, err := s.store.UserIdentity(ctx, provider.ID, who.Subject)
 	switch {
@@ -539,7 +552,7 @@ func (s *Service) signInWithIdentity(
 			return nil, err
 		}
 
-		return s.startSocialSession(ctx, user, provider, client)
+		return s.startSocialSession(ctx, user, provider, flow, request, client)
 	case !errors.Is(err, store.ErrNotFound):
 		return nil, err
 	}
@@ -570,7 +583,7 @@ func (s *Service) signInWithIdentity(
 			"provider": provider.Name,
 		})
 
-		return s.startSocialSession(ctx, user, provider, client)
+		return s.startSocialSession(ctx, user, provider, flow, request, client)
 	case !errors.Is(err, store.ErrNotFound):
 		return nil, err
 	}
@@ -612,7 +625,7 @@ func (s *Service) signInWithIdentity(
 
 	s.record(ctx, user, user.Email, "user.registered", client, map[string]any{"provider": provider.Name})
 
-	return s.startSocialSession(ctx, user, provider, client)
+	return s.startSocialSession(ctx, user, provider, flow, request, client)
 }
 
 // socialRegistrationAllowed refuses to make an account for a sign-in to an
@@ -660,9 +673,11 @@ func (s *Service) startSocialSession(
 	ctx context.Context,
 	user *model.User,
 	provider *model.SocialProvider,
+	flow *model.LoginFlow,
+	request string,
 	client Client,
 ) (*SignInResult, error) {
-	result, err := s.startSession(ctx, user, client, "user.login")
+	result, err := s.startSession(ctx, user, flow, request, client, "user.login")
 	if err != nil {
 		return nil, err
 	}
@@ -815,6 +830,8 @@ func (s *Service) SocialErrorPage(err error) string {
 	switch {
 	case errors.Is(err, ErrInvalidCredentials):
 		reason = ErrSocialBlocked
+	case errors.Is(err, ErrEmailNotVerified):
+		reason = ErrEmailNotVerified
 	case errors.As(err, &known) && strings.HasPrefix(known.Code, "social_"):
 		reason = known
 	}

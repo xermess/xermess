@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -54,6 +55,23 @@ func (User) TableName() string {
 // ErrPasswordTooLong is returned for a password bcrypt cannot hash: it reads
 // no further than 72 bytes, and refuses rather than quietly ignoring the rest.
 var ErrPasswordTooLong = errors.New("password must be at most 72 bytes")
+
+// NormalizeEmail is an address as users are stored and found by: trimmed and
+// lower case. Addresses are compared case-insensitively everywhere people
+// type them, and storing them one way is what lets the unique index on
+// users.email both find a user and keep "Ada@x" from being a second account
+// beside "ada@x" — an index on LOWER(email) would do the first, but every
+// lookup would have to remember to ask for it.
+func NormalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
+// BeforeSave stores the address normalized, whoever wrote it — the sign-up
+// page, the panel, a provider's answer.
+func (u *User) BeforeSave(*gorm.DB) error {
+	u.Email = NormalizeEmail(u.Email)
+	return nil
+}
 
 // AfterFind fills in HasPassword for a record read from the database.
 func (u *User) AfterFind(*gorm.DB) error {

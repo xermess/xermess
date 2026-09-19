@@ -127,7 +127,7 @@ func (h *Handler) SocialCallback(c *gin.Context) {
 		return
 	}
 
-	session.SetUser(c, result.SignIn.Token, h.secure)
+	session.SetUser(c, result.SignIn.Token, result.SignIn.Session.Record.ExpiresAt, h.secure)
 
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, h.provider.SocialLanding(ctx, result))
@@ -205,7 +205,7 @@ func (h *Handler) ssoFinished(c *gin.Context, result *oidc.SocialResult, err err
 		return
 	}
 
-	session.SetUser(c, result.SignIn.Token, h.secure)
+	session.SetUser(c, result.SignIn.Token, result.SignIn.Session.Record.ExpiresAt, h.secure)
 
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, h.provider.SocialLanding(c.Request.Context(), result))
@@ -365,5 +365,6 @@ func cookie(c *gin.Context) string {
 }
 
 func client(c *gin.Context) oidc.Client {
-	return oidc.Client{IP: c.ClientIP(), UserAgent: c.Request.UserAgent()}
+	language, _ := c.Cookie(oidc.LanguageCookie)
+	return oidc.Client{IP: c.ClientIP(), UserAgent: c.Request.UserAgent(), Language: language}
 }

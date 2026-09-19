@@ -51,7 +51,7 @@
 
 <PageContainer>
 	<div class="page">
-		<PageHeader crumbs={[t('profile.crumb_account'), t('profile.head')]}>
+		<PageHeader crumbs={[t('nav.dashboard'), t('profile.head')]}>
 			{#snippet actions()}
 				<SignOutButton />
 			{/snippet}

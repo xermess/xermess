@@ -183,6 +183,19 @@ const actions: Record<string, Action> = {
 		category: 'access',
 		icon: RiLogoutBoxRLine
 	},
+	'user.session_ended': {
+		label: 'Session ended',
+		verb: 'signed out a session of',
+		category: 'access',
+		icon: RiLogoutBoxRLine
+	},
+	'user.signed_out_everywhere': {
+		label: 'Signed out everywhere',
+		verb: 'signed out everywhere',
+		category: 'access',
+		tone: 'danger',
+		icon: RiLogoutBoxRLine
+	},
 	'user.application_disconnected': {
 		label: 'App disconnected',
 		verb: 'disconnected an application',

@@ -17,8 +17,7 @@ import type {
 	AdminRecord,
 	AdminRole,
 	AdminRoleInput,
-	DatabasePage,
-	DatabaseTable,
+	UserSessionPage,
 	Language,
 	LanguageInput,
 	LanguageList,
@@ -173,21 +172,32 @@ export const flowsApi = {
 	remove: (id: string) => api.delete<void>(`/admin/login-flows/${id}`)
 };
 
-/** The server's own tables, read only. Nothing here writes a row: a record is
-    changed on the page that knows what it is. */
-export const databaseApi = {
-	tables: (fetcher?: Fetch) =>
-		api.get<{ tables: DatabaseTable[] }>('/admin/database/tables', fetcher),
-
-	table: (name: string, params: { limit?: number; offset?: number } = {}, fetcher?: Fetch) => {
+/** Everyone signed in: listing their sessions, and ending them. */
+export const sessionsApi = {
+	/** A page of active sessions, newest first; `after` continues from the
+	    last one of the page before. */
+	list: (
+		params: { search?: string; user?: string; after?: string; limit?: number } = {},
+		fetcher?: Fetch
+	) => {
 		const query = new URLSearchParams();
+		if (params.search) query.set('search', params.search);
+		if (params.user) query.set('user', params.user);
+		if (params.after) query.set('after', params.after);
 		if (params.limit) query.set('limit', String(params.limit));
-		if (params.offset) query.set('offset', String(params.offset));
 
-		const path = `/admin/database/tables/${encodeURIComponent(name)}`;
+		return api.get<UserSessionPage>(
+			query.size ? `/admin/user-sessions?${query}` : '/admin/user-sessions',
+			fetcher
+		);
+	},
 
-		return api.get<DatabasePage>(query.size ? `${path}?${query}` : path, fetcher);
-	}
+	/** Signs one browser out. */
+	end: (id: string) => api.delete<void>(`/admin/user-sessions/${id}`),
+
+	/** Ends every session a user has and revokes their applications' tokens. */
+	signOutUser: (userId: string) =>
+		api.delete<{ sessions: number; tokens: number }>(`/admin/users/${userId}/sessions`)
 };
 
 /** The languages, and their text for each app. */

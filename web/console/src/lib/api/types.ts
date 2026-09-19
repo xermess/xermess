@@ -58,7 +58,6 @@ export type AdminPermissionName =
 	| 'social.write'
 	| 'login_flows.read'
 	| 'login_flows.write'
-	| 'database.read'
 	| 'sso.read'
 	| 'sso.write'
 	| 'languages.read'
@@ -778,33 +777,22 @@ export type LoginFlowInput = {
 	session_lifetime_hours?: number;
 };
 
-/** One of the server's own tables, as the Database page lists it. */
-export type DatabaseTable = {
-	name: string;
-	rows: number;
-	columns: number;
+/** A session still signing a user in, as the Sessions page lists it. */
+export type UserSessionRecord = {
+	id: string;
+	user: { id: string; email: string; name: string };
+	ip: string;
+	user_agent: string;
+	signed_in_at: string;
+	expires_at: string;
 };
 
-/** One column of a table. */
-export type DatabaseColumn = {
-	name: string;
-	type: string;
-	nullable: boolean;
-	primary_key: boolean;
-	/** True for a column holding a password, a key or a token: it is never
-	    read, so every row has null for it. */
-	hidden: boolean;
-};
-
-/** A page of one table: the columns it has, and the rows that were asked for.
-    A row is keyed by column name, and holds whatever the database had. */
-export type DatabasePage = {
-	table: string;
-	columns: DatabaseColumn[];
-	rows: Record<string, unknown>[];
-	total: number;
-	limit: number;
-	offset: number;
+/** A page of sessions, and the session to continue after when there are
+    more. There is no total: counting every session on every visit is what
+    the page is built to avoid. */
+export type UserSessionPage = {
+	sessions: UserSessionRecord[];
+	next?: string;
 };
 
 /** Which of the two apps a translation is for: the sign-in pages, or this

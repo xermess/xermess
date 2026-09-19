@@ -83,8 +83,9 @@ func (s *Service) SessionFor(ctx context.Context, token string) (*Session, error
 	return &Session{Record: *record, User: user}, nil
 }
 
-// SignIn checks a user's address and password and starts a session.
-func (s *Service) SignIn(ctx context.Context, email, password string, client Client) (*SignInResult, error) {
+// SignIn checks a user's address and password and starts a session, for the
+// sign-in under way that `request` names, if any.
+func (s *Service) SignIn(ctx context.Context, email, password, request string, client Client) (*SignInResult, error) {
 	now := s.now()
 
 	// A domain that has to sign in through its identity provider has no
@@ -92,6 +93,16 @@ func (s *Service) SignIn(ctx context.Context, email, password string, client Cli
 	// says nothing about the account.
 	if err := s.ssoRequiredFor(ctx, email); err != nil {
 		return nil, err
+	}
+
+	// Neither does a flow without a password step: it is refused before the
+	// password is looked at, for the same reason.
+	flow, err := s.flowFor(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	if !flow.Offers(model.StepPassword) {
+		return nil, ErrPasswordNotOffered
 	}
 
 	user, err := s.store.UserByEmail(ctx, email)
@@ -143,11 +154,31 @@ func (s *Service) SignIn(ctx context.Context, email, password string, client Cli
 		return &SignInResult{ResetToken: token}, nil
 	}
 
-	return s.startSession(ctx, user, client, "user.login")
+	return s.startSession(ctx, user, flow, request, client, "user.login")
 }
 
-func (s *Service) startSession(ctx context.Context, user *model.User, client Client, action string) (*SignInResult, error) {
+// startSession signs a user in under a login flow's rules: an address it
+// requires verified is sent a link to verify it instead, and the session lasts
+// as long as the flow says. Every way in ends here, so the rules hold however
+// somebody arrived.
+func (s *Service) startSession(
+	ctx context.Context,
+	user *model.User,
+	flow *model.LoginFlow,
+	request string,
+	client Client,
+	action string,
+) (*SignInResult, error) {
 	now := s.now()
+
+	if flow.RequireVerifiedEmail && !user.EmailVerified {
+		if err := s.sendVerification(ctx, user, request, client); err != nil {
+			return nil, err
+		}
+		s.record(ctx, user, user.Email, "user.login_blocked", client, map[string]any{"reason": "email not verified"})
+
+		return nil, ErrEmailNotVerified
+	}
 
 	token, hash, err := model.NewSecret()
 	if err != nil {
@@ -158,7 +189,7 @@ func (s *Service) startSession(ctx context.Context, user *model.User, client Cli
 		TokenHash: hash,
 		UserID:    user.ID,
 		AuthTime:  now,
-		ExpiresAt: now.Add(model.UserSessionLifetime),
+		ExpiresAt: now.Add(time.Duration(flow.SessionLifetimeHours) * time.Hour),
 		IP:        client.IP,
 		UserAgent: truncate(client.UserAgent, 255),
 	}
@@ -227,11 +258,13 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 	// wants new accounts; the flow says whether this installation takes them
 	// at all, so a flow with registration turned off closes the door rather
 	// than only hiding the link to it.
+	// A flow without a password step makes accounts through the providers it
+	// offers, not with a password typed here.
 	flow, err := s.store.EffectiveLoginFlow(ctx, app)
 	if err != nil {
 		return nil, err
 	}
-	if !flow.AllowRegistration {
+	if !flow.AllowRegistration || !flow.Offers(model.StepPassword) {
 		return nil, ErrRegistrationClosed
 	}
 
@@ -279,7 +312,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 
 	s.record(ctx, user, user.Email, "user.registered", client, map[string]any{"application": app.Name})
 
-	return s.startSession(ctx, user, client, "user.login")
+	return s.startSession(ctx, user, flow, r.Request, client, "user.login")
 }
 
 // ForgotPassword sends a reset link to the address, if it has an account that
@@ -308,7 +341,7 @@ func (s *Service) ForgotPassword(ctx context.Context, email, request, language s
 	if err != nil {
 		return err
 	}
-	if !flow.AllowPasswordReset {
+	if !flow.AllowPasswordReset || !flow.Offers(model.StepPassword) {
 		return nil
 	}
 
@@ -439,6 +472,90 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string, cli
 	}
 
 	s.record(ctx, user, user.Email, "user.password_reset", client, nil)
+
+	return nil
+}
+
+// sendVerification sends a link that proves the address is the user's, in the
+// language the pages were shown in. It is sent while the person waits, unlike
+// a reset: they are told it has gone, and a link that failed to go should say
+// so rather than leave them watching an empty inbox.
+func (s *Service) sendVerification(ctx context.Context, user *model.User, request string, client Client) error {
+	token, hash, err := model.NewSecret()
+	if err != nil {
+		return err
+	}
+
+	err = s.store.CreateEmailVerification(ctx, &model.EmailVerification{
+		TokenHash: hash,
+		UserID:    user.ID,
+		ExpiresAt: s.now().Add(model.EmailVerificationLifetime),
+	})
+	if err != nil {
+		return err
+	}
+
+	text := s.textIn(ctx, client.Language)
+
+	name := text["email.reset.your_account"]
+	if pending, err := s.pending(ctx, request); err == nil {
+		name = pending.Application.Name
+	} else {
+		request = ""
+	}
+
+	params := map[string]any{
+		"app":   name,
+		"email": user.Email,
+		"link":  withQuery(s.accountURL+PageVerify, url.Values{"token": {token}, "request": {request}}),
+		"hours": int(model.EmailVerificationLifetime.Hours()),
+	}
+
+	sendCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	err = s.mail.Send(sendCtx, mail.Message{
+		To:      user.Email,
+		Subject: locales.Fill(text["email.verify.subject"], params),
+		Body:    locales.Fill(text["email.verify.body"], params),
+	})
+	if err != nil {
+		return fmt.Errorf("send the verification email: %w", err)
+	}
+
+	s.record(ctx, user, user.Email, "user.email_verification_sent", client, nil)
+
+	return nil
+}
+
+// VerifyEmail uses a verification link: the address is the user's, and every
+// other link sent to it stops working.
+func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) error {
+	if token == "" {
+		return ErrVerificationInvalid
+	}
+
+	verification, err := s.store.EmailVerificationByHash(ctx, model.HashSecret(token))
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		return ErrVerificationInvalid
+	case err != nil:
+		return err
+	case !verification.Usable(s.now()):
+		return ErrVerificationInvalid
+	}
+
+	if err := s.store.VerifyEmail(ctx, verification, s.now()); errors.Is(err, store.ErrAlreadyUsed) {
+		return ErrVerificationInvalid
+	} else if err != nil {
+		return err
+	}
+
+	user, err := s.store.User(ctx, verification.UserID)
+	if err != nil {
+		return err
+	}
+	s.record(ctx, user, user.Email, "user.email_verified", client, nil)
 
 	return nil
 }

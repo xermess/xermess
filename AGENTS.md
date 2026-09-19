@@ -38,7 +38,7 @@ internal/auth           signing administrators in, and what they may do
 internal/oidc           the provider: authorize, tokens, userinfo, logout
 internal/api/server.go  the engine, and the table of every route
 internal/api/<subject>/ handler.go, request.go, response.go, validation.go
-migrations/             the schema; one file today, applied in order
+migrations/             the schema, then one file per change, applied in order
 web/console/src/lib/    api/, query/, components/ui/, components/<feature>/
 web/console/src/routes/admin/(panel)/  everything behind a session
 ```
@@ -62,14 +62,12 @@ and the permission it needs. Add it to the API table in `README.md`.
 `model.All()` — and bump the count in `TestAllListsEveryModel`, which exists to
 catch a model that never got a table.
 
-While `migrations/` holds only the schema migration, that is all a new model
-needs: it builds from `model.All()`, so the table follows, and a development
-database is rebuilt rather than stepped forward (`make db-reset`). Add the
-`down` entry for it, in an order that drops children first. Once a database
-exists that cannot be rebuilt, the schema file stops being editable and a new
-migration is written instead — `AutoMigrate` on the new models in `up`, the
-undo in `down` — and from then on no migration that has run anywhere is ever
-edited.
+The schema migration builds a fresh database from `model.All()`, so a new
+model's table follows on one — but databases that already exist are stepped
+forward, not rebuilt, so every change also gets a migration of its own
+(`make migrate-new name=x`): `AutoMigrate` on the new models, or the index or
+column added, in `up`, the undo in `down`. `20260920120000_scale.go` is the
+first, and the example. No migration that has run anywhere is ever edited.
 
 **A permission.** A constant and a catalog entry in
 `internal/model/admin_permission.go`, guarding the routes with `session.Can` or

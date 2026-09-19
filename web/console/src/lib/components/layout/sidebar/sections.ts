@@ -5,7 +5,7 @@ import {
 	RiAppsLine,
 	RiBuildingLine,
 	RiCodeBoxLine,
-	RiDatabase2Line,
+	RiComputerLine,
 	RiFileList3Line,
 	RiGitBranchLine,
 	RiGroupLine,
@@ -87,12 +87,6 @@ export const sections: SidebarGroup[] = [
 		key: 'nav.authentication',
 		items: [
 			{
-				route: '/admin/(panel)/dashboard/database',
-				key: 'nav.database',
-				icon: RiDatabase2Line,
-				allowed: (admin) => can(admin, 'database.read')
-			},
-			{
 				route: '/admin/(panel)/dashboard/social',
 				key: 'nav.social',
 				icon: RiShareLine,
@@ -113,6 +107,12 @@ export const sections: SidebarGroup[] = [
 				route: '/admin/(panel)/dashboard/users',
 				key: 'nav.users',
 				icon: RiGroupLine,
+				allowed: (admin) => can(admin, 'users.read')
+			},
+			{
+				route: '/admin/(panel)/dashboard/sessions',
+				key: 'nav.sessions',
+				icon: RiComputerLine,
 				allowed: (admin) => can(admin, 'users.read')
 			},
 			{

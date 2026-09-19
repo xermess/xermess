@@ -7,12 +7,15 @@
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, adminsApi, type AdminRole } from '$lib/api';
 	import { adminPermissionsOptions, adminRolesOptions, keys } from '$lib/query';
-	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import AdminRoleDrawer from '$lib/components/admins/AdminRoleDrawer.svelte';
 	import AdminRoleTable from '$lib/components/admins/AdminRoleTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -113,27 +116,28 @@
 
 <svelte:head><title>Admin roles · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Admin roles</h1>
-		<span class="total">{roles.data.length} total</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.admin_roles')]}>
+		{#snippet secondary()}
+			<span class="total">{roles.data.length} total</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label="Refresh the data"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	<div class="actions">
-		<Button onclick={() => openRole(null)}>
-			<Icon icon={RiAddLine} />
-			New admin role
-		</Button>
-	</div>
-</header>
+		{#snippet actions()}
+			<Button onclick={() => openRole(null)}>
+				<Icon icon={RiAddLine} />
+				New admin role
+			</Button>
+		{/snippet}
+	</PageHeader>
+</div>
 
 <p class="lead">
 	What administrators may do in this panel. Each role grants permissions from a fixed catalog;
@@ -210,24 +214,9 @@
 <AdminRoleDrawer role={editing} catalog={catalog.data} bind:open={roleOpen} />
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.error {
@@ -286,7 +275,7 @@
 	}
 
 	@media (max-width: 40rem) {
-		header,
+		.heading,
 		.error {
 			margin-bottom: var(--space-3);
 		}

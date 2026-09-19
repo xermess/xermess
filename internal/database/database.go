@@ -52,6 +52,19 @@ func Open(cfg config.DB) (*gorm.DB, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
+	// Past MaxConns a query waits for a free connection rather than opening
+	// another; idle ones are kept, since a sign-in that has to dial first is
+	// slower than one that does not. Connections are replaced every half hour
+	// so a failover or a resized pool behind a proxy is picked up.
+	// Unset — a tool or a test opening the database for itself — keeps Go's
+	// own defaults.
+	if cfg.MaxConns > 0 {
+		sqlDB.SetMaxOpenConns(cfg.MaxConns)
+		sqlDB.SetMaxIdleConns(cfg.MaxConns)
+		sqlDB.SetConnMaxLifetime(30 * time.Minute)
+		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+	}
+
 	return db, nil
 }
 

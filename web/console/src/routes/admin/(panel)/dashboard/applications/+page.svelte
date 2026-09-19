@@ -8,12 +8,15 @@
 	import { ApiError, applicationsApi, type Application } from '$lib/api';
 	import { applicationsOptions, keys } from '$lib/query';
 	import { can } from '$lib/permissions';
-	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import ApplicationDrawer from '$lib/components/applications/ApplicationDrawer.svelte';
 	import ApplicationTable from '$lib/components/applications/ApplicationTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -121,29 +124,30 @@
 
 <svelte:head><title>Applications · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Applications</h1>
-		<span class="total">{applications.data.total} total</span>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.applications')]}>
+		{#snippet secondary()}
+			<span class="total">{applications.data.total} total</span>
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
+			<IconButton
+				icon={RiRefreshLine}
+				label="Refresh the data"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-	{#if canRegister}
-		<div class="actions">
-			<Button onclick={() => openApplication(null)}>
-				<Icon icon={RiAddLine} />
-				New application
-			</Button>
-		</div>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canRegister}
+				<Button onclick={() => openApplication(null)}>
+					<Icon icon={RiAddLine} />
+					New application
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
+</div>
 
 <p class="lead">
 	The apps and services that sign their users in here with OAuth 2.0 and OpenID Connect. Each
@@ -233,24 +237,9 @@
 />
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.error {
@@ -344,7 +333,7 @@
 	}
 
 	@media (max-width: 40rem) {
-		header,
+		.heading,
 		.error {
 			margin-bottom: var(--space-3);
 		}

@@ -16,12 +16,15 @@
 	import { ApiError, rolesApi, type Role } from '$lib/api';
 	import { applicationChoicesOptions, keys, roleChoicesOptions, rolesOptions } from '$lib/query';
 	import { canEditRoles } from '$lib/components/roles/roles';
-	import { Alert, Button, Icon, IconButton, SelectionBar } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import RoleDrawer from '$lib/components/roles/RoleDrawer.svelte';
 	import RoleTable from '$lib/components/roles/RoleTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -197,28 +200,28 @@
 
 <svelte:head><title>Roles · xermess admin</title></svelte:head>
 
-<header>
-	<div class="title">
-		<h1>Roles</h1>
+<div class="heading">
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.roles')]}>
+		{#snippet secondary()}
+			<IconButton
+				icon={RiRefreshLine}
+				label="Refresh the data"
+				onclick={refresh}
+				loading={refreshing}
+				disabled={refreshing}
+			/>
+		{/snippet}
 
-		<IconButton
-			icon={RiRefreshLine}
-			label="Refresh the data"
-			onclick={refresh}
-			loading={refreshing}
-			disabled={refreshing}
-		/>
-	</div>
-
-	{#if canCreate}
-		<div class="actions">
-			<Button onclick={() => openRole(null)}>
-				<Icon icon={RiAddLine} />
-				New role
-			</Button>
-		</div>
-	{/if}
-</header>
+		{#snippet actions()}
+			{#if canCreate}
+				<Button onclick={() => openRole(null)}>
+					<Icon icon={RiAddLine} />
+					New role
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
+</div>
 
 <p class="lead">
 	Roles say what users may do in your applications. A global role is the same everywhere; an
@@ -359,24 +362,9 @@
 />
 
 <style>
-	header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
+	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.title {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.error {
@@ -544,7 +532,7 @@
 	}
 
 	@media (max-width: 40rem) {
-		header,
+		.heading,
 		.error {
 			margin-bottom: var(--space-3);
 		}

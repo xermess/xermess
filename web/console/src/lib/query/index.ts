@@ -17,7 +17,7 @@ export {
 	type ApplicationListParams
 } from './applications';
 export { apiOptions, apisOptions } from './apis';
-export { databaseTableOptions, databaseTablesOptions, DATABASE_PAGE_SIZE } from './database';
+export { SESSIONS_PAGE_SIZE, sessionsOptions, type SessionListParams } from './sessions';
 export { loginFlowChoicesOptions, loginFlowsOptions } from './flows';
 export { languagesOptions, translationOptions } from './languages';
 export { ssoOptions } from './sso';

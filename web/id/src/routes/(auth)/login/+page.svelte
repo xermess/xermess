@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { requiredSSO, signIn } from '$lib/api';
+	import { ApiError, requiredSSO, signIn } from '$lib/api';
 	import {
 		Alert,
 		AuthCard,
@@ -26,13 +26,21 @@
 	    what this installation allows, an application what it wants. */
 	const flow = $derived(data.login);
 	const offerSocial = $derived(flow.steps.includes('social'));
-	const offerRegistration = $derived(flow.allow_registration && app?.allow_registration === true);
+	/** A flow without a password step signs people in through the buttons
+	    alone, and makes accounts that way too. */
+	const offerPassword = $derived(flow.steps.includes('password'));
+	const offerRegistration = $derived(
+		offerPassword && flow.allow_registration && app?.allow_registration === true
+	);
 
 	// The application may already know who is signing in (login_hint).
 	// svelte-ignore state_referenced_locally
 	let email = $state(data.signInRequest?.login_hint ?? '');
 	let password = $state('');
 	let error = $state('');
+	/** Said instead of an error when the address has to be confirmed first:
+	    a link is on its way, which is news rather than a failure. */
+	let notice = $state('');
 	let submitting = $state(false);
 	/** The identity provider the browser is being sent to, when the address
 	    typed belongs to a domain that has to sign in through it. */
@@ -45,6 +53,7 @@
 		if (!canSubmit) return;
 
 		error = '';
+		notice = '';
 		submitting = true;
 
 		// Read before anything is awaited: once the session changes, this
@@ -90,7 +99,11 @@
 				return;
 			}
 
-			error = messageOf(err, t);
+			if (err instanceof ApiError && err.code === 'email_not_verified') {
+				notice = messageOf(err, t);
+			} else {
+				error = messageOf(err, t);
+			}
 			password = '';
 			submitting = false;
 		}
@@ -121,36 +134,39 @@
 		title={t('login.title')}
 		subtitle={app ? t('login.subtitle_app', { app: app.name }) : t('login.subtitle_account')}
 	>
-		<form onsubmit={submit} novalidate>
-			{#if error}<Alert>{error}</Alert>{/if}
-			{#if redirecting}
-				<Alert tone="info">{t('login.sso_redirecting', { name: redirecting })}</Alert>
-			{/if}
+		{#if offerPassword}
+			<form onsubmit={submit} novalidate>
+				{#if error}<Alert>{error}</Alert>{/if}
+				{#if notice}<Alert tone="info">{notice}</Alert>{/if}
+				{#if redirecting}
+					<Alert tone="info">{t('login.sso_redirecting', { name: redirecting })}</Alert>
+				{/if}
 
-			<TextField
-				label={t('field.email')}
-				bind:value={email}
-				type="email"
-				name="email"
-				autocomplete="username"
-				autocapitalize="none"
-				spellcheck={false}
-				disabled={submitting}
-			/>
+				<TextField
+					label={t('field.email')}
+					bind:value={email}
+					type="email"
+					name="email"
+					autocomplete="username"
+					autocapitalize="none"
+					spellcheck={false}
+					disabled={submitting}
+				/>
 
-			<PasswordField
-				label={t('field.password')}
-				bind:value={password}
-				disabled={submitting}
-				aside={flow.allow_password_reset
-					? { label: t('login.forgot'), href: authHref('/forgot-password', data.request) }
-					: undefined}
-			/>
+				<PasswordField
+					label={t('field.password')}
+					bind:value={password}
+					disabled={submitting}
+					aside={flow.allow_password_reset
+						? { label: t('login.forgot'), href: authHref('/forgot-password', data.request) }
+						: undefined}
+				/>
 
-			<Button type="submit" block loading={submitting} disabled={!canSubmit}>
-				{submitting ? t('login.submitting') : t('login.submit')}
-			</Button>
-		</form>
+				<Button type="submit" block loading={submitting} disabled={!canSubmit}>
+					{submitting ? t('login.submitting') : t('login.submit')}
+				</Button>
+			</form>
+		{/if}
 
 		<SocialButtons
 			providers={offerSocial ? data.socialProviders : []}

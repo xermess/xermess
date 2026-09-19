@@ -187,7 +187,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.provider.SignIn(c.Request.Context(), req.Email, req.Password, client(c))
+	result, err := h.provider.SignIn(c.Request.Context(), req.Email, req.Password, req.Request, client(c))
 	if err != nil {
 		h.fail(c, err, "signing a user in failed")
 		return
@@ -231,7 +231,7 @@ func (h *Handler) signedIn(c *gin.Context, request string, result *oidc.SignInRe
 		return
 	}
 
-	session.SetUser(c, result.Token, h.secure)
+	session.SetUser(c, result.Token, result.Session.Record.ExpiresAt, h.secure)
 
 	if request == "" {
 		c.JSON(http.StatusOK, signedInResponse{})
@@ -300,6 +300,28 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	session.ClearUser(c, h.secure)
 
 	c.JSON(http.StatusOK, gin.H{"status": "reset"})
+}
+
+// VerifyEmail uses a link sent to prove an address. It is a POST the page
+// makes when the person presses the button, not the link itself: a mail
+// scanner that follows every link in an inbox would otherwise use it up.
+func (h *Handler) VerifyEmail(c *gin.Context) {
+	var req verifyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := validate.Struct(req); err != nil {
+		respond.Failure(c, h.log, err, "validating an email verification failed")
+		return
+	}
+
+	if err := h.provider.VerifyEmail(c.Request.Context(), req.Token, client(c)); err != nil {
+		h.fail(c, err, "verifying an email failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "verified"})
 }
 
 // Logout signs the user out of this server in this browser.
@@ -466,5 +488,6 @@ func (h *Handler) fail(c *gin.Context, err error, note string) {
 }
 
 func client(c *gin.Context) oidc.Client {
-	return oidc.Client{IP: c.ClientIP(), UserAgent: c.Request.UserAgent()}
+	language, _ := c.Cookie(oidc.LanguageCookie)
+	return oidc.Client{IP: c.ClientIP(), UserAgent: c.Request.UserAgent(), Language: language}
 }

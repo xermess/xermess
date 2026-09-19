@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { RiMailLine, RiShieldUserLine, RiUserLine } from 'svelte-remixicon';
+	import { resolve } from '$app/paths';
+	import { RiComputerLine, RiMailLine, RiShieldUserLine, RiUserLine } from 'svelte-remixicon';
 	import {
 		ApiError,
 		usersApi,
@@ -16,7 +17,9 @@
 		Button,
 		Drawer,
 		FormSection,
+		Icon,
 		Input,
+		LinkButton,
 		List,
 		ListItem,
 		PasswordInput,
@@ -25,6 +28,7 @@
 		Tag,
 		Thumb
 	} from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
 	import { markFor as providerMark } from '$lib/components/social/providers';
 	import { formatDate, formatRelative } from '$lib/utils/format';
@@ -58,6 +62,8 @@
 		open = $bindable(false),
 		editable = true
 	}: Props = $props();
+
+	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -441,6 +447,18 @@
 	</Tabs>
 
 	{#snippet footer()}
+		{#if current}
+			<!-- Where they are signed in, and the way to sign them out. -->
+			<LinkButton
+				variant="subtle"
+				size="sm"
+				href={`${resolve('/admin/(panel)/dashboard/sessions')}?${new URLSearchParams({ user: current.id, email: current.email })}`}
+			>
+				<Icon icon={RiComputerLine} />
+				{t('nav.sessions')}
+			</LinkButton>
+		{/if}
+
 		<span class="spacer"></span>
 
 		<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>

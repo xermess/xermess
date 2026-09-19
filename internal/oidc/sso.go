@@ -383,7 +383,12 @@ func (s *Service) finishSSO(
 	person *ssoPerson,
 	client Client,
 ) (*SocialResult, error) {
-	result, err := s.signInThroughSSO(ctx, connection, person, client)
+	flow, err := s.flowFor(ctx, login.Request)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := s.signInThroughSSO(ctx, connection, person, flow, login.Request, client)
 	if err != nil {
 		return nil, s.ssoFailed(ctx, connection, client, err)
 	}
@@ -398,6 +403,8 @@ func (s *Service) signInThroughSSO(
 	ctx context.Context,
 	connection *model.SSOConnection,
 	person *ssoPerson,
+	flow *model.LoginFlow,
+	request string,
 	client Client,
 ) (*SignInResult, error) {
 	now := s.now()
@@ -451,7 +458,7 @@ func (s *Service) signInThroughSSO(
 		return nil, err
 	}
 
-	result, err := s.startSession(ctx, user, client, "user.login")
+	result, err := s.startSession(ctx, user, flow, request, client, "user.login")
 	if err != nil {
 		return nil, err
 	}

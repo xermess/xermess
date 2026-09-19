@@ -1,0 +1,178 @@
+<script lang="ts">
+	import { RiDraggable } from 'svelte-remixicon';
+	import type { LoginStep, LoginStepSpec } from '$lib/api';
+	import { Icon } from '$lib/components/ui';
+	import { useTranslator } from '$lib/i18n';
+	import { describe, labelFor, markFor } from '../steps';
+
+	/**
+	 * The steps a flow can be made of. Each can be dragged onto the canvas, or
+	 * clicked: into the gap the canvas is waiting to fill, or last. The ones the
+	 * sign-in pages run come first; the planned ones can be placed too, as a
+	 * plan, and say so.
+	 */
+	type Props = {
+		kinds: LoginStepSpec[];
+		steps: LoginStep[];
+		editable: boolean;
+		/** Set while a "+" on the canvas waits for a step. */
+		waiting: boolean;
+		onAdd: (step: LoginStep) => void;
+	};
+
+	let { kinds, steps, editable, waiting, onAdd }: Props = $props();
+
+	const t = useTranslator();
+
+	const groups = $derived([
+		{ key: 'flows.palette_ready', kinds: kinds.filter((kind) => kind.implemented && !kind.fixed) },
+		{ key: 'flows.palette_planned', kinds: kinds.filter((kind) => !kind.implemented) }
+	]);
+</script>
+
+<aside class="palette" aria-label={t('flows.palette')}>
+	<h2>{t('flows.palette')}</h2>
+	<p class="hint">{waiting ? t('flows.palette_waiting') : t('flows.palette_hint')}</p>
+
+	{#each groups as group (group.key)}
+		<h3>{t(group.key)}</h3>
+		<ul>
+			{#each group.kinds as kind (kind.step)}
+				{@const used = steps.includes(kind.step)}
+				<li>
+					<button
+						type="button"
+						class="item"
+						class:planned={!kind.implemented}
+						class:waiting
+						disabled={!editable || used}
+						draggable={editable && !used}
+						title={used ? t('flows.palette_used') : describe(kind.step, kinds, t)}
+						ondragstart={(event) => {
+							event.dataTransfer?.setData('application/x-login-step', kind.step);
+							if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
+						}}
+						onclick={() => onAdd(kind.step)}
+					>
+						<span class="mark"><Icon icon={markFor(kind.step)} size="1rem" /></span>
+						<span class="text">
+							<span class="label">{labelFor(kind.step, kinds, t)}</span>
+							<span class="description">{describe(kind.step, kinds, t)}</span>
+						</span>
+						{#if editable && !used}
+							<span class="grip"><Icon icon={RiDraggable} size="1rem" /></span>
+						{/if}
+					</button>
+				</li>
+			{/each}
+		</ul>
+	{/each}
+</aside>
+
+<style>
+	.palette {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		overflow-y: auto;
+		padding: var(--space-4);
+		border-right: 1px solid var(--color-border);
+		background: var(--color-surface);
+	}
+
+	h2 {
+		margin: 0;
+		font-size: var(--text-base);
+	}
+
+	h3 {
+		margin: var(--space-3) 0 0;
+		color: var(--color-text-hint);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.hint {
+		margin: 0;
+		color: var(--color-text-hint);
+		font-size: var(--text-sm);
+	}
+
+	ul {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.item {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-2);
+		width: 100%;
+		padding: var(--space-2);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		background: var(--color-surface);
+		color: var(--color-text);
+		font: inherit;
+		text-align: left;
+		cursor: grab;
+		transition:
+			border-color var(--speed-fast),
+			background-color var(--speed-fast);
+	}
+
+	.item:hover:not(:disabled),
+	.item.waiting:not(:disabled) {
+		border-color: var(--color-info);
+		background: var(--surface-info);
+	}
+
+	.item:disabled {
+		cursor: default;
+		opacity: 0.5;
+	}
+
+	.item.planned {
+		border-style: dashed;
+	}
+
+	.mark {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--radius-sm);
+		background: var(--color-secondary-alt);
+	}
+
+	.text {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.label {
+		font-weight: 600;
+		font-size: var(--text-sm);
+	}
+
+	.description {
+		color: var(--color-text-hint);
+		font-size: 12px;
+		line-height: 1.35;
+	}
+
+	.grip {
+		display: inline-flex;
+		color: var(--color-text-disabled);
+	}
+</style>

@@ -28,9 +28,12 @@
 		Tag
 	} from '$lib/components/ui';
 	import { can, canAnywhere } from '$lib/permissions';
+	import { useTranslator } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const t = useTranslator();
 
 	const admin = $derived(data.admin);
 	const overview = $derived(data.overview);
@@ -61,7 +64,7 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader crumbs={['Dashboard', 'Activity']}>
+	<PageHeader crumbs={[t('nav.dashboard'), t('nav.activity')]}>
 		{#snippet secondary()}
 			<IconButton
 				icon={RiRefreshLine}

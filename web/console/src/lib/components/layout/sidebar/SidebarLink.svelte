@@ -43,7 +43,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		height: 32px;
+		height: var(--nav-item-height);
 		padding: 0 12px;
 		overflow: hidden;
 		border-radius: var(--radius-sm);

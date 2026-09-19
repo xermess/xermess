@@ -39,7 +39,6 @@ import (
 	apiauth "xermess/internal/api/auth"
 	"xermess/internal/api/cors"
 	"xermess/internal/api/csrf"
-	"xermess/internal/api/database"
 	"xermess/internal/api/fields"
 	"xermess/internal/api/flows"
 	"xermess/internal/api/keys"
@@ -52,6 +51,7 @@ import (
 	"xermess/internal/api/respond"
 	"xermess/internal/api/roles"
 	"xermess/internal/api/session"
+	"xermess/internal/api/sessions"
 	"xermess/internal/api/setup"
 	"xermess/internal/api/social"
 	"xermess/internal/api/sso"
@@ -107,6 +107,7 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		mfa:          mfa.New(service, log),
 		setup:        setup.New(st, log),
 		users:        users.New(st, recorder, log),
+		sessions:     sessions.New(st, recorder, log),
 		fields:       fields.New(st, recorder, log),
 		roles:        roles.New(st, recorder, log),
 		admins:       admins.New(st, service, recorder, log),
@@ -116,7 +117,6 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		social:       social.New(st, sealer, recorder, log, cfg.Issuer),
 		sso:          sso.New(st, sealer, provider, recorder, log, cfg.Issuer),
 		flows:        flows.New(st, recorder, log),
-		database:     database.New(st, log),
 		languages:    languages.New(st, recorder, log),
 		apis:         apis.New(st, recorder, log, cfg.Issuer),
 		activity:     activity.New(st, log),
@@ -179,6 +179,7 @@ type adminHandlers struct {
 	mfa          *mfa.Handler
 	setup        *setup.Handler
 	users        *users.Handler
+	sessions     *sessions.Handler
 	fields       *fields.Handler
 	roles        *roles.Handler
 	admins       *admins.Handler
@@ -189,7 +190,6 @@ type adminHandlers struct {
 	social       *social.Handler
 	sso          *sso.Handler
 	flows        *flows.Handler
-	database     *database.Handler
 	languages    *languages.Handler
 	activity     *activity.Handler
 	keys         *keys.Handler
@@ -260,6 +260,7 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 		accounts.POST("/forgot-password", h.limit, h.account.ForgotPassword)
 		accounts.GET("/reset-password", h.account.CheckReset)
 		accounts.POST("/reset-password", h.limit, h.account.ResetPassword)
+		accounts.POST("/verify-email", h.limit, h.account.VerifyEmail)
 		accounts.POST("/logout", h.account.Logout)
 
 		// A user managing their own account: only ever the one whose session
@@ -342,12 +343,15 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			readUsers.GET("/users/:id/roles", h.users.Roles)
 			readUsers.GET("/users/:id/role-mappings", h.users.RoleMappings)
 			readUsers.GET("/user-fields", h.fields.List)
+			readUsers.GET("/user-sessions", h.sessions.List)
 
 			writeUsers := signedIn.Group("", session.Can(model.PermUsersWrite))
 			writeUsers.POST("/users", h.users.Create)
 			writeUsers.PATCH("/users/:id", h.users.Update)
 			writeUsers.DELETE("/users/:id", h.users.Delete)
 			writeUsers.DELETE("/users/:id/social-accounts/:identity", h.users.Disconnect)
+			writeUsers.DELETE("/users/:id/sessions", h.sessions.SignOutUser)
+			writeUsers.DELETE("/user-sessions/:id", h.sessions.End)
 
 			writeFields := signedIn.Group("", session.Can(model.PermUserFieldsWrite))
 			writeFields.POST("/user-fields", h.fields.Create)
@@ -414,13 +418,6 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			writeLanguages.PATCH("/languages/:code", h.languages.Update)
 			writeLanguages.DELETE("/languages/:code", h.languages.Delete)
 			writeLanguages.PUT("/languages/:code/translations/:app", h.languages.SaveTranslation)
-
-			// The server's own tables, read row by row. There is no endpoint
-			// here that writes one: a record is changed on the page that
-			// knows what it is.
-			readDatabase := signedIn.Group("", session.Can(model.PermDatabaseRead))
-			readDatabase.GET("/database/tables", h.database.Tables)
-			readDatabase.GET("/database/tables/:table", h.database.Table)
 
 			// Applications, the roles each defines, and who holds them. A
 			// role can grant these for one application, so the routes only
