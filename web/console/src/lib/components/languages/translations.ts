@@ -2,6 +2,7 @@
  * What the Languages page does with translation files and language tags,
  * apart from drawing them.
  */
+import { flatten } from '$lib/i18n/flatten';
 
 /** The `{name}` parameters a text has, which the app fills in when it shows
     it — `{app}`, `{count}`. */
@@ -22,8 +23,9 @@ export type ReadResult =
 	{ ok: true; messages: Record<string, string>; skipped: number } | { ok: false };
 
 /**
- * Reads a translation file somebody chose: one JSON object of texts by key,
- * the shape of the files under locales/ and of what Export writes.
+ * Reads a translation file somebody chose: the shape of the files under
+ * locales/ and of what Export writes — nested by screen — or a flat file of
+ * texts by dotted key, which reads the same.
  *
  * Keys this version of the apps does not look up are skipped and counted, as
  * the server would drop them anyway; `$name` and `$native` describe the file
@@ -38,17 +40,15 @@ export async function readTranslationFile(file: File, known: string[]): Promise<
 		return { ok: false };
 	}
 
-	if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-		return { ok: false };
-	}
+	const flat = flatten(parsed);
+	if (!flat) return { ok: false };
 
 	const keys = new Set(known);
 	const messages: Record<string, string> = {};
 	let skipped = 0;
 
-	for (const [key, value] of Object.entries(parsed)) {
+	for (const [key, value] of Object.entries(flat)) {
 		if (key.startsWith('$')) continue;
-		if (typeof value !== 'string') return { ok: false };
 
 		if (!keys.has(key)) {
 			skipped++;

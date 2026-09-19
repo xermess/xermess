@@ -51,7 +51,7 @@ func (h *Handler) Status(c *gin.Context) {
 func (h *Handler) Create(c *gin.Context) {
 	var req setupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 

@@ -1,0 +1,138 @@
+package api
+
+import (
+	"slices"
+	"strings"
+	"testing"
+
+	"xermess/internal/api/respond"
+	"xermess/internal/oidc"
+	"xermess/locales"
+)
+
+// clientCodes are the `error.*` keys an app says about a request that never
+// got an answer, so no server defines them: the server could not be reached,
+// or answered with something that was not an answer.
+var clientCodes = []string{"network", "unknown"}
+
+// The server and the catalogs have to agree about errors in both directions.
+// Every problem the server can answer with is said in the catalog of every app
+// it is for — so no reader is ever shown a bare code — and says the same thing
+// in English wherever it is said twice. And every `error.*` key in a catalog
+// is something the server can actually answer with, so a catalog never
+// carries a sentence nothing uses, and a code renamed on one side is caught.
+//
+// This package imports every handler, so every problem is defined by the time
+// it runs.
+func TestErrorCodesMatchTheCatalogs(t *testing.T) {
+	defined := map[locales.App]map[string]bool{}
+
+	for _, problem := range respond.Problems() {
+		english := ""
+
+		for _, app := range problem.Apps {
+			if defined[app] == nil {
+				defined[app] = map[string]bool{}
+			}
+			defined[app][problem.Code] = true
+
+			text, ok := locales.Text(app, problem.Key())
+			if !ok {
+				t.Errorf("%s: %s is missing from locales/%s/en.json", problem.Code, problem.Key(), app)
+				continue
+			}
+
+			if english != "" && text != english {
+				t.Errorf("%s says %q for %s and %q for another app; one problem, one sentence",
+					problem.Key(), text, app, english)
+			}
+			english = text
+		}
+	}
+
+	for _, app := range locales.Apps {
+		for _, key := range locales.Keys(app) {
+			code, isError := strings.CutPrefix(key, "error.")
+			if !isError || defined[app][code] || slices.Contains(clientCodes, code) {
+				continue
+			}
+
+			t.Errorf("locales/%s/en.json has %s, which the server never answers %s with", app, key, app)
+		}
+	}
+}
+
+// Every problem the provider can refuse something with is a problem of the
+// public API, so the sign-in pages can say it.
+func TestEveryProviderProblemIsAnswered(t *testing.T) {
+	for _, refused := range oidc.Problems() {
+		problem, ok := respond.Lookup(refused.Code)
+		if !ok {
+			t.Errorf("oidc.%s has no problem in the public API", refused.Code)
+			continue
+		}
+		if !slices.Contains(problem.Apps, locales.ID) {
+			t.Errorf("%s is not for the sign-in pages", refused.Code)
+		}
+	}
+}
+
+// A sentence's `{parameters}` are the ones the server fills in: a translation
+// that names one the server never sends shows it as it was written.
+func TestErrorParametersAreSent(t *testing.T) {
+	sent := map[string][]string{
+		"rate_limited":             {"seconds"},
+		"cross_origin":             {"origin"},
+		"password_too_short":       {"min"},
+		"language_copy_missing":    {"code"},
+		"translation_too_long":     {"key", "max"},
+		"sso_required":             {"slug", "name"},
+		"sso_slug_taken":           {"slug"},
+		"sso_domain_taken":         {"domain"},
+		"sso_domain_invalid":       {"domain"},
+		"sso_discovery_failed":     {"reason"},
+		"sso_metadata_invalid":     {"reason"},
+		"sso_role_mapping_invalid": {"group"},
+		"validation.max":           {"field", "max"},
+		"validation.min":           {"field", "min"},
+		"validation.oneof":         {"field", "values"},
+		"validation.startswith":    {"field", "prefix"},
+		"validation.eqfield":       {"field", "other"},
+	}
+
+	for _, problem := range respond.Problems() {
+		want := sent[problem.Code]
+		if strings.HasPrefix(problem.Code, "validation.") && want == nil {
+			want = []string{"field"}
+		}
+
+		for _, app := range problem.Apps {
+			text, _ := locales.Text(app, problem.Key())
+
+			for _, match := range placeholders(text) {
+				if !slices.Contains(want, match) {
+					t.Errorf("%s in %s names {%s}, which the server does not send", problem.Key(), app, match)
+				}
+			}
+		}
+	}
+}
+
+// placeholders are the names in a text's `{braces}`.
+func placeholders(text string) []string {
+	var out []string
+
+	for {
+		start := strings.IndexByte(text, '{')
+		if start < 0 {
+			return out
+		}
+		end := strings.IndexByte(text[start:], '}')
+		if end < 0 {
+			return out
+		}
+
+		out = append(out, text[start+1:start+end])
+		text = text[start+end+1:]
+	}
+}

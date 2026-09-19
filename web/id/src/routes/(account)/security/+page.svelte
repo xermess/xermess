@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { useTranslator } from '$lib/i18n';
+	import { messageOf, useTranslator } from '$lib/i18n';
 	import { invalidateAll } from '$app/navigation';
-	import { account, messageOf } from '$lib/api';
+	import { account } from '$lib/api';
 	import { Alert, Button, Icon, Panel, PasswordField } from '$lib/components';
 	import { describeDevice, formatDate, timeAgo } from '$lib/utils/format';
 	import type { PageProps } from './$types';
@@ -39,7 +39,7 @@
 			// Every other session has ended: the list below shrinks.
 			await invalidateAll();
 		} catch (err) {
-			passwordError = messageOf(err);
+			passwordError = messageOf(err, t);
 		} finally {
 			changing = false;
 		}
@@ -56,7 +56,7 @@
 			await account.endSession(id);
 			await invalidateAll();
 		} catch (err) {
-			sessionError = messageOf(err);
+			sessionError = messageOf(err, t);
 		} finally {
 			ending = null;
 		}
@@ -121,14 +121,14 @@
 					<span class="device"><Icon name="device" /></span>
 					<div class="details">
 						<strong>
-							{describeDevice(session.user_agent)}
+							{describeDevice(session.user_agent, t)}
 							{#if session.current}<span class="current">{t('security.this_device')}</span>{/if}
 						</strong>
 						<span>
 							{t('security.session_line', {
 								ip: session.ip || t('security.unknown_address'),
-								when: timeAgo(session.signed_in_at),
-								until: formatDate(session.expires_at)
+								when: timeAgo(session.signed_in_at, t),
+								until: formatDate(session.expires_at, t)
 							})}
 						</span>
 					</div>

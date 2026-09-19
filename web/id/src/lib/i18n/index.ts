@@ -1,11 +1,17 @@
 import { getContext, setContext } from 'svelte';
+import { ApiError } from '$lib/api/client';
 import { BASE, base, type Messages } from './messages';
 
 export { BASE, type Messages } from './messages';
 
 /** Looks one message up. Anything in `{braces}` in the text is replaced by
-    the parameter of that name. */
-export type Translate = (key: string, params?: Record<string, string | number>) => string;
+    the parameter of that name. `has` says whether there is text for a key at
+    all, rather than the key itself coming back, and `language` is the tag the
+    text is in — what dates and times are formatted for. */
+export type Translate = ((key: string, params?: Record<string, string | number>) => string) & {
+	has: (key: string) => boolean;
+	readonly language: string;
+};
 
 /**
  * Builds a translator over whatever text `messages` returns.
@@ -19,8 +25,45 @@ export type Translate = (key: string, params?: Record<string, string | number>) 
  * this build shipped it, and then the key itself. Neither is worth an error —
  * a half-translated page is usable, and a page that throws is not.
  */
-export function translator(messages: () => Messages): Translate {
-	return (key, params) => fill(messages()[key] || base[key] || key, params);
+export function translator(
+	messages: () => Messages,
+	language: () => string = () => BASE
+): Translate {
+	const lookup = (key: string) => messages()[key] || base[key];
+
+	const translate = (key: string, params?: Record<string, string | number>) =>
+		fill(lookup(key) || key, params);
+
+	return Object.defineProperties(translate, {
+		has: { value: (key: string) => Boolean(lookup(key)) },
+		language: { get: language }
+	}) as Translate;
+}
+
+/**
+ * What to tell somebody about an error, in their language.
+ *
+ * The server names every problem with a code, and this app says
+ * `error.<code>` from its own catalog — the same catalog, in the same
+ * language, as the rest of the page. A field the sentence names is said the
+ * way the form labels it (`field.<name>`), so "email" reads "Электронная
+ * почта" beside the box it is about. A code this app has no sentence for
+ * falls back to the server's English, and anything that is not an answer at
+ * all to "something went wrong".
+ */
+export function messageOf(err: unknown, t: Translate): string {
+	if (!(err instanceof ApiError)) return t('error.unknown');
+
+	const key = `error.${err.code}`;
+	if (!t.has(key)) return err.message || t('error.unknown');
+
+	const params: Record<string, string | number> = { ...err.params };
+	for (const name of ['field', 'other']) {
+		const label = `field.${params[name]}`;
+		if (name in params && t.has(label)) params[name] = t(label);
+	}
+
+	return t(key, params);
 }
 
 /** Replaces `{name}` with the parameter of that name. A parameter nobody

@@ -5,7 +5,8 @@ import {
 	type LoginOptions,
 	type Organization,
 	type SignInRequest,
-	type SocialProvider
+	type SocialProvider,
+	type SSOConnection
 } from '$lib/api';
 import type { LayoutServerLoad } from './$types';
 
@@ -31,7 +32,7 @@ export const load: LayoutServerLoad = async ({ url, fetch, setHeaders }) => {
 
 	const request = url.searchParams.get('request');
 
-	const [organization, socialProviders, login] = await Promise.all([
+	const [organization, socialProviders, sso, login] = await Promise.all([
 		signIn
 			.organization(fetch)
 			.then(({ organization }): Organization | null => organization)
@@ -40,6 +41,9 @@ export const load: LayoutServerLoad = async ({ url, fetch, setHeaders }) => {
 			.socialProviders(fetch)
 			.then(({ providers }): SocialProvider[] => providers)
 			.catch((): SocialProvider[] => []),
+		signIn
+			.ssoConnections(fetch)
+			.catch(() => ({ connections: [] as SSOConnection[], available: false })),
 		signIn
 			.loginOptions(request ?? '', fetch)
 			.then(({ login }): LoginOptions => login)
@@ -63,7 +67,16 @@ export const load: LayoutServerLoad = async ({ url, fetch, setHeaders }) => {
 		}
 	}
 
-	return { request, signInRequest, expired, organization, socialProviders, login };
+	return {
+		request,
+		signInRequest,
+		expired,
+		organization,
+		socialProviders,
+		ssoConnections: sso.connections,
+		ssoAvailable: sso.available,
+		login
+	};
 };
 
 /** What these pages offer when the server cannot say: the sign-in they have

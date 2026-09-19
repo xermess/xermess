@@ -23,6 +23,7 @@ import (
 
 	"xermess/internal/api/audit"
 	"xermess/internal/api/respond"
+	"xermess/internal/api/validate"
 	"xermess/internal/model"
 	"xermess/internal/store"
 	"xermess/locales"
@@ -85,7 +86,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 	var req createRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -108,11 +109,19 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
+	// A copy of Russian made into, say, Uzbek brings the sign-in text and not
+	// the panel's: the panel is shown only in locales.PanelLanguages.
+	for app := range text {
+		if !locales.ServesApp(language.Code, locales.App(app)) {
+			delete(text, app)
+		}
+	}
+
 	language.Position = h.store.NextLanguagePosition(ctx)
 
 	if err := h.store.CreateLanguage(ctx, language, text); err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
-			respond.Conflict(c, "there is already a language with that code")
+			respond.Fail(c, codeTaken)
 			return
 		}
 
@@ -162,7 +171,7 @@ func (h *Handler) startingText(c *gin.Context, from string) (map[string]map[stri
 		return text, &file, nil
 	}
 
-	return nil, nil, badRequest("there is no language " + from + " to copy")
+	return nil, nil, nothingToCopy.With("code", from)
 }
 
 // Update changes a language's names and whether and where it is offered.
@@ -174,7 +183,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 	var req languageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -188,7 +197,7 @@ func (h *Handler) Update(c *gin.Context) {
 	// The default is what every page is drawn in before somebody chooses, so
 	// it is moved to another language rather than simply taken away.
 	if wasDefault && !language.IsDefault {
-		respond.BadRequest(c, "make another language the default rather than unmarking this one")
+		respond.Fail(c, keepADefault)
 		return
 	}
 
@@ -215,10 +224,10 @@ func (h *Handler) Delete(c *gin.Context) {
 	err := h.store.DeleteLanguage(c.Request.Context(), language)
 	switch {
 	case errors.Is(err, store.ErrProtectedLanguage) && language.Code == model.BaseLanguage:
-		respond.BadRequest(c, "the base language is what every other falls back to, so it stays")
+		respond.Fail(c, baseStays)
 		return
 	case errors.Is(err, store.ErrProtectedLanguage):
-		respond.BadRequest(c, "make another language the default before removing this one")
+		respond.Fail(c, defaultStays)
 		return
 	case err != nil:
 		respond.Failure(c, h.log, err, "deleting a language failed")
@@ -279,15 +288,19 @@ func (h *Handler) SaveTranslation(c *gin.Context) {
 	}
 
 	var req translationRequest
-	if err := c.ShouldBindJSON(&req); err != nil || req.Messages == nil {
-		respond.BadRequest(c, "the request body is not valid: send the text as {\"messages\": {…}}")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := validate.Struct(req); err != nil {
+		respond.Failure(c, h.log, err, "validating a translation failed")
 		return
 	}
 
 	messages, ignored := locales.Known(app, req.Messages)
 
-	if err := model.ValidateMessages(messages); err != nil {
-		respond.BadRequest(c, err.Error())
+	if key := model.TooLongMessage(messages); key != "" {
+		respond.Fail(c, translationTooLong, "key", key, "max", model.MaxMessageLength)
 		return
 	}
 
@@ -309,37 +322,24 @@ func (h *Handler) SaveTranslation(c *gin.Context) {
 	c.JSON(http.StatusOK, savedResponse{Language: one, Ignored: ignored})
 }
 
-// PanelLanguages lists the languages the panel itself can be shown in: every
-// language that has any of the panel translated. It takes no session — the
+// PanelLanguages lists the languages the panel itself can be shown in: those
+// of locales.PanelLanguages this installation has. It takes no session — the
 // sign-in page is drawn in one — and says nothing a stranger could not read
 // off that page.
 //
 // It is not narrowed to what the Languages page offers. That decides what
-// users see on the sign-in pages; which language an administrator reads the
-// panel in is their own business.
+// users see on the sign-in pages; which of the panel's languages an
+// administrator reads it in is their own business.
 func (h *Handler) PanelLanguages(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	languages, err := h.store.Languages(ctx)
+	languages, err := h.store.Languages(c.Request.Context())
 	if err != nil {
 		respond.Failure(c, h.log, err, "listing languages failed")
 		return
 	}
 
-	ids := make([]uuid.UUID, 0, len(languages))
-	for _, language := range languages {
-		ids = append(ids, language.ID)
-	}
-
-	text, err := h.store.Translations(ctx, ids...)
-	if err != nil {
-		respond.Failure(c, h.log, err, "loading translations failed")
-		return
-	}
-
 	out := []panelLanguage{}
 	for _, language := range languages {
-		if language.Code == model.BaseLanguage || len(text[language.ID][string(locales.Console)]) > 0 {
+		if locales.ServesApp(language.Code, locales.Console) {
 			out = append(out, panelLanguage{Code: language.Code, Name: language.Name, Native: language.Native})
 		}
 	}
@@ -351,6 +351,11 @@ func (h *Handler) PanelLanguages(c *gin.Context) {
 func (h *Handler) PanelText(c *gin.Context) {
 	language, ok := h.find(c)
 	if !ok {
+		return
+	}
+
+	if !locales.ServesApp(language.Code, locales.Console) {
+		respond.Fail(c, notForThePanel)
 		return
 	}
 
@@ -373,7 +378,7 @@ func (h *Handler) find(c *gin.Context) (*model.Language, bool) {
 
 	switch {
 	case errors.Is(err, store.ErrNotFound):
-		respond.NotFound(c, "no such language")
+		respond.Fail(c, respond.LanguageNotFound)
 		return nil, false
 	case err != nil:
 		respond.Failure(c, h.log, err, "loading a language failed")
@@ -387,11 +392,15 @@ func (h *Handler) find(c *gin.Context) (*model.Language, bool) {
 func (h *Handler) findWithApp(c *gin.Context) (*model.Language, locales.App, bool) {
 	app, known := locales.ParseApp(c.Param("app"))
 	if !known {
-		respond.NotFound(c, "no such app: it is id or console")
+		respond.Fail(c, noSuchApp)
 		return nil, "", false
 	}
 
 	language, ok := h.find(c)
+	if ok && !locales.ServesApp(language.Code, app) {
+		respond.Fail(c, notForThePanel)
+		return nil, "", false
+	}
 
 	return language, app, ok
 }

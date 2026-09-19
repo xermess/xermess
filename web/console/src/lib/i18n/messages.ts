@@ -7,16 +7,18 @@
  * is only what is left when that request fails, so the panel still draws
  * itself when the API is down.
  *
- * `vite.config.ts` allows the directory to be read in development.
+ * The file is nested by screen, as every file under locales/ is, and read
+ * here into dotted keys. `vite.config.ts` allows the directory to be read in
+ * development.
  */
 import english from '../../../../../locales/console/en.json';
+import { flatten, type Messages } from './flatten';
 
-/** One language's messages, by key. */
-export type Messages = Record<string, string>;
+export type { Messages } from './flatten';
 
 /** The language every other is a translation of: the keys it has are the keys
     there are, and its text is what a missing translation falls back to. */
 export const BASE = 'en';
 
 /** The base language's text, as this build shipped it. */
-export const base: Messages = english;
+export const base: Messages = flatten(english) ?? {};

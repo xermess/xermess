@@ -34,9 +34,6 @@ export type SidebarItem = {
 	    has the translator, and this list is read on the server too. */
 	key: string;
 	icon: ComponentType;
-	/** How finished the section is: `preview` shows placeholder data, `soon`
-	    is not built yet. Left out, it is the real thing. */
-	status?: 'preview' | 'soon';
 	/** Whether the administrator may open it. Left out, anyone may. */
 	allowed?: (admin: Admin) => boolean;
 };
@@ -82,7 +79,7 @@ export const sections: SidebarGroup[] = [
 				route: '/admin/(panel)/dashboard/sso',
 				key: 'nav.sso',
 				icon: RiLinksLine,
-				status: 'soon'
+				allowed: (admin) => can(admin, 'sso.read')
 			}
 		]
 	},

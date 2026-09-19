@@ -1,8 +1,18 @@
-/** A failed request. `status` is 0 when the server could not be reached. */
+/**
+ * A failed request, as the server described it: `code` names the problem, and
+ * a page says `error.<code>` from its own catalog, in the reader's language,
+ * with `params` filled in (messageOf in $lib/i18n). `message` is the server's
+ * English, for when a page has no sentence of its own for the code.
+ *
+ * `status` is 0 when the server could not be reached, and the code is then
+ * `network`; an answer that was not the server's is `unknown`.
+ */
 export class ApiError extends Error {
 	constructor(
 		readonly status: number,
-		message: string
+		message: string,
+		readonly code = 'unknown',
+		readonly params: Record<string, string | number> = {}
 	) {
 		super(message);
 		this.name = 'ApiError';
@@ -37,19 +47,33 @@ export async function request<T>(path: string, options: Options = {}): Promise<T
 			body: body === undefined ? undefined : JSON.stringify(body)
 		});
 	} catch {
-		throw new ApiError(0, 'Could not reach the server. Check your connection and try again.');
+		throw new ApiError(
+			0,
+			'Could not reach the server. Check your connection and try again.',
+			'network'
+		);
 	}
 
 	const payload = response.status === 204 ? {} : await response.json().catch(() => ({}));
 
 	if (!response.ok) {
-		throw new ApiError(response.status, payload.error ?? 'Something went wrong. Try again.');
+		throw new ApiError(
+			response.status,
+			payload.error ?? 'Something went wrong. Try again.',
+			payload.code ?? 'unknown',
+			payload.params ?? {}
+		);
 	}
 
 	return payload as T;
 }
 
-/** The message to show for an error thrown by a call. */
-export function messageOf(err: unknown): string {
-	return err instanceof ApiError ? err.message : 'Something went wrong. Try again.';
+/** The identity provider an address has to sign in through, when a password
+    sign-in, registration or reset was refused for it — `sso_required`, which
+    names it — and null for any other error. */
+export function requiredSSO(err: unknown): { slug: string; name: string } | null {
+	if (!(err instanceof ApiError) || err.code !== 'sso_required') return null;
+
+	const { slug, name } = err.params;
+	return typeof slug === 'string' && typeof name === 'string' ? { slug, name } : null;
 }

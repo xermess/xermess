@@ -46,7 +46,7 @@ func (h *Handler) Status(c *gin.Context) {
 func (h *Handler) Begin(c *gin.Context) {
 	var req optionalCodeRequest
 	if err := bindOptional(c, &req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) Begin(c *gin.Context) {
 func (h *Handler) Confirm(c *gin.Context) {
 	var req codeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *Handler) Confirm(c *gin.Context) {
 func (h *Handler) Disable(c *gin.Context) {
 	var req codeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *Handler) Disable(c *gin.Context) {
 func (h *Handler) RecoveryCodes(c *gin.Context) {
 	var req codeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 

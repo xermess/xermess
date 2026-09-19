@@ -187,6 +187,8 @@ func maySeeName(c *gin.Context, targetType string, name store.TargetName) bool {
 		return admin.HasPermission(model.PermLoginFlowsRead)
 	case "language":
 		return admin.HasPermission(model.PermLanguagesRead)
+	case "sso_connection":
+		return admin.HasPermission(model.PermSSORead)
 	default:
 		return false
 	}
@@ -226,6 +228,12 @@ func detail(c *gin.Context, event model.AuditLog) string {
 		// Which settings moved, for whoever may see them at all.
 		if admin := session.Admin(c); admin != nil && admin.HasPermission(model.PermOrganizationRead) {
 			return list("fields")
+		}
+	case "sso_connection.sign_in_failed":
+		// What the provider said, which is how a connection being set up
+		// gets fixed — for whoever may read the connections.
+		if admin := session.Admin(c); admin != nil && admin.HasPermission(model.PermSSORead) {
+			return text("step") + ": " + text("reason")
 		}
 	case "language.translated":
 		// Which of the two apps the text was for.

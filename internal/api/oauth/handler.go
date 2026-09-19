@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"xermess/internal/api/respond"
 	"xermess/internal/api/session"
 	"xermess/internal/oidc"
 )
@@ -142,6 +143,82 @@ func (h *Handler) socialFailed(c *gin.Context, err error, note string) {
 
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, h.provider.SocialErrorPage(err))
+}
+
+// SSOStart sends the browser to a connection's identity provider. The address
+// typed on the sign-in page comes along as `login_hint`, so it is not asked
+// for twice.
+func (h *Handler) SSOStart(c *gin.Context) {
+	location, err := h.provider.StartSSO(
+		c.Request.Context(),
+		c.Param("slug"),
+		c.Query("request"),
+		c.Query("next"),
+		c.Query("login_hint"),
+	)
+	if err != nil {
+		h.ssoFailed(c, err, "starting a single sign-on failed")
+		return
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, location)
+}
+
+// SSOCallback is where an OpenID Connect provider sends the browser back to.
+func (h *Handler) SSOCallback(c *gin.Context) {
+	if refused := c.Query("error"); refused != "" {
+		err := h.provider.RefuseSSO(c.Request.Context(), c.Param("slug"), c.Query("state"),
+			refused, c.Query("error_description"), client(c))
+		h.ssoFailed(c, err, "recording an identity provider's refusal failed")
+		return
+	}
+
+	result, err := h.provider.CompleteSSOCallback(c.Request.Context(), c.Param("slug"), c.Query("code"), c.Query("state"), client(c))
+	h.ssoFinished(c, result, err)
+}
+
+// SSOAssertion is the assertion consumer service a SAML provider posts its
+// response to.
+func (h *Handler) SSOAssertion(c *gin.Context) {
+	result, err := h.provider.CompleteSSOAssertion(c.Request.Context(), c.Param("slug"), c.Request, client(c))
+	h.ssoFinished(c, result, err)
+}
+
+// SSOMetadata is this server's SAML metadata as one connection's service
+// provider: the file an identity provider is set up from.
+func (h *Handler) SSOMetadata(c *gin.Context) {
+	document, err := h.provider.SSOMetadata(c.Request.Context(), c.Param("slug"))
+	if err != nil {
+		respond.Fail(c, respond.NotFoundAny)
+		return
+	}
+
+	c.Header("Content-Disposition", `inline; filename="`+c.Param("slug")+`-metadata.xml"`)
+	c.Data(http.StatusOK, "application/samlmetadata+xml; charset=utf-8", document)
+}
+
+// ssoFinished signs the browser in and sends it on, or to the error page.
+func (h *Handler) ssoFinished(c *gin.Context, result *oidc.SocialResult, err error) {
+	if err != nil {
+		h.ssoFailed(c, err, "completing a single sign-on failed")
+		return
+	}
+
+	session.SetUser(c, result.SignIn.Token, h.secure)
+
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, h.provider.SocialLanding(c.Request.Context(), result))
+}
+
+// ssoFailed sends the browser to the sign-in app's error page.
+func (h *Handler) ssoFailed(c *gin.Context, err error, note string) {
+	if !oidc.IsSSOFailure(err) {
+		h.log.Error(note, "connection", c.Param("slug"), "error", err)
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, h.provider.SSOErrorPage(err))
 }
 
 // Token issues tokens.

@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiDeleteBinLine, RiSettings3Line, RiTranslate2 } from 'svelte-remixicon';
-	import { ApiError, languagesApi, type Language, type LocaleApp } from '$lib/api';
+	import { languagesApi, type Language, type LocaleApp } from '$lib/api';
 	import {
 		Alert,
 		Button,
@@ -13,7 +13,7 @@
 		SwitchField,
 		Tabs
 	} from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
+	import { messageOf, useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
 	import { reloadText } from '$lib/state/language.svelte';
 	import TranslationEditor from './TranslationEditor.svelte';
@@ -22,7 +22,6 @@
 		open: boolean;
 		/** The language being changed. */
 		language?: Language | null;
-		apps: LocaleApp[];
 		/** Whether the administrator may change it, or only read it. */
 		canWrite: boolean;
 		/** The tab it opens on: its settings, or one app's text. */
@@ -32,7 +31,6 @@
 	let {
 		open = $bindable(false),
 		language = null,
-		apps,
 		canWrite,
 		tab: startingTab = 'settings'
 	}: Props = $props();
@@ -55,6 +53,10 @@
 	let error = $state('');
 	let saving = $state(false);
 	let confirmingDelete = $state(false);
+
+	/** The apps this language has text for: the sign-in pages, and the panel
+	    for English and Russian only. */
+	const apps = $derived(language?.apps ?? []);
 
 	// The form is filled in each time the panel opens.
 	$effect(() => {
@@ -102,7 +104,7 @@
 			value: app,
 			label: appName(app),
 			icon: RiTranslate2,
-			count: language && language.missing[app] > 0 ? language.missing[app] : undefined
+			count: (language?.missing[app] ?? 0) > 0 ? language?.missing[app] : undefined
 		}))
 	]);
 
@@ -152,7 +154,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : t('languages.save_failed');
+			error = messageOf(err, t, t('languages.save_failed'));
 		},
 		onSettled: () => {
 			saving = false;
@@ -171,7 +173,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : t('languages.remove_failed');
+			error = messageOf(err, t, t('languages.remove_failed'));
 		}
 	}));
 
@@ -240,8 +242,10 @@
 										</span>
 										<span class="value">
 											{percent}%
-											{#if language.missing[app] > 0}
-												<small>· {t('languages.missing', { count: language.missing[app] })}</small>
+											{#if (language.missing[app] ?? 0) > 0}
+												<small
+													>· {t('languages.missing', { count: language.missing[app] ?? 0 })}</small
+												>
 											{/if}
 										</span>
 									</div>

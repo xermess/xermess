@@ -116,8 +116,12 @@ func (s *Store) UserByEmail(ctx context.Context, email string) (*model.User, err
 
 // MarkUserSignedIn records when a user signed in, and forgets the wrong
 // passwords that came before.
+//
+// It writes these columns and nothing else: GORM would otherwise write back
+// the roles the user was loaded with, putting back any that were taken away
+// during the sign-in — which is what single sign-on's role sync does.
 func (s *Store) MarkUserSignedIn(ctx context.Context, user *model.User, at time.Time) error {
-	return s.db.WithContext(ctx).Model(user).Updates(map[string]any{
+	return s.db.WithContext(ctx).Model(user).Omit(clause.Associations).Updates(map[string]any{
 		"last_login_at":      at,
 		"failed_login_count": 0,
 		"locked_until":       nil,

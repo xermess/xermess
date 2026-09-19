@@ -219,3 +219,61 @@ func TestLoadWithoutEnvFile(t *testing.T) {
 		t.Errorf("Addr = %q, want the default :8080", cfg.Addr)
 	}
 }
+
+// Redis is optional: without a host every read goes to the database, which
+// is how the integration tests and a bare checkout run.
+func TestLoadRedis(t *testing.T) {
+	const base = "XERMESS_DB_DSN=postgres://localhost/x\nXERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef\n"
+
+	tests := []struct {
+		name    string
+		env     string
+		want    Redis
+		wantErr bool
+	}{
+		{
+			name: "no host is no Redis",
+			env:  base,
+			want: Redis{Port: 6379, Prefix: "xermess:"},
+		},
+		{
+			name: "everything named",
+			env: base + "XERMESS_REDIS_HOST=localhost\nXERMESS_REDIS_PORT=6380\nXERMESS_REDIS_USERNAME=app\n" +
+				"XERMESS_REDIS_PASSWORD=pw\nXERMESS_REDIS_DB=3\nXERMESS_REDIS_PREFIX=staging:\n",
+			want: Redis{Host: "localhost", Port: 6380, Username: "app", Password: "pw", DB: 3, Prefix: "staging:"},
+		},
+		{
+			name:    "a port that is not one",
+			env:     base + "XERMESS_REDIS_HOST=localhost\nXERMESS_REDIS_PORT=70000\n",
+			wantErr: true,
+		},
+		{
+			name:    "a database before the first",
+			env:     base + "XERMESS_REDIS_HOST=localhost\nXERMESS_REDIS_DB=-1\n",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			writeEnv(t, tt.env)
+
+			cfg, err := Load()
+			switch {
+			case tt.wantErr && err == nil:
+				t.Fatalf("Load() = nothing, want an error")
+			case tt.wantErr:
+				return
+			case err != nil:
+				t.Fatal(err)
+			}
+
+			if cfg.Redis != tt.want {
+				t.Errorf("Redis = %+v, want %+v", cfg.Redis, tt.want)
+			}
+			if cfg.Redis.Enabled() != (tt.want.Host != "") {
+				t.Errorf("Enabled() = %v", cfg.Redis.Enabled())
+			}
+		})
+	}
+}

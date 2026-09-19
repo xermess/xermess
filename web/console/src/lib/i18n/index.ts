@@ -1,11 +1,15 @@
 import { getContext, setContext } from 'svelte';
+import { ApiError } from '$lib/api/client';
 import { BASE, base, type Messages } from './messages';
 
 export { BASE, type Messages } from './messages';
 
 /** Looks one message up. Anything in `{braces}` in the text is replaced by
-    the parameter of that name. */
-export type Translate = (key: string, params?: Record<string, string | number>) => string;
+    the parameter of that name. `has` says whether there is text for a key at
+    all, rather than the key itself coming back. */
+export type Translate = ((key: string, params?: Record<string, string | number>) => string) & {
+	has: (key: string) => boolean;
+};
 
 /**
  * Builds a translator over whatever text `messages` returns.
@@ -20,7 +24,30 @@ export type Translate = (key: string, params?: Record<string, string | number>) 
  * a half-translated page is usable, and a page that throws is not.
  */
 export function translator(messages: () => Messages): Translate {
-	return (key, params) => fill(messages()[key] || base[key] || key, params);
+	const lookup = (key: string) => messages()[key] || base[key];
+
+	return Object.assign(
+		(key: string, params?: Record<string, string | number>) => fill(lookup(key) || key, params),
+		{ has: (key: string) => Boolean(lookup(key)) }
+	);
+}
+
+/**
+ * What to tell an administrator about an error, in their language.
+ *
+ * The server names every problem with a code, and the panel says
+ * `error.<code>` from its own catalog. A code the panel has no sentence for —
+ * one of the admin API's not yet given one — falls back to the server's
+ * English, and anything that is not an answer at all to `fallback`, or
+ * "something went wrong".
+ */
+export function messageOf(err: unknown, t: Translate, fallback?: string): string {
+	if (!(err instanceof ApiError)) return fallback ?? t('error.unknown');
+
+	const key = `error.${err.code}`;
+	if (t.has(key)) return t(key, err.params);
+
+	return err.message || fallback || t('error.unknown');
 }
 
 /** Replaces `{name}` with the parameter of that name. A parameter nobody
@@ -66,9 +93,9 @@ export function useTranslator(): Translate {
  * Accept-Language — by exact tag first, then by its language part, so a
  * browser asking for ru-RU is served ru — and then the base language.
  *
- * `available` is every language with some of the panel translated, not what
- * the Languages page offers users: which language an administrator reads the
- * panel in is their own business.
+ * `available` is the languages the panel is shown in — English and Russian,
+ * as the server lists them — not what the Languages page offers users: which
+ * of those an administrator reads the panel in is their own business.
  */
 export function chooseLanguage(
 	chosen: string | undefined,

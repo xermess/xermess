@@ -40,6 +40,9 @@ import type {
 	SocialProvider,
 	SocialProviderInput,
 	SocialSpec,
+	SSOConnection,
+	SSOConnectionInput,
+	SSOTestResult,
 	Role,
 	RoleInput,
 	RoleMapping,
@@ -211,6 +214,34 @@ export const languagesApi = {
 			`/admin/languages/${encodeURIComponent(code)}/translations/${app}`,
 			{ messages }
 		)
+};
+
+/** The organisations' own identity providers. */
+export const ssoApi = {
+	list: (fetcher?: Fetch) =>
+		api.get<{ connections: SSOConnection[] }>('/admin/sso-connections', fetcher),
+
+	create: (input: SSOConnectionInput) =>
+		api.post<{ connection: SSOConnection }>('/admin/sso-connections', input),
+
+	update: (id: string, input: SSOConnectionInput) =>
+		api.patch<{ connection: SSOConnection }>(`/admin/sso-connections/${id}`, input),
+
+	remove: (id: string) => api.delete<void>(`/admin/sso-connections/${id}`),
+
+	/** Tries a provider before it is relied on: an issuer's discovery, or a
+	    SAML provider's metadata from its address or as pasted. */
+	test: (input: {
+		protocol: string;
+		issuer?: string;
+		scopes?: string[];
+		metadata_url?: string;
+		metadata?: string;
+	}) => api.post<SSOTestResult>('/admin/sso-connections/test', input),
+
+	/** Reads a SAML provider's metadata again from its address. */
+	refreshMetadata: (id: string) =>
+		api.post<{ connection: SSOConnection }>(`/admin/sso-connections/${id}/refresh-metadata`)
 };
 
 /** The roles users hold. */

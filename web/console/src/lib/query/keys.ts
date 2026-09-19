@@ -76,6 +76,12 @@ export const keys = {
 		list: ['flows', 'list'] as const
 	},
 
+	sso: {
+		all: ['sso'] as const,
+		/** Every connection. */
+		list: ['sso', 'list'] as const
+	},
+
 	languages: {
 		all: ['languages'] as const,
 		/** Every language, with how much of each app it covers. */

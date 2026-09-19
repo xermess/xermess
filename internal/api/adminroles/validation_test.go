@@ -31,11 +31,11 @@ func TestRoleRequestApplyTo(t *testing.T) {
 			request: roleRequest{Name: "viewer"},
 			granted: []string{},
 		},
-		{name: "no name", request: roleRequest{}, want: "name is required"},
+		{name: "no name", request: roleRequest{}, want: "name is required."},
 		{
 			name:    "a name with a space",
 			request: roleRequest{Name: "head moderator"},
-			want:    "name must start with a letter and hold only lower case letters, numbers, dashes and underscores",
+			want:    "name must start with a letter and hold only lower case letters, numbers, dashes and underscores.",
 		},
 		{
 			name:    "the built-in name",

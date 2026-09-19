@@ -14,6 +14,7 @@ import (
 	"xermess/internal/mail"
 	"xermess/internal/model"
 	"xermess/internal/store"
+	"xermess/locales"
 )
 
 // MinPasswordLength is the shortest password a user may choose, the same as
@@ -85,6 +86,13 @@ func (s *Service) SessionFor(ctx context.Context, token string) (*Session, error
 // SignIn checks a user's address and password and starts a session.
 func (s *Service) SignIn(ctx context.Context, email, password string, client Client) (*SignInResult, error) {
 	now := s.now()
+
+	// A domain that has to sign in through its identity provider has no
+	// password to try: it is refused before one is looked at, so the answer
+	// says nothing about the account.
+	if err := s.ssoRequiredFor(ctx, email); err != nil {
+		return nil, err
+	}
 
 	user, err := s.store.UserByEmail(ctx, email)
 	switch {
@@ -199,6 +207,12 @@ type Registration struct {
 
 // Register makes an account for a sign-in under way, and signs it in.
 func (s *Service) Register(ctx context.Context, r Registration, client Client) (*SignInResult, error) {
+	// Accounts at a domain its identity provider owns are made by signing in
+	// through it.
+	if err := s.ssoRequiredFor(ctx, r.Email); err != nil {
+		return nil, err
+	}
+
 	req, err := s.pending(ctx, r.Request)
 	if err != nil {
 		return nil, err
@@ -222,7 +236,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 	}
 
 	if (app.TosURI != "" || app.PolicyURI != "") && !r.AcceptedTerms {
-		return nil, &FieldError{Message: "you have to accept the terms and privacy policy to create an account"}
+		return nil, ErrTermsRequired
 	}
 
 	// Required additional fields cannot be filled in on a sign-in page, so
@@ -233,7 +247,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 	}
 	for _, field := range fields {
 		if _, err := field.Normalise(nil); err != nil {
-			return nil, &FieldError{Message: "accounts need details this page cannot ask for; ask an administrator to create yours"}
+			return nil, ErrDetailsRequired
 		}
 	}
 
@@ -246,7 +260,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 	}
 
 	if err := user.SetPassword(r.Password); errors.Is(err, model.ErrPasswordTooLong) {
-		return nil, &FieldError{Message: err.Error()}
+		return nil, ErrPasswordTooLong
 	} else if err != nil {
 		return nil, err
 	}
@@ -272,7 +286,15 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 // may sign in. It says nothing either way, so the page cannot be used to find
 // out which addresses have accounts; the email is sent in the background for
 // the same reason, since sending takes a noticeable time.
-func (s *Service) ForgotPassword(ctx context.Context, email, request string, client Client) error {
+//
+// `language` is the one the page was shown in, and the email is written in
+// it: somebody who asked in Uzbek is answered in Uzbek.
+func (s *Service) ForgotPassword(ctx context.Context, email, request, language string, client Client) error {
+	// A domain its identity provider owns keeps its passwords there.
+	if err := s.ssoRequiredFor(ctx, email); err != nil {
+		return err
+	}
+
 	// A flow that does not offer password resets does not send one. It says
 	// nothing about it either: the answer is the same whatever happened here,
 	// which is what keeps this page from telling anybody which addresses have
@@ -307,7 +329,9 @@ func (s *Service) ForgotPassword(ctx context.Context, email, request string, cli
 		return err
 	}
 
-	name := "your account"
+	text := s.textIn(ctx, language)
+
+	name := text["email.reset.your_account"]
 	if pending, err := s.pending(ctx, request); err == nil {
 		name = pending.Application.Name
 	} else {
@@ -315,16 +339,17 @@ func (s *Service) ForgotPassword(ctx context.Context, email, request string, cli
 	}
 
 	link := withQuery(s.accountURL+PageReset, url.Values{"token": {token}, "request": {request}})
+	params := map[string]any{
+		"app":     name,
+		"email":   user.Email,
+		"link":    link,
+		"minutes": int(model.PasswordResetLifetime.Minutes()),
+	}
 
 	msg := mail.Message{
 		To:      user.Email,
-		Subject: "Reset your password",
-		Body: fmt.Sprintf(
-			"Someone asked to reset the password for %s (%s).\n\n"+
-				"Choose a new password here:\n%s\n\n"+
-				"The link works once, for %d minutes. If it was not you, ignore this email: your password has not changed.\n",
-			name, user.Email, link, int(model.PasswordResetLifetime.Minutes()),
-		),
+		Subject: locales.Fill(text["email.reset.subject"], params),
+		Body:    locales.Fill(text["email.reset.body"], params),
 	}
 
 	s.record(ctx, user, user.Email, "user.password_reset_requested", client, nil)
@@ -402,7 +427,7 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string, cli
 	}
 
 	if err := user.SetPassword(password); errors.Is(err, model.ErrPasswordTooLong) {
-		return &FieldError{Message: err.Error()}
+		return ErrPasswordTooLong
 	} else if err != nil {
 		return err
 	}

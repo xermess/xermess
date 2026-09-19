@@ -22,7 +22,7 @@ func testEngine(origins ...string) *gin.Engine {
 	cfg := config.Config{Addr: ":0", CORSOrigins: origins, AccountURL: "http://localhost:5175"}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	r, err := NewPublic(cfg, log, nil)
+	r, err := NewPublic(cfg, log, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +34,7 @@ func testEngine(origins ...string) *gin.Engine {
 func testAdminEngine() *gin.Engine {
 	cfg := config.Config{AdminURL: "http://localhost:5173"}
 
-	r, err := NewAdmin(cfg, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	r, err := NewAdmin(cfg, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -93,11 +93,11 @@ func TestRoutes(t *testing.T) {
 		},
 		{
 			name: "unknown path", method: http.MethodGet, path: "/nope",
-			wantCode: http.StatusNotFound, wantBody: map[string]string{"error": "not found"},
+			wantCode: http.StatusNotFound, wantBody: map[string]string{"code": "not_found", "error": "There is nothing here."},
 		},
 		{
 			name: "unknown path under the api group", method: http.MethodGet, path: "/api/v1/nope",
-			wantCode: http.StatusNotFound, wantBody: map[string]string{"error": "not found"},
+			wantCode: http.StatusNotFound, wantBody: map[string]string{"code": "not_found", "error": "There is nothing here."},
 		},
 	}
 
@@ -164,7 +164,7 @@ func TestForwardedForIsNotTrustedByDefault(t *testing.T) {
 func TestNewRefusesABadTrustedProxy(t *testing.T) {
 	cfg := config.Config{TrustedProxies: []string{"not an address"}}
 
-	if _, err := NewPublic(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), nil); err == nil {
+	if _, err := NewPublic(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil); err == nil {
 		t.Error("New() accepted a trusted proxy that is not an address")
 	}
 }

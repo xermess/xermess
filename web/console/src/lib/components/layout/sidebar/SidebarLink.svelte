@@ -3,33 +3,21 @@
 	import type { ComponentType } from 'svelte';
 	import { Icon, Tooltip } from '$lib/components/ui';
 	import type { Section } from './sections';
-	import { useTranslator } from '$lib/i18n';
 
 	type Props = {
 		route: Section;
 		label: string;
 		icon: ComponentType;
-		status?: 'preview' | 'soon';
 		current: boolean;
 		/** Folded to its icon: the name moves into a tooltip. */
 		collapsed: boolean;
 	};
 
-	let { route, label, icon, status, current, collapsed }: Props = $props();
-
-	const tooltip = $derived(
-		status === 'soon'
-			? `${label} · coming soon`
-			: status === 'preview'
-				? `${label} · placeholder data`
-				: label
-	);
-
-	const t = useTranslator();
+	let { route, label, icon, current, collapsed }: Props = $props();
 </script>
 
 <!-- Unfolded, the tooltip would only repeat the name, so it is off. -->
-<Tooltip label={tooltip} placement="right" disabled={!collapsed}>
+<Tooltip {label} placement="right" disabled={!collapsed}>
 	{#snippet children(trigger)}
 		<a
 			{...trigger()}
@@ -41,12 +29,6 @@
 		>
 			<span class="icon"><Icon {icon} /></span>
 			<span class="label">{label}</span>
-
-			{#if status === 'soon'}
-				<span class="soon">{t('shell.soon')}</span>
-			{:else if status === 'preview'}
-				<span class="dot" aria-hidden="true"></span>
-			{/if}
 		</a>
 	{/snippet}
 </Tooltip>
@@ -112,57 +94,8 @@
 		transition: opacity var(--speed);
 	}
 
-	/* Not built yet: a word, since "soon" is worth reading. */
-	.soon {
-		flex: none;
-		padding: 1px 5px;
-		border-radius: 4px;
-		background: var(--surface-info);
-		color: color-mix(in srgb, var(--color-info) 80%, var(--color-text));
-		font-size: 10px;
-		font-weight: 600;
-		line-height: 14px;
-		letter-spacing: 0.03em;
-		text-transform: uppercase;
-		transition: opacity var(--speed);
-	}
-
-	/* Placeholder data: a quiet dot, so it marks the section without
-	   competing with its name. */
-	.dot {
-		flex: none;
-		width: 5px;
-		height: 5px;
-		margin-right: 2px;
-		border-radius: var(--radius-pill);
-		background: var(--color-text-disabled);
-	}
-
-	/* Folded: the name and the word fade out, and the marks leave the row to
-	   become a dot on the icon's corner, so the icon has the row to itself. */
-	.collapsed .label,
-	.collapsed .soon {
+	/* Folded: the name fades out, so the icon has the row to itself. */
+	.collapsed .label {
 		opacity: 0;
-	}
-
-	.collapsed .soon,
-	.collapsed .dot {
-		position: absolute;
-		top: 6px;
-		left: 25px;
-		width: 6px;
-		height: 6px;
-		margin: 0;
-		padding: 0;
-		overflow: hidden;
-		border: 1px solid var(--color-surface);
-		border-radius: var(--radius-pill);
-		font-size: 0;
-		box-sizing: content-box;
-	}
-
-	.collapsed .soon {
-		background: var(--color-info);
-		opacity: 1;
 	}
 </style>

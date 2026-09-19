@@ -22,6 +22,15 @@ import (
 	"slices"
 
 	"github.com/gin-gonic/gin"
+
+	"xermess/internal/api/respond"
+)
+
+// What a refused request is told.
+var (
+	unsupportedBody = respond.Define(http.StatusUnsupportedMediaType, "unsupported_body", respond.Both)
+	crossOrigin     = respond.Define(http.StatusForbidden, "cross_origin", respond.Both)
+	crossSite       = respond.Define(http.StatusForbidden, "cross_site", respond.Both)
 )
 
 // New guards the routes it is mounted on. `origins` are the exact origins
@@ -38,18 +47,18 @@ func New(origins []string) gin.HandlerFunc {
 		if hasBody(c.Request) {
 			media, _, _ := mime.ParseMediaType(c.GetHeader("Content-Type"))
 			if media != "application/json" {
-				c.AbortWithStatusJSON(http.StatusUnsupportedMediaType, gin.H{"error": "the body must be application/json"})
+				respond.Abort(c, unsupportedBody)
 				return
 			}
 		}
 
 		if origin := c.GetHeader("Origin"); origin != "" {
 			if !slices.Contains(origins, origin) {
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "requests from " + origin + " are not allowed"})
+				respond.Abort(c, crossOrigin, "origin", origin)
 				return
 			}
 		} else if site := c.GetHeader("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "cross-site requests are not allowed"})
+			respond.Abort(c, crossSite)
 			return
 		}
 

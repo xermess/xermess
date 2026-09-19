@@ -29,22 +29,22 @@ func TestUserRequestValidate(t *testing.T) {
 		{
 			name:    "nothing at all",
 			request: userRequest{},
-			want:    "email is required",
+			want:    "email is required.",
 		},
 		{
 			name:    "spaces only",
 			request: userRequest{Email: "   "},
-			want:    "email is required",
+			want:    "email is required.",
 		},
 		{
 			name:    "not an address",
 			request: userRequest{Email: "mira at example"},
-			want:    "email must be an email address",
+			want:    "email must be an email address.",
 		},
 		{
 			name:    "longer than the column",
 			request: userRequest{Email: strings.Repeat("m", 250) + "@example.com"},
-			want:    "email must be at most 255 characters",
+			want:    "email must be at most 255 characters.",
 		},
 	}
 
@@ -104,20 +104,20 @@ func TestUserRequestPassword(t *testing.T) {
 			creating: true,
 			password: strings.Repeat("p", 73),
 			confirm:  strings.Repeat("p", 73),
-			want:     "password must be at most 72 characters",
+			want:     "password must be at most 72 characters.",
 		},
 		{
 			name:     "typed differently the second time",
 			creating: false,
 			password: "long-enough",
 			confirm:  "long-enougg",
-			want:     "confirm_password must match password",
+			want:     "confirm_password must match password.",
 		},
 		{
 			name:     "not confirmed",
 			creating: true,
 			password: "long-enough",
-			want:     "confirm_password must match password",
+			want:     "confirm_password must match password.",
 		},
 	}
 

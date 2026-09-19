@@ -18,9 +18,13 @@ type languageResponse struct {
 	Name   string `json:"name"`
 	Native string `json:"native"`
 
-	// Coverage is how much of each app is translated, as a percentage of the
-	// keys the base language has, and Missing how many keys each is short.
-	// The keys are the app names, "id" and "console".
+	// Apps are the apps this language is translated for: the sign-in pages
+	// always, and the panel only for locales.PanelLanguages.
+	Apps []locales.App `json:"apps"`
+
+	// Coverage is how much of each of those apps is translated, as a
+	// percentage of the keys the base language has, and Missing how many keys
+	// each is short. The keys are the app names, "id" and "console".
 	Coverage map[locales.App]int `json:"coverage"`
 	Missing  map[locales.App]int `json:"missing"`
 
@@ -100,6 +104,7 @@ func newLanguageResponse(language model.Language, text map[string]map[string]str
 		Code:      language.Code,
 		Name:      language.Name,
 		Native:    language.Native,
+		Apps:      locales.AppsFor(language.Code),
 		Coverage:  map[locales.App]int{},
 		Missing:   map[locales.App]int{},
 		Enabled:   language.Enabled,
@@ -110,7 +115,7 @@ func newLanguageResponse(language model.Language, text map[string]map[string]str
 		UpdatedAt: language.UpdatedAt,
 	}
 
-	for _, app := range locales.Apps {
+	for _, app := range out.Apps {
 		out.Coverage[app], out.Missing[app] = locales.Coverage(app, text[string(app)])
 	}
 

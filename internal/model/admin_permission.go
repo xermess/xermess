@@ -33,6 +33,9 @@ const (
 	PermSocialRead  = "social.read"
 	PermSocialWrite = "social.write"
 
+	PermSSORead  = "sso.read"
+	PermSSOWrite = "sso.write"
+
 	PermLoginFlowsRead  = "login_flows.read"
 	PermLoginFlowsWrite = "login_flows.write"
 
@@ -109,6 +112,17 @@ var AdminPermissions = []AdminPermission{
 		Group: "Authentication",
 		Description: "Read the server's own tables row by row, passwords and keys left out: " +
 			"every account and every application is visible through it",
+	},
+	{
+		Name:        PermSSORead,
+		Group:       "Authentication",
+		Description: "See the organisations' identity providers, their domains and how they map roles",
+	},
+	{
+		Name:  PermSSOWrite,
+		Group: "Authentication",
+		Description: "Connect, change and remove identity providers: " +
+			"whoever holds this decides who may sign in, as whom, and with which roles",
 	},
 	{
 		Name:        PermLanguagesRead,

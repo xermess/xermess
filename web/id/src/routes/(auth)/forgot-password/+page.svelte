@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { signIn, messageOf } from '$lib/api';
+	import { requiredSSO, signIn } from '$lib/api';
 	import { Alert, AuthCard, Button, TextField } from '$lib/components';
-	import { useTranslator } from '$lib/i18n';
-	import { authHref } from '$lib/utils/links';
+	import { messageOf, useTranslator } from '$lib/i18n';
+	import { authHref, leaveTo, ssoHref } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -30,10 +30,23 @@
 		submitting = true;
 
 		try {
-			await signIn.forgotPassword({ request: request ?? '', email: email.trim() });
+			// The email is written in the language this page is in.
+			await signIn.forgotPassword({
+				request: request ?? '',
+				email: email.trim(),
+				language: data.language
+			});
 			sentTo = email.trim();
 		} catch (err) {
-			error = messageOf(err);
+			// A domain that signs in through its organisation's provider makes
+			// its account and keeps its password there: go there instead.
+			const sso = requiredSSO(err);
+			if (sso) {
+				leaveTo(ssoHref(sso.slug, { request: data.request, email: email.trim() }));
+				return;
+			}
+
+			error = messageOf(err, t);
 		} finally {
 			submitting = false;
 		}

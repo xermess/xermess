@@ -48,22 +48,22 @@ func TestAdminRequestValidate(t *testing.T) {
 		{
 			name:   "passwords that differ",
 			change: func(r *adminRequest) { r.ConfirmPassword = "something-else" },
-			want:   "confirm_password must match password",
+			want:   "confirm_password must match password.",
 		},
 		{
 			name:   "no name",
 			change: func(r *adminRequest) { r.FirstName = "  " },
-			want:   "first_name is required",
+			want:   "first_name is required.",
 		},
 		{
 			name:   "a status that is not one",
 			change: func(r *adminRequest) { r.Status = "invited" },
-			want:   "status must be one of: active, suspended, disabled",
+			want:   "status must be one of: active, suspended, disabled.",
 		},
 		{
 			name:   "an address that is too long",
 			change: func(r *adminRequest) { r.Email = strings.Repeat("m", 250) + "@example.com" },
-			want:   "email must be at most 255 characters",
+			want:   "email must be at most 255 characters.",
 		},
 	}
 

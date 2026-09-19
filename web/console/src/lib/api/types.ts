@@ -59,6 +59,8 @@ export type AdminPermissionName =
 	| 'login_flows.read'
 	| 'login_flows.write'
 	| 'database.read'
+	| 'sso.read'
+	| 'sso.write'
 	| 'languages.read'
 	| 'languages.write'
 	| 'applications.read'
@@ -816,10 +818,14 @@ export type Language = {
 	/** The language in English, and in itself. */
 	name: string;
 	native: string;
-	/** How much of each app is translated, as a percentage of the base
-	    language's keys, and how many keys each is short. */
-	coverage: Record<LocaleApp, number>;
-	missing: Record<LocaleApp, number>;
+	/** The apps this language is translated for: the sign-in pages always,
+	    and the admin panel only for English and Russian. */
+	apps: LocaleApp[];
+	/** How much of each of those apps is translated, as a percentage of the
+	    base language's keys, and how many keys each is short. An app the
+	    language is not for has no entry. */
+	coverage: Partial<Record<LocaleApp, number>>;
+	missing: Partial<Record<LocaleApp, number>>;
 	/** Whether the sign-in pages offer it, and whether it is the one somebody
 	    gets before they have chosen. */
 	enabled: boolean;
@@ -880,4 +886,96 @@ export type Translation = {
 	keys: string[];
 	base: Record<string, string>;
 	messages: Record<string, string>;
+};
+
+/** Which protocol an SSO connection speaks. */
+export type SSOProtocol = 'oidc' | 'saml';
+
+/** One group at the identity provider, given one role here. */
+export type SSORoleMapping = { group: string; role_id: string };
+
+/** An organisation's own identity provider, as the panel shows it: what is
+    stored, never its secrets; how many people sign in through it; what to give
+    the provider; and, for SAML, what the provider's metadata says. */
+export type SSOConnection = {
+	id: string;
+	slug: string;
+	name: string;
+	protocol: SSOProtocol;
+	enabled: boolean;
+	/** The email domains it signs people in for — and, enforced, the only way
+	    in for them. */
+	domains: string[];
+	enforce_domains: boolean;
+	show_on_login: boolean;
+
+	issuer: string;
+	client_id: string;
+	has_client_secret: boolean;
+	scopes: string[];
+
+	metadata_url: string;
+	metadata: string;
+	name_id_format: 'email' | 'persistent' | 'unspecified';
+	sign_requests: boolean;
+
+	/** What to do with an address that already has an account: link it, or
+	    refuse. */
+	matching: 'link' | 'deny';
+	create_users: boolean;
+	sync_profile: boolean;
+	email_attribute: string;
+	first_name_attribute: string;
+	last_name_attribute: string;
+	groups_attribute: string;
+	role_mappings: SSORoleMapping[];
+	sync_roles: boolean;
+
+	/** How many people have signed in through it. */
+	users: number;
+	service_provider: {
+		callback_url?: string;
+		acs_url?: string;
+		entity_id?: string;
+		metadata_url?: string;
+		certificate?: string;
+	};
+	identity_provider?: SSOIdentityProvider;
+	created_at: string;
+	updated_at: string;
+};
+
+/** What a SAML provider's metadata says about it. */
+export type SSOIdentityProvider = {
+	entity_id: string;
+	sso_url: string;
+	certificates: number;
+	certificate_expires?: string;
+};
+
+/** What the panel sends to make or change a connection. Everything is
+    optional because an update is a PATCH; the client secret is sent only to
+    replace it. */
+export type SSOConnectionInput = Partial<
+	Omit<
+		SSOConnection,
+		| 'id'
+		| 'has_client_secret'
+		| 'users'
+		| 'service_provider'
+		| 'identity_provider'
+		| 'created_at'
+		| 'updated_at'
+	>
+> & { client_secret?: string };
+
+/** What trying a provider found. */
+export type SSOTestResult = {
+	issuer?: string;
+	authorization_endpoint?: string;
+	token_endpoint?: string;
+	jwks_uri?: string;
+	unsupported_scopes?: string[];
+	identity_provider?: SSOIdentityProvider;
+	metadata?: string;
 };

@@ -56,21 +56,32 @@
 			<span class="bars">
 				{#each apps as app (app)}
 					{@const percent = language.coverage[app] ?? 0}
-					<Tooltip
-						label={language.missing[app] > 0
-							? `${appName(app)} · ${t('languages.missing', { count: language.missing[app] })}`
-							: `${appName(app)} · ${t('languages.complete')}`}
-					>
-						{#snippet children(trigger)}
-							<span class="bar" {...trigger()}>
-								<span class="track">
-									<span class="fill" class:whole={percent === 100} style="--filled: {percent}%"
-									></span>
+					{@const missing = language.missing[app] ?? 0}
+					{#if language.apps.includes(app)}
+						<Tooltip
+							label={missing > 0
+								? `${appName(app)} · ${t('languages.missing', { count: missing })}`
+								: `${appName(app)} · ${t('languages.complete')}`}
+						>
+							{#snippet children(trigger)}
+								<span class="bar" {...trigger()}>
+									<span class="track">
+										<span class="fill" class:whole={percent === 100} style="--filled: {percent}%"
+										></span>
+									</span>
+									<span class="percent">{percent}%</span>
 								</span>
-								<span class="percent">{percent}%</span>
-							</span>
-						{/snippet}
-					</Tooltip>
+							{/snippet}
+						</Tooltip>
+					{:else}
+						<!-- The panel is not shown in this language, so there is
+						     nothing to count; the slot stays so the rows line up. -->
+						<Tooltip label={`${appName(app)} · ${t('languages.panel_only')}`}>
+							{#snippet children(trigger)}
+								<span class="bar none" {...trigger()}>—</span>
+							{/snippet}
+						</Tooltip>
+					{/if}
 				{/each}
 			</span>
 		</td>
@@ -146,6 +157,13 @@
 
 	.fill.whole {
 		background: var(--color-success);
+	}
+
+	/* As wide as a bar and its number, so the columns stay in line. */
+	.bar.none {
+		justify-content: center;
+		width: calc(4.5rem + 2.75rem);
+		color: var(--color-text-hint);
 	}
 
 	.percent {

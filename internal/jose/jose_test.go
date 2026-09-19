@@ -168,3 +168,74 @@ func TestHalfHashIsHalfOfSHA256(t *testing.T) {
 		t.Errorf("at_hash is %d bytes, want 16", len(got))
 	}
 }
+
+// A key somebody else published — an identity provider's — verifies what it
+// signed, and nothing else.
+func TestParseJWK(t *testing.T) {
+	for _, algorithm := range []string{RS256, PS256, ES256} {
+		t.Run(algorithm, func(t *testing.T) {
+			private, err := Generate(algorithm)
+			if err != nil {
+				t.Fatal(err)
+			}
+			signer := Key{ID: "idp-1", Algorithm: algorithm, Private: private}
+
+			published, err := signer.Public()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			theirs, err := ParseJWK(published)
+			if err != nil {
+				t.Fatalf("ParseJWK() = %v", err)
+			}
+
+			token, err := Sign(signer, "JWT", map[string]any{"sub": "ada"})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var claims map[string]any
+			if _, err := Verify(token, func(string) (Key, bool) { return theirs, true }, &claims); err != nil {
+				t.Fatalf("a token the key signed did not verify: %v", err)
+			}
+			if claims["sub"] != "ada" {
+				t.Errorf("claims = %v", claims)
+			}
+
+			// Another key does not verify it, and a changed token does not.
+			other, _ := Generate(algorithm)
+			otherPublic, _ := Key{ID: "idp-1", Algorithm: algorithm, Private: other}.Public()
+			stranger, _ := ParseJWK(otherPublic)
+			if _, err := Verify(token, func(string) (Key, bool) { return stranger, true }, &claims); err == nil {
+				t.Error("another key verified the token")
+			}
+
+			parts := strings.Split(token, ".")
+			forged := parts[0] + "." + b64.EncodeToString([]byte(`{"sub":"mallory"}`)) + "." + parts[2]
+			if _, err := Verify(forged, func(string) (Key, bool) { return theirs, true }, &claims); err == nil {
+				t.Error("a token with its claims changed verified")
+			}
+		})
+	}
+}
+
+func TestParseJWKRefuses(t *testing.T) {
+	tests := []struct {
+		name string
+		jwk  JWK
+	}{
+		{name: "a symmetric key", jwk: JWK{KeyType: "oct"}},
+		{name: "a curve not supported", jwk: JWK{KeyType: "EC", Curve: "P-521"}},
+		{name: "a short RSA key", jwk: JWK{KeyType: "RSA", N: b64.EncodeToString(make([]byte, 128)), E: "AQAB"}},
+		{name: "a point off the curve", jwk: JWK{KeyType: "EC", Curve: "P-256", X: b64.EncodeToString(make([]byte, 32)), Y: b64.EncodeToString(make([]byte, 32))}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := ParseJWK(tt.jwk); err == nil {
+				t.Error("ParseJWK() = nothing, want it refused")
+			}
+		})
+	}
+}

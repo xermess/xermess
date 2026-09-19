@@ -1,13 +1,51 @@
 package account
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 
+	"xermess/internal/api/respond"
 	"xermess/internal/model"
 	"xermess/internal/oidc"
 )
+
+// The problems these endpoints answer with that are their own.
+var (
+	applicationNotFound = respond.Define(http.StatusNotFound, "application_not_found", respond.Public)
+	passwordTooShort    = respond.Define(http.StatusBadRequest, "password_too_short", respond.Public)
+	noSSOConnection     = respond.Define(http.StatusNotFound, "no_sso_connection", respond.Public)
+)
+
+// provided are the provider's problems (oidc.Problems) as answers, by code:
+// every one the provider can refuse something with is a problem of the public
+// API, so a new one needs no line here — only its sentence in the sign-in
+// pages' catalog, which the tests ask for. What differs is the status.
+var provided = func() map[string]respond.Problem {
+	statuses := map[string]int{
+		oidc.ErrInvalidCredentials.Code: http.StatusUnauthorized,
+		oidc.ErrRequestExpired.Code:     http.StatusGone,
+		oidc.ErrResetInvalid.Code:       http.StatusGone,
+		oidc.ErrRegistrationClosed.Code: http.StatusForbidden,
+		oidc.ErrEmailTaken.Code:         http.StatusConflict,
+		oidc.ErrNotYours.Code:           http.StatusNotFound,
+		oidc.ErrSSORequired.Code:        http.StatusForbidden,
+		oidc.ErrSSOUnknown.Code:         http.StatusNotFound,
+	}
+
+	out := map[string]respond.Problem{}
+	for _, refused := range oidc.Problems() {
+		status, ok := statuses[refused.Code]
+		if !ok {
+			status = http.StatusBadRequest
+		}
+
+		out[refused.Code] = respond.Define(status, refused.Code, respond.Public)
+	}
+
+	return out
+}()
 
 // requestResponse is a sign-in under way, as the sign-in page shows it.
 type requestResponse struct {

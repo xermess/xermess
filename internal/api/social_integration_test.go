@@ -212,8 +212,11 @@ func TestLiveSocialSignInRefusesAnUnverifiedAddress(t *testing.T) {
 	if !strings.HasPrefix(landed.String(), testAccountURL+"/error") {
 		t.Fatalf("the callback landed on %s, want the error page", landed)
 	}
-	if got := landed.Query().Get("error_description"); !strings.Contains(got, "sign in with your password") {
+	if got := landed.Query().Get("error_description"); !strings.Contains(got, "Sign in with your password") {
 		t.Errorf("the page was told %q, want the sentence that says what to do", got)
+	}
+	if got := landed.Query().Get("reason"); got != "social_link_refused" {
+		t.Errorf("reason = %q, want the code the page says in the reader's language", got)
 	}
 
 	if identities := f.identities(t); identities != 0 {
@@ -736,6 +739,9 @@ func TestLiveSocialSignInWithRegistrationOff(t *testing.T) {
 	}
 	if got := landed.Query().Get("error_description"); !strings.Contains(got, "new accounts") {
 		t.Errorf("the page was told %q", got)
+	}
+	if got := landed.Query().Get("reason"); got != "social_registration_closed" {
+		t.Errorf("reason = %q", got)
 	}
 }
 

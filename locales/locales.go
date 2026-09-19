@@ -1,9 +1,16 @@
 // Package locales is the translations this server ships with, and the one
 // list of which keys there are.
 //
-// A shipped language is a JSON file: `locales/id/ky.json` is Kyrgyz for the
-// sign-in pages, `locales/console/ky.json` is Kyrgyz for the admin panel.
-// They are embedded, so a deployment is one binary and carries them.
+// A shipped language is a JSON file: `locales/id/ru.json` is Russian for the
+// sign-in pages, `locales/console/ru.json` is Russian for the admin panel —
+// which only PanelLanguages have. They are embedded, so a deployment is one
+// binary and carries them.
+//
+// A file is nested by screen — `{"login": {"title": "Sign in"}}` — so a
+// translator reads one page's text together, and Flatten reads it into the
+// dotted keys everything else speaks of: "login.title". The `error`
+// namespace is the server's to fill (internal/api/respond): every problem it
+// can answer with has its sentence there, and its English comes from here.
 //
 // What an installation actually serves lives in the database, not here. On
 // the first start every file is imported (store.EnsureLanguages), and from
@@ -25,6 +32,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -55,6 +64,32 @@ func ParseApp(name string) (App, bool) {
 	}
 
 	return "", false
+}
+
+// PanelLanguages are the only languages the admin panel is shown in.
+//
+// The sign-in pages are for everybody who has an account, so any language
+// an installation adds is theirs to offer. The panel is for the people who
+// run the installation, and it is kept to these: every screen of it has to
+// be translated and kept translated as it changes, which is work worth doing
+// for two languages rather than for every one somebody adds. A language not
+// named here has sign-in text and no panel text — the panel's text for it is
+// not imported, not edited, not served, and not counted.
+var PanelLanguages = []string{"en", "ru"}
+
+// AppsFor is the apps a language is translated for: the sign-in pages for
+// every language, and the panel for PanelLanguages.
+func AppsFor(code string) []App {
+	if slices.Contains(PanelLanguages, code) {
+		return Apps
+	}
+
+	return []App{ID}
+}
+
+// ServesApp reports whether a language is translated for an app.
+func ServesApp(code string, app App) bool {
+	return slices.Contains(AppsFor(code), app)
 }
 
 // Base is the language every other is a translation of: the keys it has are
@@ -163,6 +198,40 @@ func Resolve(app App, layers ...Messages) Messages {
 
 	return out
 }
+
+// Text is the base language's shipped text for one key of an app, and
+// whether there is any. It is what the server says in English when it has to
+// say something itself — the sentence beside an error's code.
+func Text(app App, key string) (string, bool) {
+	shipped, err := load()
+	if err != nil {
+		return "", false
+	}
+
+	text, ok := shipped.base[app][key]
+
+	return text, ok
+}
+
+// Fill replaces each `{name}` in a text with the parameter of that name, the
+// same way the apps do. A parameter nobody passed is left as it was written.
+func Fill(text string, params map[string]any) string {
+	if len(params) == 0 {
+		return text
+	}
+
+	return placeholder.ReplaceAllStringFunc(text, func(whole string) string {
+		value, ok := params[whole[1:len(whole)-1]]
+		if !ok {
+			return whole
+		}
+
+		return fmt.Sprint(value)
+	})
+}
+
+// placeholder is a `{name}` in a text.
+var placeholder = regexp.MustCompile(`\{(\w+)\}`)
 
 // Known keeps the messages whose keys an app looks up and drops the rest,
 // with how many it dropped. An empty value is dropped too: it is the same as
@@ -292,8 +361,13 @@ func readApp(app App) (map[string]Messages, error) {
 			return nil, fmt.Errorf("read %s/%s: %w", app, name, err)
 		}
 
-		var file Messages
-		if err := json.Unmarshal(raw, &file); err != nil {
+		var nested map[string]any
+		if err := json.Unmarshal(raw, &nested); err != nil {
+			return nil, fmt.Errorf("read %s/%s: %w", app, name, err)
+		}
+
+		file, err := Flatten(nested)
+		if err != nil {
 			return nil, fmt.Errorf("read %s/%s: %w", app, name, err)
 		}
 
@@ -301,6 +375,50 @@ func readApp(app App) (map[string]Messages, error) {
 	}
 
 	return byCode, nil
+}
+
+// Flatten reads a translation file into messages by dotted key.
+//
+// The files are nested by screen, so a translator sees one page's text
+// together:
+//
+//	{"login": {"title": "Sign in", "subtitle_app": "to continue to {app}"}}
+//
+// and everything else — the database, the editor, the apps' `t()` — speaks
+// of "login.title". A file may also be flat, or mix the two, as long as no
+// key is said twice; a value that is not text is refused.
+func Flatten(nested map[string]any) (Messages, error) {
+	out := Messages{}
+	if err := flattenInto(out, "", nested); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func flattenInto(out Messages, prefix string, node map[string]any) error {
+	for key, value := range node {
+		full := key
+		if prefix != "" {
+			full = prefix + "." + key
+		}
+
+		switch value := value.(type) {
+		case string:
+			if _, twice := out[full]; twice {
+				return fmt.Errorf("%s is given twice", full)
+			}
+			out[full] = value
+		case map[string]any:
+			if err := flattenInto(out, full, value); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("%s is not text", full)
+		}
+	}
+
+	return nil
 }
 
 // withoutMeta is a file's messages: everything that is not about the file.

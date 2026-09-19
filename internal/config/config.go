@@ -93,6 +93,8 @@ type Config struct {
 	Mail Mail
 
 	DB DB
+
+	Redis Redis
 }
 
 // Origin is the scheme and host of a URL, which is what a browser sends in
@@ -129,6 +131,32 @@ type DB struct {
 	LogQueries bool
 	Migrate    bool
 	MigrateDir string
+}
+
+// Redis is the cache in front of the database, and where the rate limit
+// keeps its counts so every server process shares them. With no host there
+// is no Redis: every read goes to the database and each process counts on
+// its own, which is how the server ran before it had one.
+type Redis struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	// DB is the Redis database number, 0 to 15 on a default server.
+	DB int
+	// Prefix starts every key this server writes, so one Redis can serve
+	// several installations without their keys meeting.
+	Prefix string
+}
+
+// Enabled reports whether a Redis was configured at all.
+func (r Redis) Enabled() bool {
+	return r.Host != ""
+}
+
+// Addr is host:port, as the client dials it.
+func (r Redis) Addr() string {
+	return fmt.Sprintf("%s:%d", r.Host, r.Port)
 }
 
 // read builds the reader both loaders use: .env first, then the environment,
@@ -173,6 +201,9 @@ func Load() (Config, error) {
 	v.SetDefault("XERMESS_DB_LOG_QUERIES", false)
 	v.SetDefault("XERMESS_DB_MIGRATE", true)
 	v.SetDefault("XERMESS_DB_MIGRATE_DIR", "./migrations")
+	v.SetDefault("XERMESS_REDIS_PORT", 6379)
+	v.SetDefault("XERMESS_REDIS_DB", 0)
+	v.SetDefault("XERMESS_REDIS_PREFIX", "xermess:")
 
 	issuer := strings.TrimRight(v.GetString("XERMESS_ISSUER"), "/")
 	accountURL := strings.TrimRight(v.GetString("XERMESS_ACCOUNT_URL"), "/")
@@ -209,6 +240,14 @@ func Load() (Config, error) {
 			LogQueries: v.GetBool("XERMESS_DB_LOG_QUERIES"),
 			Migrate:    v.GetBool("XERMESS_DB_MIGRATE"),
 			MigrateDir: v.GetString("XERMESS_DB_MIGRATE_DIR"),
+		},
+		Redis: Redis{
+			Host:     strings.TrimSpace(v.GetString("XERMESS_REDIS_HOST")),
+			Port:     v.GetInt("XERMESS_REDIS_PORT"),
+			Username: v.GetString("XERMESS_REDIS_USERNAME"),
+			Password: v.GetString("XERMESS_REDIS_PASSWORD"),
+			DB:       v.GetInt("XERMESS_REDIS_DB"),
+			Prefix:   v.GetString("XERMESS_REDIS_PREFIX"),
 		},
 	}
 
@@ -256,6 +295,15 @@ func Load() (Config, error) {
 
 	if cfg.RateLimit < 0 {
 		return Config{}, errors.New("XERMESS_RATE_LIMIT must be zero or more")
+	}
+
+	if cfg.Redis.Enabled() {
+		if cfg.Redis.Port < 1 || cfg.Redis.Port > 65535 {
+			return Config{}, fmt.Errorf("XERMESS_REDIS_PORT must be a port number, got %d", cfg.Redis.Port)
+		}
+		if cfg.Redis.DB < 0 {
+			return Config{}, errors.New("XERMESS_REDIS_DB must be zero or more")
+		}
 	}
 
 	return cfg, nil

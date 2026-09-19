@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { useTranslator } from '$lib/i18n';
+	import { messageOf, useTranslator } from '$lib/i18n';
 	import { invalidateAll } from '$app/navigation';
-	import { account, messageOf } from '$lib/api';
+	import { account } from '$lib/api';
 	import { Alert, Button, Icon, Panel, TextField } from '$lib/components';
 	import { formatDate, initials } from '$lib/utils/format';
 	import type { PageProps } from './$types';
@@ -42,7 +42,7 @@
 			saved = true;
 			await invalidateAll();
 		} catch (err) {
-			error = messageOf(err);
+			error = messageOf(err, t);
 		} finally {
 			saving = false;
 		}
@@ -121,11 +121,11 @@
 		<dl>
 			<div>
 				<dt>{t('profile.member_since')}</dt>
-				<dd>{formatDate(user.created_at)}</dd>
+				<dd>{formatDate(user.created_at, t)}</dd>
 			</div>
 			<div>
 				<dt>{t('profile.last_sign_in')}</dt>
-				<dd>{formatDate(user.last_login_at)}</dd>
+				<dd>{user.last_login_at ? formatDate(user.last_login_at, t) : t('time.never')}</dd>
 			</div>
 			<div>
 				<dt>{t('profile.account_id')}</dt>

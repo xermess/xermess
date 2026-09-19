@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { signIn, messageOf } from '$lib/api';
+	import { signIn } from '$lib/api';
 	import { Alert, AuthCard, Button, PasswordField } from '$lib/components';
-	import { useTranslator } from '$lib/i18n';
+	import { messageOf, useTranslator } from '$lib/i18n';
 	import { authHref } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
@@ -35,7 +35,7 @@
 			await signIn.resetPassword({ token: data.token, password });
 			done = true;
 		} catch (err) {
-			error = messageOf(err);
+			error = messageOf(err, t);
 		} finally {
 			submitting = false;
 		}

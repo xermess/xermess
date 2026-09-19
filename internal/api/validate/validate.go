@@ -8,9 +8,15 @@
 //	}
 //
 // What this package adds is the answer. A failed rule comes back as a
-// respond.Fault carrying a 400 and a sentence naming the field the way the
-// request named it — "email must be an email address", not "Key: 'Email'
-// Error:Field validation for 'Email' failed on the 'email' tag".
+// respond.Fault carrying a 400 and the problem `validation.<rule>`, with the
+// field named the way the request named it and whatever the rule was held
+// to —
+//
+//	{"code": "validation.max", "params": {"field": "first_name", "max": "100"}}
+//
+// — which an app says in the reader's language ("{field} must be at most
+// {max} characters"), and the English beside it says for everyone else. Not
+// "Key: 'Email' Error:Field validation for 'Email' failed on the 'email' tag".
 package validate
 
 import (
@@ -30,17 +36,20 @@ import (
 // every request at once.
 var instance = newValidator()
 
-// messages is what to say about each rule, added to the field's name. The
-// built-in rules are listed here; a package can add its own with Register.
-var messages = map[string]string{
-	"required":   "is required",
-	"email":      "must be an email address",
-	"max":        "is too long",
-	"min":        "is too short",
-	"oneof":      "is not one of the values allowed",
-	"startswith": "does not start the way it has to",
-	"eqfield":    "does not match",
+// rules are the problem each rule answers with. The built-in rules either
+// server uses are listed here; a package adds its own with Register.
+var rules = map[string]respond.Problem{
+	"required":   respond.Define(http.StatusBadRequest, "validation.required", respond.Both),
+	"email":      respond.Define(http.StatusBadRequest, "validation.email", respond.Both),
+	"max":        respond.Define(http.StatusBadRequest, "validation.max", respond.Both),
+	"min":        respond.Define(http.StatusBadRequest, "validation.min", respond.Both),
+	"oneof":      respond.Define(http.StatusBadRequest, "validation.oneof", respond.Both),
+	"startswith": respond.Define(http.StatusBadRequest, "validation.startswith", respond.Both),
+	"eqfield":    respond.Define(http.StatusBadRequest, "validation.eqfield", respond.Both),
 }
+
+// invalid is the answer for a rule with no problem of its own.
+var invalid = respond.Define(http.StatusBadRequest, "validation.invalid", respond.Both)
 
 func newValidator() *validator.Validate {
 	v := validator.New(validator.WithRequiredStructEnabled())
@@ -60,12 +69,13 @@ func newValidator() *validator.Validate {
 }
 
 // Register adds a rule of our own, for something the library cannot know
-// about — what a field name may look like, which types exist. The message is
-// what to say when the rule is broken, after the field's name.
+// about — what a field name may look like, which types exist. Breaking it is
+// the problem `validation.<tag>`, which the panel's catalog has to say: the
+// rules registered this way are the admin API's.
 //
 // Call it from the init of the package whose rule it is, so the rule and the
 // thing it describes stay together.
-func Register(tag, message string, valid func(value string) bool) {
+func Register(tag string, valid func(value string) bool) {
 	if err := instance.RegisterValidation(tag, func(fl validator.FieldLevel) bool {
 		return valid(fl.Field().String())
 	}); err != nil {
@@ -74,7 +84,7 @@ func Register(tag, message string, valid func(value string) bool) {
 		panic(fmt.Sprintf("validate: register %q: %v", tag, err))
 	}
 
-	messages[tag] = message
+	rules[tag] = respond.Define(http.StatusBadRequest, "validation."+tag, respond.Admin)
 }
 
 // Struct checks a request against its tags. It returns a respond.Fault, so a
@@ -91,35 +101,35 @@ func Struct(v any) error {
 		return err
 	}
 
-	return respond.Fault{Status: http.StatusBadRequest, Message: Message(broken[0])}
+	return Fault(broken[0])
 }
 
-// Message is the sentence for one broken rule. Only the first is reported:
-// the panel shows one line, and a form is easier to fix one thing at a time.
-func Message(broken validator.FieldError) string {
-	said, ok := messages[broken.Tag()]
+// Fault is the answer for one broken rule. Only the first is reported: a page
+// shows one line, and a form is easier to fix one thing at a time.
+func Fault(broken validator.FieldError) respond.Fault {
+	problem, ok := rules[broken.Tag()]
 	if !ok {
-		said = "is not valid"
+		problem = invalid
 	}
 
-	// A length rule says which length it wanted; the others speak for
-	// themselves.
+	params := map[string]any{"field": broken.Field()}
+
+	// A rule held to something says what: the length it wanted, the values
+	// it takes, the field it has to match.
 	if param := broken.Param(); param != "" {
 		switch broken.Tag() {
-		case "max":
-			said = fmt.Sprintf("must be at most %s characters", param)
-		case "min":
-			said = fmt.Sprintf("must be at least %s characters", param)
+		case "max", "min":
+			params[broken.Tag()] = param
 		case "oneof":
-			said = "must be one of: " + strings.ReplaceAll(param, " ", ", ")
+			params["values"] = strings.ReplaceAll(param, " ", ", ")
 		case "startswith":
-			said = fmt.Sprintf("must start with %q", param)
+			params["prefix"] = param
 		case "eqfield":
-			said = "must match " + toSnake(param)
+			params["other"] = toSnake(param)
 		}
 	}
 
-	return broken.Field() + " " + said
+	return problem.Fault(params)
 }
 
 // toSnake spells a Go field name the way the request does — ConfirmPassword

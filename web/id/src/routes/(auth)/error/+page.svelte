@@ -8,31 +8,35 @@
 
 	const t = useTranslator();
 
-	/** A sentence for the errors a person can do something about; what the
-	    server said is kept underneath for whoever has to debug it. */
-	const explanations: Record<string, string> = {
-		invalid_request:
-			'The application sent an incomplete or incorrect sign-in request. This is a problem with the application, not your account.',
-		unauthorized_client: 'This application is not allowed to sign users in right now.',
-		access_denied: 'You do not have access to this application.',
-		server_error: 'Something went wrong on our side. Try again in a moment.'
-	};
-
 	const code = $derived(page.url.searchParams.get('error') ?? 'server_error');
 	const description = $derived(page.url.searchParams.get('error_description') ?? '');
-	const explanation = $derived(explanations[code] ?? 'The sign-in could not be completed.');
+
+	/** A failed sign-in elsewhere names its reason with the same code the API
+	    answers with, so it is said the same way, in the reader's language. */
+	const reason = $derived(page.url.searchParams.get('reason') ?? '');
+	const said = $derived(reason !== '' && t.has(`error.${reason}`));
+
+	/** Otherwise the code is the authorization endpoint's own, meant for
+	    developers: a sentence for the ones a person can do something about,
+	    and what the server said kept underneath for whoever has to debug it. */
+	const explanation = $derived.by(() => {
+		if (said) return t(`error.${reason}`);
+
+		const key = `error_page.reason.${code}`;
+		return t.has(key) ? t(key) : t('error_page.reason.other');
+	});
 </script>
 
 <svelte:head>
-	<title>{t('error.head')}</title>
+	<title>{t('error_page.head')}</title>
 </svelte:head>
 
-<AuthCard organization={data.organization} title={t('error.title')} subtitle={explanation}>
-	{#if description}
+<AuthCard organization={data.organization} title={t('error_page.title')} subtitle={explanation}>
+	{#if description && !said}
 		<Alert tone="warning"><code>{code}</code> {description}</Alert>
 	{/if}
 	<p class="muted">
-		{data.organization?.support_email ? t('error.body_support') : t('error.body')}
+		{data.organization?.support_email ? t('error_page.body_support') : t('error_page.body')}
 	</p>
 </AuthCard>
 

@@ -13,6 +13,8 @@ panel for everything else.
 
 - Go 1.27+
 - PostgreSQL 14+
+- Redis 6.2+ — optional, but configured by default (`brew install redis`,
+  then `brew services start redis`); see [Redis](#redis)
 - [Bun](https://bun.sh) and Node.js 24+ — for the apps under `web/`
 
 ## Getting started
@@ -66,6 +68,7 @@ locales/                       the translations the server ships with, imported 
 internal/config/config.go      reads .env
 internal/database/database.go  opens the connection
 internal/database/migrate.go   applies migrations
+internal/cache/                Redis: the cache in front of the store, and the rate limit's counts
 internal/store/                every query in the project, one file per subject
 internal/auth/auth.go          signs administrators in and out, records what they do
 internal/oidc/                 the OAuth 2.0 / OpenID Connect provider: authorize, tokens,
@@ -198,6 +201,10 @@ gets models back, so the handlers stay about HTTP and the queries stay in one
 place to read and change. It has its own errors, `store.ErrNotFound` and
 `store.ErrDuplicate`, which is why nothing above it imports GORM.
 
+A few of its reads go through Redis first (`store.WithCache`); see
+[Redis](#redis). Which ones is decided here too, so a handler cannot tell a
+cached answer from a fresh one.
+
 ```
 internal/store/store.go        the Store type, and the errors it returns
 internal/store/users.go        listing, searching and writing users
@@ -260,9 +267,46 @@ that (`internal/auth/mfa.go`, `internal/totp`). Token signing keys rotate every
 Every cookie-authenticated API takes changes only from its app's origin
 (`internal/api/csrf`): another origin gets 403, a body that is not JSON 415.
 Sign-in, registration, setup and password resets are rate limited per address
-(`internal/api/ratelimit`).
+(`internal/api/ratelimit`). With Redis the count is shared by every server
+process and survives a restart; without it, each process counts on its own.
 
 ## API
+
+### Errors
+
+Every error either server answers with has the same shape:
+
+```json
+{ "error": "Too many attempts. Try again in 42 seconds.", "code": "rate_limited", "params": { "seconds": 42 } }
+```
+
+`code` is what the apps use: they show `error.<code>` from their own catalog,
+in the reader's language, with `params` filled in — a field name among them
+is said the way the form labels it — so a Russian reader sees Russian from the
+server as much as from the page. `error` is the same sentence in English for
+whoever calls the API directly, and it is not written in Go: it is the base
+catalog's text for the key, so the English exists once.
+
+Each problem is defined next to the code that returns it —
+`respond.Define(status, code, apps)` — and answered with `respond.Fail` or
+returned as `problem.With("name", value)`. The validator answers
+`validation.<rule>` with `field` and the rule's own limit; the sign-in
+service's refusals (`oidc.Problems`) become public problems on their own.
+`TestErrorCodesMatchTheCatalogs` holds the two sides together: every problem
+has its sentence in each app it is for, the same English wherever it is said
+twice, and every `error.*` key in a catalog is one the server can answer with.
+
+The reset email is written the same way, in the language the page asked in
+(`email.reset.*`), and the default language when that one is not offered.
+
+The public API's errors all have codes, and so do the ones every endpoint
+shares — the validator, sessions, permissions, the CSRF check, the rate
+limit — and the Languages page's. Some admin endpoints still answer with
+English alone, as their pages are still English in the markup; giving one a
+code is defining its problem and adding the sentence to
+`locales/console/*.json`.
+
+### Endpoints
 
 | Method | Path                          | Needs a session | Description                    |
 | ------ | ----------------------------- | --------------- | ------------------------------ |
@@ -285,6 +329,13 @@ Sign-in, registration, setup and password resets are rate limited per address
 | `PATCH`| `/api/v1/admin/security`      | yes             | Change it (a super admin's)    |
 | `GET`  | `/api/v1/admin/social-providers` | yes          | The providers, and the kinds one may be |
 | `POST` | `/api/v1/admin/social-providers` | yes          | Register a provider            |
+| `GET`  | `/api/v1/admin/sso-connections` | yes           | The organisations' identity providers |
+| `POST` | `/api/v1/admin/sso-connections` | yes           | Connect one (OIDC or SAML); SAML gets its own signing key |
+| `POST` | `/api/v1/admin/sso-connections/test` | yes      | Try an issuer's discovery, or SAML metadata, before saving |
+| `GET`  | `/api/v1/admin/sso-connections/:id` | yes       | One connection, with what to give its provider |
+| `PATCH`| `/api/v1/admin/sso-connections/:id` | yes       | Change it                      |
+| `DELETE`| `/api/v1/admin/sso-connections/:id` | yes      | Remove it and the identities held at it |
+| `POST` | `/api/v1/admin/sso-connections/:id/refresh-metadata` | yes | Read a SAML provider's metadata again |
 | `GET`  | `/api/v1/admin/login-flows`   | yes             | The login flows, and the steps one can be made of |
 | `POST` | `/api/v1/admin/login-flows`   | yes             | Write a flow                   |
 | `PATCH`| `/api/v1/admin/login-flows/:id` | yes           | Change a flow                  |
@@ -348,6 +399,8 @@ account:
 | -------- | ---------------------------------------------------- | --------------------------------- |
 | `GET`    | `/api/v1/account/organization`                       | Who this server signs users in for |
 | `GET`    | `/api/v1/account/social-providers`                   | The providers to offer as buttons |
+| `GET`    | `/api/v1/account/sso`                                | The SSO connections with a button, and whether any is on |
+| `POST`   | `/api/v1/account/sso/discover`                       | The connection an email's domain signs in through |
 | `GET`    | `/api/v1/account/me`                                 | The signed-in user                |
 | `PATCH`  | `/api/v1/account/me`                                 | Change their name                 |
 | `POST`   | `/api/v1/account/password`                           | Change the password; signs out everywhere else |
@@ -388,7 +441,7 @@ column the header's logo block tops: the two are one width and fold together.
 
 ```
 Activity · Logs
-Applications     Applications · APIs · SSO integrations (soon)
+Applications     Applications · APIs · SSO integrations
 Authentication   Database · Social · Login flows
 User management  Users · Roles
 Administration   Administrators · Admin roles   (super admins only)
@@ -397,8 +450,7 @@ Settings         Organization · Languages
 
 Each link is shown only to an administrator whose roles allow the page. The
 logs live at `/admin/dashboard/logs`; the old `/admin/logs` redirects there.
-SSO integrations is the one section still marked "Soon", and its page says
-what is planned; every other page talks to the API.
+Every page talks to the API.
 
 ### Users and their fields
 
@@ -614,7 +666,9 @@ endpoints, and the panel asks for them.
 **Which account a sign-in reaches**, in order: the one that already holds this
 identity; then the one with the same address, if the provider says it has
 verified it *and* the provider is one this installation trusts to say so
-(`link_verified_emails`); then a new account, if the provider and the
+(`link_verified_emails`) *and* the account verified its address too — else
+whoever registered it before its owner arrived would keep a password to it;
+then a new account, if the provider and the
 application both take registrations. An address that is taken and unproved is
 refused with a sentence saying to sign in with a password and connect the
 provider from the account page — otherwise anybody who could make an account
@@ -649,6 +703,72 @@ somewhere else, or both — and their record lists the providers with the
 address each gave and when it was last used. A provider can be disconnected
 there (`users.write`), which leaves the account itself alone: it is one way in
 that goes, not the person.
+
+### SSO integrations
+
+An organisation signs its people in through its own identity provider —
+Okta, Microsoft Entra ID, Google Workspace, ADFS, Keycloak, OneLogin — over
+OpenID Connect or SAML 2.0. It is what authentik calls a *source*, Keycloak an
+*identity provider* and Auth0 an *enterprise connection*; where
+[Social](#signing-in-with-another-account) offers "Continue with Google" to
+anybody, a connection is set up for one organisation, and **owns email
+domains**.
+
+**What a connection decides**, in the order a sign-in meets it:
+
+| Setting | What it does |
+| --- | --- |
+| Domains | The addresses it signs people in for. It signs in nobody else: an address the provider vouches for outside them is refused (`sso_domain_mismatch`), so a misconfigured provider cannot sign in as anyone elsewhere. A domain belongs to one connection. Domains are optional: without any, the provider is trusted with every address, as authentik and Keycloak trust a source, and since no address leads to it, it has to show its button and cannot be required (`sso_unreachable`). |
+| Require SSO | Makes it the only way in for its domains: their password sign-in, registration and reset are refused with `sso_required`, which names the connection, and the sign-in page sends them there with the address as `login_hint`. |
+| Button on the sign-in page | "Continue with *name*". Off, people reach it through **Sign in with SSO**, which finds the connection from their work address. |
+| Existing accounts | *Link* signs an address that already has an account in to it — the provider owns the domain, so it is the same person — or *Refuse* (`sso_link_refused`). An account that never verified its address is not linked, since whoever registered it would keep its password. Pointing a connection at another provider (a new issuer, or metadata with a new entity ID) forgets its identities, because a subject is only unique within its provider; the accounts link again on their next sign-in. authentik's email_link and email_deny. Without domains, *Link* trusts the provider with every account there is, so choose it only for a provider you would trust with them. |
+| Create accounts | Just-in-time provisioning: somebody new gets an account on first sign-in, verified, with the default roles. Off, only existing accounts sign in (`sso_no_account`). |
+| Update names | The provider is where names are kept, so each sign-in brings a change there here. |
+| Attributes | Where to read the address, the names and the groups. Empty is the usual ones: OIDC's standard claims, and for SAML the names Entra ID, ADFS, Okta, Google Workspace and the LDAP OIDs use. |
+| Group to role mapping | Everybody the provider puts in a group gets the role (global or an application's). *Take mapped roles away too* removes a mapped role from someone no longer in its group; off, mapped roles are only added. |
+
+**What is checked**, because the provider's word is what signs somebody in:
+
+- **OpenID Connect**: the issuer's discovery document has to be its own; the
+  code is bound to the sign-in by PKCE and the state; the id_token's
+  signature is verified against the provider's published keys (refetched once
+  when a token names a key not seen yet), with its issuer, audience, expiry
+  and nonce. An address the provider says outright it has not verified is not
+  used.
+- **SAML 2.0** (crewjam/saml): the response has to be signed by the
+  certificate in the provider's metadata, be meant for this service provider,
+  be in time, and answer the request this server sent. An unsolicited,
+  IdP-initiated response is refused, since nothing ties it to the browser
+  presenting it, and a response is only accepted once. Each connection has its
+  own RSA key and self-signed certificate, made when it is, which requests
+  are signed with when the provider requires it.
+
+**Setting one up** is the SSO integrations page. A connection starts off; the
+drawer's **Test connection** reads the issuer's discovery or the metadata
+before anything is saved — and warns about a scope the provider does not
+list, which some providers, Keycloak among them, refuse a whole sign-in over
+— and once created its **Service provider** tab has
+what to give the provider — the redirect URI for OIDC, and for SAML the ACS
+URL, the entity ID and a metadata URL (`/oauth2/sso/<slug>/metadata`) most
+providers can be set up from in one paste. A SAML provider's metadata can be
+read from its address and read again with **Refresh metadata** when it rolls
+its certificate over; the drawer warns a month before that certificate
+expires. It takes `sso.read` to see the page and `sso.write` to change it, and
+every change is in the activity log, as is a role a sign-in added or took
+away (`user.roles_synced`). So is a sign-in that did not complete
+(`sso_connection.sign_in_failed`), with the step — authorize, token,
+id_token, response, or claims — and exactly why: what the provider said,
+such as `invalid_scope` or `invalid_client`, or what it sent instead of a
+verified address at the connection's domains, naming the claims there were.
+The person is only told the reason in general (`sso_upstream`,
+`sso_no_email`, `sso_domain_mismatch`), and that entry is how a connection
+being set up gets fixed. A refusal is recorded
+only for a sign-in this server started, so a made-up callback link writes
+nothing.
+
+The public paths, under the issuer, are `/oauth2/sso/<slug>/start`,
+`/callback` (OIDC), `/acs` (SAML, a POST from the provider, outside the CSRF
+check for the reason Apple's callback is) and `/metadata`.
 
 ### Login flows
 
@@ -739,9 +859,31 @@ nothing is rebuilt.
 
 ```
 locales/
-  id/       en.json  ky.json  ru.json     the sign-in pages and a user's own account
-  console/  en.json  ky.json  ru.json     the admin panel
+  id/       en.json  ru.json   the sign-in pages, a user's own account, their emails
+  console/  en.json  ru.json   the admin panel, shown in English and Russian only
 ```
+
+**Each file is nested by screen**, so a translator reads one page's text
+together, and everything that looks text up — the apps' `t()`, the
+database, the editor — speaks of the dotted key:
+
+```json
+{
+  "$name": "Russian",
+  "$native": "Русский",
+  "login": { "title": "Вход", "subtitle_app": "чтобы продолжить в {app}" },
+  "error": { "invalid_credentials": "Неверный адрес почты или пароль." },
+  "email": { "reset": { "subject": "Сброс пароля" } }
+}
+```
+
+`login.title` is `t('login.title')`. Keys are lower case with underscores;
+`TestShippedFilesAreNested` holds the files to that. The same few namespaces
+recur: one per screen (`login`, `register`, `security`…), `field` for form
+labels, `action` for buttons, `error` for everything the server can refuse
+(see [Errors](#errors)), and `email` for what it sends. The editor's
+**Export JSON** writes this shape and **Import JSON** reads it, or a flat
+file of dotted keys.
 
 They are embedded in the binary (`locales/locales.go`) and have three jobs:
 
@@ -789,7 +931,7 @@ toggle, and names each language in itself with its English name under it.
 Choosing one redraws the page where it is — the root layout asks for the new
 text and every component re-renders, so a half-typed address survives — with
 a cross-fade where the browser has view transitions. Without JavaScript the
-entries are links to `?lang=ky`, remembered in a cookie and redirected away,
+entries are links to `?lang=ru`, remembered in a cookie and redirected away,
 so a shared address carries nobody's choice. Which language somebody gets is
 their saved choice, then their browser's `Accept-Language` (by exact tag,
 then by its language part, so `ru-RU` is served `ru`), then the
@@ -800,10 +942,15 @@ key filled in; a language that is off is a 404 there.
 
 **In the admin panel** the language is one administrator's own preference on
 one machine — a cookie, set on the Profile page beside the theme — rather
-than a setting of the installation. Every language with some of the panel
-translated is offered there, whatever the Languages page says: that page
-decides what *users* see. Saving the text of the language the panel is shown
-in redraws the panel.
+than a setting of the installation. **The panel is shown in English and
+Russian only** (`locales.PanelLanguages`): every other language an
+installation adds is a sign-in language, with no panel text to import, edit, serve
+or count. On the Languages page such a language shows a dash under *Admin
+panel* and has no panel tab, the API answers 404 for its panel text, and a
+start removes any panel text an older version imported for it. Which of the
+two an administrator reads the panel in is their own business, whatever the
+Languages page offers users. Saving the text of the language the panel is
+shown in redraws the panel.
 
 Both apps resolve the language and fetch its text while rendering on the
 server, so the first response is already translated and `<html lang>` is
@@ -811,15 +958,16 @@ right in the first byte, which is what a screen reader reads the page's words
 with. Each app bundles English alone, for when the API cannot be reached.
 
 What is translated today: all of the sign-in pages and a user's own account,
-and the admin panel's shell — its sidebar, its account menu, the Profile page
-and the Languages page. The rest of the panel's pages are still English in the
+and the admin panel's shell — its sidebar, its account menu, the Profile page,
+the Languages page and the SSO integrations page. The rest of the panel's pages are still English in the
 markup; moving one over is replacing its strings with `t('key')` and adding
 the keys to `locales/console/*.json`. `TestTranslationsAreComplete` fails the
 build if a shipped language falls behind the base, so a key added without a
 translation is caught rather than shipped.
 
-Kyrgyz and Russian were written alongside the machinery and would be worth a
-native speaker's eye before an installation offers them.
+Two languages ship, English and Russian; any other is added on the Languages
+page. The Russian was written alongside the machinery and would be worth a
+native speaker's eye before an installation offers it.
 
 ### The icon
 
@@ -926,6 +1074,84 @@ say which usernames exist.
 The address is the account — it is both the email and the username someone
 signs in with, so setup asks for one thing rather than two.
 
+## Redis
+
+Redis does two jobs, and neither is ever the only copy of anything.
+
+**It caches the reads every page makes.** Each sign-in page renders with the
+organisation, the sign-in buttons, the login flow, the offered languages and
+the whole text of one language; each panel page with the panel's languages
+and text. None of that changes more than a few times a week, so the store
+reads it through Redis (`internal/cache`) and the database is asked once per
+change rather than once per page. The largest value is a language's resolved
+text — every key of an app, gaps filled from English — kept as one JSON value
+per language and app.
+
+Only these are cached — nothing about users, sessions, tokens or
+administrators, where a stale answer would be a security question:
+
+| Group            | What                                                      |
+| ---------------- | --------------------------------------------------------- |
+| `languages`      | every language, the offered ones, the default, each text  |
+| `organization`   | the organisation's settings                               |
+| `login_flows`    | the default flow, and each flow by id                     |
+| `social_buttons` | the enabled providers as buttons — never the providers themselves, which carry sealed secrets |
+
+**Every key says what it is**, under the prefix and then what it is for, so a
+Redis browser shows a tree and one group is one `--scan --pattern`:
+
+```
+xermess:cache:<group>:generation              the group's current generation
+xermess:cache:<group>:v<generation>:<entry>   one cached value, as JSON
+xermess:ratelimit:<scope>:<address>           one rate-limit bucket (scope: public, admin)
+```
+
+The entries are named for what they hold — `languages` has `all`,
+`offered`, `default`, `code:<tag>` and `text:<tag>:<app>`; `organization`
+has `settings`; `login_flows` has `default` and `id:<uuid>`;
+`social_buttons` has `enabled`.
+
+A write forgets its whole group once it has committed, by moving the group on
+to its next *generation*: forgetting is one `INCR` of the group's
+`generation` key. That is why a
+change is on the next page every server process renders, and why a reader
+that loaded a row just before a write cannot put it back after — it stores it
+under the generation that was forgotten, which nobody reads again. Old
+generations expire within the hour. A forget that could not reach Redis is
+remembered, and that process reads nothing from the cache until it has made
+it. `TestCachedTypesSurviveJSON` fails if a cached model gains a field JSON
+would leave out.
+
+**It holds the rate limit's counts** — a token bucket per address in a Lua
+script, so two processes cannot both spend the last attempt, timed by Redis's
+own clock.
+
+Redis going away is never an outage. At startup a configured Redis that does
+not answer stops the server, like a database that does not, so a wrong
+address is caught at once; with `XERMESS_REDIS_HOST` empty the server runs
+without one. After startup, a Redis that stops answering is logged once and
+then left alone for five seconds at a time: every read goes straight to the
+database and the rate limit counts in each process's memory, so pages stay
+as fast as they were before Redis rather than each waiting on a dial that
+will fail. Every five seconds one request tries Redis again, and the first
+that reaches it makes any forget a save left pending.
+
+Run it without persistence, as the compose file does. It holds nothing that
+is not in Postgres, and a Redis restored from an old snapshot would bring
+back old generations — and the text in them — until they expire.
+
+The settings are `XERMESS_REDIS_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD`,
+`_DB` and `_PREFIX` (default `xermess:`, so one Redis can serve several
+installations). `make setup` adds them to a `.env` that predates them. In
+production, `deploy/compose.yaml` runs one alongside Postgres with no
+persistence, a 256 MB cap and `volatile-lru`, which evicts cached values and
+never the generation counters that say which are current.
+
+`make test-integration` runs the whole API suite with the Redis in `.env`
+under a throwaway prefix per test, so every end-to-end test also proves a
+write is seen through the cache; the `TestLive…` tests in `internal/cache`
+and `internal/api/ratelimit` need it too.
+
 ## Configuration
 
 Every setting is an environment variable, read from `.env` first; real
@@ -949,10 +1175,11 @@ write a made-up one into the activity log — but behind a proxy it has to be
 set, or every request, and the rate limit, count as the proxy's.
 `XERMESS_ADMIN_ADDR` must differ from `XERMESS_ADDR`; never publish it.
 
-`make test-integration` runs the tests that need Postgres. They connect to
-the server in `.env` only to create a database of their own for each test,
-and drop it afterwards; without `XERMESS_TEST_DB_DSN` set, `go test` skips
-them.
+`make test-integration` runs the tests that need Postgres and Redis. They
+connect to the Postgres in `.env` only to create a database of their own for
+each test, and drop it afterwards, and use the Redis in `.env` under a key
+prefix of their own; without `XERMESS_TEST_DB_DSN` set, `go test` skips them,
+and without `XERMESS_TEST_REDIS` they run with no cache.
 
 The migrations are compiled into the binary. Goose still needs the directory in
 `XERMESS_DB_MIGRATE_DIR` to exist; when it holds no `.go` files, as in the

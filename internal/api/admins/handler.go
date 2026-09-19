@@ -64,7 +64,7 @@ func (h *Handler) Get(c *gin.Context) {
 func (h *Handler) Create(c *gin.Context) {
 	var req adminRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 	var req adminRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -154,7 +154,7 @@ func (h *Handler) Security(c *gin.Context) {
 func (h *Handler) UpdateSecurity(c *gin.Context) {
 	var req securityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 

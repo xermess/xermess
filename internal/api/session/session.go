@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"xermess/internal/api/respond"
 	"xermess/internal/auth"
 	"xermess/internal/model"
 )
@@ -53,7 +54,7 @@ func Require(service *auth.Service) gin.HandlerFunc {
 
 		user, err := service.Authenticate(c.Request.Context(), token)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "not signed in"})
+			respond.Abort(c, respond.NotSignedIn)
 			return
 		}
 
@@ -72,7 +73,7 @@ func RequireSetup(service *auth.Service) gin.HandlerFunc {
 
 		user, _, state, err := service.Session(c.Request.Context(), token)
 		if err != nil || (state != auth.StateSignedIn && state != auth.StateEnroll) {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "not signed in"})
+			respond.Abort(c, respond.NotSignedIn)
 			return
 		}
 
@@ -87,7 +88,7 @@ func RequireSetup(service *auth.Service) gin.HandlerFunc {
 func Can(permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if admin := Admin(c); admin == nil || !admin.HasPermission(permission) {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "you do not have permission to do that"})
+			respond.Abort(c, respond.NotAllowed)
 			return
 		}
 
@@ -110,7 +111,7 @@ func CanAnywhere(permissions ...string) gin.HandlerFunc {
 			}
 		}
 
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "you do not have permission to do that"})
+		respond.Abort(c, respond.NotAllowed)
 	}
 }
 
@@ -159,12 +160,16 @@ func Reach(c *gin.Context, permission string) []uuid.UUID {
 	return ids
 }
 
+// superAdminOnly is what an administrator who is not a super admin is told
+// by the routes that are a super admin's alone.
+var superAdminOnly = respond.Define(http.StatusForbidden, "super_admin_only", respond.Admin)
+
 // RequireSuperAdmin refuses the request unless the signed-in administrator is
 // a super admin: managing administrators and their roles is theirs alone.
 func RequireSuperAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if admin := Admin(c); admin == nil || !admin.IsSuperAdmin() {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "only a super admin can do that"})
+			respond.Abort(c, superAdminOnly)
 			return
 		}
 

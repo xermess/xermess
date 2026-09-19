@@ -126,14 +126,15 @@ func (Translation) TableName() string {
 // a document.
 const MaxMessageLength = 2000
 
-// ValidateMessages reports the first message that is too long. Which keys are
-// allowed is not the model's to know — that is the base language's files.
-func ValidateMessages(messages map[string]string) error {
+// TooLongMessage is the key of a message longer than MaxMessageLength, or ""
+// when there is none. Which keys are allowed is not the model's to know —
+// that is the base language's files.
+func TooLongMessage(messages map[string]string) string {
 	for key, value := range messages {
 		if utf8.RuneCountInString(value) > MaxMessageLength {
-			return fmt.Errorf("the text of %s must be at most %d characters", key, MaxMessageLength)
+			return key
 		}
 	}
 
-	return nil
+	return ""
 }

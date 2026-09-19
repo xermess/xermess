@@ -1,4 +1,4 @@
-# Production: Postgres, the API, the id and console apps, and Caddy in front.
+# Production: Postgres, Redis, the API, the id and console apps, and Caddy in front.
 # Only Caddy publishes ports. See README.md.
 #
 #   cp deploy/.env.example deploy/.env    # fill it in
@@ -26,15 +26,34 @@ services:
     volumes: [postgres:/var/lib/postgresql/data]
     networks: [internal]
 
+  # The cache in front of Postgres, and the rate limit's shared counts.
+  # Nothing in it is the only copy of anything, so it keeps nothing on disk.
+  # Every cached value and every count expires, and volatile-lru evicts only
+  # keys that expire — so when memory runs short it drops cache, never the
+  # small generation counters that say which cached values are current.
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    healthcheck:
+      test: redis-cli ping
+      interval: 2s
+      retries: 30
+    networks: [internal]
+
   api:
     build: { context: .., dockerfile: deploy/docker/api.Dockerfile, args: { VERSION: "${VERSION:-dev}" } }
     restart: unless-stopped
-    depends_on: { postgres: { condition: service_healthy } }
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
     environment:
       XERMESS_ISSUER: ${PUBLIC_URL:?set PUBLIC_URL in deploy/.env}
       XERMESS_ADMIN_URL: ${ADMIN_URL:?set ADMIN_URL in deploy/.env}
       XERMESS_SECRET_KEY: ${XERMESS_SECRET_KEY:?set XERMESS_SECRET_KEY in deploy/.env}
       XERMESS_DB_DSN: postgres://xermess:${POSTGRES_PASSWORD}@postgres:5432/xermess?sslmode=disable
+      XERMESS_REDIS_HOST: redis
+      XERMESS_REDIS_PORT: 6379
       # Caddy and the apps' renderers forward the caller's address from here.
       XERMESS_TRUSTED_PROXIES: 172.30.0.0/24
       XERMESS_SMTP_HOST: ${XERMESS_SMTP_HOST:-}

@@ -43,6 +43,25 @@ func (s *Service) Languages(ctx context.Context) ([]PublicLanguage, string, erro
 	return languages, fallback.Code, nil
 }
 
+// textIn is the sign-in pages' text in a language, for what the server writes
+// itself — an email. A language that is not offered, or none given, is the
+// default one; and when even that cannot be read, the text is the shipped
+// English, so an email always goes out in something.
+func (s *Service) textIn(ctx context.Context, code string) map[string]string {
+	language, err := s.store.Language(ctx, code)
+	if err != nil || !language.Enabled {
+		language, err = s.store.DefaultLanguage(ctx)
+	}
+
+	if err == nil {
+		if text, err := s.store.ResolvedTranslation(ctx, language, locales.ID); err == nil {
+			return text
+		}
+	}
+
+	return locales.Resolve(locales.ID)
+}
+
 // LanguageText is the text the sign-in pages are drawn with in one language:
 // every key they look up, a missing translation already filled in from the
 // base language, so the pages have nothing to work out.

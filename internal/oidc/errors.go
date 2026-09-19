@@ -1,7 +1,6 @@
 package oidc
 
 import (
-	"errors"
 	"net/http"
 )
 
@@ -46,51 +45,85 @@ func oauthError(code, description string) *Error {
 	return &Error{Code: code, Description: description, Status: status}
 }
 
+// Problem is something a person did that this service refuses: a wrong
+// password, a link that has expired. Its code is what the sign-in pages show
+// the reader, in their language — the API answers with it, and the page looks
+// up `error.<code>` — so the sentence is the pages' to say. The one here is
+// for the log.
+//
+// Every problem is a value of its own, declared below, so a caller asks
+// errors.Is(err, ErrEmailTaken) and the API layer finds the code with
+// errors.As. Problems lists them all, which is how the tests hold the API's
+// definitions and the catalogs to this list.
+type Problem struct {
+	Code    string
+	message string
+}
+
+func (p *Problem) Error() string {
+	return p.message
+}
+
+var problems []*Problem
+
+func problem(code, message string) *Problem {
+	p := &Problem{Code: code, message: message}
+	problems = append(problems, p)
+
+	return p
+}
+
+// Problems is every problem this service can refuse something with.
+func Problems() []*Problem {
+	return problems
+}
+
 // The errors of signing a user in. They are what the sign-in pages show, so
 // they say what went wrong without saying which accounts exist.
 var (
 	// ErrInvalidCredentials covers an unknown address, a wrong password, and
 	// an account that may not sign in.
-	ErrInvalidCredentials = errors.New("wrong email or password")
+	ErrInvalidCredentials = problem("invalid_credentials", "wrong email or password")
 	// ErrRequestExpired is a sign-in handle that has expired, been used, or
 	// never existed.
-	ErrRequestExpired = errors.New("this sign-in link has expired; go back to the application and start again")
+	ErrRequestExpired = problem("request_expired", "the sign-in handle has expired")
 	// ErrRegistrationClosed is registering where the application does not
 	// allow it.
-	ErrRegistrationClosed = errors.New("this application does not allow creating an account")
+	ErrRegistrationClosed = problem("registration_closed", "the application does not allow registration")
 	// ErrEmailTaken is registering an address that already has an account.
-	ErrEmailTaken = errors.New("an account with this email already exists")
+	ErrEmailTaken = problem("email_taken", "an account with this email already exists")
 	// ErrResetInvalid is a reset link that has expired or been used.
-	ErrResetInvalid = errors.New("this reset link has expired or has already been used")
+	ErrResetInvalid = problem("reset_invalid", "the reset link has expired or been used")
+	// ErrTermsRequired is registering without accepting the application's
+	// terms and privacy policy.
+	ErrTermsRequired = problem("terms_required", "the terms were not accepted")
+	// ErrDetailsRequired is registering where accounts need fields a sign-in
+	// page cannot ask for.
+	ErrDetailsRequired = problem("details_required", "accounts need fields the page cannot ask for")
+	// ErrPasswordTooLong is a password longer than bcrypt reads.
+	ErrPasswordTooLong = problem("password_too_long", "the password is too long")
 
 	// The errors of signing in with an account somewhere else. They are shown
 	// on the sign-in pages, so each says what the person can do about it.
 
 	// ErrSocialUnknown is a provider that is not configured, or not enabled.
-	ErrSocialUnknown = errors.New("that sign-in provider is not available")
+	ErrSocialUnknown = problem("social_unknown", "the provider is not available")
 	// ErrSocialExpired is a sign-in that took too long at the provider, came
 	// back twice, or was not started here at all.
-	ErrSocialExpired = errors.New("this sign-in took too long or has already been used; start again")
+	ErrSocialExpired = problem("social_expired", "the social sign-in expired or was used")
 	// ErrSocialUpstream is the provider refusing or failing to answer. What
 	// it said is logged; the person is only told it did not work.
-	ErrSocialUpstream = errors.New("the provider could not complete this sign-in; try again")
+	ErrSocialUpstream = problem("social_upstream", "the provider did not complete the sign-in")
 	// ErrSocialNoEmail is a provider that gave no address, leaving nothing to
 	// make an account with.
-	ErrSocialNoEmail = errors.New("the provider did not share an email address, so there is no account to sign in to")
+	ErrSocialNoEmail = problem("social_no_email", "the provider shared no email address")
 	// ErrSocialLinkRefused is an address that already has an account the
 	// provider has not proved belongs to this person.
-	ErrSocialLinkRefused = errors.New("an account with this email already exists: sign in with your password, then connect this provider from your account")
+	ErrSocialLinkRefused = problem("social_link_refused", "the address has an account the provider does not prove")
 	// ErrSocialRegistrationClosed is a provider, or an application, that does
 	// not make accounts this way.
-	ErrSocialRegistrationClosed = errors.New("this provider cannot create new accounts here")
+	ErrSocialRegistrationClosed = problem("social_registration_closed", "the provider cannot create accounts here")
+	// ErrSocialBlocked is an account found through a provider that may not
+	// sign in.
+	ErrSocialBlocked = problem("social_blocked", "the account may not sign in")
 )
-
-// FieldError is a problem with what someone typed into a sign-in form, which
-// the page shows as it is.
-type FieldError struct {
-	Message string
-}
-
-func (e *FieldError) Error() string {
-	return e.Message
-}

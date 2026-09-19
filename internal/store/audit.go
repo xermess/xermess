@@ -182,15 +182,16 @@ type TargetName struct {
 // which column names it. Only these can be looked up, so nothing from the log
 // ever becomes part of a query's text.
 var targetTables = map[string]struct{ table, name, application string }{
-	"user":        {table: "users", name: "email"},
-	"user_field":  {table: "user_fields", name: "name"},
-	"user_role":   {table: "user_roles", name: "name", application: "application_id"},
-	"application": {table: "applications", name: "name", application: "id"},
-	"api":         {table: "apis", name: "name"},
-	"admin_user":  {table: "admin_users", name: "username"},
-	"admin_role":  {table: "roles", name: "name"},
-	"login_flow":  {table: "login_flows", name: "name"},
-	"language":    {table: "languages", name: "name"},
+	"user":           {table: "users", name: "email"},
+	"user_field":     {table: "user_fields", name: "name"},
+	"user_role":      {table: "user_roles", name: "name", application: "application_id"},
+	"application":    {table: "applications", name: "name", application: "id"},
+	"api":            {table: "apis", name: "name"},
+	"admin_user":     {table: "admin_users", name: "username"},
+	"admin_role":     {table: "roles", name: "name"},
+	"login_flow":     {table: "login_flows", name: "name"},
+	"language":       {table: "languages", name: "name"},
+	"sso_connection": {table: "sso_connections", name: "name"},
 }
 
 // TargetNames looks up what the targets of one kind are called, by id. A

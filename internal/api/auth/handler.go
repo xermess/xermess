@@ -34,7 +34,7 @@ func New(service *authsvc.Service, st *store.Store, log *slog.Logger, secure boo
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *Handler) State(c *gin.Context) {
 func (h *Handler) VerifyMFA(c *gin.Context) {
 	var req codeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 

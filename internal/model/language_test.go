@@ -87,21 +87,21 @@ func TestLanguageValidate(t *testing.T) {
 	}
 }
 
-func TestValidateMessages(t *testing.T) {
+func TestTooLongMessage(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages map[string]string
-		wantErr  bool
+		want     string
 	}{
 		{name: "nothing translated yet", messages: map[string]string{}},
 		{name: "the longest a message may be", messages: map[string]string{"a": strings.Repeat("ы", MaxMessageLength)}},
-		{name: "a message that is a document", messages: map[string]string{"a": strings.Repeat("a", MaxMessageLength+1)}, wantErr: true},
+		{name: "a message that is a document", messages: map[string]string{"a": strings.Repeat("a", MaxMessageLength+1)}, want: "a"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ValidateMessages(tt.messages); (err != nil) != tt.wantErr {
-				t.Errorf("ValidateMessages() = %v, want an error: %v", err, tt.wantErr)
+			if got := TooLongMessage(tt.messages); got != tt.want {
+				t.Errorf("TooLongMessage() = %q, want %q", got, tt.want)
 			}
 		})
 	}

@@ -27,17 +27,17 @@ func TestLoginRequestValidate(t *testing.T) {
 		{
 			name:    "no username",
 			request: loginRequest{Password: "hunter2"},
-			want:    "username is required",
+			want:    "username is required.",
 		},
 		{
 			name:    "a username of spaces",
 			request: loginRequest{Username: "   ", Password: "hunter2"},
-			want:    "username is required",
+			want:    "username is required.",
 		},
 		{
 			name:    "no password",
 			request: loginRequest{Username: "admin"},
-			want:    "password is required",
+			want:    "password is required.",
 		},
 	}
 

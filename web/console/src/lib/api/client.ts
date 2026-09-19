@@ -1,8 +1,18 @@
-/** A failed request. `status` is 0 when the server could not be reached. */
+/**
+ * A failed request, as the server described it: `code` names the problem, and
+ * a translated page says `error.<code>` in the administrator's language with
+ * `params` filled in (messageOf in $lib/i18n). `message` is the server's
+ * English, which the pages not yet translated show as it is.
+ *
+ * `status` is 0 when the server could not be reached, and the code is then
+ * `network`; an answer that was not the server's is `unknown`.
+ */
 export class ApiError extends Error {
 	constructor(
 		readonly status: number,
-		message: string
+		message: string,
+		readonly code = 'unknown',
+		readonly params: Record<string, string | number> = {}
 	) {
 		super(message);
 		this.name = 'ApiError';
@@ -41,14 +51,19 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 			body: body === undefined ? undefined : JSON.stringify(body)
 		});
 	} catch {
-		throw new ApiError(0, 'Could not reach the server. Is the admin API running?');
+		throw new ApiError(0, 'Could not reach the server. Is the admin API running?', 'network');
 	}
 
 	// A 204 has no body to read.
 	const payload = response.status === 204 ? {} : await response.json().catch(() => ({}));
 
 	if (!response.ok) {
-		throw new ApiError(response.status, payload.error ?? 'Something went wrong');
+		throw new ApiError(
+			response.status,
+			payload.error ?? 'Something went wrong',
+			payload.code ?? 'unknown',
+			payload.params ?? {}
+		);
 	}
 
 	return payload as T;

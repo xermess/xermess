@@ -156,9 +156,9 @@
 				<ListItem title={t('profile.language')} description={t('profile.language_hint')}>
 					{#snippet lead()}<Thumb icon={RiGlobalLine} />{/snippet}
 					{#snippet end()}
-						<!-- Every language with some of the panel translated, as the
-						     server lists them. What users are offered on the sign-in
-						     pages is the Languages page's business, not this one's. -->
+						<!-- The languages the panel is shown in — English and Russian —
+						     as the server lists them. What users are offered on the
+						     sign-in pages is the Languages page's business, not this one's. -->
 						<div class="language">
 							<Select
 								label={t('profile.language')}

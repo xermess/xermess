@@ -3,26 +3,44 @@
 //
 // The per-account lockout already stops guessing one account's password. This
 // is the other half: one address trying many accounts, creating accounts in
-// bulk, or filling someone's inbox with reset links. It counts in memory, per
-// server process, so with several servers each keeps its own count — a proxy
-// or load balancer in front can enforce one limit across all of them.
+// bulk, or filling someone's inbox with reset links.
+//
+// With Redis configured the count is kept there, so every server process
+// shares one budget per address and a restart does not hand out a fresh one.
+// Without it — or while Redis is not answering — each process counts in its
+// own memory, which is a weaker limit rather than none.
 package ratelimit
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"xermess/internal/api/respond"
+	"xermess/internal/cache"
 )
+
+// RateLimited is what an address over the limit is told, with how many
+// seconds until it may try again.
+var RateLimited = respond.Define(http.StatusTooManyRequests, "rate_limited", respond.Both)
 
 // Limiter is a token bucket per client address: `perMinute` requests a
 // minute, refilled continuously, with the whole minute's worth available at
 // once.
 type Limiter struct {
-	rate  float64 // tokens per second
-	burst float64
+	perMinute int
+	rate      float64 // tokens per second
+	burst     float64
+
+	// shared is the Redis the buckets are kept in, and scope keeps this
+	// limiter's buckets apart from another's there: the public and admin
+	// servers each have their own.
+	shared *cache.Cache
+	scope  string
 
 	mu      sync.Mutex
 	buckets map[string]*bucket
@@ -40,20 +58,42 @@ type bucket struct {
 // Zero or less allows everything.
 func New(perMinute int) *Limiter {
 	return &Limiter{
-		rate:    float64(perMinute) / 60,
-		burst:   float64(perMinute),
-		buckets: map[string]*bucket{},
-		now:     time.Now,
+		perMinute: perMinute,
+		rate:      float64(perMinute) / 60,
+		burst:     float64(perMinute),
+		buckets:   map[string]*bucket{},
+		now:       time.Now,
 	}
 }
 
+// Shared keeps the buckets in Redis, under `scope`, so every server process
+// counts against the same budget. A nil cache leaves them in memory.
+func (l *Limiter) Shared(c *cache.Cache, scope string) *Limiter {
+	l.shared = c
+	l.scope = scope
+	return l
+}
+
 // Allow takes a token for `key`, and says whether there was one and, when not,
-// how long until there is.
-func (l *Limiter) Allow(key string) (bool, time.Duration) {
+// how long until there is. It asks Redis when there is one, and its own
+// memory when there is not or when Redis does not answer.
+func (l *Limiter) Allow(ctx context.Context, key string) (bool, time.Duration) {
 	if l.burst <= 0 {
 		return true, 0
 	}
 
+	if l.shared != nil {
+		ok, wait, err := l.shared.Take(ctx, l.scope+":"+key, l.perMinute)
+		if err == nil {
+			return ok, wait
+		}
+	}
+
+	return l.allowLocally(key)
+}
+
+// allowLocally is Allow against this process's own buckets.
+func (l *Limiter) allowLocally(key string) (bool, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -98,11 +138,11 @@ func (l *Limiter) sweep(now time.Time) {
 // name it — otherwise every client shares the proxy's one budget.
 func (l *Limiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ok, wait := l.Allow(c.ClientIP())
+		ok, wait := l.Allow(c.Request.Context(), c.ClientIP())
 		if !ok {
 			seconds := int(wait/time.Second) + 1
 			c.Header("Retry-After", strconv.Itoa(seconds))
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many attempts; try again in " + strconv.Itoa(seconds) + " seconds"})
+			respond.Abort(c, RateLimited, "seconds", seconds)
 			return
 		}
 

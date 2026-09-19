@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiArrowGoBackLine } from 'svelte-remixicon';
-	import { ApiError, languagesApi, type Language, type ShippedLanguage } from '$lib/api';
+	import { languagesApi, type Language, type ShippedLanguage } from '$lib/api';
 	import {
 		Alert,
 		Button,
@@ -13,7 +13,7 @@
 		Select,
 		SwitchField
 	} from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
+	import { messageOf, useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
 	import { languageCode, namesOf } from './translations';
 
@@ -138,7 +138,7 @@
 			onCreated(language);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : t('languages.create_failed');
+			error = messageOf(err, t, t('languages.create_failed'));
 		},
 		onSettled: () => {
 			saving = false;

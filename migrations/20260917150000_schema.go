@@ -63,6 +63,9 @@ func downSchema(_ context.Context, tx *sql.Tx) error {
 
 	return db.Migrator().DropTable(
 		// What signs users in from somewhere else.
+		&model.SSOLogin{},
+		&model.SSOIdentity{},
+		&model.SSOConnection{},
 		&model.SocialLogin{},
 		&model.UserIdentity{},
 		&model.SocialProvider{},

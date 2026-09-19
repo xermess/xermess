@@ -1,12 +1,9 @@
 package account
 
 import (
-	"fmt"
-	"net/http"
 	"strings"
 	"unicode/utf8"
 
-	"xermess/internal/api/respond"
 	"xermess/internal/api/validate"
 	"xermess/internal/oidc"
 )
@@ -61,9 +58,9 @@ func (r *passwordRequest) validate() error {
 func checkPassword(password string) error {
 	switch {
 	case utf8.RuneCountInString(password) < oidc.MinPasswordLength:
-		return respond.Fault{Status: http.StatusBadRequest, Message: fmt.Sprintf("password must be at least %d characters", oidc.MinPasswordLength)}
+		return passwordTooShort.With("min", oidc.MinPasswordLength)
 	case len(password) > 72:
-		return respond.Fault{Status: http.StatusBadRequest, Message: "password must be at most 72 bytes"}
+		return provided[oidc.ErrPasswordTooLong.Code].Fault(nil)
 	}
 
 	return nil

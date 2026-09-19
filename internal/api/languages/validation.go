@@ -14,6 +14,10 @@ import (
 // Marking a language as the default is also turning it on, since the default
 // is what somebody sees before choosing and has to be among the choices.
 func (r *languageRequest) applyTo(language *model.Language) error {
+	if err := validate.Struct(r); err != nil {
+		return err
+	}
+
 	if r.Name != nil {
 		language.Name = strings.TrimSpace(*r.Name)
 	}
@@ -32,6 +36,14 @@ func (r *languageRequest) applyTo(language *model.Language) error {
 
 // newLanguage checks a create request and makes the language it describes.
 func (r *createRequest) newLanguage() (*model.Language, error) {
+	r.Code = normalizeCode(r.Code)
+	r.Name = strings.TrimSpace(r.Name)
+	r.Native = strings.TrimSpace(r.Native)
+
+	if err := validate.Struct(r); err != nil {
+		return nil, err
+	}
+
 	language := &model.Language{
 		Code:      normalizeCode(r.Code),
 		Name:      strings.TrimSpace(r.Name),

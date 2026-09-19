@@ -9,7 +9,12 @@
 	// it reads `data.messages` each time — so a page re-renders in the new
 	// language the moment the choice lands, without any of them subscribing
 	// to anything themselves.
-	provideTranslator(translator(() => data.messages));
+	provideTranslator(
+		translator(
+			() => data.messages,
+			() => data.language
+		)
+	);
 
 	// hooks.server.ts names the document on the server; this keeps it right
 	// when the language is switched without a reload.

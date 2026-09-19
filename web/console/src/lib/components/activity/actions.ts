@@ -13,6 +13,7 @@ import {
 	RiPulseLine,
 	RiShieldKeyholeLine,
 	RiShieldUserLine,
+	RiTranslate2,
 	RiUserLine
 } from 'svelte-remixicon';
 import type { ActivityEvent } from '$lib/api';
@@ -404,6 +405,63 @@ const actions: Record<string, Action> = {
 		category: 'access',
 		tone: 'danger',
 		icon: RiGitBranchLine
+	},
+	'sso_connection.created': {
+		label: 'SSO connection added',
+		verb: 'added SSO connection',
+		category: 'access',
+		icon: RiShieldKeyholeLine
+	},
+	'sso_connection.updated': {
+		label: 'SSO connection updated',
+		verb: 'updated SSO connection',
+		category: 'access',
+		icon: RiShieldKeyholeLine
+	},
+	'sso_connection.deleted': {
+		label: 'SSO connection removed',
+		verb: 'removed SSO connection',
+		category: 'access',
+		tone: 'danger',
+		icon: RiShieldKeyholeLine
+	},
+	'sso_connection.sign_in_failed': {
+		label: 'SSO sign-in failed',
+		verb: 'could not complete a sign-in through SSO connection',
+		category: 'access',
+		tone: 'danger',
+		icon: RiShieldKeyholeLine
+	},
+	'user.roles_synced': {
+		label: 'Roles synced from SSO',
+		verb: 'had roles synced from their identity provider',
+		category: 'roles',
+		icon: RiShieldUserLine
+	},
+	'language.created': {
+		label: 'Language added',
+		verb: 'added language',
+		category: 'other',
+		icon: RiTranslate2
+	},
+	'language.updated': {
+		label: 'Language updated',
+		verb: 'updated language',
+		category: 'other',
+		icon: RiTranslate2
+	},
+	'language.translated': {
+		label: 'Translation saved',
+		verb: 'saved the text of language',
+		category: 'other',
+		icon: RiTranslate2
+	},
+	'language.deleted': {
+		label: 'Language removed',
+		verb: 'removed language',
+		category: 'other',
+		tone: 'danger',
+		icon: RiTranslate2
 	}
 };
 
@@ -415,7 +473,10 @@ const unnamed: Record<string, string> = {
 	application: 'an application',
 	api: 'an API',
 	admin_user: 'an administrator',
-	admin_role: 'an admin role'
+	admin_role: 'an admin role',
+	login_flow: 'a login flow',
+	language: 'a language',
+	sso_connection: 'an SSO connection'
 };
 
 /** One entry, ready to show. */

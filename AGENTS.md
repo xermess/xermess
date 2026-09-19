@@ -33,6 +33,7 @@ cmd/xermess/main.go     startup, in order, in one function
 internal/config         reads .env
 internal/model          one file per table, all listed in model.All
 internal/store          every query in the project, one file per subject
+internal/cache          Redis: the cache in front of the store, the rate limit's counts
 internal/auth           signing administrators in, and what they may do
 internal/oidc           the provider: authorize, tokens, userinfo, logout
 internal/api/server.go  the engine, and the table of every route
@@ -44,9 +45,10 @@ web/console/src/routes/admin/(panel)/  everything behind a session
 
 Nothing above `store` writes a query, and nothing below `api` knows about HTTP.
 A handler reads a request, asks the store, and answers; the rules live in
-`validation.go` and in the model, and return a `respond.Fault` carrying the
-status. `respond.Failure` turns anything else into a 500 and logs it, so a
-database error never reaches a browser.
+`validation.go` and in the model, and return a `respond.Fault` made from a
+problem — a status and a code the apps translate (see "An error" below).
+`respond.Failure` turns anything else into a 500 and logs it, so a database
+error never reaches a browser.
 
 ## Adding things
 
@@ -112,10 +114,29 @@ marks the rest "not run yet", so a step can be offered as a plan before it is
 built. Implementing one is flipping that flag and writing the step; nothing
 else reads a hard-coded list of steps.
 
+**An error.** Never a sentence in Go: define the problem next to the handler
+that returns it, `var taken = respond.Define(http.StatusConflict,
+"language_code_taken", respond.Admin)`, answer with `respond.Fail(c, taken)`
+or return `taken.With("code", code)`, and add `error.language_code_taken` to
+`locales/<app>/*.json` for every app it is for (`Public` → `id`, `Admin` →
+`console`, `Both`). The server's English is read from `en.json`, and the apps
+show the key in the reader's language with `messageOf(err, t)`.
+`TestErrorCodesMatchTheCatalogs` fails until both sides agree.
+
+**A cached read.** Only in the store, with `cached(ctx, s, group, field, load)`,
+and only for something every page asks for and almost nothing changes — never
+users, sessions, tokens or administrators. Every store method that writes it
+calls `s.forget(ctx, group)` after the write commits; a new group is a
+constant in `internal/cache`. Cache a projection rather than a model that
+carries a secret, and add the type to `TestCachedTypesSurviveJSON`. Redis is
+optional: a nil cache is an empty one, so everything has to work without it.
+
 **A language.** An installation adds its own on the Languages page: the text
 lives in the database (`languages`, and a `translations` row per app) and the
 apps fetch it while rendering, so nothing is rebuilt. To *ship* one with the
-server, add a JSON file under `locales/<app>/`, named after the language tag,
+server, add a JSON file under `locales/id/` — and under `locales/console/`
+only for the panel's languages, `locales.PanelLanguages` (English and
+Russian) — named after the language tag,
 copied from `en.json` with the values translated and `$name`/`$native` naming
 the language. The first start imports every shipped file
 (`store.EnsureLanguages`), and later starts copy in keys a release added
@@ -125,7 +146,8 @@ so a key added to the base has to be added to every file before it ships.
 
 **Text in the apps.** Never a literal in the markup: `const t = useTranslator()`
 at the top of the component and `t('area.thing')` where the words go, with the
-key added to every file under `locales/<app>/`. Parameters are `{braces}` in
+key added to every file under `locales/<app>/` — nested under its screen,
+`{"area": {"thing": "…"}}`. Parameters are `{braces}` in
 the text and an object at the call — `t('login.subtitle_app', { app: name })`.
 The sign-in pages are fully moved over; the panel's shell is, and its other
 pages are not yet.
@@ -136,8 +158,7 @@ pages are not yet.
 options in `lib/query/` with their key in `lib/query/keys.ts`, a typed client
 call in `lib/api/admin.ts`, and the feature's components in
 `lib/components/<feature>/`. Add the route to `sections.ts` with an `allowed`
-check. A section that stops being a placeholder loses its `status: 'preview'`
-there, its block in `lib/data/demo.ts`, and its mention in `README.md`.
+check.
 
 ## Style
 

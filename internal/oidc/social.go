@@ -20,6 +20,7 @@ import (
 	"xermess/internal/jose"
 	"xermess/internal/model"
 	"xermess/internal/store"
+	"xermess/locales"
 )
 
 // Signing in with an account somewhere else.
@@ -50,18 +51,14 @@ type SocialButton struct {
 
 // SocialButtons is what the sign-in pages offer, in the order they are shown.
 func (s *Service) SocialButtons(ctx context.Context) ([]SocialButton, error) {
-	providers, err := s.store.SocialProviders(ctx, true)
+	stored, err := s.store.SocialButtons(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	buttons := make([]SocialButton, 0, len(providers))
-	for _, provider := range providers {
-		buttons = append(buttons, SocialButton{
-			Slug: provider.Slug,
-			Name: provider.Name,
-			Kind: string(provider.Kind),
-		})
+	buttons := make([]SocialButton, 0, len(stored))
+	for _, button := range stored {
+		buttons = append(buttons, SocialButton(button))
 	}
 
 	return buttons, nil
@@ -353,7 +350,7 @@ func (s *Service) socialIdentity(ctx context.Context, provider *model.SocialProv
 
 	// A provider with no profile endpoint says everything it is going to say
 	// in the id_token. So does one that has an endpoint we were not given.
-	claims := map[string]any{}
+	var claims map[string]any
 	if spec.IdentityInIDToken || userInfoURL == "" {
 		payload, err := s.idTokenClaims(provider, token.IDToken)
 		if err != nil {
@@ -553,11 +550,13 @@ func (s *Service) signInWithIdentity(
 
 	// An account with that address already: the provider has to have proved
 	// the address belongs to whoever is signing in, and the provider has to
-	// be one this installation trusts to prove it.
+	// be one this installation trusts to prove it. The account has to have
+	// proved it too — otherwise whoever registered the address before its
+	// owner arrived would keep a password to the owner's account.
 	user, err := s.store.UserByEmail(ctx, email)
 	switch {
 	case err == nil:
-		if !who.EmailVerified || !provider.LinkVerifiedEmails {
+		if !who.EmailVerified || !provider.LinkVerifiedEmails || !user.EmailVerified {
 			return nil, ErrSocialLinkRefused
 		}
 		if !user.CanSignIn(now) {
@@ -810,23 +809,28 @@ func (s *Service) accountLanding(next string) string {
 // SocialErrorPage is the sign-in app's error page, saying what went wrong in
 // words the person can act on.
 func (s *Service) SocialErrorPage(err error) string {
-	message := ErrSocialUpstream.Error()
+	reason := ErrSocialUpstream
 
+	var known *Problem
 	switch {
-	case errors.Is(err, ErrSocialUnknown),
-		errors.Is(err, ErrSocialExpired),
-		errors.Is(err, ErrSocialUpstream),
-		errors.Is(err, ErrSocialNoEmail),
-		errors.Is(err, ErrSocialLinkRefused),
-		errors.Is(err, ErrSocialRegistrationClosed):
-		message = err.Error()
 	case errors.Is(err, ErrInvalidCredentials):
-		message = "this account cannot sign in"
+		reason = ErrSocialBlocked
+	case errors.As(err, &known) && strings.HasPrefix(known.Code, "social_"):
+		reason = known
+	}
+
+	// `reason` is what the page says, in the reader's language: its
+	// `error.<reason>`. The description is the same sentence in English, for
+	// whoever reads the address rather than the page.
+	description, ok := locales.Text(locales.ID, "error."+reason.Code)
+	if !ok {
+		description = reason.message
 	}
 
 	return withQuery(s.accountURL+PageError, url.Values{
 		"error":             {SocialErrorCode},
-		"error_description": {message},
+		"reason":            {reason.Code},
+		"error_description": {description},
 	})
 }
 

@@ -26,33 +26,44 @@ type probe struct {
 // sentence that names the field the way the request named it.
 func TestStruct(t *testing.T) {
 	tests := []struct {
-		name  string
-		value probe
-		want  string // the message, or "" when the value is fine
+		name     string
+		value    probe
+		want     string // the message, or "" when the value is fine
+		wantCode string
+		// wantParams are what an app fills its own sentence with.
+		wantParams map[string]any
 	}{
 		{
 			name:  "everything in order",
 			value: probe{Email: "a@b.com", Name: "Mira", Kind: "one"},
 		},
 		{
-			name:  "a missing field",
-			value: probe{Name: "Mira"},
-			want:  "email is required",
+			name:       "a missing field",
+			value:      probe{Name: "Mira"},
+			want:       "email is required.",
+			wantCode:   "validation.required",
+			wantParams: map[string]any{"field": "email"},
 		},
 		{
-			name:  "something that is not an address",
-			value: probe{Email: "not-an-address"},
-			want:  "email must be an email address",
+			name:       "something that is not an address",
+			value:      probe{Email: "not-an-address"},
+			want:       "email must be an email address.",
+			wantCode:   "validation.email",
+			wantParams: map[string]any{"field": "email"},
 		},
 		{
-			name:  "too long",
-			value: probe{Email: "a@b.com", Name: "Mirabel"},
-			want:  "name must be at most 4 characters",
+			name:       "too long",
+			value:      probe{Email: "a@b.com", Name: "Mirabel"},
+			want:       "name must be at most 4 characters.",
+			wantCode:   "validation.max",
+			wantParams: map[string]any{"field": "name", "max": "4"},
 		},
 		{
-			name:  "not one of the values allowed",
-			value: probe{Email: "a@b.com", Kind: "three"},
-			want:  "kind must be one of: one, two",
+			name:       "not one of the values allowed",
+			value:      probe{Email: "a@b.com", Kind: "three"},
+			want:       "kind must be one of: one, two.",
+			wantCode:   "validation.oneof",
+			wantParams: map[string]any{"field": "kind", "values": "one, two"},
 		},
 	}
 
@@ -78,6 +89,14 @@ func TestStruct(t *testing.T) {
 			if broken.Message != tt.want {
 				t.Errorf("message = %q, want %q", broken.Message, tt.want)
 			}
+			if broken.Code != tt.wantCode {
+				t.Errorf("code = %q, want %q", broken.Code, tt.wantCode)
+			}
+			for name, want := range tt.wantParams {
+				if broken.Params[name] != want {
+					t.Errorf("params[%s] = %v, want %v", name, broken.Params[name], want)
+				}
+			}
 		})
 	}
 }
@@ -94,15 +113,15 @@ func TestStructNamesAFieldWithoutATag(t *testing.T) {
 		t.Fatal("want a respond.Fault")
 	}
 
-	if broken.Message != "Reference is required" {
-		t.Errorf("message = %q, want %q", broken.Message, "Reference is required")
+	if broken.Message != "Reference is required." {
+		t.Errorf("message = %q, want %q", broken.Message, "Reference is required.")
 	}
 }
 
-// A rule of our own is asked about the value, and its message is used when it
-// says no.
+// A rule of our own is asked about the value, and breaking it is a problem of
+// its own, `validation.<tag>`, which the panel's catalog says.
 func TestRegister(t *testing.T) {
-	Register("shouty", "must be in capitals", func(value string) bool {
+	Register("shouty", func(value string) bool {
 		return value == "LOUD"
 	})
 
@@ -119,8 +138,8 @@ func TestRegister(t *testing.T) {
 		t.Fatal("want a respond.Fault")
 	}
 
-	if broken.Message != "word must be in capitals" {
-		t.Errorf("message = %q, want %q", broken.Message, "word must be in capitals")
+	if broken.Code != "validation.shouty" || broken.Params["field"] != "word" {
+		t.Errorf("fault = %q %v, want validation.shouty naming word", broken.Code, broken.Params)
 	}
 }
 

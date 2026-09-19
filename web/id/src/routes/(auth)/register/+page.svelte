@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { signIn, messageOf } from '$lib/api';
+	import { requiredSSO, signIn } from '$lib/api';
 	import {
 		Alert,
 		AuthCard,
@@ -10,8 +10,8 @@
 		SocialButtons
 	} from '$lib/components';
 	import { legalLinks } from '$lib/utils/legal';
-	import { useTranslator } from '$lib/i18n';
-	import { authHref, leaveTo } from '$lib/utils/links';
+	import { messageOf, useTranslator } from '$lib/i18n';
+	import { authHref, leaveTo, ssoHref } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -72,7 +72,15 @@
 
 			submitting = false;
 		} catch (err) {
-			error = messageOf(err);
+			// A domain that signs in through its organisation's provider makes
+			// its account and keeps its password there: go there instead.
+			const sso = requiredSSO(err);
+			if (sso) {
+				leaveTo(ssoHref(sso.slug, { request: data.request, email: email.trim() }));
+				return;
+			}
+
+			error = messageOf(err, t);
 			submitting = false;
 		}
 	}

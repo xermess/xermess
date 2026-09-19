@@ -28,7 +28,7 @@ func TestApplicationRequestApplyTo(t *testing.T) {
 		want     string // the message, or "" when the request is fine
 	}{
 		{name: "a web app", creating: true, change: func(*applicationRequest) {}},
-		{name: "no name", creating: true, change: func(r *applicationRequest) { r.Name = " " }, want: "name is required"},
+		{name: "no name", creating: true, change: func(r *applicationRequest) { r.Name = " " }, want: "name is required."},
 		{
 			name:     "no type",
 			creating: true,
@@ -45,7 +45,7 @@ func TestApplicationRequestApplyTo(t *testing.T) {
 			change: func(r *applicationRequest) {
 				r.RedirectURIs = []string{"https://shop.example.com/" + strings.Repeat("a", 600)}
 			},
-			want: "redirect_uris[0] must be at most 512 characters",
+			want: "redirect_uris[0] must be at most 512 characters.",
 		},
 		{
 			name:     "too many redirect URIs",

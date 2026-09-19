@@ -10,11 +10,7 @@ import (
 
 // The rule an admin role's name keeps: the same shape as a user role's.
 func init() {
-	validate.Register(
-		"adminrole",
-		"must start with a letter and hold only lower case letters, numbers, dashes and underscores",
-		model.RoleNamePattern.MatchString,
-	)
+	validate.Register("adminrole", model.RoleNamePattern.MatchString)
 }
 
 // applyTo checks the request and copies it onto a role. The permissions are

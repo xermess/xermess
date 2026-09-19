@@ -16,5 +16,6 @@ export { default as LanguagePicker } from './LanguagePicker.svelte';
 export { default as Panel } from './Panel.svelte';
 export { default as PasswordField } from './PasswordField.svelte';
 export { default as SocialButtons } from './SocialButtons.svelte';
+export { default as SSOButtons } from './SSOButtons.svelte';
 export { default as TextField } from './TextField.svelte';
 export { default as ThemeToggle } from './ThemeToggle.svelte';

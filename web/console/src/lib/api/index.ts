@@ -8,6 +8,7 @@ export {
 	languagesApi,
 	organizationApi,
 	socialApi,
+	ssoApi,
 	applicationsApi,
 	rolesApi,
 	setupApi,

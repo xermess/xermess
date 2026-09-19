@@ -1,17 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { signIn, messageOf } from '$lib/api';
+	import { requiredSSO, signIn } from '$lib/api';
 	import {
 		Alert,
 		AuthCard,
 		Button,
 		PasswordField,
 		TextField,
-		SocialButtons
+		SocialButtons,
+		SSOButtons
 	} from '$lib/components';
-	import { useTranslator } from '$lib/i18n';
-	import { authHref, leaveTo } from '$lib/utils/links';
+	import { messageOf, useTranslator } from '$lib/i18n';
+	import { authHref, leaveTo, ssoHref } from '$lib/utils/links';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -33,6 +34,9 @@
 	let password = $state('');
 	let error = $state('');
 	let submitting = $state(false);
+	/** The identity provider the browser is being sent to, when the address
+	    typed belongs to a domain that has to sign in through it. */
+	let redirecting = $state('');
 
 	const canSubmit = $derived(email.trim() !== '' && password !== '' && !submitting);
 
@@ -75,7 +79,18 @@
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- a checked path on this site
 			await goto(next, { invalidateAll: true, replaceState: true });
 		} catch (err) {
-			error = messageOf(err);
+			// A domain that signs in through its organisation's provider: go
+			// there, with the address, rather than asking for a password it
+			// does not use here.
+			const sso = requiredSSO(err);
+			if (sso) {
+				redirecting = sso.name;
+				password = '';
+				leaveTo(ssoHref(sso.slug, { request: data.request, next, email: email.trim() }));
+				return;
+			}
+
+			error = messageOf(err, t);
 			password = '';
 			submitting = false;
 		}
@@ -108,6 +123,9 @@
 	>
 		<form onsubmit={submit} novalidate>
 			{#if error}<Alert>{error}</Alert>{/if}
+			{#if redirecting}
+				<Alert tone="info">{t('login.sso_redirecting', { name: redirecting })}</Alert>
+			{/if}
 
 			<TextField
 				label={t('field.email')}
@@ -142,6 +160,20 @@
 			disabled={submitting}
 		/>
 
+		<SSOButtons
+			connections={data.ssoConnections}
+			request={data.request}
+			next={data.next ?? null}
+			disabled={submitting}
+		/>
+
+		{#if data.ssoAvailable}
+			<p class="sso-link">
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+				<a href={authHref('/sso', data.request)}>{t('login.sso')}</a>
+			</p>
+		{/if}
+
 		{#snippet below()}
 			{#if offerRegistration && data.request}
 				{t('login.no_account')}
@@ -153,6 +185,12 @@
 {/if}
 
 <style>
+	.sso-link {
+		margin: var(--space-4) 0 0;
+		text-align: center;
+		font-size: var(--text-sm);
+	}
+
 	form {
 		display: flex;
 		flex-direction: column;

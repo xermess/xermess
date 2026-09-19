@@ -9,6 +9,7 @@
 	import type { LocaleApp } from '$lib/api';
 	import { Alert, Button, Icon, Switch } from '$lib/components/ui';
 	import { useTranslator } from '$lib/i18n';
+	import { nest } from '$lib/i18n/flatten';
 	import { translationOptions } from '$lib/query';
 	import { download, missingParameters, readTranslationFile } from './translations';
 
@@ -123,14 +124,16 @@
 	}
 
 	/** Every key, translated or not, so the file is also the template for
-	    whoever translates the rest: an empty value is one still to do. */
+	    whoever translates the rest: an empty value is one still to do. It is
+	    nested by screen, the shape of the files under locales/, so it can be
+	    dropped in there as it is. */
 	function exportFile() {
 		if (!saved.data) return;
 
 		const body: Record<string, string> = { $name: name, $native: native };
 		for (const key of saved.data.keys) body[key] = draft?.[key] ?? '';
 
-		download(`${code}.${app}.json`, JSON.stringify(body, null, 2) + '\n');
+		download(`${code}.${app}.json`, JSON.stringify(nest(body), null, 2) + '\n');
 	}
 </script>
 

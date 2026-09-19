@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"xermess/internal/cache"
 	"xermess/internal/model"
 )
 
@@ -23,6 +24,33 @@ func (s *Store) SocialProviders(ctx context.Context, enabledOnly bool) ([]model.
 	err := query.Find(&providers).Error
 
 	return providers, err
+}
+
+// SocialButton is an enabled provider as the sign-in pages draw its button.
+type SocialButton struct {
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+}
+
+// SocialButtons is the enabled providers, in order, as buttons. Every sign-in
+// page asks for them, so they are read through the cache — as buttons and
+// not as providers, because a provider carries its sealed client secret and
+// that has no business in a cache.
+func (s *Store) SocialButtons(ctx context.Context) ([]SocialButton, error) {
+	return cached(ctx, s, cache.SocialButtons, "enabled", func() ([]SocialButton, error) {
+		providers, err := s.SocialProviders(ctx, true)
+		if err != nil {
+			return nil, err
+		}
+
+		buttons := make([]SocialButton, 0, len(providers))
+		for _, provider := range providers {
+			buttons = append(buttons, SocialButton{Slug: provider.Slug, Name: provider.Name, Kind: string(provider.Kind)})
+		}
+
+		return buttons, nil
+	})
 }
 
 // SocialProvider returns one provider by id.
@@ -47,19 +75,31 @@ func (s *Store) SocialProviderBySlug(ctx context.Context, slug string) (*model.S
 
 // CreateSocialProvider adds a provider.
 func (s *Store) CreateSocialProvider(ctx context.Context, provider *model.SocialProvider) error {
-	return translate(s.db.WithContext(ctx).Create(provider).Error)
+	if err := translate(s.db.WithContext(ctx).Create(provider).Error); err != nil {
+		return err
+	}
+
+	s.forget(ctx, cache.SocialButtons)
+
+	return nil
 }
 
 // SaveSocialProvider writes a provider back.
 func (s *Store) SaveSocialProvider(ctx context.Context, provider *model.SocialProvider) error {
-	return translate(s.db.WithContext(ctx).Save(provider).Error)
+	if err := translate(s.db.WithContext(ctx).Save(provider).Error); err != nil {
+		return err
+	}
+
+	s.forget(ctx, cache.SocialButtons)
+
+	return nil
 }
 
 // DeleteSocialProvider removes a provider, and with it every identity held at
 // it: without the provider there is no way to check those identities again,
 // and the accounts themselves stay.
 func (s *Store) DeleteSocialProvider(ctx context.Context, provider *model.SocialProvider) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Unscoped().Where("provider_id = ?", provider.ID).Delete(&model.UserIdentity{}).Error
 		if err != nil {
 			return err
@@ -67,6 +107,13 @@ func (s *Store) DeleteSocialProvider(ctx context.Context, provider *model.Social
 
 		return tx.Unscoped().Delete(provider).Error
 	})
+	if err != nil {
+		return err
+	}
+
+	s.forget(ctx, cache.SocialButtons)
+
+	return nil
 }
 
 // NextSocialPosition is where a new provider's button goes: after the last.

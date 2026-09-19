@@ -52,8 +52,10 @@ check: ## Format, vet and test the Go code
 test: ## Run the Go tests
 	go test $(PKGS)
 
-test-integration: ## Run the tests that need Postgres (throwaway databases)
-	@. scripts/lib.sh && load_env && XERMESS_TEST_DB_DSN="$${DB_URL:-$$XERMESS_DB_DSN}" go test -count=1 -run Live ./internal/...
+test-integration: ## Run the tests that need Postgres and Redis (throwaway databases and key prefixes)
+	@. scripts/lib.sh && load_env && XERMESS_TEST_DB_DSN="$${DB_URL:-$$XERMESS_DB_DSN}" \
+		XERMESS_TEST_REDIS="$${XERMESS_TEST_REDIS:-$${XERMESS_REDIS_HOST:+$$XERMESS_REDIS_HOST:$${XERMESS_REDIS_PORT:-6379}}}" \
+		go test -count=1 -run Live ./internal/...
 
 web-check: ## Lint and type-check the web apps
 	@for app in $(APPS); do echo "==> $$app"; (cd web/$$app && bun run lint && bun run check) || exit 1; done

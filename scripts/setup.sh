@@ -21,6 +21,21 @@ if ! grep -qE '^XERMESS_SECRET_KEY=.{32,}' .env; then
 	echo "wrote a new XERMESS_SECRET_KEY to .env"
 fi
 
+# A .env from before the server had Redis gets the Redis settings, copied from
+# .env.example; one that has them keeps its own, even an empty host.
+if ! grep -qE '^XERMESS_REDIS_HOST=' .env; then
+	{ echo; sed -n '/^# Redis:/,/^XERMESS_REDIS_PREFIX=/p' .env.example; } >>.env
+	echo "added the Redis settings to .env"
+fi
+
+# A Redis that is configured has to answer, or the server will not start.
+redis_host="$(sed -n 's/^XERMESS_REDIS_HOST=//p' .env | tail -n 1)"
+redis_port="$(sed -n 's/^XERMESS_REDIS_PORT=//p' .env | tail -n 1)"
+if [[ -n $redis_host ]] && command -v redis-cli >/dev/null; then
+	redis-cli -h "$redis_host" -p "${redis_port:-6379}" ping >/dev/null 2>&1 ||
+		echo "warning: Redis at $redis_host:${redis_port:-6379} is not answering — start it (brew services start redis), or empty XERMESS_REDIS_HOST in .env"
+fi
+
 go mod download
 scripts/db.sh create
 go run ./cmd/migrate up

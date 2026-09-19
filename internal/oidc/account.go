@@ -21,11 +21,18 @@ import (
 
 // ErrWrongPassword is a current password that does not match, when changing
 // it. It counts towards the lockout, as a wrong password at sign-in does.
-var ErrWrongPassword = errors.New("your current password is not right")
+var ErrWrongPassword = problem("wrong_password", "the current password is wrong")
 
 // ErrNotYours is a session or application that does not belong to the signed-in
 // user, or does not exist: the two are one answer.
-var ErrNotYours = errors.New("not found")
+var ErrNotYours = problem("not_yours", "not the user's")
+
+// ErrPasswordUnchanged is a new password that is the current one.
+var ErrPasswordUnchanged = problem("password_unchanged", "the new password is the current one")
+
+// ErrCurrentSession is ending the session the request itself carries, which
+// is signing out.
+var ErrCurrentSession = problem("current_session", "that is the session in use")
 
 // Profile is what a user may change about themselves. The email is the account,
 // so it is not among them.
@@ -67,11 +74,11 @@ func (s *Service) ChangePassword(ctx context.Context, session *Session, current,
 	}
 
 	if current == next {
-		return &FieldError{Message: "the new password has to be different from the current one"}
+		return ErrPasswordUnchanged
 	}
 
 	if err := user.SetPassword(next); errors.Is(err, model.ErrPasswordTooLong) {
-		return &FieldError{Message: err.Error()}
+		return ErrPasswordTooLong
 	} else if err != nil {
 		return err
 	}
@@ -123,7 +130,7 @@ func (s *Service) Sessions(ctx context.Context, session *Session) ([]SessionInfo
 // ended by signing out, which also clears its cookie.
 func (s *Service) EndSession(ctx context.Context, session *Session, id uuid.UUID, client Client) error {
 	if id == session.Record.ID {
-		return &FieldError{Message: "this is the session you are using; sign out instead"}
+		return ErrCurrentSession
 	}
 
 	records, err := s.store.ActiveUserSessions(ctx, session.User.ID, s.now())

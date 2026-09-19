@@ -65,23 +65,27 @@ func TestLiveLanguages(t *testing.T) {
 	var list languageList
 	super.must(http.StatusOK, http.MethodGet, "/languages", nil, &list)
 
-	for _, code := range []string{"en", "ky", "ru"} {
+	for _, code := range []string{"en", "ru"} {
 		language := list.find(code)
 		switch {
 		case language == nil:
 			t.Fatalf("%s was not imported: %+v", code, list.Languages)
-		case language.Coverage["id"] != 100 || language.Coverage["console"] != 100:
-			t.Errorf("%s coverage = %v, want all of both apps", code, language.Coverage)
+		case language.Coverage["id"] != 100:
+			t.Errorf("%s covers %d%% of the sign-in pages, want all of them", code, language.Coverage["id"])
 		case language.Enabled != (code == "en"):
 			t.Errorf("%s enabled = %v, want only the base language offered", code, language.Enabled)
 		}
+	}
+
+	if got := list.find("ru").Coverage["console"]; got != 100 {
+		t.Errorf("ru covers %d%% of the panel, want all of it", got)
 	}
 
 	if len(list.Shipped) != 0 {
 		t.Errorf("shipped but not installed = %v, want none on a fresh installation", list.Shipped)
 	}
 
-	if status := s.public("/languages/ky", nil); status != http.StatusNotFound {
+	if status := s.public("/languages/ru", nil); status != http.StatusNotFound {
 		t.Errorf("a language that is off = %d to the sign-in pages, want 404", status)
 	}
 
@@ -94,6 +98,16 @@ func TestLiveLanguages(t *testing.T) {
 	if created.Language.Coverage["id"] != 0 {
 		t.Errorf("a new language covers %d%% of the sign-in pages, want nothing yet", created.Language.Coverage["id"])
 	}
+
+	// The panel is shown in English and Russian only: a language an
+	// installation adds is a sign-in language and nothing more.
+	if _, counted := created.Language.Coverage["console"]; counted {
+		t.Error("de was counted against the panel, which is not shown in it")
+	}
+	super.must(http.StatusNotFound, http.MethodGet, "/languages/de/translations/console", nil, nil)
+	super.must(http.StatusNotFound, http.MethodPut, "/languages/de/translations/console", map[string]any{
+		"messages": map[string]string{"nav.languages": "Sprachen"},
+	}, nil)
 
 	super.must(http.StatusConflict, http.MethodPost, "/languages", map[string]any{
 		"code": "DE", "name": "German", "native": "Deutsch",
@@ -146,6 +160,39 @@ func TestLiveLanguages(t *testing.T) {
 		t.Error("a key German does not have came back empty rather than in English")
 	}
 
+	// The panel is drawn before anybody signs in, and only ever in English or
+	// Russian — even with German offered to users.
+	var panel struct {
+		Languages []struct{ Code string } `json:"languages"`
+	}
+	s.client().must(http.StatusOK, http.MethodGet, "/panel/languages", nil, &panel)
+
+	if len(panel.Languages) != 2 || panel.Languages[0].Code != "en" || panel.Languages[1].Code != "ru" {
+		t.Errorf("the panel can be shown in %+v, want en and ru", panel.Languages)
+	}
+	s.client().must(http.StatusNotFound, http.MethodGet, "/panel/languages/de", nil, nil)
+
+	// Read once more — from the cache, when there is one — then reword it: the
+	// sign-in pages have the new text on the very next read, not an hour on.
+	s.public("/languages/de", &text)
+	super.must(http.StatusOK, http.MethodPut, "/languages/de/translations/id", map[string]any{
+		"messages": map[string]string{"action.sign_in": "Einloggen"},
+	}, nil)
+	s.public("/languages/de", &text)
+	if text.Messages["action.sign_in"] != "Einloggen" {
+		t.Errorf("after rewording, action.sign_in = %q, want the new text", text.Messages["action.sign_in"])
+	}
+
+	// English is what every other language falls back to, so rewording it
+	// reaches German's untranslated keys at once too.
+	super.must(http.StatusOK, http.MethodPut, "/languages/en/translations/id", map[string]any{
+		"messages": map[string]string{"login.title": "Welcome back"},
+	}, nil)
+	s.public("/languages/de", &text)
+	if text.Messages["login.title"] != "Welcome back" {
+		t.Errorf("German's fallback for login.title = %q, want the reworded English", text.Messages["login.title"])
+	}
+
 	// The two languages nothing may remove: the base, and the default.
 	super.must(http.StatusBadRequest, http.MethodDelete, "/languages/en", nil, nil)
 	super.must(http.StatusOK, http.MethodPatch, "/languages/de", map[string]any{"is_default": true}, nil)
@@ -160,31 +207,21 @@ func TestLiveLanguages(t *testing.T) {
 	super.must(http.StatusOK, http.MethodPatch, "/languages/en", map[string]any{"is_default": true}, nil)
 	super.must(http.StatusNoContent, http.MethodDelete, "/languages/de", nil, nil)
 
-	// A shipped language removed is offered back, and comes back whole.
-	super.must(http.StatusNoContent, http.MethodDelete, "/languages/ky", nil, nil)
+	// A shipped language removed is offered back, and comes back whole — for
+	// the sign-in pages and the panel both.
+	super.must(http.StatusNoContent, http.MethodDelete, "/languages/ru", nil, nil)
 	super.must(http.StatusOK, http.MethodGet, "/languages", nil, &list)
 
-	if len(list.Shipped) != 1 || list.Shipped[0].Code != "ky" {
-		t.Errorf("shipped but not installed = %+v, want ky", list.Shipped)
+	if len(list.Shipped) != 1 || list.Shipped[0].Code != "ru" {
+		t.Errorf("shipped but not installed = %+v, want ru", list.Shipped)
 	}
 
 	super.must(http.StatusCreated, http.MethodPost, "/languages", map[string]any{
-		"code": "ky", "copy_from": "ky",
+		"code": "ru", "copy_from": "ru",
 	}, &created)
 
-	if created.Language.Native == "" || created.Language.Coverage["console"] != 100 {
-		t.Errorf("ky brought back = %+v, want its names and all its text", created.Language)
-	}
-
-	// The panel is drawn before anybody signs in, in any language with some
-	// of the panel translated.
-	var panel struct {
-		Languages []struct{ Code string } `json:"languages"`
-	}
-	s.client().must(http.StatusOK, http.MethodGet, "/panel/languages", nil, &panel)
-
-	if len(panel.Languages) != 3 {
-		t.Errorf("the panel can be shown in %+v, want en, ky and ru", panel.Languages)
+	if created.Language.Native == "" || created.Language.Coverage["id"] != 100 || created.Language.Coverage["console"] != 100 {
+		t.Errorf("ru brought back = %+v, want its names and all its text", created.Language)
 	}
 
 	var panelText struct {

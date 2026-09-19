@@ -22,6 +22,7 @@ import (
 
 	"xermess/internal/api/respond"
 	"xermess/internal/api/session"
+	"xermess/internal/api/validate"
 	"xermess/internal/oidc"
 	"xermess/internal/store"
 )
@@ -55,7 +56,7 @@ func (h *Handler) Request(c *gin.Context) {
 func (h *Handler) Application(c *gin.Context) {
 	app, err := h.provider.ApplicationByClientID(c.Request.Context(), c.Param("client_id"))
 	if errors.Is(err, store.ErrNotFound) {
-		respond.NotFound(c, "no such application")
+		respond.Fail(c, applicationNotFound)
 		return
 	}
 	if err != nil {
@@ -112,7 +113,7 @@ func (h *Handler) Languages(c *gin.Context) {
 func (h *Handler) LanguageText(c *gin.Context) {
 	language, messages, err := h.provider.LanguageText(c.Request.Context(), c.Param("code"))
 	if errors.Is(err, store.ErrNotFound) {
-		respond.NotFound(c, "no such language")
+		respond.Fail(c, respond.LanguageNotFound)
 		return
 	}
 	if err != nil {
@@ -136,11 +137,49 @@ func (h *Handler) SocialProviders(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"providers": providers})
 }
 
+// SSOButtons lists the organisations' identity providers the sign-in page
+// offers a button for.
+func (h *Handler) SSOButtons(c *gin.Context) {
+	buttons, available, err := h.provider.SSOButtons(c.Request.Context())
+	if err != nil {
+		h.fail(c, err, "listing single sign-on connections failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"connections": buttons, "available": available})
+}
+
+// DiscoverSSO says which connection an address signs in through, for "Sign in
+// with SSO": the one that owns its domain, or no_sso_connection.
+func (h *Handler) DiscoverSSO(c *gin.Context) {
+	var req discoverRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := validate.Struct(req); err != nil {
+		respond.Failure(c, h.log, err, "validating a single sign-on lookup failed")
+		return
+	}
+
+	connection, enforced, err := h.provider.DiscoverSSO(c.Request.Context(), req.Email)
+	if errors.Is(err, store.ErrNotFound) {
+		respond.Fail(c, noSSOConnection)
+		return
+	}
+	if err != nil {
+		h.fail(c, err, "finding a single sign-on connection failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"connection": connection, "enforced": enforced})
+}
+
 // Login signs a user in and, for a sign-in under way, says where to go next.
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 	if err := req.validate(); err != nil {
@@ -161,7 +200,7 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 	if err := req.validate(); err != nil {
@@ -213,7 +252,7 @@ func (h *Handler) signedIn(c *gin.Context, request string, result *oidc.SignInRe
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req forgotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 	if err := req.validate(); err != nil {
@@ -221,7 +260,7 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.provider.ForgotPassword(c.Request.Context(), req.Email, req.Request, client(c)); err != nil {
+	if err := h.provider.ForgotPassword(c.Request.Context(), req.Email, req.Request, req.Language, client(c)); err != nil {
 		h.fail(c, err, "starting a password reset failed")
 		return
 	}
@@ -244,7 +283,7 @@ func (h *Handler) CheckReset(c *gin.Context) {
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req resetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 	if err := req.validate(); err != nil {
@@ -291,7 +330,7 @@ func (h *Handler) RequireSession(c *gin.Context) {
 		return
 	}
 	if current == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "not signed in"})
+		respond.Abort(c, respond.NotSignedIn)
 		return
 	}
 
@@ -314,7 +353,7 @@ func (h *Handler) Me(c *gin.Context) {
 func (h *Handler) UpdateMe(c *gin.Context) {
 	var req profileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 	if err := req.validate(); err != nil {
@@ -338,7 +377,7 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 func (h *Handler) ChangePassword(c *gin.Context) {
 	var req passwordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respond.BadRequest(c, "the request body is not valid")
+		respond.Fail(c, respond.InvalidBody)
 		return
 	}
 	if err := req.validate(); err != nil {
@@ -370,7 +409,7 @@ func (h *Handler) Sessions(c *gin.Context) {
 func (h *Handler) EndSession(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		respond.NotFound(c, "no such session")
+		respond.Fail(c, provided[oidc.ErrNotYours.Code])
 		return
 	}
 
@@ -404,29 +443,26 @@ func (h *Handler) Disconnect(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// fail answers the provider's errors with the status each means, and anything
-// else as the server's own failure.
+// fail answers the provider's problems with the status and code each has,
+// and anything else as the server's own failure.
 func (h *Handler) fail(c *gin.Context, err error, note string) {
-	var field *oidc.FieldError
-
-	switch {
-	case errors.As(err, &field):
-		respond.BadRequest(c, field.Message)
-	case errors.Is(err, oidc.ErrInvalidCredentials):
-		respond.Error(c, http.StatusUnauthorized, err.Error())
-	case errors.Is(err, oidc.ErrRequestExpired), errors.Is(err, oidc.ErrResetInvalid):
-		respond.Error(c, http.StatusGone, err.Error())
-	case errors.Is(err, oidc.ErrRegistrationClosed):
-		respond.Error(c, http.StatusForbidden, err.Error())
-	case errors.Is(err, oidc.ErrEmailTaken):
-		respond.Conflict(c, err.Error())
-	case errors.Is(err, oidc.ErrWrongPassword):
-		respond.BadRequest(c, err.Error())
-	case errors.Is(err, oidc.ErrNotYours):
-		respond.NotFound(c, "no such session or application")
-	default:
-		respond.Failure(c, h.log, err, note)
+	// An address that has to sign in through its provider is told which, so
+	// the page can send it there.
+	var sso *oidc.SSORequired
+	if errors.As(err, &sso) {
+		respond.Fail(c, provided[oidc.ErrSSORequired.Code], "slug", sso.Slug, "name", sso.Name)
+		return
 	}
+
+	var refused *oidc.Problem
+	if errors.As(err, &refused) {
+		if problem, ok := provided[refused.Code]; ok {
+			respond.Write(c, problem.Fault(nil))
+			return
+		}
+	}
+
+	respond.Failure(c, h.log, err, note)
 }
 
 func client(c *gin.Context) oidc.Client {

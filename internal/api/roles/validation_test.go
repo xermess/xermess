@@ -19,16 +19,16 @@ func TestRoleRequestValidate(t *testing.T) {
 	}{
 		{name: "a role", request: roleRequest{Name: "editor"}},
 		{name: "spaces and capitals are tidied away", request: roleRequest{Name: "  Editor "}},
-		{name: "no name", request: roleRequest{}, want: "name is required"},
+		{name: "no name", request: roleRequest{}, want: "name is required."},
 		{
 			name:    "a space in the name",
 			request: roleRequest{Name: "senior editor"},
-			want:    "name must start with a letter and hold only lower case letters, numbers, dashes and underscores",
+			want:    "name must start with a letter and hold only lower case letters, numbers, dashes and underscores.",
 		},
 		{
 			name:    "a description too long",
 			request: roleRequest{Name: "editor", Description: strings.Repeat("d", 256)},
-			want:    "description must be at most 255 characters",
+			want:    "description must be at most 255 characters.",
 		},
 	}
 

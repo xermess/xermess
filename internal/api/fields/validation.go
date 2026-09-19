@@ -18,13 +18,9 @@ var column = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 // itself. They are registered where they are meant, so the rule and the thing
 // it describes stay together.
 func init() {
-	validate.Register(
-		"column",
-		"must start with a letter and hold only lower case letters, numbers and underscores",
-		column.MatchString,
-	)
+	validate.Register("column", column.MatchString)
 
-	validate.Register("fieldtype", "is not a field type", func(value string) bool {
+	validate.Register("fieldtype", func(value string) bool {
 		return model.FieldType(value).Valid()
 	})
 }

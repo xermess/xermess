@@ -51,7 +51,7 @@
 	/** A language that was just added opens on its text, which is the next
 	    thing anybody adding one does — unless it arrived complete. */
 	function created(language: Language) {
-		const unfinished = list.data.apps.find((app) => language.missing[app] > 0);
+		const unfinished = language.apps.find((app) => (language.missing[app] ?? 0) > 0);
 		open(language, unfinished ?? 'settings');
 	}
 
@@ -118,13 +118,7 @@
 	empty={t('languages.empty')}
 />
 
-<LanguageDrawer
-	bind:open={drawerOpen}
-	language={editing}
-	apps={list.data.apps}
-	tab={drawerTab}
-	{canWrite}
-/>
+<LanguageDrawer bind:open={drawerOpen} language={editing} tab={drawerTab} {canWrite} />
 
 <NewLanguageDrawer
 	bind:open={creating}

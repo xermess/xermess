@@ -43,11 +43,24 @@ var ErrInvalid = errors.New("invalid token")
 
 var b64 = base64.RawURLEncoding
 
-// Key is a private key and what it is published as.
+// Key is a private key and what it is published as — or, for a key somebody
+// else holds, only its public half, which is enough to verify with.
 type Key struct {
 	ID        string
 	Algorithm string
 	Private   crypto.Signer
+	// PublicKey is the public half of a key this server does not hold, such
+	// as an identity provider's (ParseJWK). It is ignored when Private is set.
+	PublicKey crypto.PublicKey
+}
+
+// public is the key's public half, whichever way it was given.
+func (k Key) public() crypto.PublicKey {
+	if k.Private != nil {
+		return k.Private.Public()
+	}
+
+	return k.PublicKey
 }
 
 // Header is the part of a JWS header this package writes and reads.
@@ -184,7 +197,7 @@ func Verify(token string, lookup func(kid string) (Key, bool), claims any) (Head
 func verify(key Key, input, signature []byte) bool {
 	digest := sha256.Sum256(input)
 
-	switch public := key.Private.Public().(type) {
+	switch public := key.public().(type) {
 	case *rsa.PublicKey:
 		switch key.Algorithm {
 		case RS256:
@@ -246,6 +259,56 @@ func (k Key) Public() (JWK, error) {
 	}
 
 	return jwk, nil
+}
+
+// ParseJWK reads a public key somebody else published in a JWKS — an
+// identity provider's — to verify what it signs. RSA keys verify RS256 or
+// PS256 and P-256 keys ES256; a key that says no algorithm is taken for the
+// usual one of its type.
+func ParseJWK(jwk JWK) (Key, error) {
+	key := Key{ID: jwk.KeyID, Algorithm: jwk.Algorithm}
+
+	switch jwk.KeyType {
+	case "RSA":
+		n, err := b64.DecodeString(jwk.N)
+		if err != nil {
+			return Key{}, fmt.Errorf("jose: the key's modulus is not base64url: %w", err)
+		}
+		e, err := b64.DecodeString(jwk.E)
+		if err != nil || len(e) == 0 || len(e) > 4 {
+			return Key{}, fmt.Errorf("jose: the key's exponent is not usable")
+		}
+		if len(n) < 256 {
+			return Key{}, fmt.Errorf("jose: an RSA key shorter than 2048 bits is not trusted")
+		}
+
+		key.PublicKey = &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(new(big.Int).SetBytes(e).Int64())}
+		if key.Algorithm == "" {
+			key.Algorithm = RS256
+		}
+	case "EC":
+		if jwk.Curve != "P-256" {
+			return Key{}, fmt.Errorf("jose: the curve %q is not supported", jwk.Curve)
+		}
+		x, errX := b64.DecodeString(jwk.X)
+		y, errY := b64.DecodeString(jwk.Y)
+		if errX != nil || errY != nil || len(x) != 32 || len(y) != 32 {
+			return Key{}, fmt.Errorf("jose: the key's point is not usable")
+		}
+
+		public, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), append(append([]byte{4}, x...), y...))
+		if err != nil {
+			return Key{}, fmt.Errorf("jose: the key's point is not on the curve: %w", err)
+		}
+		key.PublicKey = public
+		if key.Algorithm == "" {
+			key.Algorithm = ES256
+		}
+	default:
+		return Key{}, fmt.Errorf("jose: the key type %q is not supported", jwk.KeyType)
+	}
+
+	return key, nil
 }
 
 // HalfHash is the at_hash of OpenID Connect Core 3.1.3.6: the left half of the

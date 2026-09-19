@@ -72,5 +72,8 @@ func All() []any {
 		&PasswordReset{},
 		&UserIdentity{},
 		&SocialLogin{},
+		&SSOConnection{},
+		&SSOIdentity{},
+		&SSOLogin{},
 	}
 }

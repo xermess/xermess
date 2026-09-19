@@ -8,21 +8,65 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
 	"gorm.io/gorm"
+
+	"xermess/internal/cache"
 )
 
-// Store holds the database connection every query runs on.
+// Store holds the database connection every query runs on, and the cache in
+// front of it.
 type Store struct {
-	db *gorm.DB
+	db    *gorm.DB
+	cache *cache.Cache
 }
 
-// New returns a store backed by the given connection.
+// New returns a store backed by the given connection, with no cache.
 func New(db *gorm.DB) *Store {
 	return &Store{db: db}
+}
+
+// WithCache puts a cache in front of the reads that every page asks for. A
+// nil cache is no cache.
+//
+// Only a few reads go through it — what the sign-in pages and the panel ask
+// for on every render and nobody changes often: the languages and their
+// text, the organisation, the login flows and the sign-in buttons. Each
+// method that writes one of those forgets its group once the write has
+// committed. Nothing else is cached, so nothing else can be stale.
+func (s *Store) WithCache(c *cache.Cache) *Store {
+	s.cache = c
+	return s
+}
+
+// cached reads one value through the cache: from Redis when it is there, and
+// otherwise from `load`, whose answer is then kept for the next reader. An
+// error from `load` is returned and nothing is kept.
+func cached[T any](ctx context.Context, s *Store, group, field string, load func() (T, error)) (T, error) {
+	var value T
+	if s.cache.Get(ctx, group, field, &value) {
+		return value, nil
+	}
+
+	value, err := load()
+	if err != nil {
+		return value, err
+	}
+
+	s.cache.Set(ctx, group, field, value)
+
+	return value, nil
+}
+
+// forget drops what a write changed from the cache. It is called only once
+// the write has committed: forgetting earlier would let a reader put the old
+// row back before the new one is there.
+func (s *Store) forget(ctx context.Context, groups ...string) {
+	s.cache.Forget(ctx, groups...)
 }
 
 // ErrNotFound is returned when a row that was asked for is not there. It

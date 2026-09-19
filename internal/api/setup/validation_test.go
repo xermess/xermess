@@ -42,22 +42,22 @@ func TestSetupRequestValidate(t *testing.T) {
 		{
 			name:   "no address",
 			change: func(r *setupRequest) { r.Email = "" },
-			want:   "email is required",
+			want:   "email is required.",
 		},
 		{
 			name:   "not an address",
 			change: func(r *setupRequest) { r.Email = "mira at example" },
-			want:   "email must be an email address",
+			want:   "email must be an email address.",
 		},
 		{
 			name:   "a password anyone could guess the length of",
 			change: func(r *setupRequest) { r.Password = "short" },
-			want:   "password must be at least 10 characters",
+			want:   "password must be at least 10 characters.",
 		},
 		{
 			name:   "no name",
 			change: func(r *setupRequest) { r.FirstName = "   " },
-			want:   "first_name is required",
+			want:   "first_name is required.",
 		},
 		{
 			name:   "no last name is fine",

@@ -47,7 +47,6 @@
 								route={item.route}
 								label={t(item.key)}
 								icon={item.icon}
-								status={item.status}
 								current={isCurrent(item.route)}
 								{collapsed}
 							/>

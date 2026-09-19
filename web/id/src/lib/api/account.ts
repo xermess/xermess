@@ -61,6 +61,13 @@ export type SocialProvider = {
 	kind: string;
 };
 
+/** An organisation's identity provider, as the sign-in page offers it. */
+export type SSOConnection = {
+	slug: string;
+	name: string;
+	protocol: 'oidc' | 'saml';
+};
+
 /** A sign-in under way, known to the pages by the handle in `?request=`. */
 export type SignInRequest = {
 	application: Application;
@@ -131,6 +138,19 @@ export const signIn = {
 	socialProviders: (fetch?: Fetch) =>
 		request<{ providers: SocialProvider[] }>('/account/social-providers', { fetch }),
 
+	/** The organisations' identity providers the sign-in page shows a button
+	    for. */
+	ssoConnections: (fetch?: Fetch) =>
+		request<{ connections: SSOConnection[]; available: boolean }>('/account/sso', { fetch }),
+
+	/** The identity provider an address signs in through, for "Sign in with
+	    SSO"; `no_sso_connection` when its domain has none. */
+	discoverSSO: (email: string) =>
+		request<{ connection: SSOConnection; enforced: boolean }>('/account/sso/discover', {
+			method: 'POST',
+			body: { email }
+		}),
+
 	/** The languages this installation offers, and the one somebody gets
 	    before they have chosen. The text itself is built into this app. */
 	languages: (fetch?: Fetch) =>
@@ -159,7 +179,8 @@ export const signIn = {
 	register: (body: RegisterInput) =>
 		request<SignedIn>('/account/register', { method: 'POST', body }),
 
-	forgotPassword: (body: { request: string; email: string }) =>
+	/** `language` is the one the page is shown in: the email is written in it. */
+	forgotPassword: (body: { request: string; email: string; language: string }) =>
 		request<{ status: string }>('/account/forgot-password', { method: 'POST', body }),
 
 	checkReset: (token: string, fetch?: Fetch) =>

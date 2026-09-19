@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"xermess/internal/cache/cachetest"
 	"xermess/internal/config"
 	"xermess/internal/database"
 	"xermess/internal/mail"
@@ -162,7 +163,12 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 		SecretKey:  "integration-test-secret-key-0123456789",
 	}
 	change(&serverCfg)
-	st := store.New(db)
+
+	// With XERMESS_TEST_REDIS the whole server runs with its cache, under a
+	// prefix of its own, so every test here also proves that a write is seen
+	// by the next read through the cache.
+	shared := cachetest.Open(t)
+	st := store.New(db).WithCache(shared)
 
 	// What main does on a fresh installation: write the settings for
 	// administrators' sign-ins from the configuration, so these servers
@@ -184,11 +190,11 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 		t.Fatal(err)
 	}
 
-	publicEngine, err := NewPublic(serverCfg, log, provider)
+	publicEngine, err := NewPublic(serverCfg, log, provider, shared)
 	if err != nil {
 		t.Fatal(err)
 	}
-	adminEngine, err := NewAdmin(serverCfg, st, log, provider)
+	adminEngine, err := NewAdmin(serverCfg, st, log, provider, shared)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { useTranslator } from '$lib/i18n';
+	import { messageOf, useTranslator } from '$lib/i18n';
 	import { invalidateAll } from '$app/navigation';
-	import { account, messageOf } from '$lib/api';
+	import { account } from '$lib/api';
 	import { Alert, AppMark, Button, Icon, Panel } from '$lib/components';
 	import { formatDate, timeAgo } from '$lib/utils/format';
 	import type { PageProps } from './$types';
@@ -38,7 +38,7 @@
 			confirming = null;
 			await invalidateAll();
 		} catch (err) {
-			error = messageOf(err);
+			error = messageOf(err, t);
 		} finally {
 			disconnecting = null;
 		}
@@ -66,7 +66,7 @@
 		{#each data.applications as app (app.client_id)}
 			<Panel
 				title={app.name}
-				description={t('apps.last_used', { when: timeAgo(app.last_used_at) })}
+				description={t('apps.last_used', { when: timeAgo(app.last_used_at, t) })}
 			>
 				{#snippet aside()}
 					<AppMark name={app.name} logo={app.logo_uri} size={44} />
@@ -85,7 +85,7 @@
 				</div>
 
 				<p class="meta">
-					{t('apps.connected_since', { when: formatDate(app.authorized_at) })}
+					{t('apps.connected_since', { when: formatDate(app.authorized_at, t) })}
 					{#if app.client_uri}
 						·
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->

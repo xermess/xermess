@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"xermess/internal/api"
+	"xermess/internal/cache"
 	"xermess/internal/config"
 	"xermess/internal/database"
 	"xermess/internal/mail"
@@ -63,9 +64,25 @@ func run(log *slog.Logger) error {
 		}
 	}
 
+	// Redis, when one is configured: the cache in front of the reads every
+	// page makes, and where the rate limit counts. A configured Redis that
+	// does not answer stops the server here, like a database that does not;
+	// none configured runs without, as the server always could.
+	shared, err := cache.Open(context.Background(), cfg.Redis, log)
+	if err != nil {
+		return err
+	}
+	defer shared.Close()
+
+	if shared != nil {
+		log.Info("redis connected", "addr", cfg.Redis.Addr(), "db", cfg.Redis.DB, "prefix", cfg.Redis.Prefix)
+	} else {
+		log.Info("redis is not configured; reading every page from the database")
+	}
+
 	// The store is the only thing that queries the database; the servers are
 	// handed that rather than the connection itself.
-	st := store.New(db)
+	st := store.New(db).WithCache(shared)
 
 	// What a fresh installation starts with for administrators' sign-ins,
 	// from the configuration. An installation that already has the setting
@@ -93,12 +110,12 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
-	public, err := api.NewPublic(cfg, log, provider)
+	public, err := api.NewPublic(cfg, log, provider, shared)
 	if err != nil {
 		return err
 	}
 
-	admin, err := api.NewAdmin(cfg, st, log, provider)
+	admin, err := api.NewAdmin(cfg, st, log, provider, shared)
 	if err != nil {
 		return err
 	}

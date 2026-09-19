@@ -1,6 +1,12 @@
 package locales
 
-import "testing"
+import (
+	"encoding/json"
+	"regexp"
+	"slices"
+	"strings"
+	"testing"
+)
 
 // Every shipped language has to name itself, and the base language has to be
 // there at all: it is what a missing translation falls back to, and what
@@ -33,8 +39,10 @@ func TestShipped(t *testing.T) {
 	}
 }
 
-// A language that ships has to be complete: the first start imports it, and
-// an installation that offers it should not be offering half a page.
+// A language that ships has to be complete for every app it is for: the
+// first start imports it, and an installation that offers it should not be
+// offering half a page. And it ships panel text only if the panel is shown
+// in it — anything else would be imported for nothing.
 func TestTranslationsAreComplete(t *testing.T) {
 	shipped, err := Shipped()
 	if err != nil {
@@ -42,11 +50,45 @@ func TestTranslationsAreComplete(t *testing.T) {
 	}
 
 	for _, language := range shipped {
-		for _, app := range Apps {
+		for _, app := range AppsFor(language.Code) {
+			if _, has := language.Messages[app]; !has {
+				t.Errorf("%s has no file for %s", language.Code, app)
+				continue
+			}
+
 			if percent, missing := Coverage(app, language.Messages[app]); missing > 0 {
 				t.Errorf("%s is %d%% of %s, short %d keys; add them to its file",
 					language.Code, percent, app, missing)
 			}
+		}
+
+		for app := range language.Messages {
+			if !ServesApp(language.Code, app) {
+				t.Errorf("locales/%s/%s.json ships, but %s is not one of PanelLanguages", app, language.Code, language.Code)
+			}
+		}
+	}
+}
+
+// The panel is shown in English and Russian, and in nothing else; every
+// language is on the sign-in pages.
+func TestAppsFor(t *testing.T) {
+	tests := []struct {
+		code string
+		want []App
+	}{
+		{code: "en", want: []App{ID, Console}},
+		{code: "ru", want: []App{ID, Console}},
+		{code: "de", want: []App{ID}},
+		{code: "pt-BR", want: []App{ID}},
+	}
+
+	for _, tt := range tests {
+		if got := AppsFor(tt.code); !slices.Equal(got, tt.want) {
+			t.Errorf("AppsFor(%q) = %v, want %v", tt.code, got, tt.want)
+		}
+		if got, want := ServesApp(tt.code, Console), slices.Contains(tt.want, Console); got != want {
+			t.Errorf("ServesApp(%q, Console) = %v, want %v", tt.code, got, want)
 		}
 	}
 }
@@ -141,5 +183,106 @@ func TestParseApp(t *testing.T) {
 
 	if _, ok := ParseApp("../id"); ok {
 		t.Error("ParseApp accepted something that is not an app")
+	}
+}
+
+func TestFlatten(t *testing.T) {
+	tests := []struct {
+		name    string
+		file    map[string]any
+		want    Messages
+		wantErr bool
+	}{
+		{
+			name: "nested by screen",
+			file: map[string]any{"$name": "English", "login": map[string]any{"title": "Sign in", "form": map[string]any{"email": "Email"}}},
+			want: Messages{"$name": "English", "login.title": "Sign in", "login.form.email": "Email"},
+		},
+		{
+			name: "flat, as the database holds it",
+			file: map[string]any{"login.title": "Sign in"},
+			want: Messages{"login.title": "Sign in"},
+		},
+		{
+			name:    "the same key said twice",
+			file:    map[string]any{"login.title": "Sign in", "login": map[string]any{"title": "Log in"}},
+			wantErr: true,
+		},
+		{
+			name:    "a value that is not text",
+			file:    map[string]any{"login": map[string]any{"attempts": 3.0}},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Flatten(tt.file)
+			switch {
+			case tt.wantErr && err == nil:
+				t.Fatalf("Flatten() = %v, want an error", got)
+			case tt.wantErr:
+				return
+			case err != nil:
+				t.Fatal(err)
+			}
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("Flatten() = %v, want %v", got, tt.want)
+			}
+			for key, value := range tt.want {
+				if got[key] != value {
+					t.Errorf("%s = %q, want %q", key, got[key], value)
+				}
+			}
+		})
+	}
+}
+
+// The shipped files are organised the one way: nested by screen, every part
+// of a key lower case with underscores. A file written flat, or a key spelled
+// "loginTitle", is caught here rather than in review.
+func TestShippedFilesAreNested(t *testing.T) {
+	part := regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+
+	for _, app := range Apps {
+		entries, err := files.ReadDir(string(app))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, entry := range entries {
+			raw, err := files.ReadFile(string(app) + "/" + entry.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var top map[string]any
+			if err := json.Unmarshal(raw, &top); err != nil {
+				t.Fatalf("%s/%s: %v", app, entry.Name(), err)
+			}
+
+			for key := range top {
+				if strings.Contains(key, ".") {
+					t.Errorf("%s/%s has %q at the top: nest it under %q", app, entry.Name(), key, strings.Split(key, ".")[0])
+				}
+			}
+
+			flat, err := Flatten(top)
+			if err != nil {
+				t.Fatalf("%s/%s: %v", app, entry.Name(), err)
+			}
+			for key := range flat {
+				if strings.HasPrefix(key, metaPrefix) {
+					continue
+				}
+				for _, piece := range strings.Split(key, ".") {
+					if !part.MatchString(piece) {
+						t.Errorf("%s/%s: %q is not lower case with underscores", app, entry.Name(), key)
+						break
+					}
+				}
+			}
+		}
 	}
 }

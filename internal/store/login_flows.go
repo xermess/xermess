@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"xermess/internal/cache"
 	"xermess/internal/model"
 )
 
@@ -21,12 +22,14 @@ func (s *Store) LoginFlows(ctx context.Context) ([]model.LoginFlow, error) {
 
 // LoginFlow returns one flow by id.
 func (s *Store) LoginFlow(ctx context.Context, id uuid.UUID) (*model.LoginFlow, error) {
-	var flow model.LoginFlow
-	if err := s.db.WithContext(ctx).First(&flow, "id = ?", id).Error; err != nil {
-		return nil, translate(err)
-	}
+	return cached(ctx, s, cache.LoginFlows, "id:"+id.String(), func() (*model.LoginFlow, error) {
+		var flow model.LoginFlow
+		if err := s.db.WithContext(ctx).First(&flow, "id = ?", id).Error; err != nil {
+			return nil, translate(err)
+		}
 
-	return &flow, nil
+		return &flow, nil
+	})
 }
 
 // DefaultLoginFlow returns the flow every application without one of its own
@@ -37,10 +40,14 @@ func (s *Store) LoginFlow(ctx context.Context, id uuid.UUID) (*model.LoginFlow, 
 // whose row was removed by hand should still sign people in.
 func (s *Store) DefaultLoginFlow(ctx context.Context) (*model.LoginFlow, error) {
 	var flow model.LoginFlow
+	if s.cache.Get(ctx, cache.LoginFlows, "default", &flow) {
+		return &flow, nil
+	}
 
 	err := translate(s.db.WithContext(ctx).Order("created_at").First(&flow, "is_default = ?", true).Error)
 	switch {
 	case err == nil:
+		s.cache.Set(ctx, cache.LoginFlows, "default", flow)
 		return &flow, nil
 	case !errors.Is(err, ErrNotFound):
 		return nil, err
@@ -50,6 +57,8 @@ func (s *Store) DefaultLoginFlow(ctx context.Context) (*model.LoginFlow, error) 
 	if err := s.db.WithContext(ctx).Create(&flow).Error; err != nil {
 		return nil, translate(err)
 	}
+
+	s.forget(ctx, cache.LoginFlows)
 
 	return &flow, nil
 }
@@ -74,24 +83,38 @@ func (s *Store) EffectiveLoginFlow(ctx context.Context, app *model.Application) 
 
 // CreateLoginFlow adds a flow.
 func (s *Store) CreateLoginFlow(ctx context.Context, flow *model.LoginFlow) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(flow).Error; err != nil {
 			return translate(err)
 		}
 
 		return demoteOtherDefaults(tx, flow)
 	})
+	if err != nil {
+		return err
+	}
+
+	s.forget(ctx, cache.LoginFlows)
+
+	return nil
 }
 
 // SaveLoginFlow writes a flow back.
 func (s *Store) SaveLoginFlow(ctx context.Context, flow *model.LoginFlow) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(flow).Error; err != nil {
 			return translate(err)
 		}
 
 		return demoteOtherDefaults(tx, flow)
 	})
+	if err != nil {
+		return err
+	}
+
+	s.forget(ctx, cache.LoginFlows)
+
+	return nil
 }
 
 // demoteOtherDefaults keeps exactly one flow marked as the default: whichever
@@ -124,7 +147,7 @@ func (s *Store) DeleteLoginFlow(ctx context.Context, flow *model.LoginFlow) erro
 		return ErrDefaultLoginFlow
 	}
 
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Model(&model.Application{}).
 			Where("login_flow_id = ?", flow.ID).
 			Update("login_flow_id", nil).Error
@@ -134,6 +157,13 @@ func (s *Store) DeleteLoginFlow(ctx context.Context, flow *model.LoginFlow) erro
 
 		return translate(tx.Unscoped().Delete(flow).Error)
 	})
+	if err != nil {
+		return err
+	}
+
+	s.forget(ctx, cache.LoginFlows)
+
+	return nil
 }
 
 // LoginFlowApplications counts the applications pointed at each flow, by flow

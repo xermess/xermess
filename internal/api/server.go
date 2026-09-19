@@ -49,12 +49,15 @@ import (
 	"xermess/internal/api/oauth"
 	"xermess/internal/api/organization"
 	"xermess/internal/api/ratelimit"
+	"xermess/internal/api/respond"
 	"xermess/internal/api/roles"
 	"xermess/internal/api/session"
 	"xermess/internal/api/setup"
 	"xermess/internal/api/social"
+	"xermess/internal/api/sso"
 	"xermess/internal/api/users"
 	"xermess/internal/auth"
+	"xermess/internal/cache"
 	"xermess/internal/config"
 	"xermess/internal/jose"
 	"xermess/internal/model"
@@ -64,8 +67,9 @@ import (
 
 // NewPublic builds the public server: the provider, the account API, and a
 // health check. `provider` is built by the caller because building it reads
-// the signing keys from the database.
-func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service) (*gin.Engine, error) {
+// the signing keys from the database. `shared` is the Redis the rate limit
+// counts in, or nil to count in memory.
+func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shared *cache.Cache) (*gin.Engine, error) {
 	r, err := engine(cfg, log)
 	if err != nil {
 		return nil, err
@@ -74,7 +78,7 @@ func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service) (*gi
 	registerPublicRoutes(r, publicHandlers{
 		oauth:   oauth.New(provider, log, cfg.SecureUserCookies),
 		account: account.New(provider, log, cfg.SecureUserCookies),
-		limit:   ratelimit.New(cfg.RateLimit).Middleware(),
+		limit:   ratelimit.New(cfg.RateLimit).Shared(shared, "public").Middleware(),
 		csrf:    csrf.New(allowed(cfg.AccountURL, cfg.CORSOrigins)),
 	})
 
@@ -84,7 +88,7 @@ func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service) (*gi
 // NewAdmin builds the admin server: the admin API, and a health check.
 // `provider` is the same provider the public server answers with, so rotating
 // its signing keys here takes effect there at once.
-func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oidc.Service) (*gin.Engine, error) {
+func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oidc.Service, shared *cache.Cache) (*gin.Engine, error) {
 	r, err := engine(cfg, log)
 	if err != nil {
 		return nil, err
@@ -110,13 +114,14 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		applications: applications.New(st, recorder, log, cfg.Issuer),
 		organization: organization.New(st, recorder, log),
 		social:       social.New(st, sealer, recorder, log, cfg.Issuer),
+		sso:          sso.New(st, sealer, provider, recorder, log, cfg.Issuer),
 		flows:        flows.New(st, recorder, log),
 		database:     database.New(st, log),
 		languages:    languages.New(st, recorder, log),
 		apis:         apis.New(st, recorder, log, cfg.Issuer),
 		activity:     activity.New(st, log),
 		keys:         keys.New(provider, recorder, log),
-		limit:        ratelimit.New(cfg.RateLimit).Middleware(),
+		limit:        ratelimit.New(cfg.RateLimit).Shared(shared, "admin").Middleware(),
 		csrf:         csrf.New(allowed(cfg.AdminURL, cfg.CORSOrigins)),
 	})
 
@@ -182,6 +187,7 @@ type adminHandlers struct {
 	apis         *apis.Handler
 	organization *organization.Handler
 	social       *social.Handler
+	sso          *sso.Handler
 	flows        *flows.Handler
 	database     *database.Handler
 	languages    *languages.Handler
@@ -219,6 +225,18 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	r.GET(oidc.PathSocialCallback, h.oauth.SocialCallback)
 	r.POST(oidc.PathSocialCallback, h.oauth.SocialCallback)
 
+	// Signing in through an organisation's own identity provider. The
+	// assertion consumer service takes a SAML provider's posted response, and
+	// is outside the CSRF group for the reason Apple's callback is: the form
+	// comes from the provider. The metadata is what the provider is set up
+	// from.
+	// Starting writes a sign-in and the ACS verifies an XML signature, both
+	// for anybody, so both are rate limited per address.
+	r.GET(oidc.PathSSOStart, h.limit, h.oauth.SSOStart)
+	r.GET(oidc.PathSSOCallback, h.oauth.SSOCallback)
+	r.POST(oidc.PathSSOACS, h.limit, h.oauth.SSOAssertion)
+	r.GET(oidc.PathSSOMetadata, h.oauth.SSOMetadata)
+
 	// Everything under /api/v1 is called by the id app with the user's
 	// session cookie, so it only takes changes from the id app's origin.
 	v1 := r.Group("/api/v1", h.csrf)
@@ -230,6 +248,8 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 		accounts := v1.Group("/account")
 		accounts.GET("/organization", h.account.Organization)
 		accounts.GET("/social-providers", h.account.SocialProviders)
+		accounts.GET("/sso", h.account.SSOButtons)
+		accounts.POST("/sso/discover", h.limit, h.account.DiscoverSSO)
 		accounts.GET("/requests/:handle", h.account.Request)
 		accounts.GET("/login-options", h.account.LoginOptions)
 		accounts.GET("/languages", h.account.Languages)
@@ -354,6 +374,21 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			writeSocial.POST("/social-providers", h.social.Create)
 			writeSocial.PATCH("/social-providers/:id", h.social.Update)
 			writeSocial.DELETE("/social-providers/:id", h.social.Delete)
+
+			// The organisations' own identity providers. Connecting one decides
+			// who may sign in, as whom, and with which roles, so changing them
+			// is its own permission; trying a provider is part of setting it
+			// up, so it takes the same.
+			readSSO := signedIn.Group("", session.Can(model.PermSSORead))
+			readSSO.GET("/sso-connections", h.sso.List)
+			readSSO.GET("/sso-connections/:id", h.sso.Get)
+
+			writeSSO := signedIn.Group("", session.Can(model.PermSSOWrite))
+			writeSSO.POST("/sso-connections", h.sso.Create)
+			writeSSO.POST("/sso-connections/test", h.sso.Test)
+			writeSSO.PATCH("/sso-connections/:id", h.sso.Update)
+			writeSSO.DELETE("/sso-connections/:id", h.sso.Delete)
+			writeSSO.POST("/sso-connections/:id/refresh-metadata", h.sso.RefreshMetadata)
 
 			// The login flows applications sign their users in with, and the
 			// steps one can be made of. Writing a flow decides what a
@@ -485,5 +520,5 @@ func health(c *gin.Context) {
 
 // notFound answers any path that no route matched.
 func notFound(c *gin.Context) {
-	c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+	respond.Fail(c, respond.NotFoundAny)
 }

@@ -41,7 +41,7 @@ func (h *Handler) Rotate(c *gin.Context) {
 	var req rotateRequest
 	if c.Request.ContentLength > 0 {
 		if err := c.ShouldBindJSON(&req); err != nil {
-			respond.BadRequest(c, "the request body is not valid")
+			respond.Fail(c, respond.InvalidBody)
 			return
 		}
 	}
