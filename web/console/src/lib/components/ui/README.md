@@ -10,12 +10,25 @@ never writes a colour, a height or a hover state — it names one.
 <Button size="sm" loading={saving}>Saving…</Button>
 
 <IconButton icon={RiRefreshLine} label="Refresh the data" />
+<IconLink href="https://xermess.org/docs" icon={RiBookOpenLine} label="Documentation" />
 <LinkButton href={resolve('/admin/profile')} variant="outline">Profile</LinkButton>
 
 <Input label="email" bind:value={email} type="email" required />
 <Select label="Type" bind:value={type} options={['text', 'number', 'bool']} />
 <Switch label="Verified" bind:checked={verified} />
 ```
+
+## Buttons that are links
+
+`LinkButton` and `IconLink` are `Button` and `IconButton` with an anchor
+inside instead of a button: somewhere to go rather than something to do, so
+they can be opened in a new tab and the browser says where they lead. They
+take the same `size`, `variant` and `colorPalette`, and `IconLink` carries the
+tooltip `IconButton` does — an icon with no words needs the label either way.
+
+An address off this site is the usual reason to reach for one, and those need
+no `resolve()`; both components say so to the linting rule once, so the pages
+using them do not have to.
 
 ## Select
 

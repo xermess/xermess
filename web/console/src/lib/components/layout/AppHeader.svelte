@@ -1,15 +1,20 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { RiShieldKeyholeLine } from 'svelte-remixicon';
+	import { RiBookOpenLine, RiGithubFill, RiShieldKeyholeLine } from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
-	import { Icon, ThemeToggle } from '$lib/components/ui';
+	import { Icon, IconLink, ThemeToggle } from '$lib/components/ui';
+	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
+	import { useTranslator } from '$lib/i18n';
 	import { useShell } from '$lib/state/shell.svelte';
 	import AccountMenu from './AccountMenu.svelte';
+	import CommandPalette from './CommandPalette.svelte';
 
 	type Props = { admin: Admin };
 
 	let { admin }: Props = $props();
+
+	const t = useTranslator();
 
 	/** The logo block is the top of the sidebar's column, so it folds with it. */
 	const shell = useShell();
@@ -30,8 +35,41 @@
 		</a>
 	</div>
 
+	<!-- The one thing in the bar worth the width: everywhere the panel can go,
+	     two or three letters away. -->
+	<div class="search">
+		<CommandPalette />
+	</div>
+
+	<!-- Somewhere to read rather than something to do, so they are quiet: an
+	     icon each, named by a tooltip, grouped away from the page's own
+	     buttons. The account menu keeps both as named rows, which is what a
+	     narrow screen is left with. -->
+	<div class="utilities">
+		<IconLink
+			href={DOCS_URL}
+			icon={RiBookOpenLine}
+			label={t('shell.documentation')}
+			size="sm"
+			target="_blank"
+			rel="noreferrer noopener"
+		/>
+
+		<IconLink
+			href={GITHUB_URL}
+			icon={RiGithubFill}
+			label={t('shell.github')}
+			size="sm"
+			target="_blank"
+			rel="noreferrer noopener"
+		/>
+
+		<span class="rule" aria-hidden="true"></span>
+
+		<ThemeToggle size="sm" variant="ghost" />
+	</div>
+
 	<div class="account">
-		<ThemeToggle size="sm" />
 		<AccountMenu {admin} size="sm" />
 	</div>
 </header>
@@ -117,11 +155,39 @@
 		opacity: 0;
 	}
 
-	.account {
+	/* The start of the content area, just past the sidebar's column, so the
+	   field lines up with the page's own heading rather than floating in the
+	   gap. It takes the width it is given and stops: the bar is not a form. */
+	.search {
+		flex: 1;
+		min-width: 0;
+		max-width: 18rem;
+		padding-left: var(--space-4);
+	}
+
+	/* Everything that is not the page and not the account, kept together at
+	   the end so the bar reads left to right: where you are, where you can
+	   go, what is around it, who you are. */
+	.utilities {
 		margin-left: auto;
 		display: flex;
 		align-items: center;
 		gap: var(--space-1);
+	}
+
+	/* A hairline, not a gap: it says the account is a different kind of thing
+	   from the links beside it without spending the width a gap would. */
+	.rule {
+		width: 1px;
+		height: 18px;
+		margin: 0 var(--space-1);
+		background: var(--color-border);
+	}
+
+	.account {
+		display: flex;
+		align-items: center;
+		padding-left: var(--space-1);
 	}
 
 	/* Narrow screens have no sidebar column, only a row of sections under the
@@ -145,6 +211,23 @@
 
 		.brand strong {
 			display: none;
+		}
+
+		/* No room for them beside the sections; the account menu still has
+		   both as named rows, which is where they are looked for anyway.
+		   The palette stays — folded to its magnifier — because it is the
+		   only way to reach a page quickly without the sidebar. */
+		.utilities :global(a.control) {
+			display: none;
+		}
+
+		.rule {
+			display: none;
+		}
+
+		.search {
+			flex: 0 0 auto;
+			padding-left: var(--space-2);
 		}
 	}
 </style>

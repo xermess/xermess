@@ -8,6 +8,7 @@
 // Controls
 export { default as Button } from './Button.svelte';
 export { default as IconButton } from './IconButton.svelte';
+export { default as IconLink } from './IconLink.svelte';
 export { default as CopyButton } from './CopyButton.svelte';
 export { default as LinkButton } from './LinkButton.svelte';
 export type { ColorPalette, ControlProps, Size, Variant } from './control';

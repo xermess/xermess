@@ -5,9 +5,9 @@
 	import Icon from './Icon.svelte';
 	import Tooltip from './Tooltip.svelte';
 
-	type Props = { size?: Size };
+	type Props = { size?: Size; variant?: 'ghost' | 'subtle' };
 
-	let { size = 'md' }: Props = $props();
+	let { size = 'md', variant = 'subtle' }: Props = $props();
 
 	/** The glyph is a share of the button, the same way IconButton scales. */
 	const glyph: Record<Size, string> = { sm: '1rem', md: '1.125rem', lg: '1.25rem' };
@@ -29,7 +29,7 @@
 			class="control"
 			data-icon="true"
 			data-size={size}
-			data-variant="ghost"
+			data-variant={variant}
 			data-palette="neutral"
 			onclick={() => theme.toggle()}
 			aria-label="Switch between the light and dark theme"

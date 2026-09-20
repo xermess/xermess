@@ -26,3 +26,9 @@ export const COOKIES = {
 /** What the root layout's load depends on, so switching language re-runs it —
     and nothing else — through invalidate(). */
 export const LANGUAGE_DEPENDENCY = 'xermess:language';
+
+/** Where the project itself lives, rather than this installation of it: the
+    documentation, and the source. The header links to both and so does the
+    account menu, so the addresses are written once. */
+export const DOCS_URL = 'https://xermess.org/docs';
+export const GITHUB_URL = 'https://github.com/xermess/xermess';

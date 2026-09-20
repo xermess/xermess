@@ -438,9 +438,17 @@ Then open http://localhost:5174/admin/login. A panel with no administrator
 sends you to `/admin/new-super-admin` to make the first one; after that,
 signing in leads to `/admin/dashboard`.
 
-The header holds the logo, the theme toggle and the account menu, which is
-where Profile and Sign out live. Where to go is the dashboard's sidebar, whose
-column the header's logo block tops: the two are one width and fold together.
+The header holds the logo, the command palette, links to the documentation and
+the source, the theme toggle and the account menu — where Profile, the
+organisation's settings, the theme and language, and Sign out live.
+
+`⌘K` (`Ctrl+K`) opens the palette: every page the signed-in administrator may
+open, filtered as you type by letters in order rather than a prefix, so `adro`
+finds Admin roles. It is built from the same `sections` catalog the sidebar
+is, so a page added there needs nothing else to be reachable from it.
+
+Where to browse rather than jump is the dashboard's sidebar, whose column the
+header's logo block tops: the two are one width and fold together.
 
 ```
 Activity · Logs

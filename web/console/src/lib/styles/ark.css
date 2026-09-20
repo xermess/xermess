@@ -158,7 +158,11 @@
 	outline: none;
 }
 
-[data-scope='menu'][data-part='item'] {
+/* A row: the ones that do something, the ones that open a submenu, and the
+   ones that are a choice within one all sit the same. */
+[data-scope='menu'][data-part='item'],
+[data-scope='menu'][data-part='trigger-item'],
+[data-scope='menu'][data-part='option-item'] {
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
@@ -170,9 +174,24 @@
 	user-select: none;
 }
 
-[data-scope='menu'][data-part='item'][data-highlighted] {
+[data-scope='menu'][data-part='item'][data-highlighted],
+[data-scope='menu'][data-part='trigger-item'][data-highlighted],
+[data-scope='menu'][data-part='option-item'][data-highlighted] {
 	background: var(--color-secondary);
 	outline: none;
+}
+
+/* A row waiting on something — signing out — is still there, just not
+   answering yet. */
+[data-scope='menu'][data-part='item'][data-disabled] {
+	opacity: 0.6;
+	cursor: default;
+}
+
+/* The submenu is open: its trigger stays marked while the pointer is over
+   the rows it opened, so the trail back is visible. */
+[data-scope='menu'][data-part='trigger-item'][data-state='open'] {
+	background: var(--color-secondary);
 }
 
 [data-scope='menu'][data-part='item-group-label'] {
