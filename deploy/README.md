@@ -12,7 +12,7 @@
                      │                  │         │             │
                api :8080            id          api :8081       console
              (public listener)    :3000     (admin listener)    :3000
-                     └────────── Postgres ────────┘
+                     └────── Postgres · Redis ────┘
 ```
 
 Two sites, two apps, one API process with two listeners:
@@ -26,11 +26,14 @@ Two sites, two apps, one API process with two listeners:
 
 | File | What |
 | --- | --- |
-| `compose.yaml` | Postgres, `api`, `id`, `console` and Caddy on one internal network |
+| `compose.yaml` | Postgres, Redis, `api`, `id`, `console` and Caddy on one internal network |
 | `Caddyfile` | the two sites and which paths go to which listener |
 | `docker/api.Dockerfile` | the API; it applies migrations when it starts |
-| `docker/web.Dockerfile` | any app under `web/`, built with its directory as the context |
+| `docker/web.Dockerfile` | any app under `web/`, chosen with `APP`; the context is the repository, because the apps import `locales/` |
 | `.env.example` | the settings compose reads from `deploy/.env` |
+| `compose.local.yaml` | an overlay for trying the stack on one machine |
+| `Caddyfile.local` | the same two sites on `.localhost`, with Caddy's own CA |
+| `../scripts/deploy-local.sh` | what `make deploy-local` runs |
 
 `make deploy-logs` follows the API; `make deploy-down` stops the stack.
 
@@ -59,6 +62,32 @@ make deploy-up                          # docker compose -f deploy/compose.yaml 
 Then open `https://admin-id.mywebsite.com/admin/login` from the staff network
 to create the first administrator.
 
+## Trying it on one machine
+
+The same stack, with the one part that cannot work locally swapped out: the
+hostnames become `id.localhost` and `admin-id.localhost`, Caddy signs them
+with its own CA instead of going to Let's Encrypt, and the admin site drops
+the staff-network check that would otherwise answer the person running it
+404.
+
+```sh
+make deploy-local        # writes deploy/.env the first time, then builds and starts
+```
+
+It prints where to go: `https://admin-id.localhost/admin/login` sends you to
+the page that makes the first administrator. Chrome and Firefox resolve
+`*.localhost` themselves; the certificate warning is Caddy's own CA, and
+`Caddyfile.local` says at its foot how to trust it.
+
+`make deploy-local-logs` follows the API, `make deploy-local-down` stops the
+stack and drops its database. Run the compose commands by hand and both files
+have to be named every time, because an explicit `-f` means compose picks up
+no override on its own:
+
+```sh
+docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml ps
+```
+
 ## Checklist before going live
 
 - [ ] `PUBLIC_URL` and `ADMIN_URL` are `https` — session cookies are Secure because of it.
@@ -70,17 +99,20 @@ to create the first administrator.
 - [ ] Postgres is backed up.
 - [ ] Nothing but Caddy publishes a port (`docker compose ps`).
 - [ ] Register your applications' redirect URIs as `https`.
-- [ ] `XERMESS_ADMIN_MFA` is `required` (the default), and every administrator has
-      saved their recovery codes.
+- [ ] `XERMESS_ADMIN_MFA` is `required`. `compose.yaml` asks for that unless
+      `deploy/.env` says otherwise — the server's own default is `optional`, so
+      do not rely on it elsewhere. Every administrator has saved their recovery
+      codes.
 - [ ] Someone knows how to reset an administrator's two-factor sign-in (a super
       admin, from Administrators) — and that at least two super admins exist.
 
 ## Not in this directory
 
-- Two-factor sign-in for administrators is on by default. It does not replace the
-  network restriction; each covers what the other misses.
+- Two-factor sign-in for administrators is what this stack asks for, not what
+  the server defaults to — see the checklist. It does not replace the network
+  restriction; each covers what the other misses.
 - Signing keys rotate on their own every 90 days. If one may have leaked, a super
   admin rotates at once with revocation: `POST /api/v1/admin/signing-keys/rotate`
   with `{"revoke_old": true}`.
-- Rate limiting in xermess is per process. With several API replicas, add a
-  shared limit at the edge too.
+- Rate limiting counts in Redis, so several API replicas share one limit. Drop
+  Redis from the stack and each process counts on its own again.

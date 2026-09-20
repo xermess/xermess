@@ -27,8 +27,8 @@ func TestChainRunsEverythingInOrder(t *testing.T) {
 	}
 
 	chain := Chain(log, passed)
-	if len(chain) != 3 {
-		t.Fatalf("Chain() has %d handlers, want 3", len(chain))
+	if len(chain) != 4 {
+		t.Fatalf("Chain() has %d handlers, want 4", len(chain))
 	}
 
 	r := gin.New()

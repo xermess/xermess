@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -64,30 +65,32 @@ func (s *Service) SocialButtons(ctx context.Context) ([]SocialButton, error) {
 	return buttons, nil
 }
 
-// StartSocial is where to send the browser to sign in with a provider.
+// StartSocial is where to send the browser to sign in with a provider, and the
+// state the caller has to remember in that browser (session.SignInStateCookie)
+// so the callback knows the answer came back where it set off.
 //
 // `request` is the sign-in under way, if the person came from an application,
 // and `next` is where to put them afterwards when they did not. Both are kept
 // here rather than in the address the provider is given, which comes back
 // only as far as `state`.
-func (s *Service) StartSocial(ctx context.Context, slug, request, next string) (string, error) {
+func (s *Service) StartSocial(ctx context.Context, slug, request, next string) (string, string, error) {
 	provider, err := s.socialProvider(ctx, slug)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	flow, err := s.flowFor(ctx, request)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if !flow.Offers(model.StepSocial) {
-		return "", ErrSocialNotOffered
+		return "", "", ErrSocialNotOffered
 	}
 	spec := provider.Spec()
 
 	state, stateHash, err := model.NewSecret()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	values := url.Values{
@@ -106,7 +109,7 @@ func (s *Service) StartSocial(ctx context.Context, slug, request, next string) (
 	var verifier string
 	if spec.PKCE {
 		if verifier, _, err = model.NewSecret(); err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		values.Set("code_challenge", challengeFor(verifier))
@@ -126,12 +129,12 @@ func (s *Service) StartSocial(ctx context.Context, slug, request, next string) (
 		ExpiresAt:  s.now().Add(model.SocialLoginLifetime),
 	}
 	if err := s.store.CreateSocialLogin(ctx, &login); err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	authorize, _, _ := provider.Endpoints()
 
-	return withQuery(authorize, values), nil
+	return withQuery(authorize, values), state, nil
 }
 
 // SocialResult is a finished sign-in at a provider: the session it started,
@@ -148,14 +151,22 @@ type SocialResult struct {
 }
 
 // CompleteSocial turns the code a provider sent the browser back with into a
-// session.
-func (s *Service) CompleteSocial(ctx context.Context, slug, code, state string, client Client) (*SocialResult, error) {
+// session. `binding` is what the browser kept from StartSocial.
+func (s *Service) CompleteSocial(ctx context.Context, slug, code, state, binding string, client Client) (*SocialResult, error) {
 	provider, err := s.socialProvider(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
 
 	if code == "" || state == "" {
+		return nil, ErrSocialExpired
+	}
+
+	// The answer has to come back in the browser the sign-in set off from.
+	// Without this a state and a code are enough on their own, and whoever
+	// holds a pair of their own can hand them to somebody else's browser and
+	// sign it in as themselves (RFC 6749 section 10.12).
+	if subtle.ConstantTimeCompare([]byte(binding), []byte(state)) != 1 {
 		return nil, ErrSocialExpired
 	}
 
@@ -406,8 +417,9 @@ func (s *Service) socialIdentity(ctx context.Context, provider *model.SocialProv
 // Its signature is not checked, and does not have to be: it arrived over TLS
 // from the provider's own token endpoint, in answer to a request carrying
 // this client's secret, which OpenID Connect Core section 3.1.3.7 accepts in
-// place of checking the signature. What is checked is that the token is for
-// this client and has not expired.
+// place of checking the signature. That the answer is the provider's is not
+// the same as the token in it being theirs, so what it claims is still held
+// to this client, to the issuer the kind is known to have, and to the clock.
 func (s *Service) idTokenClaims(provider *model.SocialProvider, idToken string) (map[string]any, error) {
 	if idToken == "" {
 		s.log.Error("a social provider gave no id_token", "provider", provider.Slug)
@@ -431,6 +443,15 @@ func (s *Service) idTokenClaims(provider *model.SocialProvider, idToken string) 
 
 	if !audienceHas(claims["aud"], provider.ClientID) {
 		s.log.Error("a social provider's id_token was for another client", "provider", provider.Slug)
+		return nil, ErrSocialUpstream
+	}
+
+	// A kind whose provider is known in advance names its issuer, and a token
+	// naming another one is not that provider's however it arrived. A kind
+	// configured per installation has no issuer to be held to.
+	if want := provider.Spec().IDTokenIssuer; want != "" && stringClaim(claims, "iss") != want {
+		s.log.Error("a social provider's id_token named another issuer",
+			"provider", provider.Slug, "issuer", stringClaim(claims, "iss"), "want", want)
 		return nil, ErrSocialUpstream
 	}
 

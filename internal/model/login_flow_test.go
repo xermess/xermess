@@ -1,6 +1,9 @@
 package model
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestLoginFlowValidate(t *testing.T) {
 	tests := []struct {
@@ -136,5 +139,34 @@ func TestDefaultLoginFlowIsValid(t *testing.T) {
 	}
 	if !flow.Offers(StepPassword) {
 		t.Error("the default flow is the one the server already runs, which asks for a password")
+	}
+}
+
+// What the sign-in pages are told is what will happen to somebody signing in.
+// A flow may name a step as a plan — the panel draws those dashed and says so
+// — but the pages get a list to put on the screen, and a step nobody will be
+// asked for does not belong in it.
+func TestPublicOptionsLeaveOutTheStepsNobodyRunsYet(t *testing.T) {
+	flow := LoginFlow{
+		Steps:             StepList{StepIdentifier, StepPassword, StepTOTP, StepSocial, StepConsent},
+		AllowRegistration: true,
+	}
+
+	options := flow.PublicOptions()
+
+	want := []LoginStep{StepIdentifier, StepPassword, StepSocial}
+	if !slices.Equal(options.Steps, want) {
+		t.Errorf("steps = %v, want %v", options.Steps, want)
+	}
+	if !options.AllowRegistration {
+		t.Error("the rest of the options did not come through")
+	}
+
+	// Every step left in is one the server runs, whatever the catalog gains.
+	for _, step := range options.Steps {
+		spec, known := LoginStepSpecOf(step)
+		if !known || !spec.Implemented {
+			t.Errorf("%s is offered to the sign-in pages but is not run", step)
+		}
 	}
 }

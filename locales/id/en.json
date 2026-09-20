@@ -195,6 +195,7 @@
     "internal": "Something went wrong on our side. Try again in a moment.",
     "invalid_body": "The request could not be read. Reload the page and try again.",
     "unsupported_body": "The request was sent in a form this server does not accept.",
+    "body_too_large": "The request is larger than this server accepts.",
     "cross_origin": "Requests from {origin} are not allowed.",
     "cross_site": "Requests from other sites are not allowed.",
     "rate_limited": "Too many attempts. Try again in {seconds} seconds.",

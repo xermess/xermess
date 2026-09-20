@@ -39,3 +39,62 @@ func writeUser(c *gin.Context, value string, maxAge int, secure bool) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
+// SignInStateCookie ties a sign-in started at a provider — a social one, or an
+// organisation's — to the browser that started it.
+//
+// The state travels to the provider and comes back in the address, so whoever
+// holds one can present it in any browser: their own state and their own code,
+// walked through somebody else's browser, would sign that browser in as them,
+// and everything the person did next would go into the attacker's account.
+// The cookie is the half that cannot be put in another person's browser, and
+// the callback refuses a state that does not match it.
+const SignInStateCookie = "xermess_sign_in_state"
+
+// signInStatePath keeps the cookie to the provider endpoints, which are the
+// only ones that ever read it.
+const signInStatePath = "/oauth2"
+
+// SetSignInState remembers the state of a sign-in just started. It is a
+// session cookie: what bounds the sign-in is the row in the database, and the
+// cookie only has to last the trip to the provider and back.
+func SetSignInState(c *gin.Context, state string, secure bool) {
+	writeSignInState(c, state, 0, secure)
+}
+
+// ClearSignInState forgets it. The callback clears it however it ends, so a
+// state cannot be presented twice even before the row expires.
+func ClearSignInState(c *gin.Context, secure bool) {
+	writeSignInState(c, "", -1, secure)
+}
+
+// SignInState is what the browser carries, or "" for a browser that started
+// no sign-in.
+func SignInState(c *gin.Context) string {
+	value, _ := c.Cookie(SignInStateCookie)
+	return value
+}
+
+func writeSignInState(c *gin.Context, value string, maxAge int, secure bool) {
+	// Most providers answer with a redirect the browser follows, but some
+	// answer by posting a form — Apple, and every SAML one. Lax carries the
+	// cookie on the first and not on the second, so where it can be Secure it
+	// is None, which is the only way a browser sends a cookie with a
+	// cross-site POST and which browsers only accept with Secure. Served over
+	// plain http, which is development, it stays Lax: the redirect providers
+	// work there, and the ones that post do not.
+	sameSite := http.SameSiteLaxMode
+	if secure {
+		sameSite = http.SameSiteNoneMode
+	}
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     SignInStateCookie,
+		Value:    value,
+		Path:     signInStatePath,
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: sameSite,
+	})
+}

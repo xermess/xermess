@@ -17,7 +17,9 @@ import (
 // through them: logged first, so a request that panics is still reported;
 // recovered next, so a panic becomes a 500 rather than a dead connection;
 // then the cross-origin rules, which the caller builds from its configuration
-// and hands in.
+// and hands in; and last the limit on how much body will be read, which comes
+// after the preflight answer so a browser's check is never refused for a body
+// it did not send.
 //
 // Spread it into gin's Use:
 //
@@ -27,5 +29,6 @@ func Chain(log *slog.Logger, cors gin.HandlerFunc) []gin.HandlerFunc {
 		RequestLogger(log),
 		gin.Recovery(),
 		cors,
+		BodyLimit(MaxBodyBytes),
 	}
 }

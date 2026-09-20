@@ -71,7 +71,13 @@ func (s *Store) ClaimMFAStep(ctx context.Context, factor uuid.UUID, at time.Time
 // ConsumeRecoveryCode removes one recovery code from a factor, if it holds it,
 // and says whether it did. It locks the row, so a code works once even when
 // presented twice at once.
-func (s *Store) ConsumeRecoveryCode(ctx context.Context, factor uuid.UUID, hash string, at time.Time) (bool, error) {
+//
+// It leaves LastUsedAt alone. That column is the start of the last TOTP step
+// accepted (model.MFA.UsedStep), not a note of when the factor was last used
+// at all: writing the wall clock into it would make the step just gone look
+// spent, and the code on the administrator's phone would be refused until the
+// next one appeared. What was used, and when, is in the activity log.
+func (s *Store) ConsumeRecoveryCode(ctx context.Context, factor uuid.UUID, hash string) (bool, error) {
 	consumed := false
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -86,11 +92,10 @@ func (s *Store) ConsumeRecoveryCode(ctx context.Context, factor uuid.UUID, hash 
 		}
 
 		consumed = true
-		// Through the struct, with the columns named, so the codes go through
+		// Through the struct, with the column named, so the codes go through
 		// their JSON serializer; a plain column update would not.
-		return tx.Model(&row).Select("RecoveryCodes", "LastUsedAt").Updates(&model.MFA{
+		return tx.Model(&row).Select("RecoveryCodes").Updates(&model.MFA{
 			RecoveryCodes: slices.Delete(slices.Clone(row.RecoveryCodes), index, index+1),
-			LastUsedAt:    &at,
 		}).Error
 	})
 

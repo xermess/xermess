@@ -673,6 +673,50 @@ func TestLiveSSOWithSAML(t *testing.T) {
 
 // Metadata that is not a provider's is refused with a reason, before it is
 // relied on.
+// An identity provider's answer signs in the browser that started the sign-in
+// and no other. The state goes to the provider and comes back in the address,
+// so whoever starts a sign-in of their own could otherwise hand the finished
+// address to somebody else's browser and leave it signed in as them.
+func TestLiveSSOCallbackOnlySignsInTheBrowserThatStarted(t *testing.T) {
+	s := newLiveServer(t)
+	super := s.superAdmin()
+	idp := newFakeOIDC(t)
+
+	super.must(http.StatusCreated, http.MethodPost, "/sso-connections", map[string]any{
+		"protocol": "oidc", "name": "Acme", "issuer": idp.server.URL,
+		"client_id": fakeClientID, "client_secret": fakeClientSecret,
+		"domains": []string{"acme.test"}, "enabled": true,
+	}, nil)
+
+	idp.signs(map[string]any{
+		"sub": "okta|grace", "email": "grace@acme.test", "email_verified": true, "given_name": "Grace",
+	})
+
+	// As far as the provider's answer, without going through the callback.
+	starter := s.browser()
+	atProvider := starter.visit(s.root + "/oauth2/sso/acme/start")
+	callback := starter.visit(atProvider.String())
+	if !strings.HasPrefix(callback.String(), s.root+"/oauth2/sso/acme/callback") {
+		t.Fatalf("the provider sent the browser to %s, want the callback", callback)
+	}
+
+	intruder := s.browser()
+	if reason, failed := (ssoResult{landed: intruder.visit(callback.String())}).failed(); !failed || reason != "sso_expired" {
+		t.Fatalf("another browser's callback ended with %q, want sso_expired", reason)
+	}
+	if status := intruder.account(http.MethodGet, "/me", nil, nil); status == http.StatusOK {
+		t.Error("the other browser was signed in by a callback it never started")
+	}
+
+	// Nor did the attempt spend the sign-in.
+	if reason, failed := (ssoResult{landed: starter.visit(callback.String())}).failed(); failed {
+		t.Fatalf("the browser that started the sign-in failed with %q", reason)
+	}
+	if email, _, _ := starter.me(); email != "grace@acme.test" {
+		t.Errorf("signed in as %q, want grace@acme.test", email)
+	}
+}
+
 func TestLiveSSORefusesBadMetadata(t *testing.T) {
 	s := newLiveServer(t)
 	super := s.superAdmin()

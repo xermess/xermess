@@ -30,6 +30,16 @@ func (c *client) loginAnswer(email, password string) (int, loginAnswer) {
 	return status, out
 }
 
+// mfaStatus is what an administrator is told about their own second factor.
+type mfaStatus struct {
+	MFA struct {
+		Enabled           bool   `json:"enabled"`
+		Required          bool   `json:"required"`
+		RecoveryCodesLeft int    `json:"recovery_codes_left"`
+		LastUsedAt        string `json:"last_used_at"`
+	} `json:"mfa"`
+}
+
 func (c *client) state() string {
 	var out struct {
 		State string `json:"state"`
@@ -125,6 +135,13 @@ func TestLiveAdminMFARequired(t *testing.T) {
 	laptop.must(http.StatusOK, http.MethodPost, "/auth/mfa", map[string]string{"code": next}, nil)
 	laptop.must(http.StatusOK, http.MethodGet, "/me", nil, nil)
 
+	// What the authenticator last spent, read before a recovery code is used.
+	var before mfaStatus
+	laptop.must(http.StatusOK, http.MethodGet, "/mfa", nil, &before)
+	if before.MFA.LastUsedAt == "" {
+		t.Fatal("the factor says it has never been used, after two codes from it")
+	}
+
 	// A recovery code works once.
 	phone := s.client()
 	phone.loginAnswer(superEmail, superPassword)
@@ -136,16 +153,19 @@ func TestLiveAdminMFARequired(t *testing.T) {
 		t.Errorf("reusing a recovery code = %d, want 401", status)
 	}
 
-	var status2 struct {
-		MFA struct {
-			Enabled           bool `json:"enabled"`
-			Required          bool `json:"required"`
-			RecoveryCodesLeft int  `json:"recovery_codes_left"`
-		} `json:"mfa"`
-	}
+	var status2 mfaStatus
 	laptop.must(http.StatusOK, http.MethodGet, "/mfa", nil, &status2)
 	if !status2.MFA.Enabled || !status2.MFA.Required || status2.MFA.RecoveryCodesLeft != 9 {
 		t.Errorf("mfa status = %+v", status2.MFA)
+	}
+
+	// A recovery code is not a step of the authenticator, and does not spend
+	// one. Writing the moment it was used into that column would make the step
+	// it fell in look replayed, and the code showing on the administrator's
+	// phone would be refused until the next one appeared.
+	if status2.MFA.LastUsedAt != before.MFA.LastUsedAt {
+		t.Errorf("the last step used went from %q to %q over a recovery code, want it left alone",
+			before.MFA.LastUsedAt, status2.MFA.LastUsedAt)
 	}
 
 	// A super admin resets another administrator's factor: they are signed out
@@ -338,6 +358,10 @@ func TestLiveAdminMFAPolicyIsManaged(t *testing.T) {
 	// which is what the requirement was stopping. The code is the next one:
 	// the one that confirmed the authenticator cannot be used twice.
 	super.must(http.StatusNoContent, http.MethodDelete, "/mfa/totp", map[string]string{
-		"code": codeFor(t, begun.Enrolment.Secret, time.Now().Add(31*time.Second)),
+		// One whole period on, which is always the next step. A second more
+		// than one — which this said — is two steps on whenever the clock is
+		// in the last second of a step, and two is past the skew the server
+		// allows, so the code was refused about once in thirty runs.
+		"code": codeFor(t, begun.Enrolment.Secret, time.Now().Add(totp.Period)),
 	}, nil)
 }

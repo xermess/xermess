@@ -196,14 +196,19 @@ func (s *Store) CreateAuthorizationCode(ctx context.Context, code *model.Authori
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(code).Error)
 }
 
-// ClaimAuthorizationCode marks a code used and returns it. Of two requests
-// presenting the same code at once, one gets the code and the other
-// ErrAlreadyUsed — with the code too, so its tokens can be revoked.
-func (s *Store) ClaimAuthorizationCode(ctx context.Context, hash string, at time.Time) (*model.AuthorizationCode, error) {
+// ClaimAuthorizationCode marks an application's own code used and returns it.
+// Of two requests presenting the same code at once, one claims it and the
+// other gets ErrAlreadyUsed — with the code too, so its tokens can be revoked.
+//
+// A code belonging to another application is never written to, and comes back
+// with ErrAlreadyUsed as well; the caller tells the two apart by the code's
+// ApplicationID. Claiming on the hash alone would let any client that had seen
+// a code spend it out of the owner's hands by presenting it once.
+func (s *Store) ClaimAuthorizationCode(ctx context.Context, hash string, application uuid.UUID, at time.Time) (*model.AuthorizationCode, error) {
 	var codes []model.AuthorizationCode
 	err := s.db.WithContext(ctx).Model(&codes).
 		Clauses(clause.Returning{}).
-		Where("code_hash = ? AND used_at IS NULL", hash).
+		Where("code_hash = ? AND application_id = ? AND used_at IS NULL", hash, application).
 		Update("used_at", at).Error
 	if err != nil {
 		return nil, err

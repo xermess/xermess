@@ -17,6 +17,11 @@ load_env() {
 	local key value
 	while IFS='=' read -r key value || [[ -n $key ]]; do
 		[[ $key =~ ^[A-Za-z_][A-Za-z0-9_]*$ && -z ${!key+x} ]] || continue
+		# A .env saved with Windows line endings ends every value with a
+		# carriage return. It has to go before the quotes, or the closing one
+		# is no longer last — and a DSN carrying it fails to parse with a
+		# message about sslmode, which sends you looking in the wrong file.
+		value="${value%$'\r'}"
 		value="${value%\"}"
 		export "$key=${value#\"}"
 	done <.env

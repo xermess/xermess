@@ -245,6 +245,12 @@ type SocialSpec struct {
 	// the access token, for a provider with no userinfo endpoint (Apple).
 	IdentityInIDToken bool `json:"-"`
 
+	// IDTokenIssuer is the iss such a token has to name. It is filled in only
+	// for the kinds whose identity is read out of an id_token and whose
+	// provider is known in advance; a kind configured per installation has no
+	// issuer to be held to, and is not.
+	IDTokenIssuer string `json:"-"`
+
 	// EmailInTokenResponse reads the address from the token response beside
 	// the access token, where the profile endpoint does not give one (VK).
 	EmailInTokenResponse bool `json:"-"`
@@ -324,6 +330,7 @@ var SocialSpecs = []SocialSpec{
 			EmailVerified: "email_verified",
 		},
 		IdentityInIDToken: true,
+		IDTokenIssuer:     "https://appleid.apple.com",
 		// Asking for a name or an address makes Apple post the answer back
 		// instead of redirecting with it in the query.
 		AuthorizeParams: map[string]string{"response_mode": "form_post"},

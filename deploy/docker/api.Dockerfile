@@ -9,6 +9,9 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY migrations ./migrations
+# The shipped translations are a Go package (locales/locales.go) that embeds
+# the JSON beside it, and internal/api/respond imports it.
+COPY locales ./locales
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/xermess ./cmd/xermess
 
