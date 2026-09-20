@@ -289,7 +289,7 @@ func (s *Service) check(ctx context.Context, admin *model.AdminUser, factor *mod
 	now := time.Now()
 
 	if isRecoveryCode(code) {
-		ok, err := s.store.ConsumeRecoveryCode(ctx, factor.ID, hashRecoveryCode(code), now)
+		ok, err := s.store.ConsumeRecoveryCode(ctx, factor.ID, hashRecoveryCode(code))
 		if err != nil {
 			return "", err
 		}
@@ -366,28 +366,63 @@ func (s *Service) secretOf(factor model.MFA) (string, error) {
 
 // Recovery codes look like "k3f9x-q2m7p": ten characters that cannot be
 // confused with each other when read off paper, split in two.
-const recoveryAlphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+const (
+	recoveryAlphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+	// recoveryCodeLetters is how many of them a code is made of, the dash
+	// aside. Ten of this alphabet is a little under fifty bits.
+	recoveryCodeLetters = 10
+)
 
 func newRecoveryCodes() (codes, hashes []string, err error) {
 	for range recoveryCodeCount {
-		var raw [10]byte
-		if _, err := rand.Read(raw[:]); err != nil {
-			return nil, nil, fmt.Errorf("auth: generate recovery code: %w", err)
+		code, err := newRecoveryCode()
+		if err != nil {
+			return nil, nil, err
 		}
 
-		var b strings.Builder
-		for i, v := range raw {
-			if i == 5 {
-				b.WriteByte('-')
-			}
-			b.WriteByte(recoveryAlphabet[int(v)%len(recoveryAlphabet)])
-		}
-
-		codes = append(codes, b.String())
-		hashes = append(hashes, hashRecoveryCode(b.String()))
+		codes = append(codes, code)
+		hashes = append(hashes, hashRecoveryCode(code))
 	}
 
 	return codes, hashes, nil
+}
+
+// newRecoveryCode is one code, every letter as likely as every other.
+//
+// Taking a random byte modulo the alphabet would not be: 256 is not a whole
+// number of alphabets, it is eight of them and eight bytes over, so those
+// eight bytes would fall on the first eight letters and make them a ninth
+// more common than the rest. That is not much — it takes a fraction of a bit
+// off a code worth about fifty — but it is free to do without, and a biased
+// alphabet is the kind of thing that is copied into somewhere it does matter.
+// Bytes past the last whole alphabet are thrown away and another asked for.
+func newRecoveryCode() (string, error) {
+	// 248: the last byte value that divides into whole alphabets.
+	const whole = 256 - 256%len(recoveryAlphabet)
+
+	letters := make([]byte, 0, recoveryCodeLetters)
+
+	for len(letters) < recoveryCodeLetters {
+		var batch [recoveryCodeLetters]byte
+		if _, err := rand.Read(batch[:]); err != nil {
+			return "", fmt.Errorf("auth: generate recovery code: %w", err)
+		}
+
+		for _, v := range batch {
+			if int(v) >= whole {
+				continue
+			}
+
+			letters = append(letters, recoveryAlphabet[int(v)%len(recoveryAlphabet)])
+			if len(letters) == recoveryCodeLetters {
+				break
+			}
+		}
+	}
+
+	half := recoveryCodeLetters / 2
+
+	return string(letters[:half]) + "-" + string(letters[half:]), nil
 }
 
 // normaliseRecoveryCode is a recovery code as it is compared: lower case, with
@@ -397,7 +432,7 @@ func normaliseRecoveryCode(code string) string {
 }
 
 func isRecoveryCode(code string) bool {
-	return len(normaliseRecoveryCode(code)) == 10
+	return len(normaliseRecoveryCode(code)) == recoveryCodeLetters
 }
 
 func hashRecoveryCode(code string) string {

@@ -521,6 +521,160 @@ func TestLiveOAuthAuthorizationCodeFlow(t *testing.T) {
 	}
 }
 
+// A refresh that narrows the scope past offline_access still spends the token
+// it was given. Leaving it usable would be a way to hold a stolen refresh
+// token for ever: a fresh access token every time, and the reuse detection
+// never reached.
+func TestLiveOAuthRefreshRotatesEvenWhenScopeNarrows(t *testing.T) {
+	f := newOAuthFixture(t)
+	b := f.s.browser()
+
+	verifier, challenge := pkce(t)
+	back := f.signIn(b, challenge)
+
+	tokens := f.exchange(back.Query().Get("code"), verifier)
+	first := tokens.str("refresh_token")
+	if tokens.status != http.StatusOK || first == "" {
+		t.Fatalf("exchange = %d %v", tokens.status, tokens.body)
+	}
+
+	// openid alone: a subset of what was granted, and without offline_access.
+	narrowed := f.token("/oauth2/token", f.clientID, f.clientSecret, url.Values{
+		"grant_type":    {"refresh_token"},
+		"refresh_token": {first},
+		"scope":         {"openid"},
+	})
+	if narrowed.status != http.StatusOK {
+		t.Fatalf("narrowed refresh = %d %v", narrowed.status, narrowed.body)
+	}
+	if scope := strings.Fields(narrowed.str("scope")); slices.Contains(scope, "offline_access") {
+		t.Fatalf("scope = %v, want offline_access narrowed away", scope)
+	}
+
+	next := narrowed.str("refresh_token")
+	if next == "" || next == first {
+		t.Fatalf("narrowed refresh returned %q, want a rotated token", next)
+	}
+
+	// The token it replaced is spent, and presenting it again takes the family
+	// with it — the new one included.
+	replay := f.token("/oauth2/token", f.clientID, f.clientSecret, url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {first},
+	})
+	if replay.status != http.StatusBadRequest || replay.str("error") != "invalid_grant" {
+		t.Errorf("replayed refresh token = %d %v, want invalid_grant", replay.status, replay.body)
+	}
+
+	after := f.token("/oauth2/token", f.clientID, f.clientSecret, url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {next},
+	})
+	if after.status != http.StatusBadRequest {
+		t.Errorf("refresh after a replay = %d %v, want the family revoked", after.status, after.body)
+	}
+}
+
+// A code is spent by the client it was issued to and by nobody else — and an
+// attempt by another client leaves it as it was, rather than burning it. A code
+// can leak into a Referer header, a proxy log or an open redirect, and anyone
+// holding one could otherwise deny the sign-in with a single request.
+func TestLiveOAuthAnotherClientCannotSpendACode(t *testing.T) {
+	f := newOAuthFixture(t)
+	b := f.s.browser()
+
+	rivalID, rivalSecret, _ := f.register(map[string]any{
+		"name": "Rival", "type": "web",
+		"grant_types":   []string{"authorization_code"},
+		"redirect_uris": []string{"https://rival.example.com/callback"},
+		"scopes":        []string{"openid"},
+	})
+
+	verifier, challenge := pkce(t)
+	code := f.signIn(b, challenge).Query().Get("code")
+	if code == "" {
+		t.Fatal("no code came back from the sign-in")
+	}
+
+	stolen := f.token("/oauth2/token", rivalID, rivalSecret, url.Values{
+		"grant_type":    {"authorization_code"},
+		"code":          {code},
+		"redirect_uri":  {shopRedirect},
+		"code_verifier": {verifier},
+	})
+	if stolen.status != http.StatusBadRequest || stolen.str("error") != "invalid_grant" {
+		t.Fatalf("another client's exchange = %d %v, want invalid_grant", stolen.status, stolen.body)
+	}
+
+	// Untouched: the client it belongs to still gets its tokens.
+	tokens := f.exchange(code, verifier)
+	if tokens.status != http.StatusOK || tokens.str("access_token") == "" {
+		t.Fatalf("exchange after another client tried = %d %v", tokens.status, tokens.body)
+	}
+}
+
+// The logout endpoint is a plain GET, so anybody can put it in a link and get
+// somebody else to follow it. A request that was refused, or that names
+// another user, must leave the reader signed in — cookie included.
+func TestLiveOAuthLogoutLeavesOtherPeoplesSessionsAlone(t *testing.T) {
+	f := newOAuthFixture(t)
+	b := f.s.browser()
+
+	verifier, challenge := pkce(t)
+	tokens := f.exchange(f.signIn(b, challenge).Query().Get("code"), verifier)
+	if tokens.status != http.StatusOK {
+		t.Fatalf("exchange = %d %v", tokens.status, tokens.body)
+	}
+
+	signedIn := func() bool {
+		return b.account(http.MethodGet, "/me", nil, nil) == http.StatusOK
+	}
+	if !signedIn() {
+		t.Fatal("the browser is not signed in to start with")
+	}
+
+	// A hint this server never signed is refused, and the reader stays in.
+	refused := b.visit(f.s.root + "/oauth2/logout?" + url.Values{"id_token_hint": {"not.a.token"}}.Encode())
+	if !strings.HasPrefix(refused.String(), testAccountURL+"/error") {
+		t.Errorf("a made-up hint led to %s, want the error page", refused)
+	}
+	if !signedIn() {
+		t.Fatal("a made-up hint signed the reader out")
+	}
+
+	// Somebody else's ID token, signed by this server and perfectly valid, is
+	// not about this browser either.
+	stranger := f.s.browser()
+	strangerVerifier, strangerChallenge := pkce(t)
+	f.super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
+		"email": "grace@example.com", "first_name": "Grace",
+		"password": "grace-password-1", "confirm_password": "grace-password-1",
+		"email_verified": true,
+	}, nil)
+
+	login := stranger.visit(f.authorizeURL(strangerChallenge, nil))
+	var out struct {
+		RedirectTo string `json:"redirect_to"`
+	}
+	stranger.account(http.MethodPost, "/login", map[string]string{
+		"request": login.Query().Get("request"), "email": "grace@example.com", "password": "grace-password-1",
+	}, &out)
+	back, _ := url.Parse(out.RedirectTo)
+	theirs := f.exchange(back.Query().Get("code"), strangerVerifier)
+	if theirs.str("id_token") == "" {
+		t.Fatalf("the stranger got no ID token: %v", theirs.body)
+	}
+
+	b.visit(f.s.root + "/oauth2/logout?" + url.Values{"id_token_hint": {theirs.str("id_token")}}.Encode())
+	if !signedIn() {
+		t.Fatal("a logout naming another user signed this browser out")
+	}
+
+	// The reader's own ID token still signs the reader out.
+	b.visit(f.s.root + "/oauth2/logout?" + url.Values{"id_token_hint": {tokens.str("id_token")}}.Encode())
+	if signedIn() {
+		t.Error("a logout with the reader's own ID token left them signed in")
+	}
+}
+
 func TestLiveOAuthRefusesUntrustedRequests(t *testing.T) {
 	f := newOAuthFixture(t)
 	b := f.s.browser()
@@ -560,6 +714,23 @@ func TestLiveOAuthRefusesUntrustedRequests(t *testing.T) {
 	res.Body.Close()
 	if res.StatusCode != http.StatusBadRequest || !strings.Contains(body["error_description"], "x-www-form-urlencoded") {
 		t.Errorf("JSON token request = %d %v", res.StatusCode, body)
+	}
+
+	// A body far larger than anything this server takes is refused outright,
+	// rather than read into memory first.
+	huge, err := http.NewRequest(http.MethodPost, f.s.root+"/api/v1/account/login", strings.NewReader(strings.Repeat("a", 2<<20)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	huge.Header.Set("Content-Type", "application/json")
+
+	oversized, err := http.DefaultClient.Do(huge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oversized.Body.Close()
+	if oversized.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("a two-megabyte body = %d, want 413", oversized.StatusCode)
 	}
 
 	// A user without the application's required role is turned away at
@@ -620,9 +791,21 @@ func TestLiveOAuthClientCredentialsRevokeAndIntrospect(t *testing.T) {
 		t.Errorf("introspect refresh token = %v", refresh.body)
 	}
 
-	// Another client may not see or revoke it.
+	// Another client may not see or revoke it. A signed access token verifies
+	// for anyone, so this is the only thing keeping one client from reading
+	// the subject, the scope and the roles out of another client's token.
+	if other := f.token("/oauth2/introspect", clientID, secret, url.Values{"token": {web.str("access_token")}}); other.body["active"] != false || other.body["sub"] != nil {
+		t.Errorf("another client's introspection of an access token = %v", other.body)
+	}
+
 	if other := f.token("/oauth2/introspect", clientID, secret, url.Values{"token": {web.str("refresh_token")}}); other.body["active"] != false {
 		t.Errorf("another client's introspection of a refresh token = %v", other.body)
+	}
+
+	// Its own token it may still read: the check is on whose token it is, not
+	// on introspection itself.
+	if own := f.token("/oauth2/introspect", clientID, secret, url.Values{"token": {tokens.str("access_token")}}); own.body["active"] != true || own.body["sub"] != clientID {
+		t.Errorf("a client's introspection of its own token = %v", own.body)
 	}
 
 	if revoked := f.token("/oauth2/revoke", f.clientID, f.clientSecret, url.Values{"token": {web.str("refresh_token")}}); revoked.status != http.StatusOK {
@@ -631,6 +814,39 @@ func TestLiveOAuthClientCredentialsRevokeAndIntrospect(t *testing.T) {
 
 	if after := f.token("/oauth2/token", f.clientID, f.clientSecret, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {web.str("refresh_token")}}); after.str("error") != "invalid_grant" {
 		t.Errorf("refresh after revoke = %d %v", after.status, after.body)
+	}
+}
+
+// Every sign-in writes the User-Agent to the session row, cut to fit the
+// column. The header is whatever the caller sent, so the cut has to leave
+// something the database will take: through the middle of a two-byte letter it
+// does not, and the sign-in fails rather than the name it was carrying.
+func TestLiveAccountSignsInWithAnAwkwardUserAgent(t *testing.T) {
+	f := newOAuthFixture(t)
+
+	body, err := json.Marshal(map[string]string{"email": adaEmail, "password": adaPassword})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, f.s.root+"/api/v1/account/login", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// Longer than the column, in letters of two bytes each — so the limit
+	// falls inside one — and with a byte that is not UTF-8 at all.
+	req.Header.Set("User-Agent", strings.Repeat("\u044f", 200)+"\xff")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		answer, _ := io.ReadAll(res.Body)
+		t.Fatalf("sign-in with an awkward User-Agent = %d %s, want 200", res.StatusCode, answer)
 	}
 }
 

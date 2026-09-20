@@ -6,6 +6,9 @@ APPS    := console id
 PKGS    := ./cmd/... ./internal/... ./migrations/...
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMPOSE := docker compose -f deploy/compose.yaml
+# The same stack on one machine: .localhost hostnames, Caddy's own CA. An
+# explicit -f means compose picks up no override on its own, so it is named.
+COMPOSE_LOCAL := $(COMPOSE) -f deploy/compose.local.yaml
 
 # `make full-start prod` and `make full-start -- --prod` both select prod; make
 # itself rejects a bare `--prod` as one of its own options.
@@ -14,7 +17,8 @@ MODE ?= $(if $(filter prod --prod,$(MAKECMDGOALS)),prod,dev)
 .DEFAULT_GOAL := help
 .PHONY: help setup full-start dev prod --dev --prod run build test test-integration check \
 	migrate-up migrate-down migrate-status migrate-new db-create db-reset db-psql \
-	web-check web-build deploy-build deploy-up deploy-down deploy-logs clean
+	web-check web-build deploy-build deploy-up deploy-down deploy-logs \
+	deploy-local deploy-local-down deploy-local-logs clean
 
 help: ## Show this help
 	@awk -F ':.*## ' '/^## / {printf "\n\033[1m%s\033[0m\n", substr($$0, 4)} /^[a-z -]+:.*## / {printf "  \033[36m%-28s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -94,6 +98,15 @@ deploy-down: ## Stop the production stack
 
 deploy-logs: ## Follow the API's logs in the production stack
 	$(COMPOSE) logs -f api
+
+deploy-local: ## Start the whole stack on this machine — https://id.localhost
+	@VERSION=$(VERSION) scripts/deploy-local.sh
+
+deploy-local-down: ## Stop the local stack and drop its database
+	$(COMPOSE_LOCAL) down -v
+
+deploy-local-logs: ## Follow the API's logs in the local stack
+	$(COMPOSE_LOCAL) logs -f api
 
 clean: ## Remove build output and logs
 	rm -rf bin .logs $(foreach app,$(APPS),web/$(app)/build web/$(app)/.svelte-kit)

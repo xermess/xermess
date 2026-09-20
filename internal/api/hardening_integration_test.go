@@ -84,6 +84,33 @@ func TestLiveCookieAPIsRefuseOtherOrigins(t *testing.T) {
 	}
 }
 
+// The provider's own endpoints have a limit of their own, far looser than the
+// sign-in pages'. An application's backend may be exchanging codes for a whole
+// company from one address, so the two budgets are separate and this one is
+// generous; what it stops is a caller asking for ever, not a busy client.
+func TestLiveTokenEndpointHasItsOwnRateLimit(t *testing.T) {
+	s := newLiveServerLimited(t, 1)
+
+	form := map[string]string{"Content-Type": "application/x-www-form-urlencoded"}
+	body := "grant_type=client_credentials&client_id=nobody&client_secret=nothing"
+
+	for i := range tokenLimitMultiple {
+		if status := raw(t, http.MethodPost, s.root+"/oauth2/token", body, form); status != http.StatusUnauthorized {
+			t.Fatalf("attempt %d = %d, want 401 inside the limit", i+1, status)
+		}
+	}
+
+	if status := raw(t, http.MethodPost, s.root+"/oauth2/token", body, form); status != http.StatusTooManyRequests {
+		t.Errorf("attempt %d = %d, want 429", tokenLimitMultiple+1, status)
+	}
+
+	// Spending that budget did not spend the sign-in pages': they count apart.
+	signIn := `{"email":"nobody@example.com","password":"guess-password"}`
+	if status := raw(t, http.MethodPost, s.root+"/api/v1/account/login", signIn, map[string]string{"Content-Type": "application/json"}); status != http.StatusUnauthorized {
+		t.Errorf("signing in after the token endpoint's limit = %d, want 401", status)
+	}
+}
+
 // One address guessing across accounts is slowed down, whatever the account.
 func TestLiveSignInIsRateLimited(t *testing.T) {
 	s := newLiveServerLimited(t, 3)

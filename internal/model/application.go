@@ -35,7 +35,8 @@ type Application struct {
 	Description string          `gorm:"size:255" json:"description"`
 	Type        ApplicationType `gorm:"type:varchar(16);not null;index" json:"type"`
 
-	// LogoURI and ClientURI are shown on the sign-in and consent pages.
+	// LogoURI and ClientURI are shown on the sign-in pages. There is no
+	// consent page: see the note on asking in README.md.
 	LogoURI   string `gorm:"size:512" json:"logo_uri"`
 	ClientURI string `gorm:"size:512" json:"client_uri"`
 

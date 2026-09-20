@@ -26,7 +26,11 @@ type MFA struct {
 	RecoveryCodes []string `gorm:"serializer:json" json:"-"`
 
 	ConfirmedAt *time.Time `json:"confirmed_at,omitempty"`
-	LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
+	// LastUsedAt is the start of the last TOTP step this factor accepted, so
+	// that step can be read back exactly (UsedStep) and never accepted twice.
+	// It is not a note of when the factor was last used by any means: a
+	// recovery code leaves it alone, or the step just gone would look spent.
+	LastUsedAt *time.Time `json:"last_used_at,omitempty"`
 }
 
 // TableName pins the table name.

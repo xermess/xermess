@@ -65,6 +65,18 @@ import (
 	"xermess/internal/store"
 )
 
+// tokenLimitMultiple is how much looser the provider's own endpoints are held
+// than the sign-in pages.
+//
+// They need a limit — nothing else stops a caller hammering the token endpoint
+// for as long as it likes, and each attempt costs a few queries — but not the
+// same one. A sign-in comes from the person's own browser, one address per
+// person; a token request comes from an application's backend, which may be
+// exchanging codes and refreshing for a whole company from one address. Held
+// to the sign-in rate, that backend would stop working, which is a worse
+// failure than the one being prevented. Zero still turns every limit off.
+const tokenLimitMultiple = 10
+
 // NewPublic builds the public server: the provider, the account API, and a
 // health check. `provider` is built by the caller because building it reads
 // the signing keys from the database. `shared` is the Redis the rate limit
@@ -79,6 +91,7 @@ func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shar
 		oauth:   oauth.New(provider, log, cfg.SecureUserCookies),
 		account: account.New(provider, log, cfg.SecureUserCookies),
 		limit:   ratelimit.New(cfg.RateLimit).Shared(shared, "public").Middleware(),
+		tokens:  ratelimit.New(cfg.RateLimit*tokenLimitMultiple).Shared(shared, "token").Middleware(),
 		csrf:    csrf.New(allowed(cfg.AccountURL, cfg.CORSOrigins)),
 	})
 
@@ -171,7 +184,10 @@ type publicHandlers struct {
 	oauth   *oauth.Handler
 	account *account.Handler
 	limit   gin.HandlerFunc
-	csrf    gin.HandlerFunc
+	// tokens is the limit on the provider's own endpoints, which is not the
+	// one the sign-in pages are held to; see tokenLimitMultiple.
+	tokens gin.HandlerFunc
+	csrf   gin.HandlerFunc
 }
 
 type adminHandlers struct {
@@ -209,13 +225,17 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	r.GET(oidc.PathJWKS, h.oauth.JWKS)
 	r.GET(oidc.PathAuthorize, h.oauth.Authorize)
 	r.POST(oidc.PathAuthorize, h.oauth.Authorize)
-	r.POST(oidc.PathToken, h.oauth.Token)
+	// The three that take a client's credentials, or a token, are limited per
+	// address: each one reads the database, and nothing else stops a caller
+	// asking for ever. The limit is its own, and a loose one — see
+	// tokenLimitMultiple.
+	r.POST(oidc.PathToken, h.tokens, h.oauth.Token)
 	r.GET(oidc.PathUserInfo, h.oauth.UserInfo)
 	r.POST(oidc.PathUserInfo, h.oauth.UserInfo)
 	r.GET(oidc.PathLogout, h.oauth.Logout)
 	r.POST(oidc.PathLogout, h.oauth.Logout)
-	r.POST(oidc.PathRevoke, h.oauth.Revoke)
-	r.POST(oidc.PathIntrospect, h.oauth.Introspect)
+	r.POST(oidc.PathRevoke, h.tokens, h.oauth.Revoke)
+	r.POST(oidc.PathIntrospect, h.tokens, h.oauth.Introspect)
 
 	// Signing in with an account somewhere else. The callback answers POST
 	// as well, because Apple posts its answer rather than redirecting with

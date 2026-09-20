@@ -99,9 +99,17 @@ func (f *socialFixture) user(t *testing.T, verified bool) {
 }
 
 // signInThere walks the browser through the provider's own sign-in, the way a
-// person would: to the provider, in with a password there, and back to the
-// callback. It returns where the callback sent the browser afterwards.
+// person would: to the provider, in with a password there, and back through
+// the callback. It returns where the callback sent the browser afterwards.
 func (f *socialFixture) signInThere(t *testing.T, b *browser, start string) *url.URL {
+	t.Helper()
+
+	return b.visit(f.atCallback(t, b, start))
+}
+
+// atCallback walks the browser as far as the provider's answer — the callback
+// address, with a code — without going through it.
+func (f *socialFixture) atCallback(t *testing.T, b *browser, start string) string {
 	t.Helper()
 
 	// To the provider — which is this server's authorization endpoint — and
@@ -135,7 +143,37 @@ func (f *socialFixture) signInThere(t *testing.T, b *browser, start string) *url
 		t.Fatalf("the provider sent the browser to %s, want the callback", result.RedirectTo)
 	}
 
-	return b.visit(result.RedirectTo)
+	return result.RedirectTo
+}
+
+// A provider's answer signs in the browser that started the sign-in and no
+// other. The state goes to the provider and comes back in the address, so
+// whoever starts a sign-in of their own could otherwise hand the finished
+// address to somebody else's browser and leave it signed in as them — and
+// everything that person did next would go into the attacker's account.
+func TestLiveSocialCallbackOnlySignsInTheBrowserThatStarted(t *testing.T) {
+	f := newSocialFixture(t, nil)
+	f.user(t, true)
+
+	starter := f.s.browser()
+	callback := f.atCallback(t, starter, f.s.root+"/oauth2/social/"+f.slug+"/start")
+
+	intruder := f.s.browser()
+	if landed := intruder.visit(callback); landed.Query().Get("reason") != "social_expired" {
+		t.Fatalf("another browser's callback landed on %s, want social_expired", landed)
+	}
+	if status := intruder.account(http.MethodGet, "/me", nil, nil); status == http.StatusOK {
+		t.Error("the other browser was signed in by a callback it never started")
+	}
+
+	// Nor did the attempt spend the sign-in: the browser that started it
+	// still finishes.
+	if landed := starter.visit(callback); landed.Query().Get("reason") != "" {
+		t.Fatalf("the browser that started the sign-in landed on %s", landed)
+	}
+	if status := starter.account(http.MethodGet, "/me", nil, nil); status != http.StatusOK {
+		t.Errorf("GET /me = %d, want the browser that started the sign-in signed in", status)
+	}
 }
 
 // A user who already has an account here signs in with the provider: the

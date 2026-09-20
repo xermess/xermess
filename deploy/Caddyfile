@@ -19,6 +19,14 @@
 		-Server
 	}
 	encode zstd gzip
+
+	# Nothing either site takes is a file: every request body is a form or a
+	# JSON document, and the largest of them — a language imported on the
+	# console's Languages page — is tens of kilobytes. A body past this is
+	# refused here rather than held in the API's memory.
+	request_body {
+		max_size 1MB
+	}
 }
 
 id.mywebsite.com {

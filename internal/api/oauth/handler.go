@@ -80,9 +80,11 @@ func (h *Handler) Authorize(c *gin.Context) {
 	c.Redirect(http.StatusFound, location)
 }
 
-// SocialStart sends the browser to a provider to sign in there.
+// SocialStart sends the browser to a provider to sign in there, leaving the
+// sign-in's state with the browser so the callback can tell this browser's
+// answer from one somebody else's sign-in produced.
 func (h *Handler) SocialStart(c *gin.Context) {
-	location, err := h.provider.StartSocial(
+	location, state, err := h.provider.StartSocial(
 		c.Request.Context(),
 		c.Param("slug"),
 		c.Query("request"),
@@ -92,6 +94,8 @@ func (h *Handler) SocialStart(c *gin.Context) {
 		h.socialFailed(c, err, "starting a social sign-in failed")
 		return
 	}
+
+	session.SetSignInState(c, state, h.secure)
 
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, location)
@@ -104,6 +108,10 @@ func (h *Handler) SocialStart(c *gin.Context) {
 // for.
 func (h *Handler) SocialCallback(c *gin.Context) {
 	ctx := c.Request.Context()
+
+	// However this ends, the sign-in the browser was carrying is over.
+	binding := session.SignInState(c)
+	session.ClearSignInState(c, h.secure)
 
 	code, state := c.Query("code"), c.Query("state")
 	if c.Request.Method == http.MethodPost {
@@ -121,7 +129,7 @@ func (h *Handler) SocialCallback(c *gin.Context) {
 		return
 	}
 
-	result, err := h.provider.CompleteSocial(ctx, c.Param("slug"), code, state, client(c))
+	result, err := h.provider.CompleteSocial(ctx, c.Param("slug"), code, state, binding, client(c))
 	if err != nil {
 		h.socialFailed(c, err, "completing a social sign-in failed")
 		return
@@ -149,7 +157,7 @@ func (h *Handler) socialFailed(c *gin.Context, err error, note string) {
 // typed on the sign-in page comes along as `login_hint`, so it is not asked
 // for twice.
 func (h *Handler) SSOStart(c *gin.Context) {
-	location, err := h.provider.StartSSO(
+	location, state, err := h.provider.StartSSO(
 		c.Request.Context(),
 		c.Param("slug"),
 		c.Query("request"),
@@ -161,27 +169,35 @@ func (h *Handler) SSOStart(c *gin.Context) {
 		return
 	}
 
+	session.SetSignInState(c, state, h.secure)
+
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, location)
 }
 
 // SSOCallback is where an OpenID Connect provider sends the browser back to.
 func (h *Handler) SSOCallback(c *gin.Context) {
+	binding := session.SignInState(c)
+	session.ClearSignInState(c, h.secure)
+
 	if refused := c.Query("error"); refused != "" {
-		err := h.provider.RefuseSSO(c.Request.Context(), c.Param("slug"), c.Query("state"),
+		err := h.provider.RefuseSSO(c.Request.Context(), c.Param("slug"), c.Query("state"), binding,
 			refused, c.Query("error_description"), client(c))
 		h.ssoFailed(c, err, "recording an identity provider's refusal failed")
 		return
 	}
 
-	result, err := h.provider.CompleteSSOCallback(c.Request.Context(), c.Param("slug"), c.Query("code"), c.Query("state"), client(c))
+	result, err := h.provider.CompleteSSOCallback(c.Request.Context(), c.Param("slug"), c.Query("code"), c.Query("state"), binding, client(c))
 	h.ssoFinished(c, result, err)
 }
 
 // SSOAssertion is the assertion consumer service a SAML provider posts its
 // response to.
 func (h *Handler) SSOAssertion(c *gin.Context) {
-	result, err := h.provider.CompleteSSOAssertion(c.Request.Context(), c.Param("slug"), c.Request, client(c))
+	binding := session.SignInState(c)
+	session.ClearSignInState(c, h.secure)
+
+	result, err := h.provider.CompleteSSOAssertion(c.Request.Context(), c.Param("slug"), c.Request, binding, client(c))
 	h.ssoFinished(c, result, err)
 }
 
@@ -267,13 +283,18 @@ func (h *Handler) Logout(c *gin.Context) {
 		return
 	}
 
-	location, err := h.provider.Logout(c.Request.Context(), params, cookie(c), client(c))
+	location, signedOut, err := h.provider.Logout(c.Request.Context(), params, cookie(c), client(c))
 	if err != nil {
 		h.serverError(c, err, "logout failed")
 		return
 	}
 
-	session.ClearUser(c, h.secure)
+	// Only a request that was about this browser's session clears its cookie.
+	// Anyone can put this address in a link, and a link that was refused — or
+	// that named somebody else — must leave the reader signed in.
+	if signedOut {
+		session.ClearUser(c, h.secure)
+	}
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, location)
 }

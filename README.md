@@ -265,11 +265,27 @@ but give the code; one that has to set an authenticator up can do nothing but
 that (`internal/auth/mfa.go`, `internal/totp`). Token signing keys rotate every
 `XERMESS_KEY_ROTATION_DAYS`, a new one published a day before it signs.
 
+**Nobody is asked to allow an application.** A user already signed in here is
+sent straight back to the application that asked, with a code, and every
+application registered in the panel can have tokens for them. That is the
+right default for the server an organisation runs for its own applications —
+Keycloak does the same with consent off — and it is the whole reason
+registering an application is a panel permission (`applications.write`) rather
+than something a client can do for itself: the decision about which
+applications may act for a user is made once, by an administrator, instead of
+by each user at each sign-in. An installation that means to hand client
+registration out more widely needs the consent step first; it is in the
+catalog as a plan and is not run yet (see **Login flows**).
+
 Every cookie-authenticated API takes changes only from its app's origin
 (`internal/api/csrf`): another origin gets 403, a body that is not JSON 415.
 Sign-in, registration, setup and password resets are rate limited per address
-(`internal/api/ratelimit`). With Redis the count is shared by every server
-process and survives a restart; without it, each process counts on its own.
+(`internal/api/ratelimit`), and so are the token, revocation and introspection
+endpoints — on a budget of their own, ten times looser, because a sign-in comes
+from one person's browser while a token request may come from one backend
+exchanging codes for a whole company. With Redis the count is shared by every
+server process and survives a restart; without it, each process counts on its
+own.
 
 ## API
 
@@ -647,8 +663,10 @@ sign-in and registration pages.
 
 This server is the client in that exchange, not the provider. `/oauth2/social/
 <slug>/start` sends the browser to the provider with `state` and a PKCE
-challenge; `/oauth2/social/<slug>/callback` — which answers POST as well,
-because Apple posts its answer — trades the code for a token, reads the
+challenge, and leaves the same `state` with the browser in a short-lived
+cookie of its own; `/oauth2/social/<slug>/callback` — which answers POST as
+well, because Apple posts its answer — refuses an answer that does not come
+back in the browser that set off, then trades the code for a token, reads the
 identity, and starts the same session a password would have started. From
 there everything is the same: the sign-in under way continues back to the
 application that asked, and a person with no application waiting lands on
@@ -668,7 +686,11 @@ server: the panel is told only whether one is stored. `user_identities` is one
 row per account at a provider, keyed by the provider's own subject, which is
 the only thing that identifies somebody reliably. `social_logins` is a sign-in
 that has gone to a provider and not come back: its `state` hashed, its PKCE
-verifier, and where the person was going, single use and short-lived.
+verifier, and where the person was going, single use and short-lived. The
+other half of the `state` is in the browser rather than the database — the
+`xermess_sign_in_state` cookie — because a state anyone can replay in any
+browser would let whoever finished a sign-in of their own leave somebody else
+signed in as them.
 
 **What is not stored** is what every installation would have to keep the same:
 where Google's endpoints are, what Yandex calls an address, that VK sends the
@@ -757,6 +779,10 @@ domains**.
   presenting it, and a response is only accepted once. Each connection has its
   own RSA key and self-signed certificate, made when it is, which requests
   are signed with when the provider requires it.
+- **Both**: the address has to be at one of the connection's own domains, and
+  the answer has to come back in the browser that started the sign-in — the
+  `state` is left there in a cookie as well as stored, so a finished sign-in
+  cannot be walked through somebody else's browser.
 
 **Setting one up** is the SSO integrations page. A connection starts off; the
 drawer's **Test connection** reads the issuer's discovery or the metadata

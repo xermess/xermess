@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -560,9 +561,31 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) 
 	return nil
 }
 
+// truncate is a value cut to fit a column, in bytes, and left as text a
+// database will take.
+//
+// Two things have to be true of what comes out. It has to be valid UTF-8:
+// what goes through here is a name a provider gave and a User-Agent header,
+// neither of which this server writes, and Postgres refuses a string with a
+// byte sequence that is not UTF-8 — which would fail the sign-in itself,
+// rather than the name it was carrying. And the cut has to land between
+// runes: cutting a 100-byte limit through the middle of a two-byte letter
+// leaves exactly such a sequence, which is how a long enough name in Cyrillic
+// or Japanese would otherwise stop somebody signing in at all.
+//
+// The limit is in bytes while the column counts characters, so this is
+// conservative rather than exact: it can shorten more than it has to, never
+// less.
 func truncate(value string, max int) string {
+	value = strings.ToValidUTF8(value, "")
 	if len(value) <= max {
 		return value
 	}
+
+	// Back up off a continuation byte to the start of the rune it belongs to.
+	for max > 0 && !utf8.RuneStart(value[max]) {
+		max--
+	}
+
 	return value[:max]
 }

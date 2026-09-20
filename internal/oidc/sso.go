@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
@@ -163,18 +164,19 @@ func (s *Service) ssoConnection(ctx context.Context, slug string) (*model.SSOCon
 	return connection, nil
 }
 
-// StartSSO is where to send the browser to sign in through a connection.
-// `loginHint` is the address the person typed, passed on so they are not
-// asked for it again.
-func (s *Service) StartSSO(ctx context.Context, slug, request, next, loginHint string) (string, error) {
+// StartSSO is where to send the browser to sign in through a connection, and
+// the state the caller has to remember in that browser
+// (session.SignInStateCookie). `loginHint` is the address the person typed,
+// passed on so they are not asked for it again.
+func (s *Service) StartSSO(ctx context.Context, slug, request, next, loginHint string) (string, string, error) {
 	connection, err := s.ssoConnection(ctx, slug)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	state, stateHash, err := model.NewSecret()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	login := model.SSOLogin{
@@ -196,14 +198,14 @@ func (s *Service) StartSSO(ctx context.Context, slug, request, next, loginHint s
 		err = ErrSSOUnknown
 	}
 	if err != nil {
-		return "", s.ssoFailed(ctx, connection, Client{}, err)
+		return "", "", s.ssoFailed(ctx, connection, Client{}, err)
 	}
 
 	if err := s.store.CreateSSOLogin(ctx, &login); err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return location, nil
+	return location, state, nil
 }
 
 // ssoPerson is who a provider said somebody is.
@@ -221,8 +223,9 @@ type ssoPerson struct {
 
 // CompleteSSOCallback turns the code an OpenID Connect provider sent the
 // browser back with into a session.
-func (s *Service) CompleteSSOCallback(ctx context.Context, slug, code, state string, client Client) (*SocialResult, error) {
-	connection, login, err := s.takeSSOLogin(ctx, slug, state)
+// `binding` is what the browser kept from StartSSO.
+func (s *Service) CompleteSSOCallback(ctx context.Context, slug, code, state, binding string, client Client) (*SocialResult, error) {
+	connection, login, err := s.takeSSOLogin(ctx, slug, state, binding)
 	if err != nil {
 		return nil, err
 	}
@@ -240,13 +243,14 @@ func (s *Service) CompleteSSOCallback(ctx context.Context, slug, code, state str
 
 // CompleteSSOAssertion turns the response a SAML provider posted to the
 // assertion consumer service into a session.
-func (s *Service) CompleteSSOAssertion(ctx context.Context, slug string, r *http.Request, client Client) (*SocialResult, error) {
+// `binding` is what the browser kept from StartSSO.
+func (s *Service) CompleteSSOAssertion(ctx context.Context, slug string, r *http.Request, binding string, client Client) (*SocialResult, error) {
 	if err := r.ParseForm(); err != nil {
 		return nil, ErrSSOExpired
 	}
 
 	// No relay state is an unsolicited response: refused, whatever it says.
-	connection, login, err := s.takeSSOLogin(ctx, slug, r.PostForm.Get("RelayState"))
+	connection, login, err := s.takeSSOLogin(ctx, slug, r.PostForm.Get("RelayState"), binding)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +272,8 @@ func (s *Service) CompleteSSOAssertion(ctx context.Context, slug string, r *http
 // does not know. The sign-in is used up, and the refusal recorded against the
 // connection, but only for a state this server issued, so a link anybody can
 // make does not write to the activity log.
-func (s *Service) RefuseSSO(ctx context.Context, slug, state, code, description string, client Client) error {
-	connection, _, err := s.takeSSOLogin(ctx, slug, state)
+func (s *Service) RefuseSSO(ctx context.Context, slug, state, binding, code, description string, client Client) error {
+	connection, _, err := s.takeSSOLogin(ctx, slug, state, binding)
 	if err != nil {
 		return err
 	}
@@ -326,7 +330,7 @@ func (s *Service) ssoFailed(ctx context.Context, connection *model.SSOConnection
 
 	reason := failure.err.Error()
 	if len(reason) > 500 {
-		reason = reason[:500] + "…"
+		reason = truncate(reason, 500) + "…"
 	}
 
 	entry := model.AuditLog{
@@ -350,14 +354,17 @@ func (s *Service) ssoFailed(ctx context.Context, connection *model.SSOConnection
 }
 
 // takeSSOLogin is the sign-in a state belongs to, used up, and the enabled
-// connection it was for.
-func (s *Service) takeSSOLogin(ctx context.Context, slug, state string) (*model.SSOConnection, *model.SSOLogin, error) {
+// connection it was for. `binding` is what the browser kept from StartSSO: an
+// answer that comes back in another browser is no answer to this sign-in, and
+// accepting one would let whoever started a sign-in of their own walk somebody
+// else through it and sign that browser in as them.
+func (s *Service) takeSSOLogin(ctx context.Context, slug, state, binding string) (*model.SSOConnection, *model.SSOLogin, error) {
 	connection, err := s.ssoConnection(ctx, slug)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if state == "" {
+	if state == "" || subtle.ConstantTimeCompare([]byte(binding), []byte(state)) != 1 {
 		return nil, nil, ErrSSOExpired
 	}
 

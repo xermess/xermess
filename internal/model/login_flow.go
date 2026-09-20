@@ -295,15 +295,28 @@ func joinSteps(steps []LoginStep) string {
 // PublicLoginOptions is the part of a flow the sign-in pages are told: what
 // they may offer, and nothing about how the server checks any of it.
 type PublicLoginOptions struct {
+	// Steps are the steps that will actually happen, in order. A step the
+	// server does not run yet is left out rather than sent along: to the
+	// pages this is a list of what to put on the screen, and a step nobody
+	// will be asked for has no business in it.
 	Steps              []LoginStep `json:"steps"`
 	AllowRegistration  bool        `json:"allow_registration"`
 	AllowPasswordReset bool        `json:"allow_password_reset"`
 }
 
-// PublicOptions returns those fields.
+// PublicOptions returns those fields. The panel is told about the steps a flow
+// only plans — that is what its Planned list is for — but the sign-in pages
+// are told what happens.
 func (f LoginFlow) PublicOptions() PublicLoginOptions {
+	steps := make([]LoginStep, 0, len(f.Steps))
+	for _, step := range f.Steps {
+		if spec, known := LoginStepSpecOf(step); known && spec.Implemented {
+			steps = append(steps, step)
+		}
+	}
+
 	return PublicLoginOptions{
-		Steps:              append([]LoginStep(nil), f.Steps...),
+		Steps:              steps,
 		AllowRegistration:  f.AllowRegistration,
 		AllowPasswordReset: f.AllowPasswordReset,
 	}

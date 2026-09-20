@@ -113,26 +113,30 @@ func (s *Service) exchangeCode(ctx context.Context, app *model.Application, p To
 	}
 
 	now := s.now()
-	code, err := s.store.ClaimAuthorizationCode(ctx, model.HashSecret(p.Code), now)
+	code, err := s.store.ClaimAuthorizationCode(ctx, model.HashSecret(p.Code), app.ID, now)
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 		return nil, oauthError(ErrInvalidGrant, "the authorization code is not valid")
 	case errors.Is(err, store.ErrAlreadyUsed):
-		// Only the application's own client should hold the code, and it has
-		// already used it: whoever sent it again got it some other way.
-		if code.ApplicationID == app.ID {
-			if err := s.store.RevokeRefreshTokensForCode(ctx, code.ID, now); err != nil {
-				return nil, err
-			}
+		// The code was found but not claimed. Either it belongs to another
+		// client — and it is left as it is, so the client it was issued to can
+		// still spend it — or this client has already used it, and only this
+		// client should ever have held it: whoever sent it again got it some
+		// other way, so what the first exchange issued goes.
+		if code.ApplicationID != app.ID {
+			return nil, oauthError(ErrInvalidGrant, "the authorization code was issued to another client")
+		}
+		if err := s.store.RevokeRefreshTokensForCode(ctx, code.ID, now); err != nil {
+			return nil, err
 		}
 		return nil, oauthError(ErrInvalidGrant, "the authorization code has already been used")
 	case err != nil:
 		return nil, err
 	}
 
+	// The code is this application's: ClaimAuthorizationCode would not have
+	// claimed it otherwise.
 	switch {
-	case code.ApplicationID != app.ID:
-		return nil, oauthError(ErrInvalidGrant, "the authorization code was issued to another client")
 	case !now.Before(code.ExpiresAt):
 		return nil, oauthError(ErrInvalidGrant, "the authorization code has expired")
 	case p.RedirectURI != code.RedirectURI:
@@ -328,7 +332,13 @@ func (s *Service) issue(ctx context.Context, g grant) (*TokenResponse, error) {
 		}
 	}
 
-	if g.user != nil && slices.Contains(strings.Fields(granted), model.ScopeOfflineAccess) {
+	// A refresh rotates whatever it was given, whether or not offline_access
+	// survived the request's scope: the token presented has been spent, and
+	// leaving it usable would let a stolen one be presented again and again —
+	// each time for a fresh access token, and never once reaching the reuse
+	// detection in refresh, which is what the family is for. A grant that is
+	// not a refresh gets a refresh token only when offline_access was granted.
+	if g.user != nil && (g.replaces != nil || slices.Contains(strings.Fields(granted), model.ScopeOfflineAccess)) {
 		token, err := s.newRefreshToken(ctx, g, granted)
 		if err != nil {
 			return nil, err
@@ -512,7 +522,9 @@ func (s *Service) Revoke(ctx context.Context, client ClientAuth, token string) e
 
 // Introspect says whether a token is active and what it carries (RFC 7662).
 // Only confidential clients may ask: introspection tells whoever asks about a
-// user's tokens, so the caller has to prove who it is.
+// user's tokens, so the caller has to prove who it is — and it is only ever
+// told about its own. A token issued to another client reads as inactive,
+// access token and refresh token alike.
 func (s *Service) Introspect(ctx context.Context, client ClientAuth, token string) (map[string]any, error) {
 	app, err := s.authenticate(ctx, client)
 	if err != nil {
@@ -527,7 +539,17 @@ func (s *Service) Introspect(ctx context.Context, client ClientAuth, token strin
 		return inactive, nil
 	}
 
-	if _, raw, err := s.verifyAccessToken(ctx, token); err == nil {
+	if claims, raw, err := s.verifyAccessToken(ctx, token); err == nil {
+		// Whose token it is, the same question the refresh token below is
+		// held to. RFC 7662 section 2.1 leaves the server to decide that a
+		// token is the caller's to ask about, and the answer here carries the
+		// subject, the scope and the user's roles — which is not something
+		// any client that happens to hold a secret may read out of another
+		// client's token.
+		if claims.ClientID != app.ClientID {
+			return inactive, nil
+		}
+
 		out := map[string]any{"active": true, "token_type": "Bearer"}
 		for key, value := range raw {
 			out[key] = value

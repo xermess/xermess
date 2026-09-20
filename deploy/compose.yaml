@@ -1,20 +1,57 @@
-# Production: Postgres, Redis, the API, the id and console apps, and Caddy in front.
-# Only Caddy publishes ports. See README.md.
+# Production: Postgres, Redis, the API, the id and console apps, and Caddy in
+# front. Only Caddy publishes ports. See README.md.
 #
 #   cp deploy/.env.example deploy/.env    # fill it in
 #   make deploy-up
 
 name: xermess
 
-x-web: &web
+# Every container's log is capped, so a server that records each sign-in
+# cannot fill the disk Postgres is on.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+x-hardened: &hardened
   restart: unless-stopped
-  depends_on: [api]
-  networks: [internal]
+  logging: *logging
+  security_opt: ["no-new-privileges:true"]
+
+# The two renderers. They answer on 3000 and reach the API inside the network;
+# nothing outside the network reaches them.
+x-web: &web
+  <<: *hardened
+  depends_on:
+    api: { condition: service_healthy }
+  healthcheck:
+    # Any answer at all means the Node server is up. Whether the API behind it
+    # is healthy is the API's own check to fail, not this one. The header goes
+    # with it because ADDRESS_HEADER below makes it required — the check then
+    # takes the same path a reader's request does.
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/',{redirect:'manual',headers:{'x-forwarded-for':'127.0.0.1'}}).then(()=>process.exit(0),()=>process.exit(1))"]
+    interval: 5s
+    timeout: 3s
+    retries: 12
+
+# What both renderers are told regardless of which app they are. A service's
+# own environment replaces this key rather than adding to it, so each one
+# merges this map in explicitly.
+x-web-env: &webenv
+  # adapter-node reads the caller's address from this header instead of the
+  # socket, which is Caddy. Without it every request the renderer makes on a
+  # reader's behalf reaches the API as Caddy's own address.
+  #
+  # It is then required: adapter-node raises on a request that arrives without
+  # it, and the page answers 503. Caddy's reverse_proxy always sets it, and
+  # neither renderer publishes a port, so nothing else reaches them — but that
+  # is why. Do not put anything in front of these that does not forward it.
+  ADDRESS_HEADER: x-forwarded-for
+  XFF_DEPTH: "1"
 
 services:
   postgres:
+    <<: *hardened
     image: postgres:17-alpine
-    restart: unless-stopped
     environment:
       POSTGRES_DB: xermess
       POSTGRES_USER: xermess
@@ -32,8 +69,8 @@ services:
   # keys that expire — so when memory runs short it drops cache, never the
   # small generation counters that say which cached values are current.
   redis:
+    <<: *hardened
     image: redis:8-alpine
-    restart: unless-stopped
     command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
     healthcheck:
       test: redis-cli ping
@@ -42,11 +79,22 @@ services:
     networks: [internal]
 
   api:
+    <<: *hardened
     build: { context: .., dockerfile: deploy/docker/api.Dockerfile, args: { VERSION: "${VERSION:-dev}" } }
-    restart: unless-stopped
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+    healthcheck:
+      # Both listeners, because Caddy routes to both and either one failing to
+      # come up is a broken deployment.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz && wget -qO- http://127.0.0.1:8081/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    # The server gives requests under way 15s to finish (shutdownGrace in
+    # cmd/xermess/main.go); Docker's own default is 10s, which would SIGKILL
+    # it half way through every deploy.
+    stop_grace_period: 20s
     environment:
       XERMESS_ISSUER: ${PUBLIC_URL:?set PUBLIC_URL in deploy/.env}
       XERMESS_ADMIN_URL: ${ADMIN_URL:?set ADMIN_URL in deploy/.env}
@@ -54,8 +102,16 @@ services:
       XERMESS_DB_DSN: postgres://xermess:${POSTGRES_PASSWORD}@postgres:5432/xermess?sslmode=disable
       XERMESS_REDIS_HOST: redis
       XERMESS_REDIS_PORT: 6379
-      # Caddy and the apps' renderers forward the caller's address from here.
-      XERMESS_TRUSTED_PROXIES: 172.30.0.0/24
+      # A second factor for every administrator. The server's own default is
+      # optional, so that a fresh installation can be got into at all; a
+      # deployment that is going to face the internet starts the other way.
+      # After the first start the setting lives in the database.
+      XERMESS_ADMIN_MFA: ${XERMESS_ADMIN_MFA:-required}
+      XERMESS_RATE_LIMIT: ${XERMESS_RATE_LIMIT:-20}
+      # Only the three containers that forward a caller's address, by their
+      # fixed addresses below — not the whole subnet, which is also Postgres
+      # and Redis.
+      XERMESS_TRUSTED_PROXIES: 172.30.0.2/32,172.30.0.3/32,172.30.0.4/32
       XERMESS_SMTP_HOST: ${XERMESS_SMTP_HOST:-}
       XERMESS_SMTP_PORT: ${XERMESS_SMTP_PORT:-587}
       XERMESS_SMTP_USERNAME: ${XERMESS_SMTP_USERNAME:-}
@@ -65,32 +121,55 @@ services:
 
   id:
     <<: *web
-    build: { context: ../web/id, dockerfile: ../../deploy/docker/web.Dockerfile }
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+      args: { APP: web/id }
     environment:
+      <<: *webenv
       ORIGIN: ${PUBLIC_URL}
       API_URL: http://api:8080
+    networks:
+      internal: { ipv4_address: 172.30.0.3 }
 
   console:
     <<: *web
-    build: { context: ../web/console, dockerfile: ../../deploy/docker/web.Dockerfile }
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+      args: { APP: web/console }
     environment:
+      <<: *webenv
       ORIGIN: ${ADMIN_URL}
       API_URL: http://api:8081
+    networks:
+      internal: { ipv4_address: 172.30.0.4 }
 
   caddy:
+    <<: *hardened
     image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on: [id, console]
+    depends_on:
+      id: { condition: service_healthy }
+      console: { condition: service_healthy }
     ports: ["80:80", "443:443", "443:443/udp"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy:/data
-    networks: [internal]
+      - caddy-config:/config
+    networks:
+      internal: { ipv4_address: 172.30.0.2 }
 
 networks:
   internal:
-    ipam: { config: [{ subnet: 172.30.0.0/24 }] }
+    ipam:
+      config:
+        # The forwarders get .2 to .4 by name above; everything else is handed
+        # an address out of the upper half, so a dynamic one can never land on
+        # an address the API trusts.
+        - subnet: 172.30.0.0/24
+          ip_range: 172.30.0.128/25
 
 volumes:
   postgres:
   caddy:
+  caddy-config:

@@ -128,9 +128,41 @@ func run(log *slog.Logger) error {
 	go st.KeepSwept(ctx, cfg.AuditRetention, log)
 
 	return serve(ctx, log, []*http.Server{
-		{Addr: cfg.Addr, Handler: public, ReadHeaderTimeout: 10 * time.Second},
-		{Addr: cfg.AdminAddr, Handler: admin, ReadHeaderTimeout: 10 * time.Second},
+		listener(cfg.Addr, public),
+		listener(cfg.AdminAddr, admin),
 	})
+}
+
+// What a connection is given before it is cut off. Without these a caller can
+// hold a connection, and the goroutine serving it, for as long as it likes by
+// sending a byte now and then — or by reading an answer that slowly.
+//
+// The header and the body have short limits: no endpoint here takes an upload,
+// and the longest body anybody sends is a language's text.
+//
+// Writing gets much longer because answering can mean calling somebody else.
+// A sign-in through an identity provider reads its discovery document, trades
+// the code at its token endpoint, fetches its keys, and may read its userinfo
+// — four calls of up to socialTimeout each — and a sign-in that has to send a
+// verification email waits for the mail server. Two minutes is well past all
+// of that together, and still a bound where there was none.
+const (
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 30 * time.Second
+	writeTimeout      = 2 * time.Minute
+	idleTimeout       = 2 * time.Minute
+)
+
+// listener is one of the two servers, with the timeouts both are held to.
+func listener(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
 }
 
 // shutdownGrace is how long requests under way get to finish when the process
