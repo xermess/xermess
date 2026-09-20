@@ -78,8 +78,10 @@
 	/* The bar stays put while the page scrolls, so the account menu is always
 	   one click away on a long table. Where to go is the sidebar's job. */
 	header {
-		position: sticky;
+		position: fixed;
 		top: 0;
+		left: 0;
+		right: 0;
 		z-index: 10;
 		display: flex;
 		align-items: center;
@@ -104,12 +106,10 @@
 		transition: border-color var(--speed);
 	}
 
-	/* Beside the sidebar, the block also runs over the header's bottom line,
-	   so the logo and the sections under it are one column with no seam. */
+	/* Beside the sidebar, the block carries the same vertical rule as the
+	   sections below it, so the logo and navigation read as one column. */
 	.brand-column.ruled {
-		position: relative;
-		align-self: flex-start;
-		height: calc(100% + 1px);
+		height: 100%;
 		border-right-color: var(--color-border);
 		background: var(--color-surface);
 	}

@@ -52,13 +52,13 @@
 	   read with room for its columns than centred in a narrow column, and it
 	   runs to the edges rather than sitting in a box. */
 	main {
-		padding: var(--space-4) 0;
+		padding: calc(var(--header-height) + var(--space-4)) 0 var(--space-4);
 	}
 
 	/* The dashboard brings its own sidebar and pads its own content.
 	   .dashboard belongs to a child component, which is why :has has to match
 	   it globally. */
 	main:has(:global(.dashboard)) {
-		padding: 0;
+		padding: var(--header-height) 0 0;
 	}
 </style>

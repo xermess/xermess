@@ -6,9 +6,21 @@
 	box-sizing: border-box;
 }
 
+html,
 body {
 	margin: 0;
 	background: var(--color-body);
+	color-scheme: var(--color-scheme);
+	overscroll-behavior: none;
+}
+
+html {
+	min-height: 100dvh;
+}
+
+body {
+	display: flow-root;
+	min-height: 100dvh;
 	color: var(--color-text);
 	font-family: var(--font-sans);
 	font-size: var(--text-base);

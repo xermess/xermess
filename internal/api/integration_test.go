@@ -624,6 +624,7 @@ type overviewBody struct {
 	SignIns struct {
 		Succeeded int64 `json:"succeeded"`
 		Failed    int64 `json:"failed"`
+		Blocked   int64 `json:"blocked"`
 	} `json:"sign_ins"`
 	Daily []struct {
 		Day      string `json:"day"`
@@ -651,6 +652,20 @@ func TestLiveOverview(t *testing.T) {
 	shop := super.application("shop")
 	super.role("viewer", shop)
 	s.client().login(superEmail, "wrong-password")
+	super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
+		"email": "user@example.com", "password": "user-password-1", "confirm_password": "user-password-1",
+	}, nil)
+	user := s.browser()
+	if status := user.account(http.MethodPost, "/login", map[string]string{
+		"email": "user@example.com", "password": "wrong-password",
+	}, nil); status != http.StatusUnauthorized {
+		t.Fatalf("user login with a wrong password = %d, want 401", status)
+	}
+	if status := user.account(http.MethodPost, "/login", map[string]string{
+		"email": "user@example.com", "password": "user-password-1",
+	}, nil); status != http.StatusOK {
+		t.Fatalf("user login = %d, want 200", status)
+	}
 
 	var got overviewBody
 	super.must(http.StatusOK, http.MethodGet, "/overview", nil, &got)
@@ -662,19 +677,19 @@ func TestLiveOverview(t *testing.T) {
 		t.Errorf("active_sessions = %d, want the super admin's one", got.Counts["active_sessions"])
 	}
 
-	if got.SignIns.Succeeded != 1 || got.SignIns.Failed != 1 {
-		t.Errorf("sign-ins = %+v, want one of each", got.SignIns)
+	if got.SignIns.Succeeded != 2 || got.SignIns.Failed != 2 || got.SignIns.Blocked != 0 {
+		t.Errorf("sign-ins = %+v, want two successes, two failures and no blocked attempts", got.SignIns)
 	}
 
 	if len(got.Daily) != 14 {
 		t.Fatalf("daily = %d days, want 14", len(got.Daily))
 	}
-	if today := got.Daily[13]; today.Events < 4 || today.Failures != 1 {
-		t.Errorf("today = %+v, want every entry so far and the one failure", today)
+	if today := got.Daily[13]; today.Events < 7 || today.Failures != 2 {
+		t.Errorf("today = %+v, want user and admin events plus two failures", today)
 	}
 
-	if len(got.TopActors) != 1 || got.TopActors[0].Actor != superEmail || got.TopActors[0].Events != 2 {
-		t.Errorf("top actors = %+v, want the super admin with two changes and no sign-ins", got.TopActors)
+	if len(got.TopActors) != 1 || got.TopActors[0].Actor != superEmail || got.TopActors[0].Events != 3 {
+		t.Errorf("top actors = %+v, want the super admin with three changes and no sign-ins", got.TopActors)
 	}
 
 	named := map[string]string{}

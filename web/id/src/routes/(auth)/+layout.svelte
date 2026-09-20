@@ -52,7 +52,11 @@
 	.shell {
 		display: grid;
 		grid-template-rows: 1fr auto;
-		min-height: 100dvh;
+		min-height: calc(100dvh - (var(--app-inset) * 2));
+		margin: var(--app-inset);
+		border-radius: var(--app-radius);
+		border: 1px solid var(--color-border);
+		overflow: clip;
 		padding: 0 var(--space-4);
 		background:
 			radial-gradient(
@@ -117,6 +121,10 @@
 	/* On a phone the page itself is the surface. */
 	@media (max-width: 30rem) {
 		.shell {
+			min-height: 100dvh;
+			margin: 0;
+			border-radius: 0;
+			border: 0;
 			background: var(--color-surface);
 		}
 

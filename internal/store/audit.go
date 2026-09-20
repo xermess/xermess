@@ -23,11 +23,15 @@ func (s *Store) AuditLog(ctx context.Context, limit int) ([]model.AuditLog, erro
 	return events, err
 }
 
-// The actions signing in leaves behind, as internal/auth records them.
+// The actions signing in leaves behind, as the admin and account services
+// record them.
 const (
-	actionLogin        = "admin.login"
-	actionLoginFailed  = "admin.login_failed"
-	actionLoginBlocked = "admin.login_blocked"
+	actionLogin            = "admin.login"
+	actionLoginFailed      = "admin.login_failed"
+	actionLoginBlocked     = "admin.login_blocked"
+	actionUserLogin        = "user.login"
+	actionUserLoginFailed  = "user.login_failed"
+	actionUserLoginBlocked = "user.login_blocked"
 )
 
 // Counts are the numbers on the dashboard: how much of everything there is.
@@ -86,19 +90,24 @@ type SignIns struct {
 	Blocked   int64     `json:"blocked"`
 }
 
-// SignInsSince counts the sign-ins that worked, the wrong passwords, and the
-// attempts on accounts that may not sign in, since `since`.
+// SignInsSince counts administrator and user sign-ins that worked, the wrong
+// passwords, and the attempts on accounts that may not sign in, since `since`.
 func (s *Store) SignInsSince(ctx context.Context, since time.Time) (SignIns, error) {
 	out := SignIns{Since: since}
 
 	err := s.db.WithContext(ctx).Raw(`
 		SELECT
-			COUNT(*) FILTER (WHERE action = @login) AS succeeded,
-			COUNT(*) FILTER (WHERE action = @failed) AS failed,
-			COUNT(*) FILTER (WHERE action = @blocked) AS blocked
+			COUNT(*) FILTER (WHERE action IN (@login, @user_login)) AS succeeded,
+			COUNT(*) FILTER (WHERE action IN (@failed, @user_failed)) AS failed,
+			COUNT(*) FILTER (WHERE action IN (@blocked, @user_blocked)) AS blocked
 		FROM audit_logs
-		WHERE created_at >= @since AND action IN (@login, @failed, @blocked)`,
-		map[string]any{"since": since, "login": actionLogin, "failed": actionLoginFailed, "blocked": actionLoginBlocked},
+		WHERE created_at >= @since AND action IN (
+			@login, @failed, @blocked, @user_login, @user_failed, @user_blocked
+		)`,
+		map[string]any{
+			"since": since, "login": actionLogin, "failed": actionLoginFailed, "blocked": actionLoginBlocked,
+			"user_login": actionUserLogin, "user_failed": actionUserLoginFailed, "user_blocked": actionUserLoginBlocked,
+		},
 	).Scan(&out).Error
 
 	return out, err
@@ -123,19 +132,31 @@ func (s *Store) DailyActivity(ctx context.Context, now time.Time, days int) ([]D
 	out := []DayCount{}
 
 	err := s.db.WithContext(ctx).Raw(`
+		WITH activity AS (
+			SELECT
+				date_trunc('day', created_at) AS day,
+				COUNT(*) AS events,
+				COUNT(*) FILTER (WHERE action IN (@failed, @blocked, @user_failed, @user_blocked)) AS failures
+			FROM audit_logs
+			WHERE created_at >= date_trunc('day', CAST(@now AS timestamptz)) - make_interval(days => @back)
+				AND created_at < date_trunc('day', CAST(@now AS timestamptz)) + interval '1 day'
+			GROUP BY date_trunc('day', created_at)
+		)
 		SELECT
 			to_char(d.day, 'YYYY-MM-DD') AS day,
-			COUNT(a.id) AS events,
-			COUNT(a.id) FILTER (WHERE a.action IN (@failed, @blocked)) AS failures
+			COALESCE(a.events, 0) AS events,
+			COALESCE(a.failures, 0) AS failures
 		FROM generate_series(
 			date_trunc('day', CAST(@now AS timestamptz)) - make_interval(days => @back),
 			date_trunc('day', CAST(@now AS timestamptz)),
 			interval '1 day'
 		) AS d(day)
-		LEFT JOIN audit_logs a ON a.created_at >= d.day AND a.created_at < d.day + interval '1 day'
-		GROUP BY d.day
+		LEFT JOIN activity a ON a.day = d.day
 		ORDER BY d.day`,
-		map[string]any{"now": now, "back": days - 1, "failed": actionLoginFailed, "blocked": actionLoginBlocked},
+		map[string]any{
+			"now": now, "back": days - 1, "failed": actionLoginFailed, "blocked": actionLoginBlocked,
+			"user_failed": actionUserLoginFailed, "user_blocked": actionUserLoginBlocked,
+		},
 	).Scan(&out).Error
 
 	return out, err

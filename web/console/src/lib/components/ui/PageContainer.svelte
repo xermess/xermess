@@ -20,10 +20,11 @@
 
 <style>
 	.container {
-		--container-width: 840px;
+		--container-width: 760px;
 
-		box-sizing: content-box;
-		max-width: var(--container-width);
+		box-sizing: border-box;
+		width: min(100%, var(--container-width));
+		max-width: calc(100vw - (var(--page-gutter) * 2));
 		margin-inline: auto;
 		padding-inline: var(--page-gutter);
 		padding-block: var(--space-2) var(--space-6);
@@ -34,6 +35,6 @@
 	}
 
 	.lg {
-		--container-width: 1150px;
+		--container-width: 1080px;
 	}
 </style>

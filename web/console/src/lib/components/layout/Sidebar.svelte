@@ -80,18 +80,22 @@
 
 <style>
 	aside {
-		position: sticky;
+		position: fixed;
 		top: var(--header-height);
+		bottom: 0;
+		left: 0;
+		z-index: 9;
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
 		gap: var(--space-3);
-		height: calc(100dvh - var(--header-height));
+		width: var(--sidebar-width);
 		padding: 8px;
 		border-right: 1px solid var(--color-border);
 		background: var(--color-surface);
 		overflow-x: hidden;
 		overflow-y: auto;
+		overscroll-behavior: contain;
 		scrollbar-width: thin;
 	}
 
@@ -205,7 +209,8 @@
 	   scrollable row above the content. */
 	@media (max-width: 55rem) {
 		aside {
-			z-index: 5;
+			position: static;
+			width: auto;
 			height: auto;
 			padding: 6px var(--space-2);
 			border-right: none;

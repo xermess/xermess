@@ -16,6 +16,8 @@
 	--radius-sm: 6px;
 	--radius-md: 8px;
 	--radius-lg: 14px;
+	--app-radius: 18px;
+	--app-inset: 12px;
 
 	--space-1: 4px;
 	--space-2: 8px;
@@ -56,6 +58,7 @@
 	--shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 6%);
 	--selection: #465a7340;
 
+	--color-scheme: light;
 	color-scheme: light;
 }
 
@@ -86,6 +89,7 @@
 
 	--shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
 
+	--color-scheme: dark;
 	color-scheme: dark;
 }
 
@@ -119,6 +123,7 @@
 
 		--shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
 
+		--color-scheme: dark;
 		color-scheme: dark;
 	}
 }

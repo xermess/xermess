@@ -47,6 +47,7 @@
 	--nav-item-height: 38px;
 	--header-height: 55px;
 	--sidebar-width: 240px;
+	--content-max-width: 1440px;
 	/* How far a page's text is inset. Tables run past it to the edges, the
 	   way PocketBase's do, so the rows meet the sidebar with no gap. */
 	--page-gutter: 20px;
@@ -123,6 +124,7 @@
 	   white: barely there, which is what keeps a long table calm. */
 	--row-hover: #f8f9fa;
 
+	--color-scheme: light;
 	color-scheme: light;
 }
 
@@ -173,6 +175,7 @@
 
 	--row-hover: color-mix(in srgb, var(--color-dark-base), white 6%);
 
+	--color-scheme: dark;
 	color-scheme: dark;
 }
 
@@ -219,6 +222,7 @@
 
 		--row-hover: color-mix(in srgb, var(--color-dark-base), white 6%);
 
+		--color-scheme: dark;
 		color-scheme: dark;
 	}
 }

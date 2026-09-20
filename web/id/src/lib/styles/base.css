@@ -9,11 +9,14 @@
 html,
 body {
 	margin: 0;
-	min-height: 100%;
+	min-height: 100dvh;
+	background: var(--color-body);
+	color-scheme: var(--color-scheme);
+	overscroll-behavior: none;
 }
 
 body {
-	background: var(--color-body);
+	display: flow-root;
 	color: var(--color-text);
 	font-family: var(--font-sans);
 	font-size: var(--text-base);
