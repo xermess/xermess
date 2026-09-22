@@ -28,7 +28,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const saved = event.cookies.get(COOKIES.theme);
 	const theme = saved === 'dark' || saved === 'light' ? saved : null;
 
-	const attributes = theme ? `data-theme="${theme}" style="color-scheme: ${theme}"` : '';
+	const attributes = theme ? `data-theme="${theme}"` : '';
 
 	const response = await resolve(event, {
 		transformPageChunk: ({ html }) =>

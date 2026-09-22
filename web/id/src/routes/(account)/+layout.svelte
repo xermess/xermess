@@ -96,6 +96,7 @@
 		border-bottom: 1px solid var(--color-border);
 		background: color-mix(in srgb, var(--color-surface), transparent 8%);
 		backdrop-filter: blur(10px);
+		overscroll-behavior: none;
 	}
 
 	.bar,
@@ -188,6 +189,7 @@
 		display: flex;
 		gap: var(--space-1);
 		overflow-x: auto;
+		overscroll-behavior: none;
 		scrollbar-width: none;
 	}
 
