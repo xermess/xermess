@@ -95,7 +95,7 @@
 		background: var(--color-surface);
 		overflow-x: hidden;
 		overflow-y: auto;
-		overscroll-behavior: contain;
+		overscroll-behavior: none;
 		scrollbar-width: thin;
 	}
 
@@ -209,14 +209,16 @@
 	   scrollable row above the content. */
 	@media (max-width: 55rem) {
 		aside {
-			position: static;
+			position: sticky;
+			top: var(--header-height);
+			z-index: 9;
 			width: auto;
 			height: auto;
 			padding: 6px var(--space-2);
 			border-right: none;
 			border-bottom: 1px solid var(--color-border);
 			overflow-x: auto;
-			overscroll-behavior-x: contain;
+			overscroll-behavior-x: none;
 		}
 
 		nav,

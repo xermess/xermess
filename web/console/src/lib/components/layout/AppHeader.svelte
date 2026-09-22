@@ -89,6 +89,7 @@
 		padding-right: var(--space-4);
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-surface);
+		overscroll-behavior: none;
 	}
 
 	/* The top of the sidebar's column: exactly as wide, and on the dashboard

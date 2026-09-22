@@ -33,7 +33,8 @@
 	.shell {
 		--sidebar-width: 240px;
 
-		min-height: 100dvh;
+		height: 100dvh;
+		overflow: hidden;
 		transition: --sidebar-width var(--speed-drawer) cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
@@ -52,7 +53,11 @@
 	   read with room for its columns than centred in a narrow column, and it
 	   runs to the edges rather than sitting in a box. */
 	main {
+		height: 100%;
+		overflow-y: auto;
+		overscroll-behavior-y: auto;
 		padding: calc(var(--header-height) + var(--space-4)) 0 var(--space-4);
+		scrollbar-gutter: stable;
 	}
 
 	/* The dashboard brings its own sidebar and pads its own content.
