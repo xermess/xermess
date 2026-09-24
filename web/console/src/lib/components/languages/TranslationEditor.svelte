@@ -8,8 +8,7 @@
 	} from 'svelte-remixicon';
 	import type { LocaleApp } from '$lib/api';
 	import { Alert, Button, Icon, Switch } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
-	import { nest } from '$lib/i18n/flatten';
+	import { nest } from './flatten';
 	import { translationOptions } from '$lib/query';
 	import { download, missingParameters, readTranslationFile } from './translations';
 
@@ -38,8 +37,6 @@
 		draft = $bindable(null),
 		onDirty
 	}: Props = $props();
-
-	const t = useTranslator();
 
 	const saved = createQuery(() => translationOptions(code, app));
 
@@ -104,29 +101,29 @@
 
 		const result = await readTranslationFile(file, saved.data.keys);
 		if (!result.ok) {
-			notice = { tone: 'danger', text: t('languages.import_invalid', { file: file.name }) };
+			notice = {
+				tone: 'danger',
+				text: `${file.name} is not a translation file: it has to be one JSON object of texts by key.`
+			};
 			return;
 		}
 
 		draft = { ...draft, ...result.messages };
 
-		const imported = t('languages.imported', {
-			count: Object.keys(result.messages).length,
-			file: file.name
-		});
+		const imported = `${Object.keys(result.messages).length} texts imported from ${file.name}. Save to keep them.`;
 		notice = {
 			tone: 'success',
 			text:
 				result.skipped > 0
-					? `${imported} ${t('languages.imported_skipped', { count: result.skipped })}`
+					? `${imported} ${`${result.skipped} keys this version does not use were skipped.`}`
 					: imported
 		};
 	}
 
 	/** Every key, translated or not, so the file is also the template for
 	    whoever translates the rest: an empty value is one still to do. It is
-	    nested by screen, the shape of the files under locales/, so it can be
-	    dropped in there as it is. */
+	    nested by namespace, the shape of a merged group under i18n/, so it can
+	    be split into groups before it is dropped in there. */
 	function exportFile() {
 		if (!saved.data) return;
 
@@ -139,22 +136,22 @@
 
 <div class="editor">
 	{#if saved.isPending}
-		<p class="state">{t('languages.loading')}</p>
+		<p class="state">Loading the text…</p>
 	{:else if saved.isError || !saved.data}
-		<Alert>{t('languages.load_failed')}</Alert>
+		<Alert>Could not load the text. Close this and try again.</Alert>
 	{:else}
 		<div class="toolbar">
 			<label class="search">
 				<Icon icon={RiSearchLine} />
 				<input
 					type="search"
-					placeholder={t('languages.search_text')}
+					placeholder="Search keys and text…"
 					bind:value={search}
-					aria-label={t('action.search')}
+					aria-label="Search"
 				/>
 			</label>
 
-			<Switch label={t('languages.only_missing')} bind:checked={onlyMissing} />
+			<Switch label="Only untranslated" bind:checked={onlyMissing} />
 		</div>
 
 		<div class="summary">
@@ -163,7 +160,7 @@
 					<span class="fill" class:whole={done === total} style="--filled: {(done * 100) / total}%"
 					></span>
 				</span>
-				{t('languages.progress', { done, total })}
+				{`${done} of ${total} translated`}
 			</span>
 
 			<span class="files">
@@ -179,12 +176,12 @@
 					/>
 					<Button size="sm" variant="subtle" onclick={() => fileInput?.click()}>
 						<Icon icon={RiUpload2Line} />
-						{t('languages.import')}
+						Import JSON
 					</Button>
 				{/if}
 				<Button size="sm" variant="subtle" onclick={exportFile}>
 					<Icon icon={RiDownload2Line} />
-					{t('languages.export')}
+					Export JSON
 				</Button>
 			</span>
 		</div>
@@ -194,7 +191,7 @@
 		{/if}
 
 		{#if visible.length === 0}
-			<p class="state">{t('languages.no_match')}</p>
+			<p class="state">Nothing matches.</p>
 		{:else}
 			<ol class="keys">
 				{#each visible as key (key)}
@@ -220,7 +217,7 @@
 							{#if lost.length > 0}
 								<small class="warning">
 									<Icon icon={RiErrorWarningLine} />
-									{t('languages.placeholder_missing', { names: lost.join(', ') })}
+									{`Keep ${lost.join(', ')} in the text: it is filled in when the page is shown.`}
 								</small>
 							{/if}
 						</div>

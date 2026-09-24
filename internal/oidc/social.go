@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
+	"xermess/i18n"
 	"xermess/internal/jose"
 	"xermess/internal/model"
 	"xermess/internal/store"
-	"xermess/locales"
 )
 
 // Signing in with an account somewhere else.
@@ -698,7 +698,10 @@ func (s *Service) startSocialSession(
 	request string,
 	client Client,
 ) (*SignInResult, error) {
-	result, err := s.startSession(ctx, user, flow, request, client, "user.login")
+	// Remembered: a sign-in through a provider has no box to tick, and
+	// somebody who has just been sent back from one is not on a machine they
+	// are passing through.
+	result, err := s.startSession(ctx, user, flow, request, true, client, "user.login")
 	if err != nil {
 		return nil, err
 	}
@@ -860,7 +863,7 @@ func (s *Service) SocialErrorPage(err error) string {
 	// `reason` is what the page says, in the reader's language: its
 	// `error.<reason>`. The description is the same sentence in English, for
 	// whoever reads the address rather than the page.
-	description, ok := locales.Text(locales.ID, "error."+reason.Code)
+	description, ok := i18n.Text(i18n.ID, "error."+reason.Code)
 	if !ok {
 		description = reason.message
 	}

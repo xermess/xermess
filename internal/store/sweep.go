@@ -36,6 +36,7 @@ var expiring = []any{
 	&model.UserSession{},
 	&model.PasswordReset{},
 	&model.EmailVerification{},
+	&model.LoginCode{},
 	&model.AdminUserSession{},
 	&model.SocialLogin{},
 	&model.SSOLogin{},

@@ -150,11 +150,43 @@ func toSnake(name string) string {
 	return b.String()
 }
 
-// Flag reads an on-or-off field a request may leave out: the value sent, or
-// `current` when none was — the record's own value on an update, and the
-// default on a create. A plain bool cannot tell "false" from "not sent", and
-// an API client that omits a flag should not switch it off.
+// The four below read one field of a PATCH: the value sent, or `current` when
+// none was — the record's own value on an update, and the default on a
+// create. A plain value cannot tell "false", "" or 0 from "not sent", so a
+// request carries pointers and these turn them back into values.
+//
+// They live here rather than beside each handler because every subject that
+// takes a PATCH needs the same four, and six copies of "if sent == nil" is
+// six places for one of them to start behaving differently.
+
+// Flag reads an on-or-off field. An API client that omits a flag should not
+// switch it off.
 func Flag(sent *bool, current bool) bool {
+	if sent == nil {
+		return current
+	}
+
+	return *sent
+}
+
+// Text reads a field of words, trimmed. A client that does not know about a
+// field should not clear it by not mentioning it.
+func Text(sent *string, current string) string {
+	if sent == nil {
+		return current
+	}
+
+	return strings.TrimSpace(*sent)
+}
+
+// Lower is Text for the fields that are compared, dialled or put in an
+// address rather than read: a host name, an email address, a short name.
+func Lower(sent *string, current string) string {
+	return strings.ToLower(Text(sent, current))
+}
+
+// Number reads a field that counts: a port, a length, a lifetime.
+func Number(sent *int, current int) int {
 	if sent == nil {
 		return current
 	}

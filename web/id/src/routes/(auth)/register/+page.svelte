@@ -65,7 +65,13 @@
 				password,
 				first_name: firstName.trim(),
 				last_name: lastName.trim(),
-				accept_terms: accepted
+				accept_terms: accepted,
+				// Somebody who has just made an account here meant to come
+				// back to it, so the session is remembered where the flow
+				// offers that at all. There is no box to tick: the sign-in
+				// page is where the choice belongs, and a form this long does
+				// not need another line.
+				remember: data.login.allow_remember_me
 			});
 
 			if (result.redirect_to) {

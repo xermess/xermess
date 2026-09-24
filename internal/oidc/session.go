@@ -12,10 +12,10 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"xermess/i18n"
 	"xermess/internal/mail"
 	"xermess/internal/model"
 	"xermess/internal/store"
-	"xermess/locales"
 )
 
 // MinPasswordLength is the shortest password a user may choose, the same as
@@ -37,6 +37,20 @@ type SignInResult struct {
 	// temporary password an administrator chose: they have to replace it
 	// before they are let in, and this is the reset link that lets them.
 	ResetToken string
+	// Code is set, instead of a session, when the login flow has the emailed
+	// code step: the sign-in is held until the code in the message is typed
+	// back (SubmitLoginCode).
+	Code *CodeChallenge
+	// Request is the sign-in under way this belongs to, for the callers that
+	// did not start it and so do not have it: typing a code back names the
+	// sign-in by its own handle, and the application to go on to is the one
+	// the sign-in was held for.
+	Request string
+	// Remember says the cookie should outlive the browser window. The
+	// session itself lasts as long as the flow says either way; this is only
+	// how long the browser keeps hold of it, so a shared machine forgets
+	// whoever used it last when its window closes.
+	Remember bool
 }
 
 // dummyHash is compared against for an unknown address, so it takes as long to
@@ -86,7 +100,7 @@ func (s *Service) SessionFor(ctx context.Context, token string) (*Session, error
 
 // SignIn checks a user's address and password and starts a session, for the
 // sign-in under way that `request` names, if any.
-func (s *Service) SignIn(ctx context.Context, email, password, request string, client Client) (*SignInResult, error) {
+func (s *Service) SignIn(ctx context.Context, email, password, request string, remember bool, client Client) (*SignInResult, error) {
 	now := s.now()
 
 	// A domain that has to sign in through its identity provider has no
@@ -155,7 +169,36 @@ func (s *Service) SignIn(ctx context.Context, email, password, request string, c
 		return &SignInResult{ResetToken: token}, nil
 	}
 
-	return s.startSession(ctx, user, flow, request, client, "user.login")
+	return s.finishSignIn(ctx, user, flow, request, remember, client, "user.login")
+}
+
+// finishSignIn is the end of the ways in that the sign-in page itself drives
+// — a password, a registration. A flow with the emailed code step holds them
+// here and asks for the code; every other flow goes straight to a session.
+//
+// The ways in a provider drove — a social sign-in, an organisation's identity
+// provider — call startSession instead: see internal/oidc/logincode.go for
+// why a code would prove nothing there.
+func (s *Service) finishSignIn(
+	ctx context.Context,
+	user *model.User,
+	flow *model.LoginFlow,
+	request string,
+	remember bool,
+	client Client,
+	action string,
+) (*SignInResult, error) {
+	if !flow.Offers(model.StepEmailCode) {
+		return s.startSession(ctx, user, flow, request, remember, client, action)
+	}
+
+	// A flow that requires a verified address still requires it first: there
+	// is no point emailing a code to an address the flow will not take.
+	if flow.RequireVerifiedEmail && !user.EmailVerified {
+		return s.startSession(ctx, user, flow, request, remember, client, action)
+	}
+
+	return s.sendLoginCode(ctx, user, request, remember, client)
 }
 
 // startSession signs a user in under a login flow's rules: an address it
@@ -167,10 +210,21 @@ func (s *Service) startSession(
 	user *model.User,
 	flow *model.LoginFlow,
 	request string,
+	remember bool,
 	client Client,
 	action string,
 ) (*SignInResult, error) {
 	now := s.now()
+
+	// A closed flow is checked here rather than at each way in, because here
+	// is where they all end: a password, a provider, an organisation's
+	// identity provider, a code, and registering, which finishes with a
+	// session like the rest.
+	if !flow.AllowSignIn {
+		s.record(ctx, user, user.Email, "user.login_blocked", client, map[string]any{"reason": "sign-in is closed"})
+
+		return nil, ErrSignInClosed
+	}
 
 	if flow.RequireVerifiedEmail && !user.EmailVerified {
 		if err := s.sendVerification(ctx, user, request, client); err != nil {
@@ -204,7 +258,12 @@ func (s *Service) startSession(
 
 	s.record(ctx, user, user.Email, action, client, nil)
 
-	return &SignInResult{Session: &Session{Record: record, User: user}, Token: token}, nil
+	return &SignInResult{
+		Session:  &Session{Record: record, User: user},
+		Token:    token,
+		Request:  request,
+		Remember: remember && flow.AllowRememberMe,
+	}, nil
 }
 
 // SignOut ends the session a cookie carries. Signing out twice is not an error.
@@ -235,6 +294,8 @@ type Registration struct {
 	// AcceptedTerms says the person agreed to the application's terms and
 	// privacy policy. It is required when the application links either.
 	AcceptedTerms bool
+	// Remember is the "stay signed in" box, as on the sign-in page.
+	Remember bool
 }
 
 // Register makes an account for a sign-in under way, and signs it in.
@@ -313,7 +374,18 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 
 	s.record(ctx, user, user.Email, "user.registered", client, map[string]any{"application": app.Name})
 
-	return s.startSession(ctx, user, flow, r.Request, client, "user.login")
+	// A link to confirm the address, where the flow asks for one. It does not
+	// hold the account back — RequireVerifiedEmail is what does that, and
+	// startSession below applies it — so a failure to send is logged rather
+	// than refused: the account exists either way, and the link can be sent
+	// again from the sign-in page.
+	if flow.VerifyEmailOnRegister && !user.EmailVerified {
+		if err := s.sendVerification(ctx, user, r.Request, client); err != nil {
+			s.log.Error("sending a verification email failed", "error", err, "user", user.ID)
+		}
+	}
+
+	return s.finishSignIn(ctx, user, flow, r.Request, r.Remember, client, "user.login")
 }
 
 // ForgotPassword sends a reset link to the address, if it has an account that
@@ -382,8 +454,8 @@ func (s *Service) ForgotPassword(ctx context.Context, email, request, language s
 
 	msg := mail.Message{
 		To:      user.Email,
-		Subject: locales.Fill(text["email.reset.subject"], params),
-		Body:    locales.Fill(text["email.reset.body"], params),
+		Subject: i18n.Fill(text["email.reset.subject"], params),
+		Body:    i18n.Fill(text["email.reset.body"], params),
 	}
 
 	s.record(ctx, user, user.Email, "user.password_reset_requested", client, nil)
@@ -482,6 +554,19 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string, cli
 // a reset: they are told it has gone, and a link that failed to go should say
 // so rather than leave them watching an empty inbox.
 func (s *Service) sendVerification(ctx context.Context, user *model.User, request string, client Client) error {
+	return s.mailVerification(ctx, user, "", request, client)
+}
+
+// mailVerification sends one verification link. `newEmail` empty confirms the
+// address the account already has; set, the link is a pending change and goes
+// to that address instead — nobody is sent a link to an address they did not
+// type, and nothing moves until the link is used.
+func (s *Service) mailVerification(
+	ctx context.Context,
+	user *model.User,
+	newEmail, request string,
+	client Client,
+) error {
 	token, hash, err := model.NewSecret()
 	if err != nil {
 		return err
@@ -490,6 +575,7 @@ func (s *Service) sendVerification(ctx context.Context, user *model.User, reques
 	err = s.store.CreateEmailVerification(ctx, &model.EmailVerification{
 		TokenHash: hash,
 		UserID:    user.ID,
+		NewEmail:  newEmail,
 		ExpiresAt: s.now().Add(model.EmailVerificationLifetime),
 	})
 	if err != nil {
@@ -505,9 +591,16 @@ func (s *Service) sendVerification(ctx context.Context, user *model.User, reques
 		request = ""
 	}
 
+	// The link goes where the address is being proved: the account's own, or
+	// the one somebody is moving to.
+	to := user.Email
+	if newEmail != "" {
+		to = newEmail
+	}
+
 	params := map[string]any{
 		"app":   name,
-		"email": user.Email,
+		"email": to,
 		"link":  withQuery(s.accountURL+PageVerify, url.Values{"token": {token}, "request": {request}}),
 		"hours": int(model.EmailVerificationLifetime.Hours()),
 	}
@@ -516,15 +609,15 @@ func (s *Service) sendVerification(ctx context.Context, user *model.User, reques
 	defer cancel()
 
 	err = s.mail.Send(sendCtx, mail.Message{
-		To:      user.Email,
-		Subject: locales.Fill(text["email.verify.subject"], params),
-		Body:    locales.Fill(text["email.verify.body"], params),
+		To:      to,
+		Subject: i18n.Fill(text["email.verify.subject"], params),
+		Body:    i18n.Fill(text["email.verify.body"], params),
 	})
 	if err != nil {
 		return fmt.Errorf("send the verification email: %w", err)
 	}
 
-	s.record(ctx, user, user.Email, "user.email_verification_sent", client, nil)
+	s.record(ctx, user, to, "user.email_verification_sent", client, nil)
 
 	return nil
 }
@@ -546,9 +639,14 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) 
 		return ErrVerificationInvalid
 	}
 
-	if err := s.store.VerifyEmail(ctx, verification, s.now()); errors.Is(err, store.ErrAlreadyUsed) {
+	err = s.store.VerifyEmail(ctx, verification, s.now())
+	switch {
+	case errors.Is(err, store.ErrAlreadyUsed):
 		return ErrVerificationInvalid
-	} else if err != nil {
+	case errors.Is(err, store.ErrDuplicate):
+		// Somebody took the address between the link being sent and used.
+		return ErrEmailTaken
+	case err != nil:
 		return err
 	}
 
@@ -556,7 +654,51 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) 
 	if err != nil {
 		return err
 	}
-	s.record(ctx, user, user.Email, "user.email_verified", client, nil)
+
+	action := "user.email_verified"
+	if verification.IsChange() {
+		action = "user.email_changed"
+	}
+	s.record(ctx, user, user.Email, action, client, nil)
+
+	return nil
+}
+
+// RequestEmailChange starts moving a user to another sign-in address: the
+// link goes to the address they typed, and the account only moves when it is
+// used. Nothing is written to the account here.
+//
+// It answers the same whether or not the address is already somebody else's,
+// so the account page cannot be used to find out which addresses have
+// accounts. An address that is taken is caught when the link is used, where
+// the person holding it has already proved they read that inbox.
+func (s *Service) RequestEmailChange(ctx context.Context, session *Session, email string, client Client) error {
+	flow, err := s.flowFor(ctx, "")
+	if err != nil {
+		return err
+	}
+	if !flow.AllowEmailChange {
+		return ErrEmailChangeNotOffered
+	}
+
+	email = model.NormalizeEmail(email)
+	if email == "" || email == session.User.Email {
+		return nil
+	}
+
+	if _, err := s.store.UserByEmail(ctx, email); err == nil {
+		s.record(ctx, session.User, email, "user.email_change_requested", client, map[string]any{"sent": false})
+
+		return nil
+	} else if !errors.Is(err, store.ErrNotFound) {
+		return err
+	}
+
+	if err := s.mailVerification(ctx, session.User, email, "", client); err != nil {
+		return err
+	}
+
+	s.record(ctx, session.User, email, "user.email_change_requested", client, map[string]any{"sent": true})
 
 	return nil
 }

@@ -9,7 +9,6 @@
 	} from 'svelte-remixicon';
 	import type { UserSessionRecord } from '$lib/api';
 	import { Button, DataTable, Icon, type Column } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import { describeUserAgent, formatDateTime, formatRelative } from '$lib/utils/format';
 
 	type Props = {
@@ -28,14 +27,12 @@
 
 	let { sessions, empty, onEnd, onSignOutUser, onUser, ending }: Props = $props();
 
-	const t = useTranslator();
-
 	const columns: Column[] = $derived([
-		{ key: 'user', label: t('sessions.column_user'), icon: RiUserLine, min: '16rem' },
-		{ key: 'device', label: t('sessions.column_device'), icon: RiComputerLine, min: '12rem' },
-		{ key: 'ip', label: t('sessions.column_ip'), icon: RiGlobalLine, min: '8rem' },
-		{ key: 'signed_in', label: t('sessions.column_signed_in'), icon: RiLoginBoxLine, min: '9rem' },
-		{ key: 'expires', label: t('sessions.column_expires'), icon: RiTimeLine, min: '11rem' },
+		{ key: 'user', label: 'user', icon: RiUserLine, min: '16rem' },
+		{ key: 'device', label: 'device', icon: RiComputerLine, min: '12rem' },
+		{ key: 'ip', label: 'ip', icon: RiGlobalLine, min: '8rem' },
+		{ key: 'signed_in', label: 'signed in', icon: RiLoginBoxLine, min: '9rem' },
+		{ key: 'expires', label: 'expires', icon: RiTimeLine, min: '11rem' },
 		...(onEnd ? [{ key: 'actions', label: '', min: '16rem', align: 'end' as const }] : [])
 	]);
 </script>
@@ -46,7 +43,7 @@
 			<button
 				type="button"
 				class="user"
-				title={t('sessions.only_user', { email: session.user.email })}
+				title={`Only ${session.user.email}`}
 				onclick={() => onUser(session)}
 			>
 				<span class="email">{session.user.email}</span>
@@ -56,7 +53,7 @@
 
 		<td>{describeUserAgent(session.user_agent)}</td>
 
-		<td><span class="mono">{session.ip || t('sessions.unknown_ip')}</span></td>
+		<td><span class="mono">{session.ip || 'unknown'}</span></td>
 
 		<td>
 			<time datetime={session.signed_in_at} title={formatDateTime(session.signed_in_at)}>
@@ -71,21 +68,21 @@
 				<Button
 					variant="subtle"
 					size="sm"
-					title={t('sessions.end_title')}
+					title="Sign this session out"
 					loading={ending === session.id}
 					onclick={() => onEnd(session)}
 				>
-					{t('sessions.end')}
+					Sign out
 				</Button>
 				<Button
 					variant="subtle"
 					colorPalette="danger"
 					size="sm"
-					title={t('sessions.sign_out_user_title', { email: session.user.email })}
+					title={`End every session ${session.user.email} has and revoke their applications' tokens`}
 					onclick={() => onSignOutUser(session)}
 				>
 					<Icon icon={RiLogoutBoxRLine} />
-					{t('sessions.sign_out_user')}
+					Sign out everywhere
 				</Button>
 			</td>
 		{/if}

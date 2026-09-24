@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	"xermess/locales"
+	"xermess/i18n"
 )
 
 // Problem is one thing that can go wrong, as an app is told about it: the
@@ -21,7 +21,7 @@ import (
 // language, with `params` filled in. The English sentence is there for
 // whoever calls the API without an app, and it is not written here: it is the
 // base language's text for the same key, so it exists once, in
-// locales/<app>/en.json, and a translator and the server can never disagree
+// i18n/<app>/en/, and a translator and the server can never disagree
 // about what an error says.
 //
 // A problem is defined next to the code that returns it, with Define, and
@@ -34,14 +34,14 @@ type Problem struct {
 	// Apps are the apps whose pages can be shown this problem, and so whose
 	// catalogs have to say it: the sign-in pages for the public API, the
 	// panel for the admin one, both for what either server can answer.
-	Apps []locales.App
+	Apps []i18n.App
 }
 
 // Who a problem is for.
 var (
-	Public = []locales.App{locales.ID}
-	Admin  = []locales.App{locales.Console}
-	Both   = []locales.App{locales.ID, locales.Console}
+	Public = []i18n.App{i18n.ID}
+	Admin  = []i18n.App{i18n.Console}
+	Both   = []i18n.App{i18n.ID, i18n.Console}
 )
 
 var (
@@ -52,7 +52,7 @@ var (
 // Define adds a problem the server can give. It is called once, from a
 // package-level var next to the handler that returns it; defining a code
 // twice is a mistake in our own code, and stops the server at startup.
-func Define(status int, code string, apps []locales.App) Problem {
+func Define(status int, code string, apps []i18n.App) Problem {
 	registryMu.Lock()
 	defer registryMu.Unlock()
 
@@ -100,8 +100,8 @@ func (p Problem) Key() string {
 // the tests stop from ever shipping.
 func (p Problem) English(params map[string]any) string {
 	for _, app := range p.Apps {
-		if text, ok := locales.Text(app, p.Key()); ok {
-			return locales.Fill(text, params)
+		if text, ok := i18n.Text(app, p.Key()); ok {
+			return i18n.Fill(text, params)
 		}
 	}
 

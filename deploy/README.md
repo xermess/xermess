@@ -29,7 +29,7 @@ Two sites, two apps, one API process with two listeners:
 | `compose.yaml` | Postgres, Redis, `api`, `id`, `console` and Caddy on one internal network |
 | `Caddyfile` | the two sites and which paths go to which listener |
 | `docker/api.Dockerfile` | the API; it applies migrations when it starts |
-| `docker/web.Dockerfile` | any app under `web/`, chosen with `APP`; the context is the repository, because the apps import `locales/` |
+| `docker/web.Dockerfile` | any app under `web/`, chosen with `APP`; the context is the repository, because the apps import `i18n/` |
 | `.env.example` | the settings compose reads from `deploy/.env` |
 | `compose.local.yaml` | an overlay for trying the stack on one machine |
 | `Caddyfile.local` | the same two sites on `.localhost`, with Caddy's own CA |

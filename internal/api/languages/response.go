@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"xermess/i18n"
 	"xermess/internal/model"
-	"xermess/locales"
 )
 
 // languageResponse is one language as the panel sees it: its settings, and
@@ -18,15 +18,15 @@ type languageResponse struct {
 	Name   string `json:"name"`
 	Native string `json:"native"`
 
-	// Apps are the apps this language is translated for: the sign-in pages
-	// always, and the panel only for locales.PanelLanguages.
-	Apps []locales.App `json:"apps"`
+	// Apps are the apps this language is translated for, which today is the
+	// sign-in pages and nothing else.
+	Apps []i18n.App `json:"apps"`
 
 	// Coverage is how much of each of those apps is translated, as a
 	// percentage of the keys the base language has, and Missing how many keys
-	// each is short. The keys are the app names, "id" and "console".
-	Coverage map[locales.App]int `json:"coverage"`
-	Missing  map[locales.App]int `json:"missing"`
+	// each is short. The keys are the app names.
+	Coverage map[i18n.App]int `json:"coverage"`
+	Missing  map[i18n.App]int `json:"missing"`
 
 	Enabled   bool `json:"enabled"`
 	IsDefault bool `json:"is_default"`
@@ -57,7 +57,7 @@ type listResponse struct {
 	Languages []languageResponse `json:"languages"`
 	// Apps are the two catalogs a language is counted against, so the panel
 	// names the columns from the server rather than from a list of its own.
-	Apps    []locales.App     `json:"apps"`
+	Apps    []i18n.App        `json:"apps"`
 	Shipped []shippedResponse `json:"shipped"`
 }
 
@@ -70,8 +70,8 @@ type response struct {
 // needs it: the keys there are, the base language's text beside each, and
 // what this language has.
 type translationResponse struct {
-	App  locales.App `json:"app"`
-	Keys []string    `json:"keys"`
+	App  i18n.App `json:"app"`
+	Keys []string `json:"keys"`
 	// Base is the text the base language shows, every key filled in: what
 	// the translator is translating, and what a missing key falls back to.
 	Base     map[string]string `json:"base"`
@@ -86,27 +86,14 @@ type savedResponse struct {
 	Ignored  int              `json:"ignored"`
 }
 
-// panelLanguage is one language the panel itself can be shown in, and
-// panelTextResponse its text.
-type panelLanguage struct {
-	Code   string `json:"code"`
-	Name   string `json:"name"`
-	Native string `json:"native"`
-}
-
-type panelTextResponse struct {
-	Language panelLanguage     `json:"language"`
-	Messages map[string]string `json:"messages"`
-}
-
 func newLanguageResponse(language model.Language, text map[string]map[string]string, shipped map[string]bool) languageResponse {
 	out := languageResponse{
 		Code:      language.Code,
 		Name:      language.Name,
 		Native:    language.Native,
-		Apps:      locales.AppsFor(language.Code),
-		Coverage:  map[locales.App]int{},
-		Missing:   map[locales.App]int{},
+		Apps:      i18n.AppsFor(language.Code),
+		Coverage:  map[i18n.App]int{},
+		Missing:   map[i18n.App]int{},
 		Enabled:   language.Enabled,
 		IsDefault: language.IsDefault,
 		Position:  language.Position,
@@ -116,13 +103,13 @@ func newLanguageResponse(language model.Language, text map[string]map[string]str
 	}
 
 	for _, app := range out.Apps {
-		out.Coverage[app], out.Missing[app] = locales.Coverage(app, text[string(app)])
+		out.Coverage[app], out.Missing[app] = i18n.Coverage(app, text[string(app)])
 	}
 
 	return out
 }
 
-func newListResponse(languages []model.Language, text map[uuid.UUID]map[string]map[string]string, files []locales.File) listResponse {
+func newListResponse(languages []model.Language, text map[uuid.UUID]map[string]map[string]string, files []i18n.File) listResponse {
 	shipped := make(map[string]bool, len(files))
 	for _, file := range files {
 		shipped[file.Code] = true
@@ -130,7 +117,7 @@ func newListResponse(languages []model.Language, text map[uuid.UUID]map[string]m
 
 	out := listResponse{
 		Languages: make([]languageResponse, 0, len(languages)),
-		Apps:      locales.Apps,
+		Apps:      i18n.Apps,
 		Shipped:   []shippedResponse{},
 	}
 

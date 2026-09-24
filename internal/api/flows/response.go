@@ -23,10 +23,14 @@ type flowResponse struct {
 
 	Steps []model.LoginStep `json:"steps"`
 
-	AllowRegistration    bool `json:"allow_registration"`
-	AllowPasswordReset   bool `json:"allow_password_reset"`
-	RequireVerifiedEmail bool `json:"require_verified_email"`
-	SessionLifetimeHours int  `json:"session_lifetime_hours"`
+	AllowSignIn           bool `json:"allow_sign_in"`
+	AllowRegistration     bool `json:"allow_registration"`
+	AllowPasswordReset    bool `json:"allow_password_reset"`
+	AllowRememberMe       bool `json:"allow_remember_me"`
+	VerifyEmailOnRegister bool `json:"verify_email_on_register"`
+	RequireVerifiedEmail  bool `json:"require_verified_email"`
+	AllowEmailChange      bool `json:"allow_email_change"`
+	SessionLifetimeHours  int  `json:"session_lifetime_hours"`
 
 	// Applications is how many applications name this flow. The ones that
 	// name none are not counted: they follow whichever flow is the default.
@@ -67,21 +71,25 @@ func newListResponse(flows []model.LoginFlow, counts map[uuid.UUID]int) listResp
 
 func newFlowResponse(flow model.LoginFlow, applications int) flowResponse {
 	return flowResponse{
-		ID:                   flow.ID,
-		Name:                 flow.Name,
-		Slug:                 flow.Slug,
-		Description:          flow.Description,
-		IsDefault:            flow.IsDefault,
-		Enabled:              flow.Enabled,
-		Steps:                append([]model.LoginStep(nil), flow.Steps...),
-		AllowRegistration:    flow.AllowRegistration,
-		AllowPasswordReset:   flow.AllowPasswordReset,
-		RequireVerifiedEmail: flow.RequireVerifiedEmail,
-		SessionLifetimeHours: flow.SessionLifetimeHours,
-		Applications:         applications,
-		Planned:              plannedSteps(flow),
-		CreatedAt:            flow.CreatedAt,
-		UpdatedAt:            flow.UpdatedAt,
+		ID:                    flow.ID,
+		Name:                  flow.Name,
+		Slug:                  flow.Slug,
+		Description:           flow.Description,
+		IsDefault:             flow.IsDefault,
+		Enabled:               flow.Enabled,
+		Steps:                 append([]model.LoginStep(nil), flow.Steps...),
+		AllowSignIn:           flow.AllowSignIn,
+		AllowRegistration:     flow.AllowRegistration,
+		AllowPasswordReset:    flow.AllowPasswordReset,
+		AllowRememberMe:       flow.AllowRememberMe,
+		VerifyEmailOnRegister: flow.VerifyEmailOnRegister,
+		RequireVerifiedEmail:  flow.RequireVerifiedEmail,
+		AllowEmailChange:      flow.AllowEmailChange,
+		SessionLifetimeHours:  flow.SessionLifetimeHours,
+		Applications:          applications,
+		Planned:               plannedSteps(flow),
+		CreatedAt:             flow.CreatedAt,
+		UpdatedAt:             flow.UpdatedAt,
 	}
 }
 

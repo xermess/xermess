@@ -28,7 +28,6 @@
 		Tag,
 		Thumb
 	} from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
 	import { markFor as providerMark } from '$lib/components/social/providers';
 	import { formatDate, formatRelative } from '$lib/utils/format';
@@ -62,8 +61,6 @@
 		open = $bindable(false),
 		editable = true
 	}: Props = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -455,7 +452,7 @@
 				href={`${resolve('/admin/(panel)/dashboard/sessions')}?${new URLSearchParams({ user: current.id, email: current.email })}`}
 			>
 				<Icon icon={RiComputerLine} />
-				{t('nav.sessions')}
+				Sessions
 			</LinkButton>
 		{/if}
 

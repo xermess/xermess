@@ -2,7 +2,6 @@
 	import { RiDraggable } from 'svelte-remixicon';
 	import type { LoginStep, LoginStepSpec } from '$lib/api';
 	import { Icon } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import { describe, labelFor, markFor } from '../steps';
 
 	/**
@@ -22,20 +21,22 @@
 
 	let { kinds, steps, editable, waiting, onAdd }: Props = $props();
 
-	const t = useTranslator();
-
 	const groups = $derived([
-		{ key: 'flows.palette_ready', kinds: kinds.filter((kind) => kind.implemented && !kind.fixed) },
-		{ key: 'flows.palette_planned', kinds: kinds.filter((kind) => !kind.implemented) }
+		{ label: 'Run today', kinds: kinds.filter((kind) => kind.implemented && !kind.fixed) },
+		{ label: 'Planned', kinds: kinds.filter((kind) => !kind.implemented) }
 	]);
 </script>
 
-<aside class="palette" aria-label={t('flows.palette')}>
-	<h2>{t('flows.palette')}</h2>
-	<p class="hint">{waiting ? t('flows.palette_waiting') : t('flows.palette_hint')}</p>
+<aside class="palette" aria-label="Steps">
+	<h2>Steps</h2>
+	<p class="hint">
+		{waiting
+			? 'Choose the step to add where you clicked +.'
+			: 'Drag a step onto the flow, or click it to add it at the end.'}
+	</p>
 
-	{#each groups as group (group.key)}
-		<h3>{t(group.key)}</h3>
+	{#each groups as group (group.label)}
+		<h3>{group.label}</h3>
 		<ul>
 			{#each group.kinds as kind (kind.step)}
 				{@const used = steps.includes(kind.step)}
@@ -47,7 +48,7 @@
 						class:waiting
 						disabled={!editable || used}
 						draggable={editable && !used}
-						title={used ? t('flows.palette_used') : describe(kind.step, kinds, t)}
+						title={used ? 'Already in this flow' : describe(kind.step, kinds)}
 						ondragstart={(event) => {
 							event.dataTransfer?.setData('application/x-login-step', kind.step);
 							if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
@@ -56,8 +57,8 @@
 					>
 						<span class="mark"><Icon icon={markFor(kind.step)} size="1rem" /></span>
 						<span class="text">
-							<span class="label">{labelFor(kind.step, kinds, t)}</span>
-							<span class="description">{describe(kind.step, kinds, t)}</span>
+							<span class="label">{labelFor(kind.step, kinds)}</span>
+							<span class="description">{describe(kind.step, kinds)}</span>
 						</span>
 						{#if editable && !used}
 							<span class="grip"><Icon icon={RiDraggable} size="1rem" /></span>

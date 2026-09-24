@@ -1,0 +1,19 @@
+{
+	"error": {
+		"validation": {
+			"required": "{field} is required.",
+			"email": "{field} must be an email address.",
+			"max": "{field} must be at most {max} characters.",
+			"min": "{field} must be at least {min} characters.",
+			"oneof": "{field} must be one of: {values}.",
+			"startswith": "{field} must start with {prefix}.",
+			"eqfield": "{field} must match {other}.",
+			"invalid": "{field} is not valid.",
+			"adminrole": "{field} must start with a letter and hold only lower case letters, numbers, dashes and underscores.",
+			"rolename": "{field} must start with a letter and hold only lower case letters, numbers, dashes and underscores.",
+			"column": "{field} must start with a letter and hold only lower case letters, numbers and underscores.",
+			"fieldtype": "{field} is not a field type.",
+			"languagetag": "{field} must be a language tag, such as en, ky or pt-BR."
+		}
+	}
+}

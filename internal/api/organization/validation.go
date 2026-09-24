@@ -2,9 +2,9 @@ package organization
 
 import (
 	"net/http"
-	"strings"
 
 	"xermess/internal/api/respond"
+	"xermess/internal/api/validate"
 	"xermess/internal/model"
 )
 
@@ -21,14 +21,14 @@ func (r *organizationRequest) applyTo(organization *model.Organization) ([]strin
 	// stored lower case: "Example.com" and "example.com" are one domain, and
 	// the panel should not hold two spellings of it.
 	updated := *organization
-	updated.Name = text(r.Name, organization.Name)
-	updated.Slug = lower(r.Slug, organization.Slug)
-	updated.Domain = lower(r.Domain, organization.Domain)
-	updated.LogoURL = text(r.LogoURL, organization.LogoURL)
-	updated.SupportEmail = text(r.SupportEmail, organization.SupportEmail)
-	updated.SupportPhone = text(r.SupportPhone, organization.SupportPhone)
-	updated.TermsURL = text(r.TermsURL, organization.TermsURL)
-	updated.PrivacyURL = text(r.PrivacyURL, organization.PrivacyURL)
+	updated.Name = validate.Text(r.Name, organization.Name)
+	updated.Slug = validate.Lower(r.Slug, organization.Slug)
+	updated.Domain = validate.Lower(r.Domain, organization.Domain)
+	updated.LogoURL = validate.Text(r.LogoURL, organization.LogoURL)
+	updated.SupportEmail = validate.Text(r.SupportEmail, organization.SupportEmail)
+	updated.SupportPhone = validate.Text(r.SupportPhone, organization.SupportPhone)
+	updated.TermsURL = validate.Text(r.TermsURL, organization.TermsURL)
+	updated.PrivacyURL = validate.Text(r.PrivacyURL, organization.PrivacyURL)
 
 	if err := updated.Validate(); err != nil {
 		return nil, respond.Fault{Status: http.StatusBadRequest, Message: err.Error()}
@@ -57,21 +57,4 @@ func (r *organizationRequest) applyTo(organization *model.Organization) ([]strin
 	*organization = updated
 
 	return changed, nil
-}
-
-// text reads a setting a request may leave out: what was sent, trimmed, or
-// the stored value when nothing was. A client that does not know about a
-// field should not clear it by not mentioning it.
-func text(sent *string, current string) string {
-	if sent == nil {
-		return current
-	}
-
-	return strings.TrimSpace(*sent)
-}
-
-// lower is text for the settings that are compared rather than read: a host
-// name, a short name.
-func lower(sent *string, current string) string {
-	return strings.ToLower(text(sent, current))
 }

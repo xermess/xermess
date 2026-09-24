@@ -35,6 +35,14 @@ var provided = func() map[string]respond.Problem {
 		oidc.ErrPasswordNotOffered.Code:  http.StatusForbidden,
 		oidc.ErrEmailNotVerified.Code:    http.StatusForbidden,
 		oidc.ErrVerificationInvalid.Code: http.StatusGone,
+		// A sign-in that is over rather than a code that is wrong: the page
+		// starts again, so it is told the thing it held is gone.
+		oidc.ErrCodeExpired.Code:      http.StatusGone,
+		oidc.ErrCodeAttemptsUsed.Code: http.StatusGone,
+		oidc.ErrCodeTooSoon.Code:      http.StatusTooManyRequests,
+		// The door is shut rather than the request wrong.
+		oidc.ErrSignInClosed.Code:          http.StatusForbidden,
+		oidc.ErrEmailChangeNotOffered.Code: http.StatusForbidden,
 	}
 
 	out := map[string]respond.Problem{}
@@ -67,12 +75,14 @@ func newRequestResponse(pending *oidc.PendingRequest) requestResponse {
 
 // signedInResponse says what the page does next: follow RedirectTo back to
 // the application, or — for a temporary password — send the user to choose a
-// new one with ResetToken. With neither, the user is signed in and there is
-// nowhere to go.
+// new one with ResetToken, or — where the login flow has the emailed code
+// step — ask for the code in Code. With none of them, the user is signed in
+// and there is nowhere to go.
 type signedInResponse struct {
-	RedirectTo             string `json:"redirect_to,omitempty"`
-	PasswordChangeRequired bool   `json:"password_change_required,omitempty"`
-	ResetToken             string `json:"reset_token,omitempty"`
+	RedirectTo             string              `json:"redirect_to,omitempty"`
+	PasswordChangeRequired bool                `json:"password_change_required,omitempty"`
+	ResetToken             string              `json:"reset_token,omitempty"`
+	Code                   *oidc.CodeChallenge `json:"code,omitempty"`
 }
 
 // userResponse is a user as they see themselves. It is built by hand, so a

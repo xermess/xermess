@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -64,13 +63,7 @@ func TestLiveLoginFlowsDecideSignIn(t *testing.T) {
 	if strings.Contains(sent.Subject, "password") {
 		t.Fatalf("the first email to Ada is %q: the password-less flow sent a reset link", sent.Subject)
 	}
-	link := sent.Body[strings.Index(sent.Body, testAccountURL+"/verify-email?"):]
-	link = strings.Fields(link)[0]
-	parsed, err := url.Parse(link)
-	if err != nil {
-		t.Fatal(err)
-	}
-	token := parsed.Query().Get("token")
+	token := tokenIn(t, sent.Body, "/verify-email")
 
 	if status := b.account(http.MethodPost, "/verify-email", map[string]string{"token": token}, nil); status != http.StatusOK {
 		t.Fatalf("verifying the address = %d, want 200", status)

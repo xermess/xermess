@@ -1,15 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Sidebar from '$lib/components/layout/Sidebar.svelte';
-	import { useShell } from '$lib/state/shell.svelte';
 
 	let { children }: { children: Snippet } = $props();
-
-	const shell = useShell();
 </script>
 
 <div class="dashboard">
-	<Sidebar collapsed={shell.collapsed} onToggle={shell.toggle} />
+	<Sidebar />
 
 	<div class="content">
 		{@render children()}

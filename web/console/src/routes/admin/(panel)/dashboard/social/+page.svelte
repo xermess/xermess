@@ -14,7 +14,6 @@
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, socialApi, type SocialProvider } from '$lib/api';
 	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import SocialDrawer from '$lib/components/social/SocialDrawer.svelte';
 	import SocialTable from '$lib/components/social/SocialTable.svelte';
 	import { can } from '$lib/permissions';
@@ -22,8 +21,6 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -213,7 +210,7 @@
 <svelte:head><title>Social · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.social')]}>
+	<PageHeader crumbs={['Dashboard', 'Social']}>
 		{#snippet secondary()}
 			<span class="total">{social.data.providers.length} total</span>
 

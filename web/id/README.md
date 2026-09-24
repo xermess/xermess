@@ -29,6 +29,7 @@ src/lib/api/              the typed calls to /api/v1/account
 src/lib/server/session.ts reading the session in a server load, and sending the cookie on
 src/lib/server/proxy.ts   server-side fetches of API paths, sent straight to API_URL
 src/lib/components/       Button, TextField, PasswordField, Panel, AuthCard… — Svelte only
+src/lib/i18n/             svelte-i18n adapter, grouped English fallback, and the t() context
 src/lib/styles/           tokens.css, base.css, fonts.css
 src/hooks.server.ts       the theme before first paint; no framing, no referrer
 ```

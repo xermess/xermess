@@ -1,11 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { RiBookOpenLine, RiGithubFill, RiShieldKeyholeLine } from 'svelte-remixicon';
+	import { MediaQuery } from 'svelte/reactivity';
+	import {
+		RiBookOpenLine,
+		RiCloseLine,
+		RiGithubFill,
+		RiMenuLine,
+		RiShieldKeyholeLine,
+		RiSidebarFoldLine,
+		RiSidebarUnfoldLine
+	} from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
-	import { Icon, IconLink, ThemeToggle } from '$lib/components/ui';
+	import { Icon, IconButton, IconLink, ThemeToggle } from '$lib/components/ui';
 	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
-	import { useTranslator } from '$lib/i18n';
 	import { useShell } from '$lib/state/shell.svelte';
 	import AccountMenu from './AccountMenu.svelte';
 	import CommandPalette from './CommandPalette.svelte';
@@ -14,8 +22,6 @@
 
 	let { admin }: Props = $props();
 
-	const t = useTranslator();
-
 	/** The logo block is the top of the sidebar's column, so it folds with it. */
 	const shell = useShell();
 
@@ -23,6 +29,25 @@
 	    ruled off as the top of its column. Elsewhere, such as the profile, it
 	    keeps the width without a line leading nowhere. */
 	const besideSidebar = $derived(page.route.id?.startsWith('/admin/(panel)/dashboard') ?? false);
+
+	/** The same width the sidebar reads: below it the column is a panel, so
+	    the control beside the logo opens and closes that panel rather than
+	    folding a column that is not there. */
+	const narrow = new MediaQuery('max-width: 55rem');
+
+	const nav = $derived(
+		narrow.current
+			? {
+					icon: shell.menuOpen ? RiCloseLine : RiMenuLine,
+					label: shell.menuOpen ? 'Close the menu' : 'Open the menu',
+					press: () => shell.setMenu(!shell.menuOpen)
+				}
+			: {
+					icon: shell.collapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine,
+					label: shell.collapsed ? 'Expand the sidebar' : 'Collapse the sidebar',
+					press: shell.toggle
+				}
+	);
 </script>
 
 <header class:mini={shell.collapsed}>
@@ -34,6 +59,19 @@
 			<strong aria-hidden={shell.collapsed}>xermess</strong>
 		</a>
 	</div>
+
+	<!-- The control for the navigation, the first thing after the logo: it
+	     folds the column where there is one, and opens the panel where the
+	     column has become one. It sits just outside the logo block rather
+	     than inside it — folded, that block is only as wide as the mark, and
+	     a button in there would be clipped away by the same overflow that
+	     hides the name. Only on the dashboard, because that is the only page
+	     with navigation beside it. -->
+	{#if besideSidebar}
+		<span class="fold">
+			<IconButton icon={nav.icon} label={nav.label} size="sm" onclick={nav.press} />
+		</span>
+	{/if}
 
 	<!-- The one thing in the bar worth the width: everywhere the panel can go,
 	     two or three letters away. -->
@@ -49,7 +87,7 @@
 		<IconLink
 			href={DOCS_URL}
 			icon={RiBookOpenLine}
-			label={t('shell.documentation')}
+			label="Documentation"
 			size="sm"
 			target="_blank"
 			rel="noreferrer noopener"
@@ -58,7 +96,7 @@
 		<IconLink
 			href={GITHUB_URL}
 			icon={RiGithubFill}
-			label={t('shell.github')}
+			label="GitHub"
 			size="sm"
 			target="_blank"
 			rel="noreferrer noopener"
@@ -156,6 +194,14 @@
 		opacity: 0;
 	}
 
+	/* Just past the column's rule, so it reads as belonging to the column it
+	   folds while staying in the bar, where there is always room for it. */
+	.fold {
+		display: flex;
+		flex: none;
+		padding-left: var(--space-2);
+	}
+
 	/* The start of the content area, just past the sidebar's column, so the
 	   field lines up with the page's own heading rather than floating in the
 	   gap. It takes the width it is given and stops: the bar is not a form. */
@@ -163,7 +209,7 @@
 		flex: 1;
 		min-width: 0;
 		max-width: 18rem;
-		padding-left: var(--space-4);
+		padding-left: var(--space-3);
 	}
 
 	/* Everything that is not the page and not the account, kept together at
@@ -191,8 +237,9 @@
 		padding-left: var(--space-1);
 	}
 
-	/* Narrow screens have no sidebar column, only a row of sections under the
-	   bar, so the logo block is only as wide as the mark. */
+	/* Narrow screens have no sidebar column — the sections are a panel the
+	   control beside the logo opens — so the logo block is only as wide as
+	   the mark. */
 	@media (max-width: 55rem) {
 		header {
 			padding-right: var(--space-2);

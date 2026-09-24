@@ -23,16 +23,12 @@
 		RiCornerDownLeftLine,
 		RiExternalLinkLine,
 		RiGithubFill,
-		RiSearchLine,
-		RiUserSettingsLine
+		RiSearchLine
 	} from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
 	import { Icon } from '$lib/components/ui';
 	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
-	import { useTranslator } from '$lib/i18n';
-	import { visibleSections } from './sidebar/sections';
-
-	const t = useTranslator();
+	import { allSections } from './sidebar/sections';
 
 	type Command = {
 		id: string;
@@ -55,34 +51,27 @@
 	/** Every page this administrator may open, then the two that are not
 	    pages of this installation at all. */
 	const commands = $derived<Command[]>([
-		...visibleSections(admin).flatMap((group) =>
-			group.items.map((item) => ({
+		...allSections(admin).flatMap((section) =>
+			section.items.map((item) => ({
 				id: item.route,
-				label: t(item.key),
-				group: group.key ? t(group.key) : t('nav.dashboard'),
+				label: item.label,
+				group: section.group,
 				icon: item.icon,
 				href: resolve(item.route)
 			}))
 		),
 		{
-			id: 'profile',
-			label: t('shell.profile'),
-			group: t('shell.account'),
-			icon: RiUserSettingsLine,
-			href: resolve('/admin/profile')
-		},
-		{
 			id: 'docs',
-			label: t('shell.documentation'),
-			group: t('shell.help'),
+			label: 'Documentation',
+			group: 'Help',
 			icon: RiBookOpenLine,
 			href: DOCS_URL,
 			external: true
 		},
 		{
 			id: 'github',
-			label: t('shell.github'),
-			group: t('shell.help'),
+			label: 'GitHub',
+			group: 'Help',
 			icon: RiGithubFill,
 			href: GITHUB_URL,
 			external: true
@@ -196,7 +185,7 @@
      alone. -->
 <button type="button" class="trigger" onclick={show}>
 	<Icon icon={RiSearchLine} size="1rem" />
-	<span class="placeholder">{t('shell.search')}</span>
+	<span class="placeholder">Search…</span>
 	<kbd>⌘K</kbd>
 </button>
 
@@ -204,7 +193,7 @@
 	<Portal>
 		<Dialog.Backdrop class="palette-backdrop" />
 		<Dialog.Positioner class="palette-positioner">
-			<Dialog.Content class="palette-content" aria-label={t('shell.search')}>
+			<Dialog.Content class="palette-content" aria-label="Search…">
 				<div class="field">
 					<Icon icon={RiSearchLine} size="1.125rem" />
 					<!-- svelte-ignore a11y_autofocus -->
@@ -213,7 +202,7 @@
 						type="text"
 						autocomplete="off"
 						spellcheck="false"
-						placeholder={t('shell.search_placeholder')}
+						placeholder="Go to a page…"
 						bind:value={query}
 						oninput={() => (active = 0)}
 						onkeydown={onInputKeydown}
@@ -246,14 +235,14 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="empty">{t('shell.no_results', { query })}</p>
+						<p class="empty">{`Nothing matches “${query}”`}</p>
 					{/each}
 				</div>
 
 				<footer>
-					<span><kbd>↑</kbd><kbd>↓</kbd> {t('shell.hint_move')}</span>
-					<span><kbd>↵</kbd> {t('shell.hint_open')}</span>
-					<span><kbd>esc</kbd> {t('shell.hint_close')}</span>
+					<span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+					<span><kbd>↵</kbd> open</span>
+					<span><kbd>esc</kbd> close</span>
 				</footer>
 			</Dialog.Content>
 		</Dialog.Positioner>

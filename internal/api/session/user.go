@@ -16,8 +16,18 @@ const UserCookie = "xermess_user_session"
 
 // SetUser stores a user's session token in the browser, until the session
 // expires — which the login flow that made it decides.
-func SetUser(c *gin.Context, token string, expires time.Time, secure bool) {
-	writeUser(c, token, int(time.Until(expires).Seconds()), secure)
+// `remember` is the "stay signed in" box: without it the cookie carries no
+// Max-Age and the browser drops it when its window closes, so a machine
+// somebody was passing through forgets them. The session itself lasts as long
+// as the login flow says either way — this only decides how long the browser
+// holds on to it.
+func SetUser(c *gin.Context, token string, expires time.Time, remember, secure bool) {
+	maxAge := 0
+	if remember {
+		maxAge = int(time.Until(expires).Seconds())
+	}
+
+	writeUser(c, token, maxAge, secure)
 }
 
 // ClearUser removes it again.
@@ -25,6 +35,9 @@ func ClearUser(c *gin.Context, secure bool) {
 	writeUser(c, "", -1, secure)
 }
 
+// maxAge is seconds, as http.Cookie counts them: above zero sets Max-Age,
+// zero leaves it off — a cookie for this browser window — and below zero
+// deletes the cookie.
 func writeUser(c *gin.Context, value string, maxAge int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     UserCookie,

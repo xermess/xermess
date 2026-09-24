@@ -2,7 +2,6 @@
 	import { RiAppsLine, RiGitBranchLine, RiListOrdered2, RiToggleLine } from 'svelte-remixicon';
 	import type { LoginFlow, LoginStepSpec } from '$lib/api';
 	import { Badge, type Column, DataTable, Icon, Tag, Tooltip } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import { describe, labelFor, markFor, specFor } from './steps';
 
 	type Props = {
@@ -17,23 +16,15 @@
 
 	let { flows, kinds, onOpen, empty }: Props = $props();
 
-	const t = useTranslator();
-
 	const columns: Column[] = $derived([
-		{ key: 'flow', label: t('flows.column_flow'), icon: RiGitBranchLine, min: '14rem' },
-		{ key: 'steps', label: t('flows.column_steps'), icon: RiListOrdered2, min: '18rem' },
-		{ key: 'applications', label: t('flows.column_applications'), icon: RiAppsLine, min: '9rem' },
-		{ key: 'status', label: t('flows.column_status'), icon: RiToggleLine, min: '10rem' }
+		{ key: 'flow', label: 'flow', icon: RiGitBranchLine, min: '14rem' },
+		{ key: 'steps', label: 'steps', icon: RiListOrdered2, min: '18rem' },
+		{ key: 'applications', label: 'applications', icon: RiAppsLine, min: '9rem' },
+		{ key: 'status', label: 'status', icon: RiToggleLine, min: '10rem' }
 	]);
 </script>
 
-<DataTable
-	{columns}
-	rows={flows}
-	{empty}
-	{onOpen}
-	label={(flow) => t('flows.open', { name: flow.name })}
->
+<DataTable {columns} rows={flows} {empty} {onOpen} label={(flow) => `Open ${flow.name}`}>
 	{#snippet row(flow)}
 		<td>
 			<span class="names">
@@ -48,13 +39,13 @@
 					{@const spec = specFor(step, kinds)}
 					<Tooltip
 						label={spec?.implemented === false
-							? `${describe(step, kinds, t)} ${t('flows.planned')}.`
-							: describe(step, kinds, t) || step}
+							? `${describe(step, kinds)} Not run yet.`
+							: describe(step, kinds) || step}
 					>
 						{#snippet children(trigger)}
 							<span class="step" class:planned={spec?.implemented === false} {...trigger()}>
 								<Icon icon={markFor(step)} size="0.85rem" />
-								{labelFor(step, kinds, t)}
+								{labelFor(step, kinds)}
 							</span>
 						{/snippet}
 					</Tooltip>
@@ -66,24 +57,24 @@
 			{#if flow.applications > 0}
 				<span class="text">{flow.applications}</span>
 			{:else if flow.is_default}
-				<span class="empty">{t('flows.everything_else')}</span>
+				<span class="empty">everything else</span>
 			{:else}
-				<span class="empty">{t('flows.none')}</span>
+				<span class="empty">none</span>
 			{/if}
 		</td>
 
 		<td>
 			<span class="status">
 				{#if flow.is_default}
-					<Tag tone="info" strong>{t('flows.tag_default')}</Tag>
+					<Tag tone="info" strong>default</Tag>
 				{:else if flow.enabled}
-					<Badge tone="success">{t('flows.tag_on')}</Badge>
+					<Badge tone="success">on</Badge>
 				{:else}
-					<Badge>{t('flows.tag_off')}</Badge>
+					<Badge>off</Badge>
 				{/if}
 
 				{#if flow.planned.length > 0}
-					<Tag tone="warning" small>{t('flows.planned_count', { count: flow.planned.length })}</Tag>
+					<Tag tone="warning" small>{`${flow.planned.length} not run yet`}</Tag>
 				{/if}
 			</span>
 		</td>

@@ -25,6 +25,20 @@ func (r *registerRequest) validate() error {
 	return checkPassword(r.Password)
 }
 
+func (r *codeRequest) validate() error {
+	r.Code = strings.TrimSpace(r.Code)
+	return validate.Struct(r)
+}
+
+func (r *resendRequest) validate() error {
+	return validate.Struct(r)
+}
+
+func (r *emailRequest) validate() error {
+	r.Email = strings.ToLower(strings.TrimSpace(r.Email))
+	return validate.Struct(r)
+}
+
 func (r *forgotRequest) validate() error {
 	r.Email = strings.TrimSpace(r.Email)
 	return validate.Struct(r)

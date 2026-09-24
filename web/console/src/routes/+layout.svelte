@@ -1,22 +1,10 @@
 <script lang="ts">
 	import { QueryClientProvider } from '@tanstack/svelte-query';
-	import { provideTranslator, translator } from '$lib/i18n';
 	import { createQueryClient } from '$lib/query';
 	import '$lib/styles/app.css';
 	import type { LayoutProps } from './$types';
 
-	let { data, children }: LayoutProps = $props();
-
-	// Every component below looks its text up through this one translator, and
-	// it reads `data.messages` each time — so the panel re-renders in the new
-	// language the moment the choice lands.
-	provideTranslator(translator(() => data.messages));
-
-	// hooks.server.ts names the document before anything is loaded; this keeps
-	// it right when the language is changed without a reload.
-	$effect(() => {
-		document.documentElement.lang = data.language;
-	});
+	let { children }: LayoutProps = $props();
 
 	// One cache for this visitor, built here so that rendering on the server
 	// gives each request its own.

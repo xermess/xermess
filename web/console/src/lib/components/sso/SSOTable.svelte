@@ -8,7 +8,6 @@
 	} from 'svelte-remixicon';
 	import type { SSOConnection } from '$lib/api';
 	import { Badge, type Column, DataTable, Icon, Tag } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 
 	type Props = {
 		connections: SSOConnection[];
@@ -19,13 +18,11 @@
 
 	let { connections, onOpen, empty }: Props = $props();
 
-	const t = useTranslator();
-
 	const columns = $derived<Column[]>([
-		{ key: 'connection', label: t('sso.column_connection'), icon: RiBuilding2Line, min: '14rem' },
-		{ key: 'domains', label: t('sso.column_domains'), icon: RiGlobalLine, min: '14rem' },
-		{ key: 'users', label: t('sso.column_users'), icon: RiGroupLine, min: '7rem' },
-		{ key: 'status', label: t('sso.column_status'), icon: RiToggleLine, min: '14rem' }
+		{ key: 'connection', label: 'connection', icon: RiBuilding2Line, min: '14rem' },
+		{ key: 'domains', label: 'domains', icon: RiGlobalLine, min: '14rem' },
+		{ key: 'users', label: 'users', icon: RiGroupLine, min: '7rem' },
+		{ key: 'status', label: 'status', icon: RiToggleLine, min: '14rem' }
 	]);
 </script>
 
@@ -37,7 +34,7 @@
 				<span class="names">
 					<strong>{connection.name}</strong>
 					<span class="protocol">
-						{connection.protocol === 'saml' ? t('sso.protocol_saml') : t('sso.protocol_oidc')}
+						{connection.protocol === 'saml' ? 'SAML 2.0' : 'OpenID Connect'}
 					</span>
 				</span>
 			</span>
@@ -65,15 +62,15 @@
 		<td>
 			<span class="status">
 				{#if connection.enabled}
-					<Badge tone="success">{t('sso.status_on')}</Badge>
+					<Badge tone="success">on</Badge>
 				{:else}
-					<Badge>{t('sso.status_off')}</Badge>
+					<Badge>off</Badge>
 				{/if}
 				{#if connection.enforce_domains}
-					<Tag tone="info" small>{t('sso.status_enforced')}</Tag>
+					<Tag tone="info" small>enforced</Tag>
 				{/if}
 				{#if connection.show_on_login}
-					<Tag small>{t('sso.status_on_login')}</Tag>
+					<Tag small>on sign-in page</Tag>
 				{/if}
 			</span>
 		</td>

@@ -135,7 +135,7 @@ func (h *Handler) SocialCallback(c *gin.Context) {
 		return
 	}
 
-	session.SetUser(c, result.SignIn.Token, result.SignIn.Session.Record.ExpiresAt, h.secure)
+	session.SetUser(c, result.SignIn.Token, result.SignIn.Session.Record.ExpiresAt, result.SignIn.Remember, h.secure)
 
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, h.provider.SocialLanding(ctx, result))
@@ -221,7 +221,7 @@ func (h *Handler) ssoFinished(c *gin.Context, result *oidc.SocialResult, err err
 		return
 	}
 
-	session.SetUser(c, result.SignIn.Token, result.SignIn.Session.Record.ExpiresAt, h.secure)
+	session.SetUser(c, result.SignIn.Token, result.SignIn.Session.Record.ExpiresAt, result.SignIn.Remember, h.secure)
 
 	c.Header("Cache-Control", "no-store")
 	c.Redirect(http.StatusFound, h.provider.SocialLanding(c.Request.Context(), result))

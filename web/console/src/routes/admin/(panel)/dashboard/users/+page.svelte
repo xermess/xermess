@@ -23,15 +23,12 @@
 	} from '$lib/query';
 	import { can } from '$lib/permissions';
 	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import FieldsDrawer from '$lib/components/users/FieldsDrawer.svelte';
 	import UserDrawer from '$lib/components/users/UserDrawer.svelte';
 	import UserTable from '$lib/components/users/UserTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -199,7 +196,7 @@
 <svelte:head><title>Users · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.users')]}>
+	<PageHeader crumbs={['Dashboard', 'Users']}>
 		{#snippet secondary()}
 			<span class="total">{users.data.total} total</span>
 

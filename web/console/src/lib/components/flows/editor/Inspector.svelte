@@ -12,7 +12,6 @@
 		SwitchField,
 		Textarea
 	} from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import {
 		MAX_SESSION_HOURS,
 		describe,
@@ -54,8 +53,6 @@
 		onRemove
 	}: Props = $props();
 
-	const t = useTranslator();
-
 	const step = $derived(draft.steps.find((one) => one === selected));
 	const spec = $derived(step ? specFor(step, kinds) : undefined);
 	const removable = $derived(
@@ -84,11 +81,14 @@
 	let slugTouched = $state(false);
 </script>
 
-<aside class="inspector" aria-label={t('flows.inspector')}>
+<aside class="inspector" aria-label="Settings">
 	{#if selected === 'start'}
-		<FormSection title={t('flows.section_flow')} description={t('flows.section_flow_hint')}>
+		<FormSection
+			title="Flow"
+			description="What the flow is called, here and wherever it is exported."
+		>
 			<Input
-				label={t('flows.name')}
+				label="Name"
 				bind:value={
 					() => draft.name,
 					(value) => {
@@ -100,7 +100,7 @@
 				readOnly={!editable}
 			/>
 			<Input
-				label={t('flows.slug')}
+				label="Identifier"
 				bind:value={
 					() => draft.slug,
 					(value) => {
@@ -108,41 +108,58 @@
 						slugTouched = true;
 					}
 				}
-				hint={creating ? t('flows.slug_hint') : t('flows.slug_fixed')}
+				hint={creating
+					? 'Made from the name unless you change it.'
+					: 'It names the flow in exports, so it stays as it was made.'}
 				readOnly={!editable || !creating}
 			/>
-			<Textarea
-				label={t('flows.description')}
-				bind:value={draft.description}
-				rows={3}
-				disabled={!editable}
-			/>
+			<Textarea label="Description" bind:value={draft.description} rows={3} disabled={!editable} />
 		</FormSection>
 
-		<FormSection title={t('flows.section_use')}>
+		<FormSection title="Where it is used">
+			<!-- Two switches that sound alike and are not: one says which flow
+			     an application follows, the other says whether the people
+			     following it get in at all. -->
 			<SwitchField
-				label={t('flows.enabled')}
-				description={t('flows.enabled_hint')}
+				label="Sign-ins are open"
+				description="Off, nobody gets in through this flow — no password, no provider, no code, and no new accounts."
+				bind:checked={draft.allow_sign_in}
+				disabled={!editable}
+			/>
+			{#if !draft.allow_sign_in}
+				<Alert tone="warning">
+					While this is off, everyone following this flow is locked out. An administrator signs in
+					to this panel, not through a login flow, so you will not lock yourself out of here.
+				</Alert>
+			{/if}
+			<SwitchField
+				label="On"
+				description="Off, the applications that name it use the default flow instead."
 				bind:checked={draft.enabled}
 				disabled={!editable || draft.is_default}
 			/>
 			<SwitchField
-				label={t('flows.default')}
-				description={savedDefault ? t('flows.default_is') : t('flows.default_hint')}
+				label="The default flow"
+				description={savedDefault
+					? 'It is the default. Make another flow the default to change that.'
+					: 'Used by every application that names no flow of its own.'}
 				bind:checked={draft.is_default}
 				disabled={!editable || savedDefault}
 			/>
 			<p class="note">
 				{draft.is_default
-					? t('flows.used_default', { count: applications })
-					: t('flows.used_by', { count: applications })}
+					? `The default: used by every application without its own flow, and named by ${applications} more.`
+					: `Named by ${applications} applications.`}
 			</p>
 		</FormSection>
 	{:else if selected === 'end'}
-		<FormSection title={t('flows.section_session')} description={t('flows.section_session_hint')}>
+		<FormSection
+			title="Session"
+			description="How long somebody stays signed in after going through this flow."
+		>
 			<div class="pair">
 				<Input
-					label={t('flows.session_length')}
+					label="Lasts"
 					type="number"
 					min="1"
 					value={String(amount)}
@@ -150,49 +167,72 @@
 					readOnly={!editable}
 				/>
 				<Select
-					label={t('flows.session_unit')}
+					label="Unit"
 					value={unit}
 					options={[
-						{ value: 'hours', label: t('flows.unit_hours') },
-						{ value: 'days', label: t('flows.unit_days') }
+						{ value: 'hours', label: 'hours' },
+						{ value: 'days', label: 'days' }
 					]}
 					readOnly={!editable}
 					onChange={(value) => setUnit(value as 'hours' | 'days')}
 				/>
 			</div>
-			<p class="note">{t('flows.session_max', { days: MAX_SESSION_HOURS / 24 })}</p>
+			<p class="note">{`At most ${MAX_SESSION_HOURS / 24} days.`}</p>
 		</FormSection>
 	{:else if step}
-		<FormSection title={labelFor(step, kinds, t)} description={describe(step, kinds, t)}>
+		<FormSection title={labelFor(step, kinds)} description={describe(step, kinds)}>
 			{#if spec && !spec.implemented}
-				<Alert tone="warning">{t('flows.planned_body')}</Alert>
+				<Alert tone="warning"
+					>The sign-in pages do not run this step yet. It can be placed as a plan; the flow still
+					needs Password or Other accounts to let anybody in.</Alert
+				>
 			{/if}
 
 			{#if step === 'identifier'}
 				<SwitchField
-					label={t('flows.allow_registration')}
-					description={t('flows.allow_registration_hint')}
+					label="People can create an account"
+					description="Offers “Create one” on the sign-in page, where the application allows it too."
 					bind:checked={draft.allow_registration}
 					disabled={!editable}
 				/>
 				<SwitchField
-					label={t('flows.require_verified')}
-					description={t('flows.require_verified_hint')}
+					label="Confirm the address of a new account"
+					description="Sends a link when somebody signs up. They are signed in either way; the link is waiting for them."
+					bind:checked={draft.verify_email_on_register}
+					disabled={!editable}
+				/>
+				<SwitchField
+					label="Require a verified address"
+					description="An account whose address is unconfirmed is sent a link instead of being signed in."
 					bind:checked={draft.require_verified_email}
 					disabled={!editable}
 				/>
-				<p class="note">{t('flows.identifier_fixed')}</p>
+				<SwitchField
+					label="People can change their email"
+					description="Offers “Change” beside the address on their own account page. The new one is confirmed by a link before it takes effect."
+					bind:checked={draft.allow_email_change}
+					disabled={!editable}
+				/>
+				<p class="note">
+					Every flow starts by asking who is signing in, so this step cannot move or be removed.
+				</p>
 			{:else if step === 'password'}
 				<SwitchField
-					label={t('flows.allow_reset')}
-					description={t('flows.allow_reset_hint')}
+					label="Offer “Forgot password”"
+					description="A link to reset the password by email. Completing it also confirms the address."
 					bind:checked={draft.allow_password_reset}
+					disabled={!editable}
+				/>
+				<SwitchField
+					label="Offer “Stay signed in”"
+					description="A box beside the password. Left unticked — or not offered — the session ends when the browser closes."
+					bind:checked={draft.allow_remember_me}
 					disabled={!editable}
 				/>
 			{:else if step === 'social'}
 				<p class="note">
-					{t('flows.social_hint')}
-					<a href={resolve('/admin/(panel)/dashboard/social')}>{t('flows.social_link')}</a>
+					Shows a button for each provider turned on at
+					<a href={resolve('/admin/(panel)/dashboard/social')}>Social</a>
 				</p>
 			{/if}
 
@@ -200,7 +240,7 @@
 				<div>
 					<Button variant="subtle" colorPalette="danger" size="sm" onclick={() => onRemove(step)}>
 						<Icon icon={RiDeleteBinLine} />
-						{t('flows.remove_step')}
+						Remove step
 					</Button>
 				</div>
 			{/if}

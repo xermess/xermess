@@ -18,7 +18,7 @@
 			await adminApi.logout().catch(() => {});
 			await goto(resolve('/admin/login'), { replaceState: true, invalidateAll: true });
 		} else {
-			await goto(resolve('/admin/profile'));
+			await goto(resolve('/admin/dashboard'));
 		}
 	}
 </script>

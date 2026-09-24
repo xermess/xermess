@@ -7,9 +7,12 @@
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	/** Starts as the server rendered it and is the reader's from then on, so
-	    the value is read once on purpose: a later load returns the same
-	    cookie, and re-reading it would undo a toggle. */
-	const shell = provideShell(untrack(() => data.sidebar));
+	    the values are read once on purpose: a later load returns the same
+	    cookies, and re-reading them would undo a toggle. */
+	const shell = provideShell(
+		untrack(() => data.sidebar),
+		untrack(() => data.closedBranches)
+	);
 </script>
 
 <div class="shell" class:mini={shell.collapsed}>

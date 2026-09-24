@@ -6,7 +6,6 @@
 	import LanguageDrawer from '$lib/components/languages/LanguageDrawer.svelte';
 	import LanguageTable from '$lib/components/languages/LanguageTable.svelte';
 	import NewLanguageDrawer from '$lib/components/languages/NewLanguageDrawer.svelte';
-	import { useTranslator } from '$lib/i18n';
 	import { can } from '$lib/permissions';
 	import { keys, languagesOptions } from '$lib/query';
 	import type { PageData } from './$types';
@@ -14,7 +13,6 @@
 	let { data }: { data: PageData } = $props();
 
 	const queryClient = useQueryClient();
-	const t = useTranslator();
 
 	const list = createQuery(() =>
 		languagesOptions({ languages: data.languages, apps: data.apps, shipped: data.shipped })
@@ -71,16 +69,16 @@
 	}
 </script>
 
-<svelte:head><title>{t('languages.head')} · xermess admin</title></svelte:head>
+<svelte:head><title>Languages · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.languages')]}>
+	<PageHeader crumbs={['Dashboard', 'Languages']}>
 		{#snippet secondary()}
-			<span class="total">{t('languages.total', { count: list.data.languages.length })}</span>
+			<span class="total">{`${list.data.languages.length} available`}</span>
 
 			<IconButton
 				icon={RiRefreshLine}
-				label={t('action.refresh')}
+				label="Refresh the data"
 				onclick={refresh}
 				loading={refreshing}
 				disabled={refreshing}
@@ -91,23 +89,27 @@
 			{#if canWrite}
 				<Button onclick={() => (creating = true)}>
 					<Icon icon={RiAddLine} />
-					{t('languages.new')}
+					New language
 				</Button>
 			{/if}
 		{/snippet}
 	</PageHeader>
 </div>
 
-<p class="lead">{t('languages.lead')}</p>
+<p class="lead">
+	The languages the sign-in pages can be shown in. Their text lives in the database: add a language,
+	translate it here or import a file, and it is on the next page anybody opens — nothing is rebuilt.
+	This panel is English and is not one of them.
+</p>
 
 <div class="toolbar">
 	<label class="search">
 		<Icon icon={RiSearchLine} />
 		<input
 			type="search"
-			placeholder={t('languages.search')}
+			placeholder="Search name or code…"
 			bind:value={search}
-			aria-label={t('action.search')}
+			aria-label="Search"
 		/>
 	</label>
 </div>
@@ -116,7 +118,7 @@
 	languages={visible}
 	apps={list.data.apps}
 	onOpen={open}
-	empty={t('languages.empty')}
+	empty="No languages match this."
 />
 
 <LanguageDrawer bind:open={drawerOpen} language={editing} tab={drawerTab} {canWrite} />

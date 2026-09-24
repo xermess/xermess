@@ -28,12 +28,9 @@
 		Tag
 	} from '$lib/components/ui';
 	import { can, canAnywhere } from '$lib/permissions';
-	import { useTranslator } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const admin = $derived(data.admin);
 	const overview = $derived(data.overview);
@@ -64,7 +61,7 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.activity')]}>
+	<PageHeader crumbs={['Dashboard', 'Activity']}>
 		{#snippet secondary()}
 			<IconButton
 				icon={RiRefreshLine}
@@ -166,11 +163,6 @@
 				</Panel>
 
 				<Panel title="Your sessions" icon={RiComputerLine} flush>
-					{#snippet meta()}
-						<LinkButton href={resolve('/admin/(panel)/profile')} variant="ghost" size="sm">
-							Manage
-						</LinkButton>
-					{/snippet}
 					<SessionList sessions={data.sessions} limit={4} />
 				</Panel>
 			</div>
@@ -178,11 +170,6 @@
 	{:else}
 		<div class="narrow">
 			<Panel title="Your sessions" icon={RiComputerLine} flush>
-				{#snippet meta()}
-					<LinkButton href={resolve('/admin/(panel)/profile')} variant="ghost" size="sm">
-						Manage
-					</LinkButton>
-				{/snippet}
 				<SessionList sessions={data.sessions} limit={8} />
 			</Panel>
 

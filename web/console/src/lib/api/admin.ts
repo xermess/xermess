@@ -8,6 +8,7 @@ import type {
 	TokenPreview,
 	TokenPreviewInput,
 	Admin,
+	AdminSession,
 	ApplicationInput,
 	ApplicationPage,
 	ApplicationWithSecret,
@@ -28,6 +29,11 @@ import type {
 	LoginFlowInput,
 	LoginResult,
 	LoginStepSpec,
+	MailContent,
+	MailLanguageContent,
+	MailResponse,
+	MailSettingsInput,
+	MailTestInput,
 	MfaEnrolment,
 	MfaStatus,
 	SessionState,
@@ -36,6 +42,8 @@ import type {
 	AdminSecurity,
 	Organization,
 	OrganizationInput,
+	OTPResponse,
+	OTPSettingsInput,
 	SocialProvider,
 	SocialProviderInput,
 	SocialSpec,
@@ -76,7 +84,9 @@ export const adminApi = {
 	/** Finishes a sign-in waiting for a code, or a recovery code. */
 	verifyMfa: (code: string) => api.post<{ admin: Admin }>('/admin/auth/mfa', { code }),
 
-	logout: () => api.post<{ status: string }>('/admin/auth/logout')
+	logout: () => api.post<{ status: string }>('/admin/auth/logout'),
+
+	profileSessions: () => api.get<{ sessions: AdminSession[] }>('/admin/sessions')
 };
 
 /** The users an organisation manages, and the shape of their records. */
@@ -134,6 +144,36 @@ export const organizationApi = {
 
 	update: (input: OrganizationInput) =>
 		api.patch<{ organization: Organization }>('/admin/organization', input)
+};
+
+/** How this installation sends email, and the words of every message it
+    sends. A super admin's: the settings carry the mail server's password, and
+    the words are what lands in a user's inbox. */
+export const mailApi = {
+	get: (fetcher?: Fetch) => api.get<MailResponse>('/admin/mail', fetcher),
+
+	update: (input: MailSettingsInput) => api.patch<MailResponse>('/admin/mail', input),
+
+	/** Sends one message with what the form holds, to find out whether the
+	    settings work before anybody's sign-in depends on them. A password
+	    left out is the stored one. */
+	test: (input: MailTestInput) =>
+		api.post<{ sent: boolean; to: string }>('/admin/mail/test', input),
+
+	content: (fetcher?: Fetch) => api.get<MailContent>('/admin/mail/content', fetcher),
+
+	/** Writes one language's words for the emails. Only the keys of the
+	    messages, merged into the rest of that language's text — a value left
+	    empty clears the override and the shipped text comes back. */
+	saveContent: (code: string, messages: Record<string, string>) =>
+		api.put<{ language: MailLanguageContent }>(`/admin/mail/content/${code}`, { messages })
+};
+
+/** The one-time codes the server emails as people sign in. */
+export const otpApi = {
+	get: (fetcher?: Fetch) => api.get<OTPResponse>('/admin/otp', fetcher),
+
+	update: (input: OTPSettingsInput) => api.patch<OTPResponse>('/admin/otp', input)
 };
 
 /** The accounts elsewhere users may sign in with. The kinds come with the

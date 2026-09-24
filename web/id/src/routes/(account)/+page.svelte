@@ -20,6 +20,45 @@
 	let error = $state('');
 	let saved = $state(false);
 
+	/** Changing the address somebody signs in with, where the login flow
+	    allows it. It is not part of the form above: the name is saved, while
+	    the address is only asked for — a link goes to it, and the account
+	    moves when that link is opened. */
+	const mayChangeEmail = $derived(data.login?.allow_email_change ?? false);
+
+	let changingEmail = $state(false);
+	let newEmail = $state('');
+	let emailError = $state('');
+	let emailSent = $state('');
+	let sendingEmail = $state(false);
+
+	function startEmailChange() {
+		changingEmail = true;
+		newEmail = '';
+		emailError = '';
+		emailSent = '';
+	}
+
+	async function sendEmailChange(event: SubmitEvent) {
+		event.preventDefault();
+
+		const address = newEmail.trim();
+		if (sendingEmail || address === '') return;
+
+		sendingEmail = true;
+		emailError = '';
+
+		try {
+			await account.changeEmail({ email: address });
+			emailSent = address;
+			changingEmail = false;
+		} catch (err) {
+			emailError = messageOf(err, t);
+		} finally {
+			sendingEmail = false;
+		}
+	}
+
 	const changed = $derived(
 		firstName.trim() !== user.first_name || lastName.trim() !== user.last_name
 	);
@@ -98,8 +137,52 @@
 				label={t('field.email')}
 				value={user.email}
 				readonly
-				hint={t('profile.email_hint')}
+				hint={mayChangeEmail ? t('account.email_change_body') : t('profile.email_hint')}
 			/>
+
+			{#if mayChangeEmail}
+				{#if emailSent}
+					<Alert tone="success">{t('account.email_change_sent', { email: emailSent })}</Alert>
+				{/if}
+
+				{#if changingEmail}
+					{#if emailError}<Alert>{emailError}</Alert>{/if}
+
+					<TextField
+						label={t('account.email_change_title')}
+						bind:value={newEmail}
+						type="email"
+						autocomplete="email"
+						autocapitalize="none"
+						spellcheck={false}
+						maxlength={255}
+						disabled={sendingEmail}
+					/>
+
+					<div class="email-actions">
+						<Button
+							variant="secondary"
+							disabled={sendingEmail}
+							onclick={() => (changingEmail = false)}
+						>
+							{t('account.email_change_cancel')}
+						</Button>
+						<Button
+							loading={sendingEmail}
+							disabled={sendingEmail || newEmail.trim() === ''}
+							onclick={(event: MouseEvent) => sendEmailChange(event as unknown as SubmitEvent)}
+						>
+							{t('account.email_change_submit')}
+						</Button>
+					</div>
+				{:else}
+					<div class="email-actions">
+						<Button variant="secondary" onclick={startEmailChange}>
+							{t('account.email_change')}
+						</Button>
+					</div>
+				{/if}
+			{/if}
 
 			{#snippet footer()}
 				<Button
@@ -136,6 +219,14 @@
 </div>
 
 <style>
+	/* The buttons that go with the address: at the end of the row, apart from
+	   the form's own footer, because this is not saved with the name. */
+	.email-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2);
+	}
+
 	.page {
 		display: flex;
 		flex-direction: column;

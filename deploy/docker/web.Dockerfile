@@ -4,10 +4,10 @@
 #   docker build -f deploy/docker/web.Dockerfile --build-arg APP=web/id -t xermess-id .
 #
 # The context is the repository and not the app's own directory because the
-# apps import the shipped translations from locales/ at the top of it
+# apps import the shipped translations from i18n/ at the top of it
 # (web/id/src/lib/i18n/messages.ts). The app therefore keeps its place in the
 # tree inside the image — /src/web/id — so that relative import still points
-# at /src/locales.
+# at /src/i18n.
 #
 # Runtime settings: ORIGIN (its public URL), API_URL (the API inside the
 # network), ADDRESS_HEADER (how it learns who is calling), PORT (3000).
@@ -19,7 +19,7 @@ ARG APP
 WORKDIR /src/${APP}
 COPY ${APP}/package.json ${APP}/bun.lock ./
 RUN bun install --frozen-lockfile
-COPY locales /src/locales
+COPY i18n /src/i18n
 COPY ${APP} /src/${APP}
 RUN bun run build && rm -rf node_modules && bun install --frozen-lockfile --production --ignore-scripts
 

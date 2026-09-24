@@ -15,6 +15,9 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run"
 	},
+	"dependencies": {
+		"svelte-i18n": "^4.0.1"
+	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-node": "^5.5.7",

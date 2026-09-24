@@ -9,12 +9,9 @@
 		type Category
 	} from '$lib/components/activity/actions';
 	import { Icon, IconButton, PageHeader } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	let category = $state<Category | 'all'>('all');
 	let search = $state('');
@@ -62,7 +59,7 @@
 </svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.logs')]}>
+	<PageHeader crumbs={['Dashboard', 'Logs']}>
 		{#snippet secondary()}
 			<span class="total">latest {data.logs.length}</span>
 			<IconButton

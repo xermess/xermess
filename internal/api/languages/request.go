@@ -18,7 +18,6 @@ var (
 	keepADefault       = respond.Define(http.StatusBadRequest, "language_default_required", respond.Admin)
 	defaultStays       = respond.Define(http.StatusBadRequest, "language_default_protected", respond.Admin)
 	baseStays          = respond.Define(http.StatusBadRequest, "language_base_protected", respond.Admin)
-	notForThePanel     = respond.Define(http.StatusNotFound, "panel_languages_only", respond.Admin)
 	noSuchApp          = respond.Define(http.StatusNotFound, "translation_app_not_found", respond.Admin)
 	translationTooLong = respond.Define(http.StatusBadRequest, "translation_too_long", respond.Admin)
 )

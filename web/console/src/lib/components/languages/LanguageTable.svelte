@@ -2,7 +2,6 @@
 	import { RiGlobalLine, RiHashtag, RiToggleLine, RiTranslate2 } from 'svelte-remixicon';
 	import type { Language, LocaleApp } from '$lib/api';
 	import { Badge, type Column, DataTable, Tag, Tooltip } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 
 	type Props = {
 		languages: Language[];
@@ -15,8 +14,6 @@
 
 	let { languages, apps, onOpen, empty }: Props = $props();
 
-	const t = useTranslator();
-
 	/** The DataTable identifies rows by `id`; a language's code is what
 	    identifies it. */
 	type Row = Language & { id: string };
@@ -24,20 +21,22 @@
 	const rows = $derived<Row[]>(languages.map((language) => ({ ...language, id: language.code })));
 
 	const columns = $derived<Column[]>([
-		{ key: 'language', label: t('languages.column_language'), icon: RiGlobalLine, min: '14rem' },
-		{ key: 'code', label: t('languages.column_code'), icon: RiHashtag, min: '7rem' },
+		{ key: 'language', label: 'language', icon: RiGlobalLine, min: '14rem' },
+		{ key: 'code', label: 'code', icon: RiHashtag, min: '7rem' },
 		{
 			key: 'translated',
-			label: t('languages.column_translated'),
+			label: 'translated',
 			icon: RiTranslate2,
 			min: '18rem'
 		},
-		{ key: 'status', label: t('languages.column_status'), icon: RiToggleLine, min: '11rem' }
+		{ key: 'status', label: 'status', icon: RiToggleLine, min: '11rem' }
 	]);
 
-	/** What each app is called in the coverage bars. */
+	/** What each app is called in the coverage bars. There is one today —
+	    the sign-in pages — and the server says which, so a second one would
+	    arrive here without this component changing. */
 	function appName(app: LocaleApp): string {
-		return app === 'id' ? t('languages.sign_in_pages') : t('languages.admin_panel');
+		return app === 'id' ? 'Sign-in pages' : app;
 	}
 </script>
 
@@ -57,31 +56,21 @@
 				{#each apps as app (app)}
 					{@const percent = language.coverage[app] ?? 0}
 					{@const missing = language.missing[app] ?? 0}
-					{#if language.apps.includes(app)}
-						<Tooltip
-							label={missing > 0
-								? `${appName(app)} · ${t('languages.missing', { count: missing })}`
-								: `${appName(app)} · ${t('languages.complete')}`}
-						>
-							{#snippet children(trigger)}
-								<span class="bar" {...trigger()}>
-									<span class="track">
-										<span class="fill" class:whole={percent === 100} style="--filled: {percent}%"
-										></span>
-									</span>
-									<span class="percent">{percent}%</span>
+					<Tooltip
+						label={missing > 0
+							? `${appName(app)} · ${missing} missing`
+							: `${appName(app)} · Complete`}
+					>
+						{#snippet children(trigger)}
+							<span class="bar" {...trigger()}>
+								<span class="track">
+									<span class="fill" class:whole={percent === 100} style="--filled: {percent}%"
+									></span>
 								</span>
-							{/snippet}
-						</Tooltip>
-					{:else}
-						<!-- The panel is not shown in this language, so there is
-						     nothing to count; the slot stays so the rows line up. -->
-						<Tooltip label={`${appName(app)} · ${t('languages.panel_only')}`}>
-							{#snippet children(trigger)}
-								<span class="bar none" {...trigger()}>—</span>
-							{/snippet}
-						</Tooltip>
-					{/if}
+								<span class="percent">{percent}%</span>
+							</span>
+						{/snippet}
+					</Tooltip>
 				{/each}
 			</span>
 		</td>
@@ -89,11 +78,11 @@
 		<td>
 			<span class="status">
 				{#if language.is_default}
-					<Tag tone="info" strong>{t('languages.default')}</Tag>
+					<Tag tone="info" strong>default</Tag>
 				{:else if language.enabled}
-					<Badge tone="success">{t('languages.offered')}</Badge>
+					<Badge tone="success">offered</Badge>
 				{:else}
-					<Badge>{t('languages.off')}</Badge>
+					<Badge>off</Badge>
 				{/if}
 			</span>
 		</td>

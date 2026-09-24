@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"xermess/i18n"
 	"xermess/internal/api/respond"
 	"xermess/internal/oidc"
-	"xermess/locales"
 )
 
 // clientCodes are the `error.*` keys an app says about a request that never
@@ -25,7 +25,7 @@ var clientCodes = []string{"network", "unknown"}
 // This package imports every handler, so every problem is defined by the time
 // it runs.
 func TestErrorCodesMatchTheCatalogs(t *testing.T) {
-	defined := map[locales.App]map[string]bool{}
+	defined := map[i18n.App]map[string]bool{}
 
 	for _, problem := range respond.Problems() {
 		english := ""
@@ -36,9 +36,9 @@ func TestErrorCodesMatchTheCatalogs(t *testing.T) {
 			}
 			defined[app][problem.Code] = true
 
-			text, ok := locales.Text(app, problem.Key())
+			text, ok := i18n.Text(app, problem.Key())
 			if !ok {
-				t.Errorf("%s: %s is missing from locales/%s/en.json", problem.Code, problem.Key(), app)
+				t.Errorf("%s: %s is missing from i18n/%s/en/", problem.Code, problem.Key(), app)
 				continue
 			}
 
@@ -50,14 +50,14 @@ func TestErrorCodesMatchTheCatalogs(t *testing.T) {
 		}
 	}
 
-	for _, app := range locales.Apps {
-		for _, key := range locales.Keys(app) {
+	for _, app := range i18n.Apps {
+		for _, key := range i18n.Keys(app) {
 			code, isError := strings.CutPrefix(key, "error.")
 			if !isError || defined[app][code] || slices.Contains(clientCodes, code) {
 				continue
 			}
 
-			t.Errorf("locales/%s/en.json has %s, which the server never answers %s with", app, key, app)
+			t.Errorf("i18n/%s/en/ has %s, which the server never answers %s with", app, key, app)
 		}
 	}
 }
@@ -71,7 +71,7 @@ func TestEveryProviderProblemIsAnswered(t *testing.T) {
 			t.Errorf("oidc.%s has no problem in the public API", refused.Code)
 			continue
 		}
-		if !slices.Contains(problem.Apps, locales.ID) {
+		if !slices.Contains(problem.Apps, i18n.ID) {
 			t.Errorf("%s is not for the sign-in pages", refused.Code)
 		}
 	}
@@ -93,6 +93,8 @@ func TestErrorParametersAreSent(t *testing.T) {
 		"sso_discovery_failed":     {"reason"},
 		"sso_metadata_invalid":     {"reason"},
 		"sso_role_mapping_invalid": {"group"},
+		"mail_test_failed":         {"reason"},
+		"mail_content_key_unknown": {"key"},
 		"validation.max":           {"field", "max"},
 		"validation.min":           {"field", "min"},
 		"validation.oneof":         {"field", "values"},
@@ -107,7 +109,7 @@ func TestErrorParametersAreSent(t *testing.T) {
 		}
 
 		for _, app := range problem.Apps {
-			text, _ := locales.Text(app, problem.Key())
+			text, _ := i18n.Text(app, problem.Key())
 
 			for _, match := range placeholders(text) {
 				if !slices.Contains(want, match) {

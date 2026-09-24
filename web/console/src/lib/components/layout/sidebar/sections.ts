@@ -9,11 +9,15 @@ import {
 	RiFileList3Line,
 	RiGitBranchLine,
 	RiGroupLine,
+	RiKeyLine,
 	RiLinksLine,
+	RiMailLine,
 	RiPulseLine,
+	RiSettings3Line,
 	RiShareLine,
 	RiShieldKeyholeLine,
 	RiShieldUserLine,
+	RiTeamLine,
 	RiTranslate2
 } from 'svelte-remixicon';
 import type { Admin } from '$lib/api';
@@ -28,96 +32,118 @@ export type Section = Extract<
 	`/admin/(panel)/dashboard${string}`
 >;
 
+/** A row that leads somewhere. */
 export type SidebarItem = {
 	route: Section;
-	/** The message key its name is looked up by, not the name: the sidebar
-	    has the translator, and this list is read on the server too. */
-	key: string;
+	/** What the sidebar calls it. */
+	label: string;
 	icon: ComponentType;
 	/** Whether the administrator may open it. Left out, anyone may. */
 	allowed?: (admin: Admin) => boolean;
 };
 
-/** A group with no heading sits at the top, on its own. */
-export type SidebarGroup = { key?: string; items: SidebarItem[] };
+/** A row that opens to reveal its pages. It leads nowhere itself: an
+    administrator who cannot see any of its children never sees it either. */
+export type SidebarBranch = {
+	/** A name the cookie can hold, so which branches are open survives a
+	    reload. It is not the label: renaming a section should not fold it. */
+	id: string;
+	label: string;
+	icon: ComponentType;
+	items: SidebarItem[];
+};
 
-/** The dashboard's sections, in the order the sidebar lists them. The page
-    checks permissions again on the server; this only decides what is shown. */
-export const sections: SidebarGroup[] = [
+/** The sidebar in order: the pages that answer "what is happening" on their
+    own at the top, and everything else under the subject it belongs to.
+    A branch is a subject, not a bucket — which is why One-time codes sits
+    under Authentication, where it is read, rather than under Settings, where
+    it merely lives. */
+export const overview: SidebarItem[] = [
 	{
-		items: [
-			{
-				route: '/admin/(panel)/dashboard',
-				key: 'nav.activity',
-				icon: RiPulseLine,
-				allowed: (admin) => can(admin, 'activity.read')
-			},
-			{
-				route: '/admin/(panel)/dashboard/logs',
-				key: 'nav.logs',
-				icon: RiFileList3Line,
-				allowed: (admin) => can(admin, 'activity.read')
-			}
-		]
+		route: '/admin/(panel)/dashboard',
+		label: 'Activity',
+		icon: RiPulseLine,
+		allowed: (admin) => can(admin, 'activity.read')
 	},
 	{
-		key: 'nav.applications',
+		route: '/admin/(panel)/dashboard/logs',
+		label: 'Logs',
+		icon: RiFileList3Line,
+		allowed: (admin) => can(admin, 'activity.read')
+	}
+];
+
+export const branches: SidebarBranch[] = [
+	{
+		id: 'applications',
+		label: 'Applications',
+		icon: RiAppsLine,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/applications',
-				key: 'nav.applications',
+				label: 'Applications',
 				icon: RiAppsLine,
 				allowed: (admin) => canAnywhere(admin, 'applications.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/apis',
-				key: 'nav.apis',
+				label: 'APIs',
 				icon: RiCodeBoxLine,
 				allowed: (admin) => can(admin, 'apis.read')
-			},
-			{
-				route: '/admin/(panel)/dashboard/sso',
-				key: 'nav.sso',
-				icon: RiLinksLine,
-				allowed: (admin) => can(admin, 'sso.read')
 			}
 		]
 	},
 	{
-		key: 'nav.authentication',
+		id: 'authentication',
+		label: 'Authentication',
+		icon: RiShieldKeyholeLine,
 		items: [
 			{
+				route: '/admin/(panel)/dashboard/flows',
+				label: 'Login flows',
+				icon: RiGitBranchLine,
+				allowed: (admin) => can(admin, 'login_flows.read')
+			},
+			{
 				route: '/admin/(panel)/dashboard/social',
-				key: 'nav.social',
+				label: 'Social',
 				icon: RiShareLine,
 				allowed: (admin) => can(admin, 'social.read')
 			},
 			{
-				route: '/admin/(panel)/dashboard/flows',
-				key: 'nav.flows',
-				icon: RiGitBranchLine,
-				allowed: (admin) => can(admin, 'login_flows.read')
+				route: '/admin/(panel)/dashboard/sso',
+				label: 'SSO integrations',
+				icon: RiLinksLine,
+				allowed: (admin) => can(admin, 'sso.read')
+			},
+			{
+				route: '/admin/(panel)/dashboard/otp',
+				label: 'One-time codes',
+				icon: RiKeyLine,
+				allowed: (admin) => admin.is_super_admin
 			}
 		]
 	},
 	{
-		key: 'nav.user_management',
+		id: 'users',
+		label: 'Users',
+		icon: RiTeamLine,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/users',
-				key: 'nav.users',
+				label: 'Users',
 				icon: RiGroupLine,
 				allowed: (admin) => can(admin, 'users.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/sessions',
-				key: 'nav.sessions',
+				label: 'Sessions',
 				icon: RiComputerLine,
 				allowed: (admin) => can(admin, 'users.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/roles',
-				key: 'nav.roles',
+				label: 'Roles',
 				icon: RiShieldUserLine,
 				allowed: (admin) =>
 					canAnywhere(admin, 'users.read') || canAnywhere(admin, 'applications.read')
@@ -125,34 +151,44 @@ export const sections: SidebarGroup[] = [
 		]
 	},
 	{
-		key: 'nav.administration',
+		id: 'administration',
+		label: 'Administration',
+		icon: RiAdminLine,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/admins',
-				key: 'nav.admins',
+				label: 'Administrators',
 				icon: RiAdminLine,
 				allowed: (admin) => admin.is_super_admin
 			},
 			{
 				route: '/admin/(panel)/dashboard/admin-roles',
-				key: 'nav.admin_roles',
+				label: 'Admin roles',
 				icon: RiShieldKeyholeLine,
 				allowed: (admin) => admin.is_super_admin
 			}
 		]
 	},
 	{
-		key: 'nav.settings',
+		id: 'settings',
+		label: 'Settings',
+		icon: RiSettings3Line,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/organization',
-				key: 'nav.organization',
+				label: 'Organization',
 				icon: RiBuildingLine,
 				allowed: (admin) => can(admin, 'organization.read')
 			},
 			{
+				route: '/admin/(panel)/dashboard/mail',
+				label: 'Mail',
+				icon: RiMailLine,
+				allowed: (admin) => admin.is_super_admin
+			},
+			{
 				route: '/admin/(panel)/dashboard/languages',
-				key: 'nav.languages',
+				label: 'Languages',
 				icon: RiTranslate2,
 				allowed: (admin) => can(admin, 'languages.read')
 			}
@@ -160,13 +196,29 @@ export const sections: SidebarGroup[] = [
 	}
 ];
 
-/** The groups an administrator sees: what their roles do not allow is left
-    out, and a group left empty goes with it. */
-export function visibleSections(admin: Admin | undefined): SidebarGroup[] {
-	return sections
-		.map((group) => ({
-			...group,
-			items: group.items.filter((item) => !item.allowed || (admin && item.allowed(admin)))
+/** What an administrator sees: the pages their roles allow, and a branch only
+    where it still has one. The page checks the permission again on the
+    server; this only decides what is shown. */
+export function visibleOverview(admin: Admin | undefined): SidebarItem[] {
+	return overview.filter((item) => !item.allowed || (admin && item.allowed(admin)));
+}
+
+export function visibleBranches(admin: Admin | undefined): SidebarBranch[] {
+	return branches
+		.map((branch) => ({
+			...branch,
+			items: branch.items.filter((item) => !item.allowed || (admin && item.allowed(admin)))
 		}))
-		.filter((group) => group.items.length > 0);
+		.filter((branch) => branch.items.length > 0);
+}
+
+/** Every page the sidebar leads to, in the order it lists them — for the
+    command palette, which is one flat list however the column is grouped. */
+export function allSections(admin: Admin | undefined): { group: string; items: SidebarItem[] }[] {
+	const overviewItems = visibleOverview(admin);
+
+	return [
+		...(overviewItems.length > 0 ? [{ group: 'Dashboard', items: overviewItems }] : []),
+		...visibleBranches(admin).map((branch) => ({ group: branch.label, items: branch.items }))
+	];
 }

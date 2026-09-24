@@ -43,10 +43,12 @@ import (
 	"xermess/internal/api/flows"
 	"xermess/internal/api/keys"
 	"xermess/internal/api/languages"
+	adminmail "xermess/internal/api/mail"
 	"xermess/internal/api/mfa"
 	"xermess/internal/api/middleware"
 	"xermess/internal/api/oauth"
 	"xermess/internal/api/organization"
+	"xermess/internal/api/otp"
 	"xermess/internal/api/ratelimit"
 	"xermess/internal/api/respond"
 	"xermess/internal/api/roles"
@@ -131,6 +133,8 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		sso:          sso.New(st, sealer, provider, recorder, log, cfg.Issuer),
 		flows:        flows.New(st, recorder, log),
 		languages:    languages.New(st, recorder, log),
+		mail:         adminmail.New(st, sealer, recorder, log),
+		otp:          otp.New(st, recorder, log),
 		apis:         apis.New(st, recorder, log, cfg.Issuer),
 		activity:     activity.New(st, log),
 		keys:         keys.New(provider, recorder, log),
@@ -207,6 +211,8 @@ type adminHandlers struct {
 	sso          *sso.Handler
 	flows        *flows.Handler
 	languages    *languages.Handler
+	mail         *adminmail.Handler
+	otp          *otp.Handler
 	activity     *activity.Handler
 	keys         *keys.Handler
 	limit        gin.HandlerFunc
@@ -276,6 +282,11 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 		accounts.GET("/languages/:code", h.account.LanguageText)
 		accounts.GET("/applications/:client_id", h.account.Application)
 		accounts.POST("/login", h.limit, h.account.Login)
+		// Finishing a sign-in a login flow held for an emailed code. Both
+		// are limited per address: the first takes guesses at a six-digit
+		// code, the second sends mail.
+		accounts.POST("/login/code", h.limit, h.account.Code)
+		accounts.POST("/login/code/resend", h.limit, h.account.ResendCode)
 		accounts.POST("/register", h.limit, h.account.Register)
 		accounts.POST("/forgot-password", h.limit, h.account.ForgotPassword)
 		accounts.GET("/reset-password", h.account.CheckReset)
@@ -289,6 +300,9 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 		own.GET("/me", h.account.Me)
 		own.PATCH("/me", h.account.UpdateMe)
 		own.POST("/password", h.limit, h.account.ChangePassword)
+		// Moving to another sign-in address sends mail to whatever is typed,
+		// so it is limited per address like the rest that do.
+		own.POST("/email", h.limit, h.account.ChangeEmail)
 		own.GET("/sessions", h.account.Sessions)
 		own.DELETE("/sessions/:id", h.account.EndSession)
 		own.GET("/connected-applications", h.account.Applications)
@@ -315,12 +329,6 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 		v1.GET("/admin/setup", h.setup.Status)
 		v1.POST("/admin/setup", h.limit, h.setup.Create)
 		v1.POST("/admin/auth/login", h.limit, h.auth.Login)
-
-		// The panel's own text, which the sign-in page is drawn in before
-		// there is anybody to be signed in. It is the words on the page and
-		// nothing more.
-		v1.GET("/admin/panel/languages", h.languages.PanelLanguages)
-		v1.GET("/admin/panel/languages/:code", h.languages.PanelText)
 
 		// Signing in, the rest of the way. The state says which step a
 		// session is at; a code finishes a sign-in waiting for one; signing
@@ -513,6 +521,25 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			super.PATCH("/admins/:id", h.admins.Update)
 			super.DELETE("/admins/:id", h.admins.Delete)
 			super.DELETE("/admins/:id/mfa", h.admins.ResetMFA)
+
+			// How this installation sends email, and the words of every
+			// message it sends. The settings carry the mail server's
+			// password, and the words are what lands in a user's inbox, so
+			// both are a super admin's rather than something a role hands
+			// out. Sending a test message is rate limited: it is the one
+			// route in the panel that makes the server post mail anywhere an
+			// administrator names.
+			super.GET("/mail", h.mail.Get)
+			super.PATCH("/mail", h.mail.Update)
+			super.POST("/mail/test", h.limit, h.mail.Test)
+			super.GET("/mail/content", h.mail.Content)
+			super.PUT("/mail/content/:code", h.mail.SaveContent)
+
+			// The one-time codes the server emails as people sign in. How
+			// short or long-lived a code is decides how hard this server is
+			// to get into, so it is a super admin's too.
+			super.GET("/otp", h.otp.Get)
+			super.PATCH("/otp", h.otp.Update)
 
 			// The keys tokens are signed with. Rotating them decides which
 			// tokens every API trusts, so it is a super admin's alone.

@@ -1,0 +1,42 @@
+{
+	"$name": "English",
+	"$native": "English",
+	"shell": {
+		"secured_by": "Secured by",
+		"trouble": "Trouble signing in?",
+		"language": "Language",
+		"theme": "Switch theme"
+	},
+	"legal": {
+		"terms": "Terms of service",
+		"privacy": "Privacy policy",
+		"label": "Legal"
+	},
+	"field": {
+		"email": "Email",
+		"password": "Password",
+		"new_password": "New password",
+		"confirm_password": "Confirm password",
+		"confirm_new_password": "Confirm new password",
+		"current_password": "Current password",
+		"first_name": "First name",
+		"last_name": "Last name",
+		"show_password": "Show password",
+		"hide_password": "Hide password"
+	},
+	"action": {
+		"cancel": "Cancel",
+		"save_changes": "Save changes",
+		"sign_in": "Sign in",
+		"sign_out": "Sign out",
+		"back_to_sign_in": "Back to sign in"
+	},
+	"time": {
+		"never": "Never"
+	},
+	"device": {
+		"on": "{browser} on {system}",
+		"unknown_browser": "Unknown browser",
+		"unknown_system": "an unknown device"
+	}
+}

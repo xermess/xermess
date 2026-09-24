@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// A language, end to end: imported from the shipped files on the first start,
+// A language, end to end: imported from the shipped groups on the first start,
 // added and translated in the panel, offered to the sign-in pages and served
 // to them with its gaps filled in, and removed again.
 
@@ -77,8 +77,12 @@ func TestLiveLanguages(t *testing.T) {
 		}
 	}
 
-	if got := list.find("ru").Coverage["console"]; got != 100 {
-		t.Errorf("ru covers %d%% of the panel, want all of it", got)
+	// The panel is written in English, in its own markup, so no language is
+	// translated for it and none is counted against it.
+	for _, language := range list.Languages {
+		if _, counted := language.Coverage["console"]; counted {
+			t.Errorf("%s is counted against the panel: %+v", language.Code, language.Coverage)
+		}
 	}
 
 	if len(list.Shipped) != 0 {
@@ -160,18 +164,6 @@ func TestLiveLanguages(t *testing.T) {
 		t.Error("a key German does not have came back empty rather than in English")
 	}
 
-	// The panel is drawn before anybody signs in, and only ever in English or
-	// Russian — even with German offered to users.
-	var panel struct {
-		Languages []struct{ Code string } `json:"languages"`
-	}
-	s.client().must(http.StatusOK, http.MethodGet, "/panel/languages", nil, &panel)
-
-	if len(panel.Languages) != 2 || panel.Languages[0].Code != "en" || panel.Languages[1].Code != "ru" {
-		t.Errorf("the panel can be shown in %+v, want en and ru", panel.Languages)
-	}
-	s.client().must(http.StatusNotFound, http.MethodGet, "/panel/languages/de", nil, nil)
-
 	// Read once more — from the cache, when there is one — then reword it: the
 	// sign-in pages have the new text on the very next read, not an hour on.
 	s.public("/languages/de", &text)
@@ -207,8 +199,7 @@ func TestLiveLanguages(t *testing.T) {
 	super.must(http.StatusOK, http.MethodPatch, "/languages/en", map[string]any{"is_default": true}, nil)
 	super.must(http.StatusNoContent, http.MethodDelete, "/languages/de", nil, nil)
 
-	// A shipped language removed is offered back, and comes back whole — for
-	// the sign-in pages and the panel both.
+	// A shipped language removed is offered back, and comes back whole.
 	super.must(http.StatusNoContent, http.MethodDelete, "/languages/ru", nil, nil)
 	super.must(http.StatusOK, http.MethodGet, "/languages", nil, &list)
 
@@ -220,15 +211,16 @@ func TestLiveLanguages(t *testing.T) {
 		"code": "ru", "copy_from": "ru",
 	}, &created)
 
-	if created.Language.Native == "" || created.Language.Coverage["id"] != 100 || created.Language.Coverage["console"] != 100 {
+	if created.Language.Native == "" || created.Language.Coverage["id"] != 100 {
 		t.Errorf("ru brought back = %+v, want its names and all its text", created.Language)
 	}
 
-	var panelText struct {
-		Messages map[string]string `json:"messages"`
+	// The sign-in pages are the only app a language is translated for, so the
+	// panel is neither counted nor writable through this.
+	if _, counted := created.Language.Coverage["console"]; counted {
+		t.Errorf("the panel is counted as translated: %+v", created.Language.Coverage)
 	}
-	s.client().must(http.StatusOK, http.MethodGet, "/panel/languages/ru", nil, &panelText)
-	if panelText.Messages["nav.languages"] == "" || panelText.Messages["nav.languages"] == "Languages" {
-		t.Errorf("nav.languages in Russian = %q", panelText.Messages["nav.languages"])
-	}
+	super.must(http.StatusNotFound, http.MethodPut, "/languages/ru/translations/console", map[string]any{
+		"messages": map[string]string{"error.unknown": "…"},
+	}, nil)
 }

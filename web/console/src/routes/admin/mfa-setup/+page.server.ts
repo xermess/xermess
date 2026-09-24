@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 	if (state === 'none' || state === 'mfa') redirect(307, resolve('/admin/login'));
 
 	const { mfa } = await mfaApi.status(fetch);
-	if (mfa.enabled && state === 'signed_in') redirect(307, resolve('/admin/profile'));
+	if (mfa.enabled && state === 'signed_in') redirect(307, resolve('/admin/dashboard'));
 
 	return { required: mfa.required, enrolling: state === 'enroll' };
 };

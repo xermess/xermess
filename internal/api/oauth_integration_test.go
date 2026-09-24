@@ -913,14 +913,7 @@ func TestLiveAccountRegisterAndResetPassword(t *testing.T) {
 	}
 
 	msg := f.s.mail.wait(t, adaEmail)
-	start := strings.Index(msg.Body, testAccountURL+"/reset-password?")
-	if start < 0 {
-		t.Fatalf("no reset link in %q", msg.Body)
-	}
-	link, err := url.Parse(strings.Fields(msg.Body[start:])[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	link := linkIn(t, msg.Body, "/reset-password")
 	token := link.Query().Get("token")
 	if link.Query().Get("request") != handle {
 		t.Errorf("reset link %s does not carry the sign-in request back", link)

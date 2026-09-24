@@ -750,9 +750,20 @@ export type LoginFlow = {
 	is_default: boolean;
 	enabled: boolean;
 	steps: LoginStep[];
+	/** Whether anybody may sign in through this flow at all. Off, every way
+	    in is refused — including registering, which ends in a session. */
+	allow_sign_in: boolean;
 	allow_registration: boolean;
 	allow_password_reset: boolean;
+	/** Offers "stay signed in" beside the password. */
+	allow_remember_me: boolean;
+	/** Sends a new account a link to confirm its address, without holding it
+	    back; `require_verified_email` is what holds one back. */
+	verify_email_on_register: boolean;
 	require_verified_email: boolean;
+	/** Lets a user change the address they sign in with, from their own
+	    account page, confirming the new one by link first. */
+	allow_email_change: boolean;
 	session_lifetime_hours: number;
 	/** How many applications name this flow. */
 	applications: number;
@@ -771,9 +782,13 @@ export type LoginFlowInput = {
 	is_default?: boolean;
 	enabled?: boolean;
 	steps?: LoginStep[];
+	allow_sign_in?: boolean;
 	allow_registration?: boolean;
 	allow_password_reset?: boolean;
+	allow_remember_me?: boolean;
+	verify_email_on_register?: boolean;
 	require_verified_email?: boolean;
+	allow_email_change?: boolean;
 	session_lifetime_hours?: number;
 };
 
@@ -795,9 +810,9 @@ export type UserSessionPage = {
 	next?: string;
 };
 
-/** Which of the two apps a translation is for: the sign-in pages, or this
-    panel. */
-export type LocaleApp = 'id' | 'console';
+/** Which app a translation is for. There is one: the sign-in pages. The
+    panel is written in English, in its own markup, and is not translated. */
+export type LocaleApp = 'id';
 
 /** One language this installation has: its settings, and how much of each app
     it translates. */
@@ -806,8 +821,7 @@ export type Language = {
 	/** The language in English, and in itself. */
 	name: string;
 	native: string;
-	/** The apps this language is translated for: the sign-in pages always,
-	    and the admin panel only for English and Russian. */
+	/** The apps this language is translated for, which the server decides. */
 	apps: LocaleApp[];
 	/** How much of each of those apps is translated, as a percentage of the
 	    base language's keys, and how many keys each is short. An app the
@@ -967,3 +981,125 @@ export type SSOTestResult = {
 	identity_provider?: SSOIdentityProvider;
 	metadata?: string;
 };
+
+/** How the connection to the mail server is protected. The names mirror the
+    constants in internal/model/mail.go; change them together. */
+export type MailEncryption = 'starttls' | 'tls' | 'none';
+
+/** How this installation sends email. There is one record of it, like the
+    organisation's: it is read and written back.
+
+    The password is not here and never will be. It is stored sealed with the
+    server's secret key and nothing reads it back — `has_password` is all the
+    panel is told, so the form can say "set" rather than asking for one that
+    is already there. */
+export type MailSettings = {
+	/** Off, every message is written to the server's log instead of sent. */
+	enabled: boolean;
+	host: string;
+	port: number;
+	encryption: MailEncryption;
+	username: string;
+	from_address: string;
+	from_name: string;
+	has_password: boolean;
+};
+
+/** What the Mail page reads: the settings, and the encryptions the server
+    offers — so the picker is built from the server's catalog rather than from
+    a list of the panel's own. */
+export type MailResponse = {
+	mail: MailSettings;
+	encryptions: MailEncryption[];
+};
+
+/** What the panel sends for the settings. Every field is optional because the
+    endpoint is a PATCH: what is left out keeps the value it has.
+
+    `password` is the one that matters: leaving it out keeps the stored one,
+    sending a new one replaces it, and sending an empty string is a server
+    that takes no credentials. */
+export type MailSettingsInput = Partial<Omit<MailSettings, 'has_password'>> & {
+	password?: string;
+};
+
+/** A test message: where to send it, and the settings to send it with, so a
+    server can be tried before it is saved. */
+export type MailTestInput = MailSettingsInput & { to: string };
+
+/** One placeholder an email's text may use. */
+export type MailParam = {
+	name: string;
+	description: string;
+};
+
+/** One email the server sends: what it is called, when it goes out, and the
+    two keys its subject and body are written under. */
+export type MailMessageSpec = {
+	kind: string;
+	label: string;
+	description: string;
+	subject_key: string;
+	body_key: string;
+	params: MailParam[];
+};
+
+/** One language's words for the emails: what it says, where it says anything,
+    and the shipped English underneath — which is what an email goes out in
+    where a language has nothing. */
+export type MailLanguageContent = {
+	code: string;
+	name: string;
+	native: string;
+	/** Whether the sign-in pages are offered in this language. */
+	offered: boolean;
+	messages: Record<string, string>;
+	base: Record<string, string>;
+};
+
+/** What the Mail page's content tab reads: the catalog once, and the text per
+    language. */
+export type MailContent = {
+	messages: MailMessageSpec[];
+	languages: MailLanguageContent[];
+};
+
+/** How the one-time codes the server emails behave. There is one record of
+    it. Which sign-ins ask for a code is the login flow's emailed code step,
+    not this. */
+export type OTPSettings = {
+	length: number;
+	lifetime_minutes: number;
+	max_attempts: number;
+	resend_seconds: number;
+};
+
+/** The bounds the server holds these to, so the panel's fields and the model
+    cannot disagree about what will be refused. */
+export type OTPLimits = {
+	min_length: number;
+	max_length: number;
+	max_lifetime_minutes: number;
+	max_attempts: number;
+	max_resend_seconds: number;
+};
+
+/** One login flow that asks for an emailed code, so the page can say who
+    these settings are for. */
+export type OTPFlow = {
+	id: string;
+	name: string;
+	slug: string;
+	enabled: boolean;
+	is_default: boolean;
+};
+
+/** What the One-time codes page reads. */
+export type OTPResponse = {
+	otp: OTPSettings;
+	limits: OTPLimits;
+	flows: OTPFlow[];
+};
+
+/** What the panel sends for them: a PATCH, so what is left out stands. */
+export type OTPSettingsInput = Partial<OTPSettings>;

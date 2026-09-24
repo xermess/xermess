@@ -167,3 +167,59 @@ func TestFlag(t *testing.T) {
 		t.Error("Flag(sent, current) should be what was sent")
 	}
 }
+
+// The three that read a value rather than a flag. What they all have to get
+// right is the difference between a field sent empty — which clears it — and
+// a field not sent at all, which leaves it alone.
+func TestText(t *testing.T) {
+	sent := func(value string) *string { return &value }
+
+	tests := []struct {
+		name    string
+		sent    *string
+		current string
+		want    string
+	}{
+		{name: "nothing sent keeps what is stored", sent: nil, current: "Acme", want: "Acme"},
+		{name: "a value sent replaces it", sent: sent("Acme Inc"), current: "Acme", want: "Acme Inc"},
+		{name: "a value is trimmed", sent: sent("  Acme  "), current: "", want: "Acme"},
+		{name: "an empty string clears the field", sent: sent(""), current: "Acme", want: ""},
+		{name: "spaces alone clear it too", sent: sent("   "), current: "Acme", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Text(tt.sent, tt.current); got != tt.want {
+				t.Errorf("Text() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLower(t *testing.T) {
+	sent := func(value string) *string { return &value }
+
+	if got := Lower(sent("  Example.COM "), ""); got != "example.com" {
+		t.Errorf("Lower() = %q, want it trimmed and lower case", got)
+	}
+	if got := Lower(nil, "Example.COM"); got != "example.com" {
+		t.Errorf("Lower(nil, current) = %q, want the stored value lower case", got)
+	}
+}
+
+func TestNumber(t *testing.T) {
+	sent := func(value int) *int { return &value }
+
+	if got := Number(nil, 587); got != 587 {
+		t.Errorf("Number(nil, current) = %d, want 587", got)
+	}
+	if got := Number(sent(465), 587); got != 465 {
+		t.Errorf("Number() = %d, want what was sent", got)
+	}
+	// Zero is a value somebody sent, not a field they left out: the rules
+	// refuse it where it makes no sense, and that is their job rather than
+	// this one's.
+	if got := Number(sent(0), 587); got != 0 {
+		t.Errorf("Number() = %d, want the zero that was sent", got)
+	}
+}

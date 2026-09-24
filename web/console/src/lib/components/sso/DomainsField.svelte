@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { RiAddLine, RiCloseLine } from 'svelte-remixicon';
 	import { Button, Icon, Input } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 
 	type Props = {
 		/** The domains, lower case, each once. */
@@ -10,8 +9,6 @@
 	};
 
 	let { domains = $bindable([]), readOnly = false }: Props = $props();
-
-	const t = useTranslator();
 
 	let typed = $state('');
 
@@ -48,11 +45,7 @@
 				<li>
 					<span>{domain}</span>
 					{#if !readOnly}
-						<button
-							type="button"
-							aria-label="{t('sso.domain_remove')} {domain}"
-							onclick={() => remove(domain)}
-						>
+						<button type="button" aria-label="Remove {domain}" onclick={() => remove(domain)}>
 							<Icon icon={RiCloseLine} size="0.9rem" />
 						</button>
 					{/if}
@@ -64,17 +57,17 @@
 	{#if !readOnly}
 		<div class="add">
 			<Input
-				label={t('sso.domains')}
+				label="Add a domain"
 				bind:value={typed}
 				placeholder="acme.com"
-				hint={t('sso.domains_hint')}
+				hint="People with an address at these domains sign in through this connection, and it signs in nobody else. Leave it empty to trust the provider with any address; people then reach it through its button only."
 				onkeydown={keydown}
 				autocomplete="off"
 				spellcheck={false}
 			/>
 			<Button variant="subtle" onclick={add} disabled={typed.trim() === ''}>
 				<Icon icon={RiAddLine} />
-				{t('sso.domain_add')}
+				Add
 			</Button>
 		</div>
 	{/if}

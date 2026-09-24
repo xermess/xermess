@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"xermess/internal/api/respond"
+	"xermess/internal/api/validate"
 	"xermess/internal/jose"
 	"xermess/internal/model"
 )
@@ -29,18 +30,18 @@ func (r *providerRequest) applyTo(provider *model.SocialProvider, sealer *jose.S
 		provider.Slug = lower(&r.Slug, string(kind))
 	}
 
-	provider.Name = text(r.Name, provider.Name)
-	provider.ClientID = text(r.ClientID, provider.ClientID)
-	provider.TeamID = text(r.TeamID, provider.TeamID)
-	provider.KeyID = text(r.KeyID, provider.KeyID)
-	provider.AuthorizeURL = text(r.AuthorizeURL, provider.AuthorizeURL)
-	provider.TokenURL = text(r.TokenURL, provider.TokenURL)
-	provider.UserInfoURL = text(r.UserInfoURL, provider.UserInfoURL)
+	provider.Name = validate.Text(r.Name, provider.Name)
+	provider.ClientID = validate.Text(r.ClientID, provider.ClientID)
+	provider.TeamID = validate.Text(r.TeamID, provider.TeamID)
+	provider.KeyID = validate.Text(r.KeyID, provider.KeyID)
+	provider.AuthorizeURL = validate.Text(r.AuthorizeURL, provider.AuthorizeURL)
+	provider.TokenURL = validate.Text(r.TokenURL, provider.TokenURL)
+	provider.UserInfoURL = validate.Text(r.UserInfoURL, provider.UserInfoURL)
 	provider.TokenAuth = model.SocialTokenAuth(lower((*string)(r.TokenAuth), string(provider.TokenAuth)))
 
-	provider.Enabled = flag(r.Enabled, provider.Enabled)
-	provider.LinkVerifiedEmails = flag(r.LinkVerifiedEmails, provider.LinkVerifiedEmails)
-	provider.AllowRegistration = flag(r.AllowRegistration, provider.AllowRegistration)
+	provider.Enabled = validate.Flag(r.Enabled, provider.Enabled)
+	provider.LinkVerifiedEmails = validate.Flag(r.LinkVerifiedEmails, provider.LinkVerifiedEmails)
+	provider.AllowRegistration = validate.Flag(r.AllowRegistration, provider.AllowRegistration)
 
 	if r.Scopes != nil {
 		provider.Scopes = cleanScopes(*r.Scopes)
@@ -68,35 +69,19 @@ func (r *providerRequest) applyTo(provider *model.SocialProvider, sealer *jose.S
 	return nil
 }
 
-// text reads a setting a request may leave out: what was sent, trimmed, or
-// the stored value when nothing was.
-func text(sent *string, current string) string {
-	if sent == nil {
-		return current
-	}
-
-	return strings.TrimSpace(*sent)
-}
-
-// lower is text for the settings that are compared or put in an address
-// rather than read.
+// lower is validate.Lower with one difference, which is why it is here: a
+// value sent empty falls back to `current` rather than clearing the field.
+//
+// Both fields it reads have a standing default — the slug is the kind's name,
+// the token auth the kind's own — and both are passed in as `current`. Sending
+// either as "" means "use the default", not "have none": a provider with no
+// slug has no address for users to come back on.
 func lower(sent *string, current string) string {
-	if value := strings.ToLower(text(sent, current)); value != "" {
+	if value := strings.ToLower(validate.Text(sent, current)); value != "" {
 		return value
 	}
 
 	return strings.ToLower(current)
-}
-
-// flag reads an on-or-off setting a request may leave out. A plain bool
-// cannot tell "false" from "not sent", and a caller that omits a switch
-// should not throw it.
-func flag(sent *bool, current bool) bool {
-	if sent == nil {
-		return current
-	}
-
-	return *sent
 }
 
 // cleanScopes drops the empty ones and the spaces around each.

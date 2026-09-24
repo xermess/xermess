@@ -10,6 +10,8 @@ import {
 	RiLockLine,
 	RiLoginBoxLine,
 	RiLogoutBoxRLine,
+	RiMailLine,
+	RiMailSendLine,
 	RiPulseLine,
 	RiShieldKeyholeLine,
 	RiShieldUserLine,
@@ -475,6 +477,51 @@ const actions: Record<string, Action> = {
 		category: 'other',
 		tone: 'danger',
 		icon: RiTranslate2
+	},
+	'mail.settings_updated': {
+		label: 'Mail settings changed',
+		verb: 'changed',
+		category: 'other',
+		icon: RiMailLine
+	},
+	'mail.content_updated': {
+		label: 'Email content changed',
+		verb: 'changed',
+		category: 'other',
+		icon: RiMailLine
+	},
+	'mail.test_sent': {
+		label: 'Test email sent',
+		verb: 'sent a test email through',
+		category: 'other',
+		tone: 'success',
+		icon: RiMailSendLine
+	},
+	'mail.test_failed': {
+		label: 'Test email failed',
+		verb: 'could not send a test email through',
+		category: 'other',
+		tone: 'warning',
+		icon: RiMailSendLine
+	},
+	'otp.settings_updated': {
+		label: 'One-time codes changed',
+		verb: 'changed',
+		category: 'access',
+		icon: RiKey2Line
+	},
+	'user.login_code_sent': {
+		label: 'Code emailed',
+		verb: 'was emailed a one-time code',
+		category: 'access',
+		icon: RiKey2Line
+	},
+	'user.login_code_failed': {
+		label: 'Wrong code',
+		verb: 'typed a one-time code that was not the one sent',
+		category: 'access',
+		tone: 'warning',
+		icon: RiKey2Line
 	}
 };
 
@@ -489,7 +536,10 @@ const unnamed: Record<string, string> = {
 	admin_role: 'an admin role',
 	login_flow: 'a login flow',
 	language: 'a language',
-	sso_connection: 'an SSO connection'
+	sso_connection: 'an SSO connection',
+	mail: 'the mail settings',
+	mail_content: 'the email content',
+	otp: 'the one-time code settings'
 };
 
 /** One entry, ready to show. */
@@ -531,7 +581,9 @@ const selfTargeted = new Set([
 	'user.password_changed_self',
 	'user.profile_updated',
 	'user.session_revoked',
-	'user.application_disconnected'
+	'user.application_disconnected',
+	'user.login_code_sent',
+	'user.login_code_failed'
 ]);
 
 export function describe(event: ActivityEvent): Described {

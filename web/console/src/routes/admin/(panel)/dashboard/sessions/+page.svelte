@@ -5,17 +5,15 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiCloseLine, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
 	import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { sessionsApi, type UserSessionRecord } from '$lib/api';
+	import { messageOf, sessionsApi, type UserSessionRecord } from '$lib/api';
 	import { keys, sessionsOptions } from '$lib/query';
 	import { Alert, Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
 	import SessionTable from '$lib/components/sessions/SessionTable.svelte';
-	import { messageOf, useTranslator } from '$lib/i18n';
 	import { can } from '$lib/permissions';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	const t = useTranslator();
 	const queryClient = useQueryClient();
 
 	const sessions = createInfiniteQuery(() =>
@@ -77,7 +75,7 @@
 		},
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.sessions.all }),
 		onError: (err: unknown) => {
-			error = messageOf(err, t);
+			error = messageOf(err);
 		}
 	}));
 
@@ -89,29 +87,25 @@
 		},
 		onSuccess: (result, user) => {
 			confirming = null;
-			notice = t('sessions.signed_out', {
-				email: user.email,
-				sessions: result.sessions,
-				tokens: result.tokens
-			});
+			notice = `${user.email} was signed out of ${result.sessions} sessions, and ${result.tokens} application tokens were revoked.`;
 			return queryClient.invalidateQueries({ queryKey: keys.sessions.all });
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, t);
+			error = messageOf(err);
 		}
 	}));
 </script>
 
-<svelte:head><title>{t('nav.sessions')} · xermess admin</title></svelte:head>
+<svelte:head><title>Sessions · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.sessions')]}>
+	<PageHeader crumbs={['Dashboard', 'Sessions']}>
 		{#snippet secondary()}
-			<span class="total">{t('sessions.shown', { count: rows.length })}</span>
+			<span class="total">{`${rows.length} shown`}</span>
 
 			<IconButton
 				icon={RiRefreshLine}
-				label={t('action.refresh')}
+				label="Refresh the data"
 				onclick={refresh}
 				loading={refreshing}
 				disabled={refreshing}
@@ -119,7 +113,11 @@
 		{/snippet}
 	</PageHeader>
 
-	<p class="lead">{t('sessions.lead')}</p>
+	<p class="lead">
+		Everyone signed in right now: the browser session that keeps them signed in, where it is and
+		when it started. Sign one out, or sign a user out everywhere — which also revokes the tokens
+		their applications hold, as after a lost device or a compromised account.
+	</p>
 </div>
 
 <div class="toolbar">
@@ -133,10 +131,10 @@
 		<Icon icon={RiSearchLine} />
 		<input
 			type="search"
-			placeholder={t('sessions.search')}
+			placeholder="Search by the start of an email…"
 			bind:value={search}
 			oninput={debounced}
-			aria-label={t('sessions.search_label')}
+			aria-label="Search sessions"
 		/>
 	</form>
 
@@ -144,10 +142,10 @@
 		<button
 			type="button"
 			class="chip"
-			title={t('sessions.clear_user')}
+			title="Show everyone's sessions"
 			onclick={() => apply({ user: '', email: '' })}
 		>
-			{t('sessions.only_user', { email: data.email || data.user })}
+			{`Only ${data.email || data.user}`}
 			<Icon icon={RiCloseLine} />
 		</button>
 	{/if}
@@ -157,18 +155,16 @@
 	<div class="gutter banner">
 		<Alert tone="warning">
 			<span class="confirm">
-				{t('sessions.confirm_everywhere', { email: confirming.email })}
+				{`Sign ${confirming.email} out of every browser and every application?`}
 				<span class="buttons">
-					<Button variant="subtle" size="sm" onclick={() => (confirming = null)}>
-						{t('sessions.cancel')}
-					</Button>
+					<Button variant="subtle" size="sm" onclick={() => (confirming = null)}>Keep</Button>
 					<Button
 						colorPalette="danger"
 						size="sm"
 						loading={signOut.isPending}
 						onclick={() => confirming && signOut.mutate(confirming)}
 					>
-						{t('sessions.confirm')}
+						Sign out
 					</Button>
 				</span>
 			</span>
@@ -184,7 +180,9 @@
 
 <SessionTable
 	sessions={rows}
-	empty={data.search || data.user ? t('sessions.empty_search') : t('sessions.empty')}
+	empty={data.search || data.user
+		? 'No session belongs to an address starting like that.'
+		: 'Nobody is signed in.'}
 	onEnd={canWrite ? (session) => end.mutate(session) : undefined}
 	onSignOutUser={canWrite ? (session) => (confirming = session.user) : undefined}
 	onUser={(session) => apply({ user: session.user.id, email: session.user.email, search: '' })}
@@ -198,7 +196,7 @@
 			loading={sessions.isFetchingNextPage}
 			onclick={() => sessions.fetchNextPage()}
 		>
-			{t('sessions.more')}
+			Show more
 		</Button>
 	</div>
 {/if}

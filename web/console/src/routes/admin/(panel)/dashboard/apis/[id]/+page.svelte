@@ -12,7 +12,6 @@
 		RiShieldCheckLine
 	} from 'svelte-remixicon';
 	import { Badge, CopyButton, Icon, PageHeader, Tabs } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import { can } from '$lib/permissions';
 	import { apiOptions } from '$lib/query';
 	import ApiApplications from '$lib/components/apis/ApiApplications.svelte';
@@ -23,8 +22,6 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const query = createQuery(() => apiOptions(data.api.id, data.api));
 	const api = $derived(query.data);
@@ -67,8 +64,8 @@
 	<div class="heading">
 		<PageHeader
 			crumbs={[
-				t('nav.dashboard'),
-				{ label: t('nav.apis'), href: resolve('/admin/(panel)/dashboard/apis') },
+				'Dashboard',
+				{ label: 'APIs', href: resolve('/admin/(panel)/dashboard/apis') },
 				api.name
 			]}
 		>

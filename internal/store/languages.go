@@ -10,9 +10,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"xermess/i18n"
 	"xermess/internal/cache"
 	"xermess/internal/model"
-	"xermess/locales"
 )
 
 // ErrProtectedLanguage is returned for removing the base language, or the
@@ -226,32 +226,32 @@ func (s *Store) Translation(ctx context.Context, language uuid.UUID, app string)
 
 // ResolvedTranslation is what an app is sent for one language: every key it
 // looks up, from the language's own text, then the base language's as the
-// database holds it, then the shipped base file (locales.Resolve).
+// database holds it, then the shipped base file (i18n.Resolve).
 //
 // It is the largest thing the pages ask for — every key of an app, on every
 // render — and the one worth caching most: it is kept whole, per language and
 // app, until any language's text changes.
-func (s *Store) ResolvedTranslation(ctx context.Context, language *model.Language, app locales.App) (map[string]string, error) {
+func (s *Store) ResolvedTranslation(ctx context.Context, language *model.Language, app i18n.App) (map[string]string, error) {
 	return cached(ctx, s, cache.Languages, "text:"+language.Code+":"+string(app), func() (map[string]string, error) {
 		return s.resolveTranslation(ctx, language, app)
 	})
 }
 
 // resolveTranslation is ResolvedTranslation without the cache.
-func (s *Store) resolveTranslation(ctx context.Context, language *model.Language, app locales.App) (map[string]string, error) {
+func (s *Store) resolveTranslation(ctx context.Context, language *model.Language, app i18n.App) (map[string]string, error) {
 	own, err := s.Translation(ctx, language.ID, string(app))
 	if err != nil {
 		return nil, err
 	}
 
 	if language.Code == model.BaseLanguage {
-		return locales.Resolve(app, own), nil
+		return i18n.Resolve(app, own), nil
 	}
 
 	base, err := s.Language(ctx, model.BaseLanguage)
 	switch {
 	case errors.Is(err, ErrNotFound):
-		return locales.Resolve(app, own), nil
+		return i18n.Resolve(app, own), nil
 	case err != nil:
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func (s *Store) resolveTranslation(ctx context.Context, language *model.Language
 		return nil, err
 	}
 
-	return locales.Resolve(app, own, english), nil
+	return i18n.Resolve(app, own, english), nil
 }
 
 // SaveTranslation replaces one language's text for one app.
@@ -282,6 +282,51 @@ func (s *Store) SaveTranslation(ctx context.Context, language *model.Language, a
 
 	// Every language's text, not only this one's: English is what the rest
 	// fall back to, so its keys are inside every other cached text.
+	s.forget(ctx, cache.Languages)
+
+	return nil
+}
+
+// SaveTranslationKeys changes some of one language's text for one app and
+// leaves the rest as it was.
+//
+// SaveTranslation is a whole file: the Languages page holds every key, so
+// what it sends is what the language says. A page that edits a handful of
+// keys — the Mail page and its email.* ones — has the rest nowhere, and
+// sending what it holds would clear them. This merges instead: a key with an
+// empty value is removed rather than stored blank, so clearing an override in
+// the panel puts the shipped text back.
+func (s *Store) SaveTranslationKeys(ctx context.Context, language *model.Language, app string, messages map[string]string) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var row model.Translation
+
+		err := translate(tx.First(&row, "language_id = ? AND app = ?", language.ID, app).Error)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return err
+		}
+
+		merged := map[string]string{}
+		for key, text := range row.Messages {
+			merged[key] = text
+		}
+		for key, text := range messages {
+			if text == "" {
+				delete(merged, key)
+				continue
+			}
+			merged[key] = text
+		}
+
+		if err := saveTranslation(tx, language.ID, app, merged); err != nil {
+			return err
+		}
+
+		return translate(tx.Model(language).Update("updated_at", time.Now()).Error)
+	})
+	if err != nil {
+		return err
+	}
+
 	s.forget(ctx, cache.Languages)
 
 	return nil
@@ -310,7 +355,7 @@ func saveTranslation(tx *gorm.DB, language uuid.UUID, app string, messages map[s
 // On the first start — no text in the database at all — every shipped
 // language is imported: a row for each, off unless it is the base language,
 // and all of its text. After that the database is the panel's, and a start
-// only adds what a release brought: a key a shipped file has that the
+// only adds what a release brought: a key a shipped group has that the
 // database's copy of that language does not. It never changes a message that
 // is there, and never brings back a language somebody removed.
 //
@@ -318,9 +363,9 @@ func saveTranslation(tx *gorm.DB, language uuid.UUID, app string, messages map[s
 // language that ships, is a key the database no longer has — so the next
 // start puts the shipped text back. A shipped language can be reworded; the
 // way to empty it is to remove it.
-func (s *Store) EnsureLanguages(ctx context.Context, shipped []locales.File) error {
+func (s *Store) EnsureLanguages(ctx context.Context, shipped []i18n.File) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := dropPanelTextOfOtherLanguages(tx); err != nil {
+		if err := dropPanelText(tx); err != nil {
 			return err
 		}
 
@@ -379,24 +424,25 @@ func (s *Store) EnsureLanguages(ctx context.Context, shipped []locales.File) err
 	return nil
 }
 
-// dropPanelTextOfOtherLanguages removes the panel's text from every language
-// the panel is not shown in (locales.PanelLanguages). Nothing reads it, and
-// an installation that started before the panel was kept to those languages
-// had it imported.
-func dropPanelTextOfOtherLanguages(tx *gorm.DB) error {
+// dropPanelText removes the panel's text from every language.
+//
+// The panel is written in English, in its own markup, and is not translated:
+// nothing reads these rows, and an installation that started while it was
+// still translated has them. Every start clears them, so one that is stepped
+// forward comes out the same as a fresh one.
+func dropPanelText(tx *gorm.DB) error {
 	err := tx.Unscoped().
-		Where("app = ? AND language_id IN (?)", string(locales.Console),
-			tx.Model(&model.Language{}).Select("id").Where("code NOT IN ?", locales.PanelLanguages)).
+		Where("app = ?", string(i18n.Console)).
 		Delete(&model.Translation{}).Error
 
 	return translate(err)
 }
 
-// addShippedKeys copies into the database the keys a shipped file has and the
-// database's copy of the same language does not.
-func addShippedKeys(tx *gorm.DB, language *model.Language, file locales.File) error {
+// addShippedKeys copies into the database the keys a shipped catalog has and
+// the database's copy of the same language does not.
+func addShippedKeys(tx *gorm.DB, language *model.Language, file i18n.File) error {
 	for app, shipped := range file.Messages {
-		if !locales.ServesApp(language.Code, app) {
+		if !i18n.ServesApp(language.Code, app) {
 			continue
 		}
 

@@ -3,7 +3,7 @@
 SHELL   := bash
 APPS    := console id
 # Not ./...: that walks into web/*/node_modules.
-PKGS    := ./cmd/... ./internal/... ./migrations/...
+PKGS    := ./cmd/... ./internal/... ./migrations/... ./i18n/...
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMPOSE := docker compose -f deploy/compose.yaml
 # The same stack on one machine: .localhost hostnames, Caddy's own CA. An

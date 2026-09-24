@@ -41,7 +41,15 @@ describe('chooseLanguage', () => {
 });
 
 describe('translator', () => {
-	const t = (messages: Record<string, string>) => translator(() => messages);
+	const testLanguages = ['de', 'fr', 'it', 'es', 'pt'];
+	let testLanguage = 0;
+	const t = (messages: Record<string, string>) => {
+		const language = testLanguages[testLanguage++ % testLanguages.length];
+		return translator(
+			() => messages,
+			() => language
+		);
+	};
 
 	it('looks a key up in the text it was given', () => {
 		expect(t({ 'action.sign_in': 'Войти' })('action.sign_in')).toBe('Войти');
@@ -63,16 +71,33 @@ describe('translator', () => {
 	it('leaves a parameter nobody passed as it was written', () => {
 		expect(t({})('login.subtitle_app')).toBe('to continue to {app}');
 	});
+
+	it('keeps two server catalogs separate', () => {
+		const first = translator(
+			() => ({ 'action.sign_in': 'First' }),
+			() => 'en'
+		);
+		const second = translator(
+			() => ({ 'action.sign_in': 'Second' }),
+			() => 'en'
+		);
+
+		expect(first('action.sign_in')).toBe('First');
+		expect(second('action.sign_in')).toBe('Second');
+	});
 });
 
 describe('messageOf', () => {
 	/** Russian, as far as these tests need it. */
-	const t = translator(() => ({
-		'error.invalid_credentials': 'Неверный адрес почты или пароль.',
-		'error.validation.required': 'Поле «{field}» обязательно.',
-		'error.rate_limited': 'Слишком много попыток. Попробуйте снова через {seconds} с.',
-		'field.email': 'Электронная почта'
-	}));
+	const t = translator(
+		() => ({
+			'error.invalid_credentials': 'Неверный адрес почты или пароль.',
+			'error.validation.required': 'Поле «{field}» обязательно.',
+			'error.rate_limited': 'Слишком много попыток. Попробуйте снова через {seconds} с.',
+			'field.email': 'Электронная почта'
+		}),
+		() => 'fr'
+	);
 
 	it("says a problem in the reader's language", () => {
 		const err = new ApiError(401, 'Wrong email or password.', 'invalid_credentials');
@@ -104,7 +129,10 @@ describe('messageOf', () => {
 		expect(
 			messageOf(
 				err,
-				translator(() => ({}))
+				translator(
+					() => ({}),
+					() => 'it'
+				)
 			)
 		).toBe('Could not reach the server. Check your connection and try again.');
 	});
@@ -115,7 +143,10 @@ describe('messageOf', () => {
 });
 
 describe('translator.has', () => {
-	const t = translator(() => ({ 'login.title': 'Вход' }));
+	const t = translator(
+		() => ({ 'login.title': 'Вход' }),
+		() => 'es'
+	);
 
 	it('knows a key the language has, and one the base language has', () => {
 		expect(t.has('login.title')).toBe(true);

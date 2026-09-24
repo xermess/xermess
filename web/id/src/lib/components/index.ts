@@ -11,6 +11,7 @@ export { default as AuthCard } from './AuthCard.svelte';
 export { default as Brand } from './Brand.svelte';
 export { default as Button } from './Button.svelte';
 export { default as Checkbox } from './Checkbox.svelte';
+export { default as CodeForm } from './CodeForm.svelte';
 export { default as Icon, type IconName } from './Icon.svelte';
 export { default as LanguagePicker } from './LanguagePicker.svelte';
 export { default as Panel } from './Panel.svelte';

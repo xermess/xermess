@@ -17,14 +17,11 @@
 	import { applicationChoicesOptions, keys, roleChoicesOptions, rolesOptions } from '$lib/query';
 	import { canEditRoles } from '$lib/components/roles/roles';
 	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import RoleDrawer from '$lib/components/roles/RoleDrawer.svelte';
 	import RoleTable from '$lib/components/roles/RoleTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -201,7 +198,7 @@
 <svelte:head><title>Roles · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.roles')]}>
+	<PageHeader crumbs={['Dashboard', 'Roles']}>
 		{#snippet secondary()}
 			<IconButton
 				icon={RiRefreshLine}

@@ -11,7 +11,6 @@ import {
 } from 'svelte-remixicon';
 import type { ComponentType } from 'svelte';
 import type { LoginStep, LoginStepSpec } from '$lib/api';
-import type { Translate } from '$lib/i18n';
 
 /** The mark beside each step, wherever one is listed. The step catalog itself
     is the server's — what a step is called and whether it is run yet comes
@@ -30,19 +29,14 @@ export function markFor(step: LoginStep): ComponentType {
 	return marks[step] ?? RiCheckboxCircleLine;
 }
 
-/** What a step is called in the panel's language: its `flows.step_<step>`
-    when the panel has one, else the server's English, else its own name for
-    a step this panel is older than. */
-export function labelFor(step: LoginStep, kinds: LoginStepSpec[], t?: Translate): string {
-	const key = `flows.step_${step}`;
-	if (t?.has(key)) return t(key);
+/** What a step is called: the server's catalog (model.LoginStepSpecs), and
+    its own name for a step this panel is older than. */
+export function labelFor(step: LoginStep, kinds: LoginStepSpec[]): string {
 	return kinds.find((kind) => kind.step === step)?.label ?? step;
 }
 
-/** What a step does, in the panel's language as labelFor is. */
-export function describe(step: LoginStep, kinds: LoginStepSpec[], t?: Translate): string {
-	const key = `flows.step_${step}_hint`;
-	if (t?.has(key)) return t(key);
+/** What a step does, from the same catalog. */
+export function describe(step: LoginStep, kinds: LoginStepSpec[]): string {
 	return kinds.find((kind) => kind.step === step)?.description ?? '';
 }
 
@@ -60,9 +54,13 @@ export type FlowDraft = {
 	is_default: boolean;
 	enabled: boolean;
 	steps: LoginStep[];
+	allow_sign_in: boolean;
 	allow_registration: boolean;
 	allow_password_reset: boolean;
+	allow_remember_me: boolean;
+	verify_email_on_register: boolean;
 	require_verified_email: boolean;
+	allow_email_change: boolean;
 	session_lifetime_hours: number;
 };
 
@@ -74,9 +72,13 @@ export function draftOf(flow: FlowDraft): FlowDraft {
 		is_default: flow.is_default,
 		enabled: flow.enabled,
 		steps: [...flow.steps],
+		allow_sign_in: flow.allow_sign_in,
 		allow_registration: flow.allow_registration,
 		allow_password_reset: flow.allow_password_reset,
+		allow_remember_me: flow.allow_remember_me,
+		verify_email_on_register: flow.verify_email_on_register,
 		require_verified_email: flow.require_verified_email,
+		allow_email_change: flow.allow_email_change,
 		session_lifetime_hours: flow.session_lifetime_hours
 	};
 }
@@ -91,22 +93,23 @@ export const MAX_SESSION_HOURS = 24 * 90;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/** What would stop a draft saving, as message keys and their parameters —
-    the same rules the server holds, said as the flow is drawn. */
-export function problemsOf(draft: FlowDraft): { key: string; params?: Record<string, string> }[] {
-	const problems: { key: string; params?: Record<string, string> }[] = [];
+/** What would stop a draft saving — the same rules the server holds, said as
+    the flow is drawn. */
+export function problemsOf(draft: FlowDraft): string[] {
+	const problems: string[] = [];
 
-	if (draft.name.trim() === '') problems.push({ key: 'flows.problem_name' });
-	if (!SLUG.test(draft.slug)) problems.push({ key: 'flows.problem_slug' });
+	if (draft.name.trim() === '') problems.push('Name the flow.');
+	if (!SLUG.test(draft.slug))
+		problems.push('The identifier has to be lower case letters, numbers and dashes.');
 	if (!draft.steps.some((step) => PROOF_STEPS.includes(step)))
-		problems.push({ key: 'flows.problem_proof' });
-	if (draft.is_default && !draft.enabled) problems.push({ key: 'flows.problem_default_off' });
+		problems.push('Add Password or Other accounts: without one, nobody can sign in.');
+	if (draft.is_default && !draft.enabled) problems.push('The default flow cannot be turned off.');
 	if (
 		!Number.isInteger(draft.session_lifetime_hours) ||
 		draft.session_lifetime_hours < 1 ||
 		draft.session_lifetime_hours > MAX_SESSION_HOURS
 	)
-		problems.push({ key: 'flows.problem_lifetime' });
+		problems.push('A session has to last between one hour and ninety days.');
 
 	return problems;
 }
@@ -136,6 +139,10 @@ export function freeSlug(wanted: string, taken: string[]): string {
 
 export type FlowTemplate = {
 	id: string;
+	/** What the template is called on the "new flow" page, and what it is
+	    for — which becomes the new flow's own description. */
+	name: string;
+	hint: string;
 	icon: ComponentType;
 	draft: FlowDraft;
 };
@@ -144,9 +151,13 @@ const base: Omit<FlowDraft, 'name' | 'slug' | 'steps'> = {
 	description: '',
 	is_default: false,
 	enabled: true,
+	allow_sign_in: true,
 	allow_registration: true,
 	allow_password_reset: true,
+	allow_remember_me: true,
+	verify_email_on_register: false,
 	require_verified_email: false,
+	allow_email_change: false,
 	session_lifetime_hours: 24 * 14
 };
 
@@ -156,11 +167,15 @@ const base: Omit<FlowDraft, 'name' | 'slug' | 'steps'> = {
 export const TEMPLATES: FlowTemplate[] = [
 	{
 		id: 'password',
+		name: 'Password',
+		hint: 'An email and a password, with the accounts from the Social page beside them.',
 		icon: RiKey2Line,
 		draft: { ...base, name: '', slug: '', steps: ['identifier', 'password', 'social'] }
 	},
 	{
 		id: 'passwordless',
+		name: 'Other accounts only',
+		hint: 'No passwords here: people sign in with Google, GitHub and the other providers.',
 		icon: RiShareLine,
 		draft: {
 			...base,
@@ -172,6 +187,8 @@ export const TEMPLATES: FlowTemplate[] = [
 	},
 	{
 		id: 'staff',
+		name: 'Staff',
+		hint: 'A password, a verified address, no sign-ups, and eight-hour sessions.',
 		icon: RiShieldCheckLine,
 		draft: {
 			...base,
@@ -185,6 +202,8 @@ export const TEMPLATES: FlowTemplate[] = [
 	},
 	{
 		id: 'blank',
+		name: 'Blank',
+		hint: 'An email and a password, and nothing else to start from.',
 		icon: RiFileAddLine,
 		draft: { ...base, name: '', slug: '', steps: ['identifier', 'password'] }
 	}
@@ -206,9 +225,13 @@ export function toFile(draft: FlowDraft): FlowFile {
 		description: copy.description,
 		enabled: copy.enabled,
 		steps: copy.steps,
+		allow_sign_in: copy.allow_sign_in,
 		allow_registration: copy.allow_registration,
 		allow_password_reset: copy.allow_password_reset,
+		allow_remember_me: copy.allow_remember_me,
+		verify_email_on_register: copy.verify_email_on_register,
 		require_verified_email: copy.require_verified_email,
+		allow_email_change: copy.allow_email_change,
 		session_lifetime_hours: copy.session_lifetime_hours
 	};
 }
@@ -220,7 +243,7 @@ export function fromFile(text: string, kinds: LoginStepSpec[]): FlowDraft {
 	try {
 		raw = JSON.parse(text);
 	} catch {
-		throw new Error('flows.import_not_json');
+		throw new Error('That file is not JSON.');
 	}
 
 	const file = raw as Partial<FlowFile>;
@@ -232,7 +255,7 @@ export function fromFile(text: string, kinds: LoginStepSpec[]): FlowDraft {
 		!Array.isArray(file.steps) ||
 		!file.steps.every((step) => known.has(step as LoginStep))
 	) {
-		throw new Error('flows.import_not_flow');
+		throw new Error('That file is not a login flow exported from here.');
 	}
 
 	return {
@@ -242,9 +265,17 @@ export function fromFile(text: string, kinds: LoginStepSpec[]): FlowDraft {
 		description: typeof file.description === 'string' ? file.description : '',
 		enabled: file.enabled !== false,
 		steps: file.steps as LoginStep[],
+		// A switch the file does not mention keeps the default: the ones that
+		// are on unless said otherwise read `!== false`, and the ones that are
+		// off unless said otherwise read `=== true`. That way a flow exported
+		// before a switch existed imports as a flow made today would.
+		allow_sign_in: file.allow_sign_in !== false,
 		allow_registration: file.allow_registration !== false,
 		allow_password_reset: file.allow_password_reset !== false,
+		allow_remember_me: file.allow_remember_me !== false,
+		verify_email_on_register: file.verify_email_on_register === true,
 		require_verified_email: file.require_verified_email === true,
+		allow_email_change: file.allow_email_change === true,
 		session_lifetime_hours:
 			typeof file.session_lifetime_hours === 'number' ? file.session_lifetime_hours : 24 * 14
 	};

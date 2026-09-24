@@ -111,6 +111,27 @@ var (
 	// ErrVerificationInvalid is a verification link that has expired or been
 	// used.
 	ErrVerificationInvalid = problem("verification_invalid", "the verification link has expired or been used")
+	// ErrSignInClosed is a login flow that is not signing anybody in.
+	ErrSignInClosed = problem("sign_in_closed", "sign-ins are closed for this application")
+	// ErrEmailChangeNotOffered is changing the sign-in address where the
+	// login flow does not allow it.
+	ErrEmailChangeNotOffered = problem("email_change_not_offered", "this sign-in does not allow changing the address")
+
+	// The errors of the emailed code step. A code that is simply wrong is
+	// told apart from a sign-in that is over, because the page does
+	// different things with them: the first is typed again, the second is
+	// started again.
+
+	// ErrCodeInvalid is a wrong code, with guesses left.
+	ErrCodeInvalid = problem("code_invalid", "that code is not the one that was sent")
+	// ErrCodeExpired is a sign-in that is no longer waiting for a code: it
+	// has expired, been finished, or never existed.
+	ErrCodeExpired = problem("code_expired", "the code has expired; sign in again")
+	// ErrCodeAttemptsUsed is the last guess being used up. The sign-in is
+	// over, and the page says so rather than offering another try.
+	ErrCodeAttemptsUsed = problem("code_attempts_used", "too many wrong codes; sign in again")
+	// ErrCodeTooSoon is asking for another message before the wait is over.
+	ErrCodeTooSoon = problem("code_too_soon", "another code cannot be sent yet")
 
 	// The errors of signing in with an account somewhere else. They are shown
 	// on the sign-in pages, so each says what the person can do about it.

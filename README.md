@@ -62,8 +62,10 @@ Run `make` for the list:
 cmd/xermess/main.go            startup, in order, in one function
 cmd/migrate/main.go            runs migrations by hand: up, down, status
 
-locales/                       the translations the server ships with, imported into the
-                               database on its first start; en.json is the list of keys
+i18n/                       the sign-in pages' translations, grouped by app, language,
+                               and subject, imported into the database on its first start;
+                               i18n/id/en/ is the key contract, and i18n/console/en/
+                               the admin API's English for its errors
 
 internal/config/config.go      reads .env
 internal/database/database.go  opens the connection
@@ -75,7 +77,8 @@ internal/oidc/                 the OAuth 2.0 / OpenID Connect provider: authoriz
                                userinfo, logout, sessions, registration, password resets,
                                and signing in with an account somewhere else
 internal/jose/                 signing and checking JWTs, publishing keys, sealing them
-internal/mail/                 sending email over SMTP, or into the log
+internal/mail/                 sending email over SMTP, or into the log; the settings are
+                               read per message, from the Mail page
 internal/api/server.go         the engine, and the table of every route
 internal/api/auth/             signing in and out, and who is signed in
 internal/api/oauth/            the provider endpoints: /oauth2/* and /.well-known/*
@@ -95,6 +98,8 @@ internal/api/social/           the providers users may sign in with
 internal/api/flows/            the login flows applications sign their users in with
 internal/api/sessions/         everyone signed in, and signing them out
 internal/api/languages/        the languages, their text, and the panel's own
+internal/api/mail/             the mail server, a test message, and the words of every email
+internal/api/otp/              how the emailed one-time codes behave
 internal/api/activity/         the dashboard counts and the log
 internal/api/middleware/       request logging, recovery, and their order
 internal/api/cors/             which browser origins may call the API
@@ -137,8 +142,9 @@ web/console/src/lib/components/admins/ administrators and admin roles
 web/console/src/lib/components/organization/ the organisation's settings
 web/console/src/lib/components/social/ the providers users sign in with, and what each kind needs
 web/console/src/lib/components/activity/ the dashboard: chart, sign-ins, feed, what the log's actions mean
-web/console/src/lib/components/profile/  the account: its sessions and signing out
-web/console/src/lib/state/             what the panel remembers: the theme, the sidebar's width
+web/console/src/lib/components/profile/  the account drawer: its two-factor, sessions and signing out
+web/console/src/lib/state/             what the panel remembers: the theme, the sidebar's
+                                       width and which of its sections are folded
 web/console/src/lib/utils/             how values are shown
 web/console/src/lib/data/demo.ts       placeholder rows for the sections with no backend
 web/console/src/lib/server/api.ts      calling the API from a server load, with the session
@@ -321,7 +327,7 @@ shares — the validator, sessions, permissions, the CSRF check, the rate
 limit — and the Languages page's. Some admin endpoints still answer with
 English alone, as their pages are still English in the markup; giving one a
 code is defining its problem and adding the sentence to
-`locales/console/*.json`.
+`i18n/console/en/server.json`.
 
 ### Endpoints
 
@@ -361,10 +367,15 @@ code is defining its problem and adding the sentence to
 | `POST` | `/api/v1/admin/languages`     | yes             | Add one, empty or copied from another |
 | `PATCH`| `/api/v1/admin/languages/:code` | yes           | Rename it, offer it, or make it the default |
 | `DELETE`| `/api/v1/admin/languages/:code` | yes          | Remove it and its text         |
-| `GET`  | `/api/v1/admin/languages/:code/translations/:app` | yes | Its text for `id` or `console`, beside the English |
+| `GET`  | `/api/v1/admin/languages/:code/translations/:app` | yes | Its text for `id`, beside the English |
 | `PUT`  | `/api/v1/admin/languages/:code/translations/:app` | yes | Replace that text              |
-| `GET`  | `/api/v1/admin/panel/languages` | no            | The languages the panel can be shown in |
-| `GET`  | `/api/v1/admin/panel/languages/:code` | no      | The panel's text in one of them |
+| `GET`  | `/api/v1/admin/mail`          | yes             | How this installation sends email (a super admin's) |
+| `PATCH`| `/api/v1/admin/mail`          | yes             | Change the mail server; a password sent is sealed, never read back |
+| `POST` | `/api/v1/admin/mail/test`     | yes             | Send one test message with what the form holds |
+| `GET`  | `/api/v1/admin/mail/content`  | yes             | The words of every email, per language, beside the shipped English |
+| `PUT`  | `/api/v1/admin/mail/content/:code` | yes        | Write one language's words for them |
+| `GET`  | `/api/v1/admin/otp`           | yes             | The emailed one-time codes, and the flows that ask for one |
+| `PATCH`| `/api/v1/admin/otp`           | yes             | Change how long a code is, lasts and may be guessed at |
 | `GET`  | `/api/v1/admin/user-sessions` | yes             | Active sessions, newest first (`?search=&user=&after=&limit=`) |
 | `DELETE`| `/api/v1/admin/user-sessions/:id` | yes         | Sign one session out           |
 | `DELETE`| `/api/v1/admin/users/:id/sessions` | yes        | Sign a user out everywhere: every session, every application's tokens |
@@ -423,6 +434,7 @@ account:
 | `GET`    | `/api/v1/account/me`                                 | The signed-in user                |
 | `PATCH`  | `/api/v1/account/me`                                 | Change their name                 |
 | `POST`   | `/api/v1/account/password`                           | Change the password; signs out everywhere else |
+| `POST`   | `/api/v1/account/email`                              | Start moving to another sign-in address, where the flow allows it |
 | `GET`    | `/api/v1/account/sessions`                           | Where they are signed in          |
 | `DELETE` | `/api/v1/account/sessions/:id`                       | Sign another device out           |
 | `GET`    | `/api/v1/account/connected-applications`             | Apps holding refresh tokens       |
@@ -454,9 +466,10 @@ Then open http://localhost:5174/admin/login. A panel with no administrator
 sends you to `/admin/new-super-admin` to make the first one; after that,
 signing in leads to `/admin/dashboard`.
 
-The header holds the logo, the command palette, links to the documentation and
-the source, the theme toggle and the account menu — where Profile, the
-organisation's settings, the theme and language, and Sign out live.
+The header holds the logo and, right beside it, the control that folds the
+sidebar — at the top of the column it folds — then the command palette, links
+to the documentation and the source, the theme toggle and the account menu,
+where the account panel, the organisation's settings and Sign out live.
 
 `⌘K` (`Ctrl+K`) opens the palette: every page the signed-in administrator may
 open, filtered as you type by letters in order rather than a prefix, so `adro`
@@ -466,14 +479,41 @@ is, so a page added there needs nothing else to be reachable from it.
 Where to browse rather than jump is the dashboard's sidebar, whose column the
 header's logo block tops: the two are one width and fold together.
 
+It is a tree. The two pages that answer "what is happening" stand on their own
+at the top; everything else is under the subject it belongs to, and a section
+opens and closes with a click. Which are closed is a cookie, so the column
+arrives as it was left, and the section holding the page being read is named
+in full whether or not it is open.
+
 ```
 Activity · Logs
-Applications     Applications · APIs · SSO integrations
-Authentication   Social · Login flows
-User management  Users · Sessions · Roles
-Administration   Administrators · Admin roles   (super admins only)
-Settings         Organization · Languages
+▾ Applications     Applications · APIs
+▾ Authentication   Login flows · Social · SSO integrations · One-time codes
+▾ Users            Users · Sessions · Roles
+▾ Administration   Administrators · Admin roles          (super admins only)
+▾ Settings         Organization · Mail · Languages
 ```
+
+A section is a subject rather than a bucket, which is why One-time codes sits
+under Authentication — where it is read — rather than under Settings, where it
+merely lives. `sections.ts` is the one list, and the sidebar and the command
+palette both read it.
+
+The page being read is filled and marked down its left edge — on the row
+itself, or on the tree's rule where the page is under a section — so the eye
+finds it before it reads a word. Folded to icons, a section opens its pages
+beside it as a flyout, and the one holding the page being read carries a dot.
+
+Only the list scrolls; the column around it keeps the border and the
+background, so the bar is never against the column's edge and opening a
+section cannot make the whole column jump.
+
+**Below 55rem the column becomes a panel.** The control beside the logo stops
+folding and starts opening: the same rows slide in over a dimmed page and see
+themselves out when a page is chosen, on Escape, on a click outside, or when
+the window grows enough to hold a column again. It is a media query as well as
+a class, so a narrow screen is served a panel that is already off the edge
+rather than a column that is taken away once the script runs.
 
 Each link is shown only to an administrator whose roles allow the page. The
 logs live at `/admin/dashboard/logs`; the old `/admin/logs` redirects there.
@@ -510,13 +550,22 @@ Searching matches the email or any stored value, because `data` is searched as
 text; the search and the verified filter live in the URL, so the server renders
 the result and a filtered list can be linked to.
 
-The profile page collects what belongs to the signed-in account, in a
-centred column: profile information, sign-in and security (email, password),
-preferences (theme, language) and sessions. Theme, language and sign out work;
-the rest are marked as not available yet and their controls are disabled
-rather than pretending. Two-factor sign-in is not here — it belongs to the Administrators
-page, which is where the policy lives and where one administrator's factor is
-read and reset.
+**Your account** opens from the header's account icon as a drawer, the way
+every other record does, and is built out of the same `Panel`, `List` and
+`Tag` the pages are: the account itself, two-factor sign-in, and the sessions
+this account has. The menu's rows open it on the part they name. The theme is
+not among them — it is the toggle in the header, and one place to change it is
+enough.
+
+Two-factor is managed here, for the reader's own account: setting up an
+authenticator, replacing it, new recovery codes, and turning it off where the
+policy allows — each of the last three proving the reader holds the phone by
+asking the authenticator for a code first. Whether *every* administrator needs
+one is not here; that is the policy, and it lives on the Administrators page
+along with resetting somebody else's factor.
+
+Changing the email or the password is not built yet; those rows say so and
+their buttons are disabled rather than pretending.
 
 `web/console/.env` names the admin API in `API_URL`. The browser never uses it:
 it calls `/api/v1/admin/...` on the panel's own origin, and the proxy routes
@@ -546,8 +595,8 @@ how a field looks happens in one file.
 **Layout.** Pages with tables fill the width, the way PocketBase does: a table
 with room for its columns reads better than one centred in a narrow column.
 Pages read top to bottom, such as the profile, sit in `PageContainer`'s centred
-column instead. Below 55rem the sidebar becomes a scrollable row above the
-content.
+column instead. Below 55rem the sidebar becomes a panel over the page rather
+than a column beside it.
 
 **Styling.** [Ark UI](https://ark-ui.com) ships no CSS: every part it renders
 carries `data-scope` and `data-part`, and `lib/styles/ark.css` styles those
@@ -852,23 +901,59 @@ exported here or from another installation imported as a new flow.
 (`oidc.flowFor`) — a password, a provider, an organisation's identity
 provider:
 
+- **Sign-ins are open**, off, refuses every way in (`sign_in_closed`) — a
+  password, a provider, an organisation's identity provider, an emailed code,
+  and registering, which ends in a session like the rest. It is checked in
+  `oidc.startSession`, where they all end, so nothing gets in by a road
+  somebody forgot to close. Sessions already made are left alone: closing the
+  door does not turn anybody out. The sign-in page draws a closed card rather
+  than a form nobody could use. It is not **On**, which says whether an
+  application may be pointed at this flow at all;
 - a flow without **Password** refuses a password before looking at it
   (`password_not_offered`), makes no accounts with one, and sends no reset
   links; the sign-in page shows the provider buttons alone;
 - a flow without **Other accounts** refuses a provider (`social_not_offered`);
-- **Require a verified address** sends an account whose address is
-  unconfirmed a link instead of a session (`email_not_verified`); the link
-  opens `/verify-email`, where a button — not the link itself, which a mail
-  scanner would use up — confirms it (`POST /api/v1/account/verify-email`).
-  Completing a password reset confirms the address too;
+- **Confirm the address of a new account** emails a link when somebody signs
+  up, and lets them in anyway: the link is waiting for them. **Require a
+  verified address** is the other half of that subject and a different
+  decision — it sends an account whose address is unconfirmed a link instead
+  of a session (`email_not_verified`). A flow can do either, both or neither.
+  The link opens `/verify-email`, where a button — not the link itself, which
+  a mail scanner would use up — confirms it
+  (`POST /api/v1/account/verify-email`). Completing a password reset confirms
+  the address too;
+- **Offer "Stay signed in"** puts a box beside the password. Ticked, the
+  browser keeps the cookie for as long as the session lasts; left alone — or
+  not offered at all — the cookie carries no `Max-Age` and the browser drops
+  it when its window closes, so a machine somebody was passing through
+  forgets them. The session itself lasts as long as the flow says either way.
+  A sign-in through a provider has no box to tick and is remembered;
+- **People can change their email** offers "Change" beside the address on a
+  user's own account page (`POST /api/v1/account/email`). The link goes to
+  the address they typed, and the account only moves when it is opened — so
+  nobody takes an account by typing an address they cannot read, and nobody
+  loses one by misspelling it. It answers the same whether or not somebody
+  else already has that address, and a clash is caught when the link is used,
+  by which point the person holding it has proved they read that inbox;
+- **Emailed code** holds the sign-in once the password has been accepted,
+  emails a one-time code to the address on the account, and makes the session
+  only when that code is typed back (`POST /api/v1/account/login/code`). What
+  a code is — its length, how long it lasts, how many guesses it takes, how
+  soon another may be asked for — is the One-time codes page;
 - the session lasts as long as the flow says, and so does its cookie.
+
+The emailed code is the address being proved, not the password being doubted,
+so the ways in a provider has already proved it for — a social sign-in, an
+organisation's identity provider — go straight through. The handle the page
+holds is the secret: a six-digit code read over somebody's shoulder is no use
+without the browser that asked for it.
 
 The email is written in the language the pages were shown in, read from their
 cookie, so a provider's callback — which has no body to say it in — gets it
 right too.
 
 **Not every step in the catalog runs yet, and the editor says so.**
-`email_code`, `totp`, `terms` and `consent` can be placed as a plan, drawn
+`totp`, `terms` and `consent` can be placed as a plan, drawn
 dashed and marked "not run yet"; `LoginStepSpec.Implemented` is the one place
 that says which is which, and implementing a step is flipping it there and
 writing the step. A flow has to include Password or Other accounts, which do
@@ -913,25 +998,42 @@ every application could be read.
 
 ### Languages
 
-Every word either app shows is looked up by key — `t('login.title')` — and the
-text for each language lives in the database: a `languages` row with its names
-and settings, and a `translations` row per app holding one JSON object of text
-by key. **Settings · Languages** is where languages are added, translated,
-offered, made the default and removed, and a change is on the next page
-anybody opens: both apps ask the API for their text while rendering, so
-nothing is rebuilt.
+Every word the sign-in pages show is looked up by key — `t('login.title')` —
+through the [`svelte-i18n`](https://github.com/kaisermann/svelte-i18n)
+dictionary and formatter. The text for each language lives in the database: a
+`languages` row with its names and settings, and a `translations` row per app
+holding one JSON object of text by key. **Settings · Languages** is where languages are added,
+translated, offered, made the default and removed, and a change is on the
+next page anybody opens: the pages ask the API for their text while
+rendering, so nothing is rebuilt.
 
-**The files under `locales/` are what the server ships with:**
+The admin panel is not one of these apps. It is English, in its own markup —
+see [below](#the-admin-panel-is-not-translated).
+
+**The files under `i18n/` are what the server ships with:**
 
 ```
-locales/
-  id/       en.json  ru.json   the sign-in pages, a user's own account, their emails
-  console/  en.json  ru.json   the admin panel, shown in English and Russian only
+i18n/
+  id/
+    en/       common.json  auth.json  account.json  server.json
+              validation.json  email.json
+    ru/       common.json  auth.json  account.json  server.json
+              validation.json  email.json
+  console/
+    en/       server.json  validation.json
 ```
 
-**Each file is nested by screen**, so a translator reads one page's text
-together, and everything that looks text up — the apps' `t()`, the
-database, the editor — speaks of the dotted key:
+The sign-in catalogs are grouped by subject: `common` holds shared labels and
+controls, `auth` the sign-in and recovery screens, `account` the user's own
+account, `server` the server's problems, `validation` form and request
+validation, and `email` the messages the server sends. The console files are
+not a translation: they hold the English sentence for each problem the admin
+API answers the panel with.
+
+**Each group is nested by namespace**, so a translator reads related text
+together. The Go importer merges every group in a language directory into one
+catalog, and everything that looks text up — the apps' `t()`, the database,
+the editor — speaks of the dotted key:
 
 ```json
 {
@@ -944,29 +1046,30 @@ database, the editor — speaks of the dotted key:
 ```
 
 `login.title` is `t('login.title')`. Keys are lower case with underscores;
-`TestShippedFilesAreNested` holds the files to that. The same few namespaces
-recur: one per screen (`login`, `register`, `security`…), `field` for form
-labels, `action` for buttons, `error` for everything the server can refuse
-(see [Errors](#errors)), and `email` for what it sends. The editor's
+`TestShippedGroupsAreNested` holds the files to that. The same few namespaces
+recur: one per screen or feature (`login`, `register`, `security`…), `field`
+for form labels, `action` for buttons, `error` for everything the server can
+refuse (see [Errors](#errors)), and `email` for what it sends. The editor's
 **Export JSON** writes this shape and **Import JSON** reads it, or a flat
 file of dotted keys.
 
-They are embedded in the binary (`locales/locales.go`) and have three jobs:
+They are embedded in the binary (`i18n/i18n.go`) and have three jobs:
 
 - **The first start imports them.** `store.EnsureLanguages` runs in `main`: on
   a database with no text at all it writes every shipped language, English on
   and the rest off. From then on the database is the panel's.
 - **A release reaches a shipped language.** Each start copies a key a shipped
-  file has into the database's copy of that language when the copy lacks it,
+  group has into the database's copy of that language when the copy lacks it,
   and never touches a message that is there. The one consequence: a message
   cleared in the panel, in a language that ships, comes back on the next
   start — a shipped language can be reworded, and the way to empty one is to
   remove it. A removed language is never brought back by a start; the New
   language drawer offers it back instead.
-- **`en.json` is the contract.** Its keys are the keys there are: coverage is
-  counted against them, a key they do not have is dropped on save, and a key
-  a language has no text for is sent in English — the database's English, and
-  under that the shipped file's, so a page never shows a bare key.
+- **`i18n/id/en/` is the contract.** The keys in its groups are the keys there
+  are: coverage is counted against them, a key they do not have is dropped on
+  save, and a key a language has no text for is sent in English — the
+  database's English, and under that the shipped English groups, so a page
+  never shows a bare key.
 
 **Adding a language** is **New language** on the page. Typing a tag — `uz`,
 `pt-BR` — fills in both names from the browser's own list, and the language
@@ -979,7 +1082,7 @@ English beside a field for the translation, a search over keys and both
 texts, and a switch for only what is left. A translation that drops a
 `{parameter}` the English has is flagged under the field. **Export JSON**
 writes a file of every key — empty values for what is left to do — with
-`$name` and `$native` on top, which is the shape of the shipped files, so it
+`$name` and `$native` on top, which is the shape of a merged catalog, so it
 can go to a translator and come back through **Import JSON**. An import is
 merged over what is there: keys it has text for are replaced, the rest are
 kept, and keys this version does not use are skipped and counted.
@@ -1006,34 +1109,93 @@ language since turned off falls through. `GET /api/v1/account/languages` is
 the list and `GET /api/v1/account/languages/:code` one language's text, every
 key filled in; a language that is off is a 404 there.
 
-**In the admin panel** the language is one administrator's own preference on
-one machine — a cookie, set on the Profile page beside the theme — rather
-than a setting of the installation. **The panel is shown in English and
-Russian only** (`locales.PanelLanguages`): every other language an
-installation adds is a sign-in language, with no panel text to import, edit, serve
-or count. On the Languages page such a language shows a dash under *Admin
-panel* and has no panel tab, the API answers 404 for its panel text, and a
-start removes any panel text an older version imported for it. Which of the
-two an administrator reads the panel in is their own business, whatever the
-Languages page offers users. Saving the text of the language the panel is
-shown in redraws the panel.
+<a id="the-admin-panel-is-not-translated"></a>
 
-Both apps resolve the language and fetch its text while rendering on the
-server, so the first response is already translated and `<html lang>` is
-right in the first byte, which is what a screen reader reads the page's words
-with. Each app bundles English alone, for when the API cannot be reached.
+**The admin panel is not translated.** It is written in English, in its own
+markup, and there is no picker, no cookie and no catalog behind it: a
+language an installation adds is a sign-in language, and that is the only
+kind there is. The Languages page counts and edits one app, and
+`i18n.Apps` is the list — a second translatable app would be added there
+rather than assumed here.
 
-What is translated today: all of the sign-in pages and a user's own account,
-and the admin panel's shell — its sidebar, its account menu, the Profile page,
-the Languages page and the SSO integrations page. The rest of the panel's pages are still English in the
-markup; moving one over is replacing its strings with `t('key')` and adding
-the keys to `locales/console/*.json`. `TestTranslationsAreComplete` fails the
-build if a shipped language falls behind the base, so a key added without a
-translation is caught rather than shipped.
+The one thing the panel still reads from `i18n/` is not a translation.
+`i18n/console/en/` holds the English sentence for every problem the
+admin API can answer the panel with, keyed by the code beside it
+(`respond.Define(..., respond.Admin)`); the panel shows the sentence the API
+sent. Nothing imports those files into the database, offers them for
+translation or counts them, and a start removes any panel text an older
+version imported.
 
-Two languages ship, English and Russian; any other is added on the Languages
-page. The Russian was written alongside the machinery and would be worth a
-native speaker's eye before an installation offers it.
+The sign-in pages resolve the language and fetch their text while rendering
+on the server, so the first response is already translated and `<html lang>`
+is right in the first byte, which is what a screen reader reads the page's
+words with. They bundle English alone, for when the API cannot be reached.
+
+Two sign-in languages ship, English and Russian; any other is added on the
+Languages page. `TestTranslationsAreComplete` fails the build if a shipped
+language falls behind the base, so a key added without a translation is
+caught rather than shipped. The Russian was written alongside the machinery
+and would be worth a native speaker's eye before an installation offers it.
+
+### Mail
+
+How this installation sends email, and what each message says. Both are a
+super admin's: the settings carry the mail server's password, and the words
+are what lands in a user's inbox.
+
+**The mail server** is one record, like the organisation's. It starts as
+`XERMESS_SMTP_*` says on the first start and belongs to the panel afterwards,
+and it is read when a message is sent rather than held in a field from
+startup — so a corrected password takes effect on the next email instead of
+the next restart. Host, port and one of three encryptions: `starttls` (what
+port 587 expects), `tls` (from the first byte, what 465 expects) and `none`
+(a relay on the same machine). The password is sealed with
+`XERMESS_SECRET_KEY`, like a social provider's client secret, and nothing
+reads it back: the panel is told whether one is stored and no more, so a form
+that leaves the field empty keeps it and an empty string clears it.
+
+With sending switched off, every message is written to the log, body
+included. That is the default, and it is why a fresh installation can be
+tried without a mail server rather than failing every sign-up on a host that
+does not answer.
+
+**Send a test message** posts one with what is on the form, whether or not it
+has been saved, so a server can be tried before anybody's sign-in depends on
+it. What the mail server said when it refused comes back as the error's
+`reason` — finding that out is the whole point — and both the attempt and its
+outcome are in the activity log.
+
+**The words** are not a record of their own. An email goes out in the
+reader's language, so its subject and body are two keys of the sign-in pages'
+text, in the `languages` table the Languages page holds; the Mail page shows
+those keys as the messages they make, with the shipped English underneath as
+the placeholder. A field left empty stores nothing, so clearing one puts the
+shipped text back. `model.MailMessageSpecs` is the catalog — an email added to
+the server is added there, or the page will not know it exists — and a write
+that names any other key is refused rather than quietly dropped.
+
+### One-time codes
+
+The codes the server emails as people sign in: the **Emailed code** step of a
+login flow, and nothing else. How long a code is (4 to 10 digits), how long
+it lasts (up to an hour), how many wrong guesses one sign-in takes, and how
+long before another message may be asked for. The page says how many codes
+there are against how many guesses there are, because that is the number
+these settings actually decide, and it lists the flows that ask for a code —
+or says that none does, since settings nothing reads are a note rather than a
+setting.
+
+The codes an authenticator app shows are not these. Those are RFC 6238
+(`internal/totp`), whose parameters every app assumes, and they are fixed in
+code rather than configurable: an app that read a different value from the
+URI would show the wrong codes.
+
+A sign-in waiting for a code is a row in `login_codes`, swept with everything
+else that expires. Asking for a code forgets the one before it, so one
+message is live at a time; a code that is right is spent by a conditional
+update, so two requests typing it at the same moment make one session; and
+the guesses already spent stay spent when another message is asked for, so
+"send it again" is not a way to start the count over.
 
 ### The icon
 
@@ -1063,13 +1225,14 @@ Migrations are Go files in `migrations/`, run by
 [goose](https://github.com/pressly/goose). The server applies pending ones on
 start unless `XERMESS_DB_MIGRATE=false`.
 
-Right now there is one: `20260917150000_schema.go` builds the whole schema
-from `model.All()`, adds the indexes a struct tag cannot describe, and seeds
-the admin roles, the organisation, the default login flow and the base
-language. While nothing is deployed, that is the
-better shape — the models are the schema, and one file cannot disagree with
-them. The first database that has to be brought forward without being rebuilt
-is when the second migration gets written; from then on the rule below holds.
+`20260917150000_schema.go` is the first: it builds the whole schema from
+`model.All()`, adds the indexes a struct tag cannot describe, and seeds the
+admin roles, the organisation, the default login flow and the base language.
+A fresh database gets its tables from the models, so one file cannot disagree
+with them; a database that already exists is stepped forward instead, which
+is what every migration after it does — the newest,
+`20260923180000_login_management.go`, adds the switches a login flow carries
+and the address a verification link may be a change to.
 
 ```sh
 make migrate-new name=add_admin_phone   # create an empty migration
@@ -1230,8 +1393,14 @@ cannot read the stored signing keys, and the server will not start.
 `XERMESS_ISSUER` is the public URL tokens name the server by — the id app's
 origin, which routes the provider paths to the API — and `XERMESS_ACCOUNT_URL`
 defaults to it. `XERMESS_ADMIN_URL` is the console's; only that origin may change
-anything through the admin API. With no
-`XERMESS_SMTP_HOST`, password reset emails are written to the log.
+anything through the admin API.
+
+`XERMESS_SMTP_*` seeds the mail server on the first start and nothing after
+it: from then on it is the Mail page's, so a password typed wrong is
+corrected in the panel rather than in a file, and takes effect on the next
+email rather than the next restart. With no `XERMESS_SMTP_HOST`, sending
+starts switched off and every message is written to the log — enough to
+follow a reset link while developing.
 
 Session cookies are Secure when `XERMESS_ACCOUNT_URL` and `XERMESS_ADMIN_URL`
 are https, without a setting to forget. `XERMESS_TRUSTED_PROXIES` lists the

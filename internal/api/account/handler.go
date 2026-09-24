@@ -187,7 +187,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.provider.SignIn(c.Request.Context(), req.Email, req.Password, req.Request, client(c))
+	result, err := h.provider.SignIn(c.Request.Context(), req.Email, req.Password, req.Request, req.Remember, client(c))
 	if err != nil {
 		h.fail(c, err, "signing a user in failed")
 		return
@@ -215,6 +215,7 @@ func (h *Handler) Register(c *gin.Context) {
 		FirstName:     req.FirstName,
 		LastName:      req.LastName,
 		AcceptedTerms: req.AcceptTerms,
+		Remember:      req.Remember,
 	}, client(c))
 	if err != nil {
 		h.fail(c, err, "registering a user failed")
@@ -231,7 +232,14 @@ func (h *Handler) signedIn(c *gin.Context, request string, result *oidc.SignInRe
 		return
 	}
 
-	session.SetUser(c, result.Token, result.Session.Record.ExpiresAt, h.secure)
+	// Held for an emailed code: no cookie is set and no session exists yet,
+	// so nothing but the code finishes this sign-in.
+	if result.Code != nil {
+		c.JSON(http.StatusOK, signedInResponse{Code: result.Code})
+		return
+	}
+
+	session.SetUser(c, result.Token, result.Session.Record.ExpiresAt, result.Remember, h.secure)
 
 	if request == "" {
 		c.JSON(http.StatusOK, signedInResponse{})
@@ -245,6 +253,72 @@ func (h *Handler) signedIn(c *gin.Context, request string, result *oidc.SignInRe
 	}
 
 	c.JSON(http.StatusOK, signedInResponse{RedirectTo: location})
+}
+
+// Code finishes a sign-in that was waiting for an emailed code, and answers
+// as the sign-in itself does: a cookie, and where to go next.
+func (h *Handler) Code(c *gin.Context) {
+	var req codeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := req.validate(); err != nil {
+		respond.Failure(c, h.log, err, "validating a one-time code failed")
+		return
+	}
+
+	result, err := h.provider.SubmitLoginCode(c.Request.Context(), req.Handle, req.Code, client(c))
+	if err != nil {
+		h.fail(c, err, "checking a one-time code failed")
+		return
+	}
+
+	h.signedIn(c, result.Request, result)
+}
+
+// ResendCode sends another code for a sign-in that is still waiting, and
+// answers with the wait before the next one.
+func (h *Handler) ResendCode(c *gin.Context) {
+	var req resendRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := req.validate(); err != nil {
+		respond.Failure(c, h.log, err, "validating a resend failed")
+		return
+	}
+
+	challenge, err := h.provider.ResendLoginCode(c.Request.Context(), req.Handle, client(c))
+	if err != nil {
+		h.fail(c, err, "sending another one-time code failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": challenge})
+}
+
+// ChangeEmail starts moving the signed-in user to another sign-in address. It
+// answers the same whether or not the address is already somebody else's, so
+// this cannot be used to find out which addresses have accounts.
+func (h *Handler) ChangeEmail(c *gin.Context) {
+	var req emailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := req.validate(); err != nil {
+		respond.Failure(c, h.log, err, "validating an address change failed")
+		return
+	}
+
+	if err := h.provider.RequestEmailChange(c.Request.Context(), signedInSession(c), req.Email, client(c)); err != nil {
+		h.fail(c, err, "starting an address change failed")
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{"status": "sent"})
 }
 
 // ForgotPassword sends a reset link. It answers the same whether or not the

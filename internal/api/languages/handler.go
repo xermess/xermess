@@ -2,13 +2,13 @@
 // and the two the panel itself is drawn with.
 //
 // A language is a row and its text, one JSON object per app, all in the
-// database. The server ships some (locales/) and imports them on its first
+// database. The server ships some (i18n/) and imports them on its first
 // start; from then on this is where languages are added, reworded, offered,
 // made the default and removed, and a change is on the next page anybody
 // opens — the apps ask for their text while rendering, so nothing is rebuilt.
 //
 // Which keys there are is not the database's to say. It is the base
-// language's shipped files: they are what the apps' code looks up, so a
+// language's shipped groups: they are what the apps' code looks up, so a
 // translation is counted against them and a key they do not have is dropped.
 package languages
 
@@ -21,12 +21,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"xermess/i18n"
 	"xermess/internal/api/audit"
 	"xermess/internal/api/respond"
 	"xermess/internal/api/validate"
 	"xermess/internal/model"
 	"xermess/internal/store"
-	"xermess/locales"
 )
 
 // Handler holds what these endpoints need.
@@ -71,7 +71,7 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
-	shipped, err := locales.Shipped()
+	shipped, err := i18n.Shipped()
 	if err != nil {
 		respond.Failure(c, h.log, err, "reading the shipped languages failed")
 		return
@@ -109,10 +109,11 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	// A copy of Russian made into, say, Uzbek brings the sign-in text and not
-	// the panel's: the panel is shown only in locales.PanelLanguages.
+	// A copy brings the text of the apps a language is translated for, and
+	// nothing else: an older installation's row for an app there no longer
+	// is would be copied forward for ever otherwise.
 	for app := range text {
-		if !locales.ServesApp(language.Code, locales.App(app)) {
+		if !i18n.ServesApp(language.Code, i18n.App(app)) {
 			delete(text, app)
 		}
 	}
@@ -139,7 +140,7 @@ func (h *Handler) Create(c *gin.Context) {
 // startingText is the text a new language copies, by app: another language's
 // here, or a shipped language's when there is no such language here. The file
 // is returned too when that is where the text came from.
-func (h *Handler) startingText(c *gin.Context, from string) (map[string]map[string]string, *locales.File, error) {
+func (h *Handler) startingText(c *gin.Context, from string) (map[string]map[string]string, *i18n.File, error) {
 	if from == "" {
 		return nil, nil, nil
 	}
@@ -153,7 +154,7 @@ func (h *Handler) startingText(c *gin.Context, from string) (map[string]map[stri
 		return nil, nil, err
 	}
 
-	shipped, err := locales.Shipped()
+	shipped, err := i18n.Shipped()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -262,7 +263,7 @@ func (h *Handler) Translation(c *gin.Context) {
 		return
 	}
 
-	english := locales.Resolve(app)
+	english := i18n.Resolve(app)
 	if base != nil {
 		if english, err = h.store.ResolvedTranslation(ctx, base, app); err != nil {
 			respond.Failure(c, h.log, err, "loading the base language failed")
@@ -272,7 +273,7 @@ func (h *Handler) Translation(c *gin.Context) {
 
 	c.JSON(http.StatusOK, translationResponse{
 		App:      app,
-		Keys:     locales.Keys(app),
+		Keys:     i18n.Keys(app),
 		Base:     english,
 		Messages: messages,
 	})
@@ -297,7 +298,7 @@ func (h *Handler) SaveTranslation(c *gin.Context) {
 		return
 	}
 
-	messages, ignored := locales.Known(app, req.Messages)
+	messages, ignored := i18n.Known(app, req.Messages)
 
 	if key := model.TooLongMessage(messages); key != "" {
 		respond.Fail(c, translationTooLong, "key", key, "max", model.MaxMessageLength)
@@ -322,55 +323,6 @@ func (h *Handler) SaveTranslation(c *gin.Context) {
 	c.JSON(http.StatusOK, savedResponse{Language: one, Ignored: ignored})
 }
 
-// PanelLanguages lists the languages the panel itself can be shown in: those
-// of locales.PanelLanguages this installation has. It takes no session — the
-// sign-in page is drawn in one — and says nothing a stranger could not read
-// off that page.
-//
-// It is not narrowed to what the Languages page offers. That decides what
-// users see on the sign-in pages; which of the panel's languages an
-// administrator reads it in is their own business.
-func (h *Handler) PanelLanguages(c *gin.Context) {
-	languages, err := h.store.Languages(c.Request.Context())
-	if err != nil {
-		respond.Failure(c, h.log, err, "listing languages failed")
-		return
-	}
-
-	out := []panelLanguage{}
-	for _, language := range languages {
-		if locales.ServesApp(language.Code, locales.Console) {
-			out = append(out, panelLanguage{Code: language.Code, Name: language.Name, Native: language.Native})
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"languages": out})
-}
-
-// PanelText is the panel's text in one language, every key filled in.
-func (h *Handler) PanelText(c *gin.Context) {
-	language, ok := h.find(c)
-	if !ok {
-		return
-	}
-
-	if !locales.ServesApp(language.Code, locales.Console) {
-		respond.Fail(c, notForThePanel)
-		return
-	}
-
-	messages, err := h.store.ResolvedTranslation(c.Request.Context(), language, locales.Console)
-	if err != nil {
-		respond.Failure(c, h.log, err, "loading a translation failed")
-		return
-	}
-
-	c.JSON(http.StatusOK, panelTextResponse{
-		Language: panelLanguage{Code: language.Code, Name: language.Name, Native: language.Native},
-		Messages: messages,
-	})
-}
-
 // find loads the language named in the path, answering the request itself if
 // there is no such language.
 func (h *Handler) find(c *gin.Context) (*model.Language, bool) {
@@ -388,19 +340,17 @@ func (h *Handler) find(c *gin.Context) (*model.Language, bool) {
 	return language, true
 }
 
-// findWithApp is find, and the app named in the path as well.
-func (h *Handler) findWithApp(c *gin.Context) (*model.Language, locales.App, bool) {
-	app, known := locales.ParseApp(c.Param("app"))
+// findWithApp is find, and the app named in the path as well. The sign-in
+// pages are the only app a language is translated for, so any other name in
+// the path is simply not an app.
+func (h *Handler) findWithApp(c *gin.Context) (*model.Language, i18n.App, bool) {
+	app, known := i18n.ParseApp(c.Param("app"))
 	if !known {
 		respond.Fail(c, noSuchApp)
 		return nil, "", false
 	}
 
 	language, ok := h.find(c)
-	if ok && !locales.ServesApp(language.Code, app) {
-		respond.Fail(c, notForThePanel)
-		return nil, "", false
-	}
 
 	return language, app, ok
 }
@@ -423,7 +373,7 @@ func (h *Handler) describe(c *gin.Context, language *model.Language) (languageRe
 		return languageResponse{}, err
 	}
 
-	shipped, err := locales.Shipped()
+	shipped, err := i18n.Shipped()
 	if err != nil {
 		return languageResponse{}, err
 	}

@@ -1,40 +1,40 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { Menu } from '@ark-ui/svelte/menu';
 	import { Portal } from '@ark-ui/svelte/portal';
 	import {
-		RiArrowDownSLine,
-		RiArrowRightSLine,
 		RiBookOpenLine,
 		RiBuildingLine,
-		RiCheckLine,
+		RiComputerLine,
 		RiExternalLinkLine,
 		RiGithubFill,
-		RiGlobalLine,
 		RiLogoutBoxRLine,
-		RiPaletteLine,
-		RiUserSettingsLine
+		RiShieldKeyholeLine,
+		RiUserLine
 	} from 'svelte-remixicon';
 	import { adminApi, type Admin } from '$lib/api';
-	import { Icon, type Size } from '$lib/components/ui';
+	import { Icon, Tag, type Size } from '$lib/components/ui';
 	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
-	import { useTranslator } from '$lib/i18n';
 	import { can } from '$lib/permissions';
-	import type { LanguageChoice } from '$lib/state/language.svelte';
-	import { setLanguage } from '$lib/state/language.svelte';
-	import { theme, type Theme } from '$lib/state/theme.svelte';
+	import ProfileDrawer, { type ProfileSection } from '$lib/components/profile/ProfileDrawer.svelte';
 
 	type Props = { admin: Admin; size?: Size };
 
 	let { admin, size = 'md' }: Props = $props();
 
 	const queryClient = useQueryClient();
-	const t = useTranslator();
 
 	let signingOut = $state(false);
+	let profileOpen = $state(false);
+	/** Which part of the profile panel the chosen row asked for. */
+	let profileSection = $state<ProfileSection>('account');
+
+	function openProfile(section: ProfileSection) {
+		profileSection = section;
+		profileOpen = true;
+	}
 
 	/** The first letter of the name, which is enough to tell accounts apart. */
 	const monogram = $derived((admin.full_name || admin.username).charAt(0).toUpperCase());
@@ -48,16 +48,9 @@
 	    administrator is said once rather than again as the role behind it. */
 	const standing = $derived(
 		admin.is_super_admin
-			? t('shell.super_admin')
+			? 'Super administrator'
 			: admin.roles.filter((role) => role !== 'super_admin').join(' · ')
 	);
-
-	/** The language the panel is drawn in, and the ones it can be drawn in,
-	    both settled by the root layout before this renders. */
-	const language = $derived(page.data.language as string);
-	const panelLanguages = $derived((page.data.panelLanguages ?? []) as LanguageChoice[]);
-
-	const themes: Theme[] = ['light', 'dark'];
 
 	async function signOut() {
 		signingOut = true;
@@ -82,10 +75,9 @@
 		data-size={size}
 		data-variant="ghost"
 		data-palette="neutral"
+		aria-label="Profile"
 	>
 		<span class="monogram" aria-hidden="true">{monogram}</span>
-		<span class="name">{admin.full_name || admin.username}</span>
-		<Icon icon={RiArrowDownSLine} />
 	</Menu.Trigger>
 
 	<Portal>
@@ -96,20 +88,40 @@
 					<span class="who">
 						<strong>{admin.full_name || admin.username}</strong>
 						<span class="hint">{admin.email}</span>
-						{#if standing}<span class="standing">{standing}</span>{/if}
 					</span>
 				</div>
 
+				{#if standing}
+					<div class="standing">
+						<Tag small tone={admin.is_super_admin ? 'info' : 'neutral'}>
+							{standing}
+						</Tag>
+					</div>
+				{/if}
+
 				<Menu.Separator />
 
-				<!-- One block, not four: where this account goes, and the two
-				     preferences that are this reader's own on this machine.
-				     They are few enough to read at a glance, and headings over
-				     groups of two were more furniture than the menu needed. -->
+				<!-- Three rows that lead somewhere, and nothing that is set
+				     here. The theme used to be a submenu off this one; it is a
+				     toggle in the bar and a pair of buttons in the profile
+				     panel, and a third place to change it was one too many.
+				     The two that open the same panel say which part of it they
+				     open, so the menu answers "where do I turn two-factor on"
+				     without being a settings screen itself. -->
 				<Menu.ItemGroup>
-					<Menu.Item value="profile" onSelect={() => goto(resolve('/admin/profile'))}>
-						<Icon icon={RiUserSettingsLine} />
-						{t('shell.profile')}
+					<Menu.Item value="profile" onSelect={() => openProfile('account')}>
+						<Icon icon={RiUserLine} />
+						Your account
+					</Menu.Item>
+
+					<Menu.Item value="security" onSelect={() => openProfile('security')}>
+						<Icon icon={RiShieldKeyholeLine} />
+						Two-factor sign-in
+					</Menu.Item>
+
+					<Menu.Item value="sessions" onSelect={() => openProfile('sessions')}>
+						<Icon icon={RiComputerLine} />
+						Your sessions
 					</Menu.Item>
 
 					{#if maySeeOrganization}
@@ -118,70 +130,8 @@
 							onSelect={() => goto(resolve('/admin/dashboard/organization'))}
 						>
 							<Icon icon={RiBuildingLine} />
-							{t('nav.organization')}
+							Organization
 						</Menu.Item>
-					{/if}
-
-					<Menu.Root positioning={{ placement: 'left-start', gutter: 2 }}>
-						<Menu.TriggerItem>
-							<Icon icon={RiPaletteLine} />
-							{t('shell.theme')}
-							<span class="value">{t(`shell.theme_${theme.current}`)}</span>
-							<Icon icon={RiArrowRightSLine} />
-						</Menu.TriggerItem>
-
-						<Portal>
-							<Menu.Positioner>
-								<Menu.Content class="account-menu">
-									<Menu.RadioItemGroup
-										value={theme.current}
-										onValueChange={(details) => theme.set(details.value as Theme)}
-									>
-										{#each themes as option (option)}
-											<Menu.RadioItem value={option}>
-												<span class="tick">
-													<Menu.ItemIndicator><Icon icon={RiCheckLine} /></Menu.ItemIndicator>
-												</span>
-												<Menu.ItemText>{t(`shell.theme_${option}`)}</Menu.ItemText>
-											</Menu.RadioItem>
-										{/each}
-									</Menu.RadioItemGroup>
-								</Menu.Content>
-							</Menu.Positioner>
-						</Portal>
-					</Menu.Root>
-
-					{#if panelLanguages.length > 1}
-						<Menu.Root positioning={{ placement: 'left-start', gutter: 2 }}>
-							<Menu.TriggerItem>
-								<Icon icon={RiGlobalLine} />
-								{t('shell.language')}
-								<span class="value">
-									{panelLanguages.find((one) => one.code === language)?.native ?? language}
-								</span>
-								<Icon icon={RiArrowRightSLine} />
-							</Menu.TriggerItem>
-
-							<Portal>
-								<Menu.Positioner>
-									<Menu.Content class="account-menu">
-										<Menu.RadioItemGroup
-											value={language}
-											onValueChange={(details) => setLanguage(details.value)}
-										>
-											{#each panelLanguages as choice (choice.code)}
-												<Menu.RadioItem value={choice.code}>
-													<span class="tick">
-														<Menu.ItemIndicator><Icon icon={RiCheckLine} /></Menu.ItemIndicator>
-													</span>
-													<Menu.ItemText>{choice.native}</Menu.ItemText>
-												</Menu.RadioItem>
-											{/each}
-										</Menu.RadioItemGroup>
-									</Menu.Content>
-								</Menu.Positioner>
-							</Portal>
-						</Menu.Root>
 					{/if}
 				</Menu.ItemGroup>
 
@@ -200,7 +150,7 @@
 							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a {...item()} href={DOCS_URL} target="_blank" rel="noreferrer noopener">
 								<Icon icon={RiBookOpenLine} />
-								{t('shell.documentation')}
+								Documentation
 								<Icon icon={RiExternalLinkLine} size="0.875rem" />
 							</a>
 						{/snippet}
@@ -211,7 +161,7 @@
 							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a {...item()} href={GITHUB_URL} target="_blank" rel="noreferrer noopener">
 								<Icon icon={RiGithubFill} />
-								{t('shell.github')}
+								GitHub
 								<Icon icon={RiExternalLinkLine} size="0.875rem" />
 							</a>
 						{/snippet}
@@ -228,31 +178,22 @@
 					onSelect={signOut}
 				>
 					<Icon icon={RiLogoutBoxRLine} />
-					{signingOut ? t('shell.signing_out') : t('shell.sign_out')}
+					{signingOut ? 'Signing out…' : 'Sign out'}
 				</Menu.Item>
 			</Menu.Content>
 		</Menu.Positioner>
 	</Portal>
 </Menu.Root>
 
+<ProfileDrawer {admin} bind:open={profileOpen} section={profileSection} />
+
 <style>
-	/* The shape is the shared control; what belongs to this one is the name
-	   beside the monogram, which reads as text rather than as a label on a
-	   quiet button. */
+	/* The account is intentionally an icon-only control: identity details
+	   belong in the menu and dialog, leaving the header calm at every width. */
 	:global(.trigger.control) {
-		gap: var(--space-2);
-		padding: 0 var(--space-2);
+		padding: 0 var(--space-1);
 		color: var(--color-text);
 		font-weight: 500;
-	}
-
-	/* A name as long as somebody cares to have is still one line: the bar's
-	   layout does not move because of who signed in. */
-	.name {
-		max-width: 12rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
 	}
 
 	:global(.trigger.control[data-state='open']) {
@@ -284,7 +225,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding: var(--space-3) var(--space-2);
+		padding: var(--space-3) var(--space-2) var(--space-2);
 	}
 
 	.face {
@@ -320,34 +261,11 @@
 		font-size: var(--text-sm);
 	}
 
-	/* What the account is, said in words rather than worn as a badge: a
-	   coloured pill here competed with the rows under it for the first look,
-	   and this is a fact about the account, not a warning. */
+	/* What the account is, on its own line under the name: a Tag, because
+	   that is how this fact is shown on the Administrators page and in the
+	   profile panel, and three spellings of one thing is two too many. */
 	.standing {
-		margin-top: 2px;
-		color: var(--color-text-hint);
-		font-size: var(--text-xs);
-		letter-spacing: 0.02em;
-		text-transform: uppercase;
-	}
-
-	/* What a preference is set to now, pushed to the right of its row so the
-	   submenu can be read without being opened. */
-	.value {
-		margin-left: auto;
-		padding-left: var(--space-2);
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	/* The tick column: kept even while nothing is ticked, so the rows of a
-	   radio group do not shift sideways as the choice moves. */
-	.tick {
-		display: grid;
-		flex-shrink: 0;
-		place-items: center;
-		width: 1rem;
-		color: var(--color-accent);
+		padding: 0 var(--space-2) var(--space-3);
 	}
 
 	/* Menu rows are divs; this one is a link and has to be told to sit like
@@ -381,12 +299,6 @@
 	@media (max-width: 55rem) {
 		:global(.account-menu .when-narrow) {
 			display: block;
-		}
-	}
-
-	@media (max-width: 40rem) {
-		.name {
-			display: none;
 		}
 	}
 </style>

@@ -24,14 +24,14 @@ const proxy = {
 export default defineConfig({
 	// id 5173, console 5174 — in both modes of scripts/start.sh.
 	//
-	// The translations are read from locales/ at the top of the repository,
+	// The translations are read from i18n/ at the top of the repository,
 	// which is outside this app, so the dev server is told it may serve that
 	// directory. A build inlines the files and needs nothing.
 	server: {
 		port: 5173,
 		strictPort: true,
 		proxy,
-		fs: { allow: [fileURLToPath(new URL('../../locales', import.meta.url))] }
+		fs: { allow: [fileURLToPath(new URL('../../i18n', import.meta.url))] }
 	},
 
 	plugins: [

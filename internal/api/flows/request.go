@@ -21,8 +21,12 @@ type flowRequest struct {
 
 	Steps *[]model.LoginStep `json:"steps"`
 
-	AllowRegistration    *bool `json:"allow_registration"`
-	AllowPasswordReset   *bool `json:"allow_password_reset"`
-	RequireVerifiedEmail *bool `json:"require_verified_email"`
-	SessionLifetimeHours *int  `json:"session_lifetime_hours"`
+	AllowSignIn           *bool `json:"allow_sign_in"`
+	AllowRegistration     *bool `json:"allow_registration"`
+	AllowPasswordReset    *bool `json:"allow_password_reset"`
+	AllowRememberMe       *bool `json:"allow_remember_me"`
+	VerifyEmailOnRegister *bool `json:"verify_email_on_register"`
+	RequireVerifiedEmail  *bool `json:"require_verified_email"`
+	AllowEmailChange      *bool `json:"allow_email_change"`
+	SessionLifetimeHours  *int  `json:"session_lifetime_hours"`
 }

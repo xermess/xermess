@@ -5,10 +5,11 @@
 
 	let { data, children }: LayoutProps = $props();
 
-	// Every component below looks its text up through this one translator, and
-	// it reads `data.messages` each time — so a page re-renders in the new
-	// language the moment the choice lands, without any of them subscribing
-	// to anything themselves.
+	// Every component below looks its text up through this one translator. The
+	// browser registers `data.messages` with svelte-i18n, and the lookup reads
+	// the request's messages each time — so a page re-renders in the new
+	// language the moment the choice lands, without any of them subscribing to
+	// anything themselves.
 	provideTranslator(
 		translator(
 			() => data.messages,

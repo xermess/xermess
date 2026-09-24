@@ -27,8 +27,8 @@ func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jos
 	}
 
 	if creating {
-		connection.Protocol = model.SSOProtocol(text(r.Protocol, ""))
-		connection.Slug = slugFrom(text(r.Slug, ""), text(r.Name, ""))
+		connection.Protocol = model.SSOProtocol(validate.Text(r.Protocol, ""))
+		connection.Slug = slugFrom(validate.Text(r.Slug, ""), validate.Text(r.Name, ""))
 
 		if connection.Protocol == "" {
 			return required("protocol")
@@ -38,10 +38,10 @@ func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jos
 		}
 	}
 
-	connection.Name = text(r.Name, connection.Name)
-	connection.Enabled = flag(r.Enabled, connection.Enabled)
-	connection.EnforceDomains = flag(r.EnforceDomains, connection.EnforceDomains)
-	connection.ShowOnLogin = flag(r.ShowOnLogin, connection.ShowOnLogin)
+	connection.Name = validate.Text(r.Name, connection.Name)
+	connection.Enabled = validate.Flag(r.Enabled, connection.Enabled)
+	connection.EnforceDomains = validate.Flag(r.EnforceDomains, connection.EnforceDomains)
+	connection.ShowOnLogin = validate.Flag(r.ShowOnLogin, connection.ShowOnLogin)
 
 	if r.Domains != nil {
 		domains := model.StringList{}
@@ -58,8 +58,8 @@ func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jos
 		connection.Domains = domains
 	}
 
-	connection.Issuer = strings.TrimRight(text(r.Issuer, connection.Issuer), "/")
-	connection.ClientID = text(r.ClientID, connection.ClientID)
+	connection.Issuer = strings.TrimRight(validate.Text(r.Issuer, connection.Issuer), "/")
+	connection.ClientID = validate.Text(r.ClientID, connection.ClientID)
 
 	// A secret that was sent replaces the stored one; none leaves it be.
 	if r.ClientSecret != nil && strings.TrimSpace(*r.ClientSecret) != "" {
@@ -82,22 +82,22 @@ func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jos
 		connection.Scopes = scopes
 	}
 
-	connection.MetadataURL = text(r.MetadataURL, connection.MetadataURL)
+	connection.MetadataURL = validate.Text(r.MetadataURL, connection.MetadataURL)
 	if r.Metadata != nil {
 		connection.Metadata = strings.TrimSpace(*r.Metadata)
 	}
-	connection.NameIDFormat = model.SSONameIDFormat(text(r.NameIDFormat, string(connection.NameIDFormat)))
-	connection.SignRequests = flag(r.SignRequests, connection.SignRequests)
+	connection.NameIDFormat = model.SSONameIDFormat(validate.Text(r.NameIDFormat, string(connection.NameIDFormat)))
+	connection.SignRequests = validate.Flag(r.SignRequests, connection.SignRequests)
 
-	connection.Matching = model.SSOMatching(text(r.Matching, string(connection.Matching)))
-	connection.CreateUsers = flag(r.CreateUsers, connection.CreateUsers)
-	connection.SyncProfile = flag(r.SyncProfile, connection.SyncProfile)
-	connection.SyncRoles = flag(r.SyncRoles, connection.SyncRoles)
+	connection.Matching = model.SSOMatching(validate.Text(r.Matching, string(connection.Matching)))
+	connection.CreateUsers = validate.Flag(r.CreateUsers, connection.CreateUsers)
+	connection.SyncProfile = validate.Flag(r.SyncProfile, connection.SyncProfile)
+	connection.SyncRoles = validate.Flag(r.SyncRoles, connection.SyncRoles)
 
-	connection.EmailAttribute = text(r.EmailAttribute, connection.EmailAttribute)
-	connection.FirstNameAttribute = text(r.FirstNameAttribute, connection.FirstNameAttribute)
-	connection.LastNameAttribute = text(r.LastNameAttribute, connection.LastNameAttribute)
-	connection.GroupsAttribute = text(r.GroupsAttribute, connection.GroupsAttribute)
+	connection.EmailAttribute = validate.Text(r.EmailAttribute, connection.EmailAttribute)
+	connection.FirstNameAttribute = validate.Text(r.FirstNameAttribute, connection.FirstNameAttribute)
+	connection.LastNameAttribute = validate.Text(r.LastNameAttribute, connection.LastNameAttribute)
+	connection.GroupsAttribute = validate.Text(r.GroupsAttribute, connection.GroupsAttribute)
 
 	if r.RoleMappings != nil {
 		mappings := model.SSORoleMappings{}
@@ -194,19 +194,6 @@ func slugFrom(sent, name string) string {
 
 func required(field string) respond.Fault { return requiredField.With("field", field) }
 func invalid(field string) respond.Fault  { return invalidField.With("field", field) }
-
-// text is a sent string, trimmed, or the current value when none was sent.
-func text(sent *string, current string) string {
-	if sent == nil {
-		return current
-	}
-
-	return strings.TrimSpace(*sent)
-}
-
-func flag(sent *bool, current bool) bool {
-	return validate.Flag(sent, current)
-}
 
 // unsupportedScopes are the scopes a connection would ask for that its
 // provider does not list. A provider that lists none says nothing either way.

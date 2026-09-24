@@ -46,6 +46,17 @@ type LoginFlow struct {
 	// Steps are the steps in the order they are taken.
 	Steps StepList `gorm:"type:text;serializer:json;not null" json:"steps"`
 
+	// AllowSignIn is whether anybody may sign in through this flow at all.
+	// Off, every way in is refused — a password, a provider, a code, and
+	// registering, which ends in a session like the rest.
+	//
+	// It is not Enabled above: that says whether an application may be
+	// pointed at this flow, and an application pointed at one that is off
+	// falls back to the default and signs its users in as usual. This says
+	// the sign-ins themselves are closed, which is what an installation
+	// reaches for while it is being worked on.
+	AllowSignIn bool `gorm:"not null" json:"allow_sign_in"`
+
 	// AllowRegistration offers the "create an account" way out of the
 	// sign-in page. Off, an account is made by an administrator or not at
 	// all.
@@ -54,9 +65,31 @@ type LoginFlow struct {
 	// AllowPasswordReset offers the "forgotten your password" link.
 	AllowPasswordReset bool `gorm:"not null" json:"allow_password_reset"`
 
+	// AllowRememberMe offers "stay signed in" beside the password. Ticked,
+	// the session lasts SessionLifetimeHours; left alone — or not offered at
+	// all — the cookie ends with the browser, so a shared machine forgets
+	// whoever used it last when its window closes.
+	AllowRememberMe bool `gorm:"not null" json:"allow_remember_me"`
+
+	// VerifyEmailOnRegister sends a new account a link to confirm its
+	// address. It does not hold the account back: the person is signed in
+	// and the link is waiting for them.
+	//
+	// RequireVerifiedEmail below is the other half of the same subject and a
+	// different decision — whether an unconfirmed address may sign in at
+	// all. A flow can send the link and let people in (this alone), refuse
+	// until it is used (both), or neither.
+	VerifyEmailOnRegister bool `gorm:"not null" json:"verify_email_on_register"`
+
 	// RequireVerifiedEmail refuses a sign-in until the address has been
 	// confirmed, rather than letting an unconfirmed account in and nagging.
 	RequireVerifiedEmail bool `gorm:"not null" json:"require_verified_email"`
+
+	// AllowEmailChange lets a user change the address they sign in with,
+	// from their own account page. The new one is confirmed by a link before
+	// it replaces the old, so nobody can take an account by typing an
+	// address they do not read.
+	AllowEmailChange bool `gorm:"not null" json:"allow_email_change"`
 
 	// SessionLifetimeHours is how long a session made by this flow lasts.
 	SessionLifetimeHours int `gorm:"not null" json:"session_lifetime_hours"`
@@ -143,6 +176,7 @@ var LoginStepSpecs = []LoginStepSpec{
 		Step:        StepEmailCode,
 		Label:       "Emailed code",
 		Description: "Send a one-time code to the address and ask for it.",
+		Implemented: true,
 	},
 	{
 		Step:        StepTOTP,
@@ -196,8 +230,10 @@ func DefaultLoginFlow() LoginFlow {
 		IsDefault:            true,
 		Enabled:              true,
 		Steps:                StepList{StepIdentifier, StepPassword, StepSocial},
+		AllowSignIn:          true,
 		AllowRegistration:    true,
 		AllowPasswordReset:   true,
+		AllowRememberMe:      true,
 		RequireVerifiedEmail: false,
 		SessionLifetimeHours: 24 * 14,
 	}
@@ -299,9 +335,21 @@ type PublicLoginOptions struct {
 	// server does not run yet is left out rather than sent along: to the
 	// pages this is a list of what to put on the screen, and a step nobody
 	// will be asked for has no business in it.
-	Steps              []LoginStep `json:"steps"`
-	AllowRegistration  bool        `json:"allow_registration"`
-	AllowPasswordReset bool        `json:"allow_password_reset"`
+	Steps []LoginStep `json:"steps"`
+
+	// AllowSignIn false is a closed door: the pages say so instead of asking
+	// for anything.
+	AllowSignIn        bool `json:"allow_sign_in"`
+	AllowRegistration  bool `json:"allow_registration"`
+	AllowPasswordReset bool `json:"allow_password_reset"`
+
+	// AllowRememberMe puts "stay signed in" beside the password.
+	AllowRememberMe bool `json:"allow_remember_me"`
+
+	// AllowEmailChange offers "change" beside the address on the account
+	// page. It is read there rather than on the sign-in page, but it is the
+	// flow's to decide like the rest.
+	AllowEmailChange bool `json:"allow_email_change"`
 }
 
 // PublicOptions returns those fields. The panel is told about the steps a flow
@@ -317,8 +365,11 @@ func (f LoginFlow) PublicOptions() PublicLoginOptions {
 
 	return PublicLoginOptions{
 		Steps:              steps,
+		AllowSignIn:        f.AllowSignIn,
 		AllowRegistration:  f.AllowRegistration,
 		AllowPasswordReset: f.AllowPasswordReset,
+		AllowRememberMe:    f.AllowRememberMe,
+		AllowEmailChange:   f.AllowEmailChange,
 	}
 }
 

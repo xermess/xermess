@@ -11,7 +11,6 @@ never writes a colour, a height or a hover state — it names one.
 
 <IconButton icon={RiRefreshLine} label="Refresh the data" />
 <IconLink href="https://xermess.org/docs" icon={RiBookOpenLine} label="Documentation" />
-<LinkButton href={resolve('/admin/profile')} variant="outline">Profile</LinkButton>
 
 <Input label="email" bind:value={email} type="email" required />
 <Select label="Type" bind:value={type} options={['text', 'number', 'bool']} />
@@ -146,7 +145,7 @@ animation _name_ change, and a reversed one never changes it.
 
 ## Page building blocks
 
-The pieces the Activity and Profile pages are made of, after PocketBase's
+The pieces the Activity page and account drawer are made of, after PocketBase's
 settings and logs pages. Reach for these before writing a box of your own.
 
 ```svelte

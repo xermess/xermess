@@ -8,14 +8,11 @@
 	import { ApiError, adminsApi, type AdminRole } from '$lib/api';
 	import { adminPermissionsOptions, adminRolesOptions, keys } from '$lib/query';
 	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import AdminRoleDrawer from '$lib/components/admins/AdminRoleDrawer.svelte';
 	import AdminRoleTable from '$lib/components/admins/AdminRoleTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -117,7 +114,7 @@
 <svelte:head><title>Admin roles · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.admin_roles')]}>
+	<PageHeader crumbs={['Dashboard', 'Admin roles']}>
 		{#snippet secondary()}
 			<span class="total">{roles.data.length} total</span>
 

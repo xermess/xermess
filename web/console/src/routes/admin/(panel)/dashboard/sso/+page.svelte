@@ -5,7 +5,6 @@
 	import { Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
 	import SSODrawer from '$lib/components/sso/SSODrawer.svelte';
 	import SSOTable from '$lib/components/sso/SSOTable.svelte';
-	import { useTranslator } from '$lib/i18n';
 	import { can } from '$lib/permissions';
 	import { keys, ssoOptions } from '$lib/query';
 	import type { PageData } from './$types';
@@ -13,7 +12,6 @@
 	let { data }: { data: PageData } = $props();
 
 	const queryClient = useQueryClient();
-	const t = useTranslator();
 
 	const list = createQuery(() => ssoOptions({ connections: data.connections }));
 
@@ -58,16 +56,16 @@
 	}
 </script>
 
-<svelte:head><title>{t('sso.head')} · xermess admin</title></svelte:head>
+<svelte:head><title>SSO integrations · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.sso')]}>
+	<PageHeader crumbs={['Dashboard', 'SSO integrations']}>
 		{#snippet secondary()}
-			<span class="total">{t('sso.total', { count: list.data.connections.length })}</span>
+			<span class="total">{`${list.data.connections.length} total`}</span>
 
 			<IconButton
 				icon={RiRefreshLine}
-				label={t('action.refresh')}
+				label="Refresh the data"
 				onclick={refresh}
 				loading={refreshing}
 				disabled={refreshing}
@@ -78,25 +76,34 @@
 			{#if canWrite}
 				<Button onclick={() => open(null)}>
 					<Icon icon={RiAddLine} />
-					{t('sso.new')}
+					New connection
 				</Button>
 			{/if}
 		{/snippet}
 	</PageHeader>
 </div>
 
-<p class="lead">{t('sso.lead')}</p>
+<p class="lead">
+	Let an organisation sign its people in through its own identity provider — Okta, Microsoft Entra
+	ID, Google Workspace, ADFS — over OpenID Connect or SAML 2.0. A connection owns email domains: the
+	people at them sign in through it, can be made to, and get accounts and roles from what the
+	provider says.
+</p>
 
 {#if list.data.connections.length === 0}
 	<section class="empty">
 		<span class="mark" aria-hidden="true"><Icon icon={RiBuilding2Line} size="1.6rem" /></span>
 		<div>
-			<h2>{t('sso.empty_title')}</h2>
-			<p>{t('sso.empty_body')}</p>
+			<h2>No identity providers connected yet</h2>
+			<p>
+				Connect a company's identity provider and its people sign in with their work account: routed
+				there by their email domain, given an account the first time, and roles from the groups the
+				provider puts them in.
+			</p>
 			{#if canWrite}
 				<Button onclick={() => open(null)}>
 					<Icon icon={RiAddLine} />
-					{t('sso.new')}
+					New connection
 				</Button>
 			{/if}
 		</div>
@@ -107,14 +114,14 @@
 			<Icon icon={RiSearchLine} />
 			<input
 				type="search"
-				placeholder={t('sso.search')}
+				placeholder="Search name, identifier or domain…"
 				bind:value={search}
-				aria-label={t('action.search')}
+				aria-label="Search"
 			/>
 		</label>
 	</div>
 
-	<SSOTable connections={visible} onOpen={open} empty={t('sso.no_match')} />
+	<SSOTable connections={visible} onOpen={open} empty="No connections match this." />
 {/if}
 
 <SSODrawer

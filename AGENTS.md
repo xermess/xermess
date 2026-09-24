@@ -116,9 +116,10 @@ else reads a hard-coded list of steps.
 that returns it, `var taken = respond.Define(http.StatusConflict,
 "language_code_taken", respond.Admin)`, answer with `respond.Fail(c, taken)`
 or return `taken.With("code", code)`, and add `error.language_code_taken` to
-`locales/<app>/*.json` for every app it is for (`Public` → `id`, `Admin` →
-`console`, `Both`). The server's English is read from `en.json`, and the apps
-show the key in the reader's language with `messageOf(err, t)`.
+`i18n/<app>/<locale>/server.json` for every app it is for (`Public` → `id`,
+`Admin` → `console`, `Both`). The server's English is read from the `en`
+group files, and the apps show the key in the reader's language with
+`messageOf(err, t)`.
 `TestErrorCodesMatchTheCatalogs` fails until both sides agree.
 
 **A cached read.** Only in the store, with `cached(ctx, s, group, field, load)`,
@@ -129,34 +130,45 @@ constant in `internal/cache`. Cache a projection rather than a model that
 carries a secret, and add the type to `TestCachedTypesSurviveJSON`. Redis is
 optional: a nil cache is an empty one, so everything has to work without it.
 
-**A language.** An installation adds its own on the Languages page: the text
+**A language.** A language is the sign-in pages' language: the panel is not
+translated. An installation adds its own on the Languages page — the text
 lives in the database (`languages`, and a `translations` row per app) and the
-apps fetch it while rendering, so nothing is rebuilt. To *ship* one with the
-server, add a JSON file under `locales/id/` — and under `locales/console/`
-only for the panel's languages, `locales.PanelLanguages` (English and
-Russian) — named after the language tag,
-copied from `en.json` with the values translated and `$name`/`$native` naming
-the language. The first start imports every shipped file
-(`store.EnsureLanguages`), and later starts copy in keys a release added
-without touching anything an administrator wrote.
+pages fetch it while rendering, so nothing is rebuilt. To *ship* one with the
+server, add a language directory under `i18n/id/`, named after the language
+tag. Keep the same semantic groups as English — `common`, `auth`, `account`,
+`server`, `validation`, and `email` — with the values translated and
+`$name`/`$native` in `common.json` naming the language. The first start
+imports every shipped group (`store.EnsureLanguages`), and later starts copy in
+keys a release added without touching anything an administrator wrote.
 `TestTranslationsAreComplete` fails when a shipped language falls behind `en`,
-so a key added to the base has to be added to every file before it ships.
+so a key added to the base has to be added to every group before it ships.
 
-**Text in the apps.** Never a literal in the markup: `const t = useTranslator()`
-at the top of the component and `t('area.thing')` where the words go, with the
-key added to every file under `locales/<app>/` — nested under its screen,
-`{"area": {"thing": "…"}}`. Parameters are `{braces}` in
-the text and an object at the call — `t('login.subtitle_app', { app: name })`.
-The sign-in pages are fully moved over; the panel's shell is, and its other
-pages are not yet.
+`i18n/console/en/` is not one of these. It is the English sentence for
+every problem the admin API answers the panel with, and nothing else goes in
+it: no language is translated for the panel, and nothing imports it.
+
+**Text in the sign-in pages.** Never a literal in the markup:
+`const t = useTranslator()` at the top of the component and `t('area.thing')`
+where the words go, with the key added to every group under `i18n/id/` —
+nested under its namespace, `{"area": {"thing": "…"}}`. Parameters are
+`{braces}` in the text and an object at the call —
+`t('login.subtitle_app', { app: name })`. The sign-in app uses
+[`svelte-i18n`](https://github.com/kaisermann/svelte-i18n) for its dictionary
+and formatter; keep its wrapper's `t()` API so components do not need to
+subscribe to package stores themselves.
+
+**Text in the panel.** The opposite: the words go in the markup, in English.
+There is no translator to reach for, and an error an administrator is shown
+is the sentence the API sent (`messageOf` in `$lib/api`).
 
 **A panel page.** A `+page.server.ts` that checks the permission
 (`requirePermission` / `requireAnywhere`) and fetches with `apiGet`, a
 `+page.svelte` that seeds a TanStack query from what the server rendered, query
 options in `lib/query/` with their key in `lib/query/keys.ts`, a typed client
 call in `lib/api/admin.ts`, and the feature's components in
-`lib/components/<feature>/`. Add the route to `sections.ts` with an `allowed`
-check.
+`lib/components/<feature>/`. Add the route to `sections.ts` — under the branch
+whose subject it belongs to — with an `allowed` check; the sidebar and the
+command palette both read that list, so nothing else needs touching.
 
 ## Style
 

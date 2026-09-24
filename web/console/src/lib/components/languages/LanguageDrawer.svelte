@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiDeleteBinLine, RiSettings3Line, RiTranslate2 } from 'svelte-remixicon';
-	import { languagesApi, type Language, type LocaleApp } from '$lib/api';
+	import { languagesApi, messageOf, type Language, type LocaleApp } from '$lib/api';
 	import {
 		Alert,
 		Button,
@@ -13,9 +12,7 @@
 		SwitchField,
 		Tabs
 	} from '$lib/components/ui';
-	import { messageOf, useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
-	import { reloadText } from '$lib/state/language.svelte';
 	import TranslationEditor from './TranslationEditor.svelte';
 
 	type Props = {
@@ -36,7 +33,6 @@
 	}: Props = $props();
 
 	const queryClient = useQueryClient();
-	const t = useTranslator();
 
 	let tab = $state<string>('settings');
 	let name = $state('');
@@ -54,8 +50,8 @@
 	let saving = $state(false);
 	let confirmingDelete = $state(false);
 
-	/** The apps this language has text for: the sign-in pages, and the panel
-	    for English and Russian only. */
+	/** The apps this language has text for, which the server decides. There
+	    is one today: the sign-in pages. */
 	const apps = $derived(language?.apps ?? []);
 
 	// The form is filled in each time the panel opens.
@@ -95,11 +91,11 @@
 	);
 
 	function appName(app: LocaleApp): string {
-		return app === 'id' ? t('languages.sign_in_pages') : t('languages.admin_panel');
+		return app === 'id' ? 'Sign-in pages' : app;
 	}
 
 	const tabs = $derived([
-		{ value: 'settings', label: t('languages.tab_settings'), icon: RiSettings3Line },
+		{ value: 'settings', label: 'Settings', icon: RiSettings3Line },
 		...apps.map((app) => ({
 			value: app,
 			label: appName(app),
@@ -134,13 +130,8 @@
 
 			return code;
 		},
-		onSuccess: async (code) => {
+		onSuccess: async () => {
 			open = false;
-
-			// The panel is drawn in one of these languages, so editing the
-			// one it is drawn in — its text or its name in the picker —
-			// redraws it, the way it would for anybody opening it next.
-			const own = code === page.data.language;
 
 			// The editor seeds itself from its cached text, so what was cached
 			// is dropped rather than refetched behind it: the next one opened
@@ -148,13 +139,10 @@
 			// column, which is why it is all of them and not only these.
 			queryClient.removeQueries({ queryKey: keys.languages.translations });
 
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: keys.languages.list }),
-				own || textChanged.includes('console') ? reloadText() : undefined
-			]);
+			await queryClient.invalidateQueries({ queryKey: keys.languages.list });
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, t, t('languages.save_failed'));
+			error = messageOf(err, 'Could not save this language');
 		},
 		onSettled: () => {
 			saving = false;
@@ -167,13 +155,10 @@
 			open = false;
 			queryClient.removeQueries({ queryKey: keys.languages.translations });
 
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: keys.languages.list }),
-				reloadText()
-			]);
+			await queryClient.invalidateQueries({ queryKey: keys.languages.list });
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, t, t('languages.remove_failed'));
+			error = messageOf(err, 'Could not remove this language');
 		}
 	}));
 
@@ -196,7 +181,7 @@
 <Drawer
 	bind:open
 	title={language?.native ?? ''}
-	description={t('languages.drawer_description')}
+	description="Its names, where it is offered, and its text."
 	meta={language?.code}
 	width="56rem"
 	onsubmit={submit}
@@ -206,23 +191,23 @@
 	{/if}
 
 	{#if language}
-		<Tabs {tabs} bind:value={tab} label={t('languages.title')}>
+		<Tabs {tabs} bind:value={tab} label="Languages">
 			{#snippet panel(value)}
 				<div class="panel">
 					{#if value === 'settings'}
-						<FormSection title={t('languages.names')}>
+						<FormSection title="Names">
 							<div class="pair">
 								<Input
-									label={t('languages.name')}
+									label="Name in English"
 									bind:value={name}
-									hint={t('languages.name_hint')}
+									hint="What this panel calls it."
 									readOnly={!canWrite}
 									required
 								/>
 								<Input
-									label={t('languages.native')}
+									label="Name in itself"
 									bind:value={native}
-									hint={t('languages.native_hint')}
+									hint="What the language picker shows, so people can find their own."
 									readOnly={!canWrite}
 									lang={language.code}
 									required
@@ -230,7 +215,7 @@
 							</div>
 						</FormSection>
 
-						<FormSection title={t('languages.coverage')}>
+						<FormSection title="Translated">
 							<div class="coverage">
 								{#each apps as app (app)}
 									{@const percent = language.coverage[app] ?? 0}
@@ -243,9 +228,7 @@
 										<span class="value">
 											{percent}%
 											{#if (language.missing[app] ?? 0) > 0}
-												<small
-													>· {t('languages.missing', { count: language.missing[app] ?? 0 })}</small
-												>
+												<small>· {`${language.missing[app] ?? 0} missing`}</small>
 											{/if}
 										</span>
 									</div>
@@ -254,36 +237,41 @@
 
 							<p class="note">
 								{#if language.base}
-									{t('languages.base_note')}
+									This is the language every other is a translation of: a key another language has
+									no text for is shown in it. It cannot be turned off or removed.
 								{:else if language.shipped}
-									{t('languages.shipped_note')}
+									The server ships a translation of this language, so a key a new release adds is
+									filled in on the next start. Nothing written here is overwritten.
 								{:else}
-									{t('languages.custom_note')}
+									Added on this page. A key it has no text for is shown in English until somebody
+									translates it.
 								{/if}
 							</p>
 						</FormSection>
 
-						<FormSection title={t('languages.availability')}>
+						<FormSection title="Where it is offered">
 							<SwitchField
-								label={t('languages.make_default')}
-								description={t('languages.make_default_hint')}
+								label="The default language"
+								description="What somebody sees before they have chosen. Making this the default takes the mark from whichever language has it."
 								bind:checked={isDefault}
 								onChange={defaultChanged}
 								disabled={!canWrite || language.is_default}
 							/>
 
 							<SwitchField
-								label={t('languages.offer')}
-								description={locked ? t('languages.default_locked') : t('languages.offer_hint')}
+								label="Offer this language"
+								description={locked
+									? 'The default language is always offered.'
+									: 'Show it in the language picker on the sign-in pages.'}
 								bind:checked={enabled}
 								disabled={!canWrite || locked}
 							/>
 
 							<div class="position">
 								<Input
-									label={t('languages.position')}
+									label="Place in the picker"
 									bind:value={position}
-									hint={t('languages.position_hint')}
+									hint="Lower comes first."
 									type="number"
 									min="0"
 									step="1"
@@ -312,13 +300,13 @@
 		{#if canWrite && language && !language.base && !language.is_default}
 			{#if confirmingDelete}
 				<div class="confirm">
-					<span>{t('languages.remove_confirm')}</span>
+					<span
+						>Its text goes with it, and anybody who chose it gets the default from their next page.</span
+					>
 					<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}>
-						{t('languages.keep')}
+						Keep it
 					</Button>
-					<Button colorPalette="danger" size="sm" onclick={() => remove.mutate()}>
-						{t('languages.remove')}
-					</Button>
+					<Button colorPalette="danger" size="sm" onclick={() => remove.mutate()}>Remove</Button>
 				</div>
 			{:else}
 				<Button
@@ -328,7 +316,7 @@
 					onclick={() => (confirmingDelete = true)}
 				>
 					<Icon icon={RiDeleteBinLine} />
-					{t('languages.remove')}
+					Remove
 				</Button>
 			{/if}
 		{/if}
@@ -336,17 +324,17 @@
 		<div class="actions">
 			{#if textChanged.length > 0}
 				<span class="unsaved">
-					{t('languages.unsaved', { apps: textChanged.map(appName).join(', ') })}
+					{`Unsaved text: ${textChanged.map(appName).join(', ')}`}
 				</span>
 			{/if}
-			<Button variant="subtle" onclick={() => (open = false)}>{t('action.cancel')}</Button>
+			<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
 			{#if canWrite}
 				<Button
 					type="submit"
 					loading={saving}
 					disabled={!ready || saving || (!settingsChanged && textChanged.length === 0)}
 				>
-					{t('action.save_changes')}
+					Save changes
 				</Button>
 			{/if}
 		</div>

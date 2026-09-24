@@ -64,6 +64,19 @@ export const keys = {
 		settings: ['organization', 'settings'] as const
 	},
 
+	mail: {
+		all: ['mail'] as const,
+		/** There is one mail server, so this key is the whole of it. */
+		settings: ['mail', 'settings'] as const,
+		/** The words of every email, for every language. */
+		content: ['mail', 'content'] as const
+	},
+
+	otp: {
+		/** There is one record of how the emailed codes behave. */
+		settings: ['otp', 'settings'] as const
+	},
+
 	social: {
 		all: ['social'] as const,
 		/** Every configured provider, and the kinds one may be. */

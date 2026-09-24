@@ -1,0 +1,17 @@
+{
+	"email": {
+		"reset": {
+			"your_account": "your account",
+			"subject": "Reset your password",
+			"body": "Someone asked to reset the password for {app} ({email}).\n\nChoose a new password here:\n{link}\n\nThe link works once, for {minutes} minutes. If it was not you, ignore this email: your password has not changed.\n"
+		},
+		"verify": {
+			"subject": "Confirm your email address",
+			"body": "Confirm that {email} is your address, to sign in to {app}:\n{link}\n\nThe link works for {hours} hours. If you did not try to sign in, ignore this email.\n"
+		},
+		"code": {
+			"subject": "Your sign-in code",
+			"body": "Your code for {app} is:\n\n{code}\n\nIt works for {minutes} minutes, for the sign-in you started as {email}. If you did not try to sign in, ignore this email — nobody can use the code without your browser.\n"
+		}
+	}
+}

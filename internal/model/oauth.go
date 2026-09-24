@@ -209,7 +209,14 @@ func (r PasswordReset) Usable(now time.Time) bool {
 
 // EmailVerification is a link sent to an address to prove it belongs to
 // whoever signs in with it: what a login flow that requires a verified
-// address sends an account that has not proved its own.
+// address sends an account that has not proved its own, and what a new
+// account is sent where the flow says to.
+//
+// It is also how an address is changed. NewEmail set makes the link a pending
+// change rather than a confirmation: the link goes to the address somebody
+// typed, and only using it moves the account there. That way round nobody can
+// take an account by typing an address they cannot read, and nobody loses one
+// by typing an address they meant to spell differently.
 type EmailVerification struct {
 	Base
 
@@ -218,6 +225,16 @@ type EmailVerification struct {
 	User      *User     `gorm:"constraint:OnDelete:CASCADE"`
 	ExpiresAt time.Time `gorm:"not null;index"`
 	UsedAt    *time.Time
+
+	// NewEmail is the address to move the account to, for a link that is a
+	// change. Empty is a link that only confirms the address the account
+	// already has.
+	NewEmail string `gorm:"size:255"`
+}
+
+// IsChange reports whether the link moves the account to another address.
+func (v EmailVerification) IsChange() bool {
+	return v.NewEmail != ""
 }
 
 // TableName pins the table name.

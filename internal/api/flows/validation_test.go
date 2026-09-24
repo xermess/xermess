@@ -145,6 +145,58 @@ func TestFlowRequestUpdatesOnlyWhatItMentions(t *testing.T) {
 		t.Error("a setting nobody mentioned was changed")
 	case !flow.AllowRegistration || !flow.AllowPasswordReset:
 		t.Error("a switch nobody mentioned was thrown")
+	case !flow.AllowSignIn || !flow.AllowRememberMe:
+		t.Error("a switch nobody mentioned was thrown")
+	}
+}
+
+// Every switch a flow has can be set on its own, and setting one leaves the
+// rest where they were. They decide who gets in, so a request that mentions
+// one must not carry the others with it.
+func TestFlowRequestSwitchesAreIndependent(t *testing.T) {
+	switches := []struct {
+		name string
+		set  func(*flowRequest, bool)
+		read func(model.LoginFlow) bool
+	}{
+		{"allow_sign_in", func(r *flowRequest, v bool) { r.AllowSignIn = ptr(v) }, func(f model.LoginFlow) bool { return f.AllowSignIn }},
+		{"allow_registration", func(r *flowRequest, v bool) { r.AllowRegistration = ptr(v) }, func(f model.LoginFlow) bool { return f.AllowRegistration }},
+		{"allow_password_reset", func(r *flowRequest, v bool) { r.AllowPasswordReset = ptr(v) }, func(f model.LoginFlow) bool { return f.AllowPasswordReset }},
+		{"allow_remember_me", func(r *flowRequest, v bool) { r.AllowRememberMe = ptr(v) }, func(f model.LoginFlow) bool { return f.AllowRememberMe }},
+		{"verify_email_on_register", func(r *flowRequest, v bool) { r.VerifyEmailOnRegister = ptr(v) }, func(f model.LoginFlow) bool { return f.VerifyEmailOnRegister }},
+		{"require_verified_email", func(r *flowRequest, v bool) { r.RequireVerifiedEmail = ptr(v) }, func(f model.LoginFlow) bool { return f.RequireVerifiedEmail }},
+		{"allow_email_change", func(r *flowRequest, v bool) { r.AllowEmailChange = ptr(v) }, func(f model.LoginFlow) bool { return f.AllowEmailChange }},
+	}
+
+	for _, one := range switches {
+		for _, want := range []bool{true, false} {
+			t.Run(one.name, func(t *testing.T) {
+				flow := model.DefaultLoginFlow()
+
+				var request flowRequest
+				one.set(&request, want)
+
+				if err := request.applyTo(&flow, false); err != nil {
+					t.Fatalf("applyTo() = %v", err)
+				}
+
+				if got := one.read(flow); got != want {
+					t.Errorf("%s = %v, want %v", one.name, got, want)
+				}
+
+				// Nothing else moved: every other switch is still the
+				// default's, whatever this one was set to.
+				def := model.DefaultLoginFlow()
+				for _, other := range switches {
+					if other.name == one.name {
+						continue
+					}
+					if other.read(flow) != other.read(def) {
+						t.Errorf("setting %s also moved %s", one.name, other.name)
+					}
+				}
+			})
+		}
 	}
 }
 

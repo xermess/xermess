@@ -3,9 +3,9 @@ package oidc
 import (
 	"context"
 
+	"xermess/i18n"
 	"xermess/internal/model"
 	"xermess/internal/store"
-	"xermess/locales"
 )
 
 // PublicLanguage is one language the sign-in pages may be shown in, as the
@@ -54,12 +54,12 @@ func (s *Service) textIn(ctx context.Context, code string) map[string]string {
 	}
 
 	if err == nil {
-		if text, err := s.store.ResolvedTranslation(ctx, language, locales.ID); err == nil {
+		if text, err := s.store.ResolvedTranslation(ctx, language, i18n.ID); err == nil {
 			return text
 		}
 	}
 
-	return locales.Resolve(locales.ID)
+	return i18n.Resolve(i18n.ID)
 }
 
 // LanguageText is the text the sign-in pages are drawn with in one language:
@@ -78,7 +78,7 @@ func (s *Service) LanguageText(ctx context.Context, code string) (PublicLanguage
 		return PublicLanguage{}, nil, store.ErrNotFound
 	}
 
-	messages, err := s.store.ResolvedTranslation(ctx, language, locales.ID)
+	messages, err := s.store.ResolvedTranslation(ctx, language, i18n.ID)
 	if err != nil {
 		return PublicLanguage{}, nil, err
 	}

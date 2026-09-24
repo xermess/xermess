@@ -1,4 +1,6 @@
+import { get } from 'svelte/store';
 import { getContext, setContext } from 'svelte';
+import { addMessages, format, getMessageFormatter, init, json, locale } from 'svelte-i18n';
 import { ApiError } from '$lib/api/client';
 import { BASE, base, type Messages } from './messages';
 
@@ -13,31 +15,106 @@ export type Translate = ((key: string, params?: Record<string, string | number>)
 	readonly language: string;
 };
 
+let initialized = false;
+let activeLocale: string | undefined;
+
+function initialize() {
+	if (initialized) return;
+
+	init({
+		fallbackLocale: BASE,
+		initialLocale: BASE,
+		// The server supplies a complete catalog. A missing key should render
+		// its English fallback, not fill the browser console with warnings.
+		handleMissingMessage: () => undefined
+	});
+	addMessages(BASE, base);
+	initialized = true;
+}
+
 /**
  * Builds a translator over whatever text `messages` returns.
  *
- * It reads `messages()` on every lookup rather than once, so a component that
- * calls `t(...)` while it renders re-renders when the language changes — the
- * same way it would for any other state it read.
- *
- * The server sends the text with every key already filled in, so the
- * fallbacks here are for when it could not be asked: the base language as
- * this build shipped it, and then the key itself. Neither is worth an error —
- * a half-translated page is usable, and a page that throws is not.
+ * `svelte-i18n` owns the formatter and, in the browser, the reactive
+ * dictionary. The server keeps its request's message map local and uses the
+ * package's low-level formatter instead: `svelte-i18n` is a singleton, and
+ * `addMessages` must not let one concurrent SSR request overwrite another.
+ * The messages are still read through the function on every lookup, so
+ * Svelte's existing data reactivity keeps a page redrawn when the language
+ * changes.
  */
 export function translator(
 	messages: () => Messages,
 	language: () => string = () => BASE
 ): Translate {
-	const lookup = (key: string) => messages()[key] || base[key];
+	let registeredLanguage: string | undefined;
+	let registeredMessages: Messages | undefined;
 
-	const translate = (key: string, params?: Record<string, string | number>) =>
-		fill(lookup(key) || key, params);
+	const sync = () => {
+		const code = language();
+		const current = messages();
+
+		// The browser is the one place where the package's global dictionary
+		// and locale store are useful: there is one page and one reader there.
+		if (typeof window !== 'undefined') {
+			initialize();
+			if (registeredLanguage !== code || registeredMessages !== current) {
+				addMessages(code, current);
+				registeredLanguage = code;
+				registeredMessages = current;
+			}
+			if (activeLocale !== code) {
+				void locale.set(code);
+				activeLocale = code;
+			}
+		}
+
+		return { code, current };
+	};
+
+	const translate = (key: string, params?: Record<string, string | number>) => {
+		const { code, current } = sync();
+		const fallback = base[key] ?? key;
+
+		if (typeof window === 'undefined') {
+			return formatMessage(current[key] || fallback, code, params);
+		}
+
+		return get(format)(key, {
+			locale: code,
+			values: params,
+			default: fallback
+		});
+	};
+
+	const lookup = (key: string) => {
+		const { code, current } = sync();
+		if (typeof window === 'undefined') return current[key] || base[key];
+
+		return get(json)(key, code);
+	};
 
 	return Object.defineProperties(translate, {
 		has: { value: (key: string) => Boolean(lookup(key)) },
 		language: { get: language }
 	}) as Translate;
+}
+
+/** Format a request-local message with the same ICU implementation the
+    browser dictionary uses, without putting request data in package-global
+    state. */
+function formatMessage(
+	text: string,
+	language: string,
+	params?: Record<string, string | number>
+): string {
+	if (!params) return text;
+
+	try {
+		return String(getMessageFormatter(text, language).format(params));
+	} catch {
+		return text;
+	}
 }
 
 /**
@@ -64,17 +141,6 @@ export function messageOf(err: unknown, t: Translate): string {
 	}
 
 	return t(key, params);
-}
-
-/** Replaces `{name}` with the parameter of that name. A parameter nobody
-    passed is left as it was written, which shows up in the page rather than
-    silently emptying the sentence. */
-function fill(text: string, params?: Record<string, string | number>): string {
-	if (!params) return text;
-
-	return text.replace(/\{(\w+)\}/g, (whole, name: string) =>
-		name in params ? String(params[name]) : whole
-	);
 }
 
 const KEY = Symbol('i18n');

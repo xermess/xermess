@@ -10,7 +10,6 @@
 	} from '@xyflow/svelte';
 	import { RiFlagLine, RiLoginCircleLine } from 'svelte-remixicon';
 	import type { LoginStep, LoginStepSpec } from '$lib/api';
-	import { useTranslator } from '$lib/i18n';
 	import { describe, labelFor, markFor, specFor } from '../steps';
 	import EndNode, { type EndNodeData } from './EndNode.svelte';
 	import InsertEdge, { type InsertEdgeData } from './InsertEdge.svelte';
@@ -60,7 +59,6 @@
 		onWait
 	}: Props = $props();
 
-	const t = useTranslator();
 	const { screenToFlowPosition, fitView } = useSvelteFlow();
 
 	/** How far apart the rows are drawn. */
@@ -87,7 +85,7 @@
 				selected: selected === 'start',
 				data: {
 					kind: 'start',
-					label: t('flows.node_start'),
+					label: 'Sign-in starts',
 					detail: startDetail,
 					icon: RiLoginCircleLine
 				} satisfies EndNodeData
@@ -106,16 +104,16 @@
 				selected: selected === step,
 				data: {
 					step,
-					label: labelFor(step, kinds, t),
-					description: describe(step, kinds, t),
+					label: labelFor(step, kinds),
+					description: describe(step, kinds),
 					icon: markFor(step),
 					fixed,
 					planned: spec?.implemented === false,
 					summary: summaryOf(step),
 					onRemove: editable && !fixed ? () => onRemove(step) : undefined,
-					removeLabel: t('flows.remove_step'),
-					plannedLabel: t('flows.planned'),
-					fixedLabel: t('flows.fixed')
+					removeLabel: 'Remove step',
+					plannedLabel: 'Not run yet',
+					fixedLabel: 'Always first'
 				} satisfies StepNodeData
 			});
 		});
@@ -128,7 +126,7 @@
 			selected: selected === 'end',
 			data: {
 				kind: 'end',
-				label: t('flows.node_end'),
+				label: 'Signed in',
 				detail: endDetail,
 				icon: RiFlagLine
 			} satisfies EndNodeData
@@ -151,7 +149,7 @@
 				onInsert:
 					editable && index > 0 ? (at: number) => onWait(waiting === at ? null : at) : undefined,
 				waiting: waiting === index,
-				label: t('flows.insert_here')
+				label: 'Add a step here'
 			} satisfies InsertEdgeData
 		}))
 	);

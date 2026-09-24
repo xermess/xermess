@@ -31,19 +31,31 @@ const flow = (changes: Partial<FlowDraft> = {}): FlowDraft => ({
 describe('problemsOf', () => {
 	const cases: [string, Partial<FlowDraft>, string[]][] = [
 		['a flow that can be saved', {}, []],
-		['no name', { name: ' ' }, ['flows.problem_name']],
-		['an identifier with capitals', { slug: 'Staff' }, ['flows.problem_slug']],
+		['no name', { name: ' ' }, ['Name the flow.']],
+		[
+			'an identifier with capitals',
+			{ slug: 'Staff' },
+			['The identifier has to be lower case letters, numbers and dashes.']
+		],
 		[
 			'nothing that lets anybody in today',
 			{ steps: ['identifier', 'totp'] },
-			['flows.problem_proof']
+			['Add Password or Other accounts: without one, nobody can sign in.']
 		],
-		['the default turned off', { is_default: true, enabled: false }, ['flows.problem_default_off']],
-		['a session past ninety days', { session_lifetime_hours: 24 * 91 }, ['flows.problem_lifetime']]
+		[
+			'the default turned off',
+			{ is_default: true, enabled: false },
+			['The default flow cannot be turned off.']
+		],
+		[
+			'a session past ninety days',
+			{ session_lifetime_hours: 24 * 91 },
+			['A session has to last between one hour and ninety days.']
+		]
 	];
 
 	it.each(cases)('%s', (_, changes, want) => {
-		expect(problemsOf(flow(changes)).map((problem) => problem.key)).toEqual(want);
+		expect(problemsOf(flow(changes))).toEqual(want);
 	});
 
 	it('every template can be saved once it is named', () => {
@@ -73,9 +85,9 @@ describe('files', () => {
 	});
 
 	it('say what is wrong with one that is not a flow', () => {
-		expect(() => fromFile('not json', kinds)).toThrow('flows.import_not_json');
+		expect(() => fromFile('not json', kinds)).toThrow('That file is not JSON.');
 		expect(() => fromFile('{"name":"x","steps":["dance"]}', kinds)).toThrow(
-			'flows.import_not_flow'
+			'That file is not a login flow exported from here.'
 		);
 	});
 });

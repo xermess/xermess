@@ -1,17 +1,17 @@
 /** One language's messages, by dotted key: "login.title". */
 export type Messages = Record<string, string>;
 
-/** A translation file as it is written: nested by screen, text at the leaves. */
+/** A translation group as it is written: nested by namespace, text at the leaves. */
 export type Nested = { [key: string]: string | Nested };
 
 /**
- * Reads a translation file into messages by dotted key.
+ * Reads a translation group into messages by dotted key.
  *
- * The files under locales/ are nested by screen — `{"login": {"title": …}}` —
- * so a translator sees one page's text together; everything that looks text
- * up speaks of "login.title". A flat file, or one that mixes the two, reads
- * the same. It answers null for anything that is not a file of text: a
- * number, a list, or a key said twice.
+ * The groups under i18n/ are nested by namespace — `{"login": {"title": …}}`
+ * — so a translator sees related text together; everything that looks text up
+ * speaks of "login.title". A flat group, or one that mixes the two, reads the
+ * same. It answers null for anything that is not a group of text: a number, a
+ * list, or a key said twice.
  */
 export function flatten(file: unknown): Messages | null {
 	if (!isObject(file)) return null;
@@ -38,8 +38,8 @@ export function flatten(file: unknown): Messages | null {
 	return walk(file, '') ? out : null;
 }
 
-/** Writes messages back the way the files are: nested by screen, keys in the
-    order given. Keys starting with `$` describe the file and stay on top. */
+/** Writes messages back the way the groups are: nested by namespace, keys in
+ * the order given. Keys starting with `$` describe the group and stay on top. */
 export function nest(messages: Messages): Nested {
 	const out: Nested = {};
 

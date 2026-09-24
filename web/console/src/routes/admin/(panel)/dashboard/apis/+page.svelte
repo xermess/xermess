@@ -9,14 +9,11 @@
 	import { apisOptions, keys } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import ApiDrawer from '$lib/components/apis/ApiDrawer.svelte';
 	import ApiTable from '$lib/components/apis/ApiTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -118,7 +115,7 @@
 <svelte:head><title>APIs · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.apis')]}>
+	<PageHeader crumbs={['Dashboard', 'APIs']}>
 		{#snippet secondary()}
 			<span class="total">{apis.data.length} total</span>
 

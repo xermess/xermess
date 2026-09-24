@@ -1,0 +1,18 @@
+{
+	"field": {
+		"password_hint": "At least {count} characters",
+		"password_mismatch": "The passwords do not match"
+	},
+	"error": {
+		"validation": {
+			"required": "{field} is required.",
+			"email": "{field} must be an email address.",
+			"max": "{field} must be at most {max} characters.",
+			"min": "{field} must be at least {min} characters.",
+			"oneof": "{field} must be one of: {values}.",
+			"startswith": "{field} must start with {prefix}.",
+			"eqfield": "{field} must match {other}.",
+			"invalid": "{field} is not valid."
+		}
+	}
+}

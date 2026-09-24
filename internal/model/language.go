@@ -13,7 +13,7 @@ import (
 // the sign-in pages offer it, whether it is the default, and where it comes in
 // the picker. Its text is in Translations, one row per app.
 //
-// The languages the server ships with (locales/) are imported on the first
+// The languages the server ships with (i18n/) are imported on the first
 // start, and from then on this table is the list: a language an administrator
 // adds exists only here, and one they remove is gone, shipped or not.
 //
@@ -54,7 +54,7 @@ func (Language) TableName() string {
 // BaseLanguage is the language every other is a translation of: the keys it
 // has are the keys the apps look up, and its text is what a missing
 // translation falls back to. It cannot be removed. It is spelled the same
-// here as in locales/.
+// here as in i18n/.
 const BaseLanguage = "en"
 
 // DefaultLanguage is the row a fresh installation starts with.

@@ -11,9 +11,8 @@
 		RiUpload2Line
 	} from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { flowsApi, type LoginFlow } from '$lib/api';
+	import { flowsApi, messageOf, type LoginFlow } from '$lib/api';
 	import { Alert, Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
-	import { messageOf, useTranslator } from '$lib/i18n';
 	import FlowTable from '$lib/components/flows/FlowTable.svelte';
 	import { TEMPLATES, freeSlug, fromFile } from '$lib/components/flows/steps';
 	import { can } from '$lib/permissions';
@@ -22,7 +21,6 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const t = useTranslator();
 	const queryClient = useQueryClient();
 
 	// The list is a query seeded with what the server rendered: a save in the
@@ -96,7 +94,7 @@
 			try {
 				draft = fromFile(await chosen.text(), flows.data.step_kinds);
 			} catch (err) {
-				error = t((err as Error).message);
+				error = (err as Error).message;
 				return;
 			}
 
@@ -109,7 +107,7 @@
 			await queryClient.invalidateQueries({ queryKey: keys.flows.all });
 			await goto(resolve('/admin/(panel)/dashboard/flows/[id]', { id: result.flow.id }));
 		} catch (err) {
-			error = messageOf(err, t);
+			error = messageOf(err);
 		} finally {
 			importing = false;
 		}
@@ -131,16 +129,16 @@
 	}
 </script>
 
-<svelte:head><title>{t('nav.flows')} · xermess admin</title></svelte:head>
+<svelte:head><title>Login flows · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.flows')]}>
+	<PageHeader crumbs={['Dashboard', 'Login flows']}>
 		{#snippet secondary()}
-			<span class="total">{t('flows.total', { count: flows.data.flows.length })}</span>
+			<span class="total">{`${flows.data.flows.length} total`}</span>
 
 			<IconButton
 				icon={RiRefreshLine}
-				label={t('action.refresh')}
+				label="Refresh the data"
 				onclick={refresh}
 				loading={refreshing}
 				disabled={refreshing}
@@ -158,17 +156,21 @@
 				/>
 				<Button variant="subtle" loading={importing} onclick={() => file?.click()}>
 					<Icon icon={RiUpload2Line} />
-					{t('flows.import')}
+					Import
 				</Button>
 				<Button onclick={() => (choosing = !choosing)}>
 					<Icon icon={choosing ? RiCloseLine : RiAddLine} />
-					{t('flows.new')}
+					New flow
 				</Button>
 			{/if}
 		{/snippet}
 	</PageHeader>
 
-	<p class="lead">{t('flows.lead')}</p>
+	<p class="lead">
+		How people sign in, drawn as the steps they go through. Every application follows its own flow,
+		or the default: the password, the other accounts, a verified address and how long a session
+		lasts are all decided here.
+	</p>
 </div>
 
 {#if error}
@@ -176,8 +178,8 @@
 {/if}
 
 {#if choosing}
-	<section class="gutter templates" aria-label={t('flows.templates')}>
-		<h2>{t('flows.templates')}</h2>
+	<section class="gutter templates" aria-label="Start from a template">
+		<h2>Start from a template</h2>
 		<div class="cards">
 			{#each TEMPLATES as template (template.id)}
 				<!-- The path is resolved; only the query is added to it. -->
@@ -187,8 +189,8 @@
 					href={`${resolve('/admin/(panel)/dashboard/flows/new')}?template=${template.id}`}
 				>
 					<span class="mark"><Icon icon={template.icon} size="1.2rem" /></span>
-					<strong>{t(`flows.template_${template.id}`)}</strong>
-					<span>{t(`flows.template_${template.id}_hint`)}</span>
+					<strong>{template.name}</strong>
+					<span>{template.hint}</span>
 				</a>
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{/each}
@@ -207,10 +209,10 @@
 		<Icon icon={RiSearchLine} />
 		<input
 			type="search"
-			placeholder={t('flows.search')}
+			placeholder="Search name, identifier or description…"
 			bind:value={search}
 			oninput={debounced}
-			aria-label={t('flows.search_label')}
+			aria-label="Search login flows"
 		/>
 	</form>
 </div>
@@ -219,7 +221,7 @@
 	flows={visible}
 	kinds={flows.data.step_kinds}
 	onOpen={open}
-	empty={flows.data.flows.length === 0 ? t('flows.empty') : t('flows.empty_search')}
+	empty={flows.data.flows.length === 0 ? 'No flows yet.' : 'No flows match this.'}
 />
 
 <style>

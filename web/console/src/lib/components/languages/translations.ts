@@ -2,7 +2,7 @@
  * What the Languages page does with translation files and language tags,
  * apart from drawing them.
  */
-import { flatten } from '$lib/i18n/flatten';
+import { flatten } from './flatten';
 
 /** The `{name}` parameters a text has, which the app fills in when it shows
     it — `{app}`, `{count}`. */
@@ -23,9 +23,9 @@ export type ReadResult =
 	{ ok: true; messages: Record<string, string>; skipped: number } | { ok: false };
 
 /**
- * Reads a translation file somebody chose: the shape of the files under
- * locales/ and of what Export writes — nested by screen — or a flat file of
- * texts by dotted key, which reads the same.
+ * Reads a translation file somebody chose: the merged shape of the groups
+ * under i18n/ and of what Export writes — nested by namespace — or a flat file
+ * of texts by dotted key, which reads the same.
  *
  * Keys this version of the apps does not look up are skipped and counted, as
  * the server would drop them anyway; `$name` and `$native` describe the file

@@ -20,13 +20,13 @@ import (
 	"testing"
 	"time"
 
+	"xermess/i18n"
 	"xermess/internal/cache/cachetest"
 	"xermess/internal/config"
 	"xermess/internal/database"
 	"xermess/internal/mail"
 	"xermess/internal/oidc"
 	"xermess/internal/store"
-	"xermess/locales"
 )
 
 // These tests run the whole server — routes, permission checks, store and
@@ -89,6 +89,37 @@ func (m *mailbox) wait(t *testing.T, to string) mail.Message {
 
 	t.Fatalf("no email to %s", to)
 	return mail.Message{}
+}
+
+// linkIn is the link a message carries to one of the sign-in pages —
+// "/verify-email", "/reset-password" — parsed. The body is plain text, so the
+// link runs to the first space or newline after it.
+func linkIn(t *testing.T, body, page string) *url.URL {
+	t.Helper()
+
+	at := strings.Index(body, testAccountURL+page)
+	if at < 0 {
+		t.Fatalf("no %s link in the message:\n%s", page, body)
+	}
+
+	link, err := url.Parse(strings.Fields(body[at:])[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return link
+}
+
+// tokenIn is that link's token, which is what an endpoint is given to use it.
+func tokenIn(t *testing.T, body, page string) string {
+	t.Helper()
+
+	token := linkIn(t, body, page).Query().Get("token")
+	if token == "" {
+		t.Fatalf("the %s link carries no token:\n%s", page, body)
+	}
+
+	return token
 }
 
 // newLiveServer makes an empty database, migrates it, and serves the API on
@@ -179,7 +210,7 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 		t.Fatal(err)
 	}
 
-	shipped, err := locales.Shipped()
+	shipped, err := i18n.Shipped()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -903,4 +934,28 @@ func getJSON(t *testing.T, url string, out any) {
 	if err := json.NewDecoder(res.Body).Decode(out); err != nil {
 		t.Fatalf("GET %s: decode: %v", url, err)
 	}
+}
+
+// defaultFlow is the id of the flow every application without one of its own
+// falls back to.
+func defaultFlow(t *testing.T, super *client) string {
+	t.Helper()
+
+	var flows struct {
+		Flows []struct {
+			ID        string `json:"id"`
+			IsDefault bool   `json:"is_default"`
+		} `json:"flows"`
+	}
+	super.must(http.StatusOK, http.MethodGet, "/login-flows", nil, &flows)
+
+	for _, flow := range flows.Flows {
+		if flow.IsDefault {
+			return flow.ID
+		}
+	}
+
+	t.Fatal("there is no default flow")
+
+	return ""
 }

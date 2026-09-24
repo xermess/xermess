@@ -558,7 +558,11 @@ func (s *Store) EmailVerificationByHash(ctx context.Context, hash string) (*mode
 
 // VerifyEmail uses a verification link: it marks the link, and every other
 // one sent to the user, used, and the user's address verified, in one
-// transaction. A link already used is ErrAlreadyUsed.
+// transaction. A link that carries a new address moves the account to it in
+// the same transaction, so an address is never half changed.
+//
+// A link already used is ErrAlreadyUsed, and an address another account has
+// taken since the link was sent is ErrDuplicate.
 func (s *Store) VerifyEmail(ctx context.Context, verification *model.EmailVerification, at time.Time) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&model.EmailVerification{}).
@@ -578,6 +582,13 @@ func (s *Store) VerifyEmail(ctx context.Context, verification *model.EmailVerifi
 			return err
 		}
 
-		return tx.Model(&model.User{}).Where("id = ?", verification.UserID).Update("email_verified", true).Error
+		changes := map[string]any{"email_verified": true}
+		if verification.IsChange() {
+			changes["email"] = model.NormalizeEmail(verification.NewEmail)
+		}
+
+		err = tx.Model(&model.User{}).Where("id = ?", verification.UserID).Updates(changes).Error
+
+		return translate(err)
 	})
 }

@@ -40,10 +40,18 @@ export type LoginStep =
     refuses what it refuses whatever a page shows. */
 export type LoginOptions = {
 	steps: LoginStep[];
+	/** False is a closed door: the pages say so rather than asking for
+	    anything, and the server refuses every way in. */
+	allow_sign_in: boolean;
 	/** Offer "Create an account". */
 	allow_registration: boolean;
 	/** Offer "Forgotten your password". */
 	allow_password_reset: boolean;
+	/** Offer "Stay signed in" beside the password. Without it the session
+	    ends when the browser closes. */
+	allow_remember_me: boolean;
+	/** Offer "Change" beside the address on the account page. */
+	allow_email_change: boolean;
 };
 
 /** One language the sign-in pages may be shown in, as the picker lists it. */
@@ -75,6 +83,22 @@ export type SignInRequest = {
 	expires_at: string;
 };
 
+/** A sign-in held back for a code emailed to the address on the account:
+    what the page comes back with, where the message went, and what it may do
+    while it waits. */
+export type CodeChallenge = {
+	/** Names the sign-in. The page keeps it and sends it back with the code;
+	    the code alone is no use without it. */
+	handle: string;
+	/** The address the message went to, with the middle of it hidden. */
+	email: string;
+	expires_at: string;
+	/** Seconds until another message may be asked for. */
+	resend_after: number;
+	/** Codes that may still be typed before the sign-in is over. */
+	attempts_left: number;
+};
+
 /** What signing in or registering says to do next. */
 export type SignedIn = {
 	/** Back to the application, with a code. */
@@ -82,6 +106,9 @@ export type SignedIn = {
 	/** The password was a temporary one; choose a new one with this token. */
 	password_change_required?: boolean;
 	reset_token?: string;
+	/** The login flow has the emailed code step: ask for the code in this,
+	    and send it to `signIn.code`. Nobody is signed in until then. */
+	code?: CodeChallenge;
 };
 
 export type User = {
@@ -120,6 +147,7 @@ export type RegisterInput = {
 	first_name: string;
 	last_name: string;
 	accept_terms: boolean;
+	remember: boolean;
 };
 
 const encode = encodeURIComponent;
@@ -173,11 +201,21 @@ export const signIn = {
 			{ fetch }
 		),
 
-	login: (body: { request: string; email: string; password: string }) =>
+	login: (body: { request: string; email: string; password: string; remember: boolean }) =>
 		request<SignedIn>('/account/login', { method: 'POST', body }),
 
 	register: (body: RegisterInput) =>
 		request<SignedIn>('/account/register', { method: 'POST', body }),
+
+	/** Finishes a sign-in that was waiting for an emailed code. It answers as
+	    signing in does: where to go next, or nothing when there is nowhere. */
+	code: (body: { handle: string; code: string }) =>
+		request<SignedIn>('/account/login/code', { method: 'POST', body }),
+
+	/** Sends another code for a sign-in that is still waiting. The handle
+	    stays as it is, and so do the guesses already spent. */
+	resendCode: (body: { handle: string }) =>
+		request<{ code: CodeChallenge }>('/account/login/code/resend', { method: 'POST', body }),
 
 	/** `language` is the one the page is shown in: the email is written in it. */
 	forgotPassword: (body: { request: string; email: string; language: string }) =>
@@ -206,6 +244,12 @@ export const account = {
 
 	changePassword: (body: { current_password: string; new_password: string }) =>
 		request<{ status: string }>('/account/password', { method: 'POST', body }),
+
+	/** Starts moving the account to another sign-in address. The link goes to
+	    the address typed, and nothing changes until it is opened — so this
+	    answers the same whether or not somebody else already has it. */
+	changeEmail: (body: { email: string }) =>
+		request<{ status: string }>('/account/email', { method: 'POST', body }),
 
 	sessions: (fetch?: Fetch) => request<{ sessions: Session[] }>('/account/sessions', { fetch }),
 

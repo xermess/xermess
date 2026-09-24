@@ -11,14 +11,15 @@ import (
 	"syscall"
 	"time"
 
+	"xermess/i18n"
 	"xermess/internal/api"
 	"xermess/internal/cache"
 	"xermess/internal/config"
 	"xermess/internal/database"
+	"xermess/internal/jose"
 	"xermess/internal/mail"
 	"xermess/internal/oidc"
 	"xermess/internal/store"
-	"xermess/locales"
 )
 
 // version and commit are stamped in at build time by `make build` and
@@ -84,17 +85,32 @@ func run(log *slog.Logger) error {
 	// handed that rather than the connection itself.
 	st := store.New(db).WithCache(shared)
 
-	// What a fresh installation starts with for administrators' sign-ins,
-	// from the configuration. An installation that already has the setting
-	// keeps it: after the first start it is the panel's, not the file's.
+	// The secret key, which seals what the database must not hold in the
+	// clear: the mail server's password here, and the signing keys in the
+	// provider below.
+	sealer, err := jose.NewSealer(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+
+	// What a fresh installation starts with for administrators' sign-ins, for
+	// sending email, and for the codes it emails, from the configuration. An
+	// installation that already has any of these keeps it: after the first
+	// start they are the panel's, not the file's.
 	if err := st.EnsureAdminSecurity(context.Background(), cfg.AdminMFARequired); err != nil {
+		return err
+	}
+	if err := ensureMailSettings(context.Background(), st, sealer, cfg.Mail); err != nil {
+		return err
+	}
+	if err := st.EnsureOTPSettings(context.Background()); err != nil {
 		return err
 	}
 
 	// The languages the server ships with: all of them on the first start,
 	// and afterwards only the keys a release added. What an administrator has
 	// written is never overwritten.
-	shipped, err := locales.Shipped()
+	shipped, err := i18n.Shipped()
 	if err != nil {
 		return err
 	}
@@ -102,10 +118,14 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
+	// Email goes through whichever server the Mail page names when a message
+	// is sent, rather than whichever one the configuration named at startup.
+	mailer := mail.New(mail.FromStore(st, sealer), log)
+
 	// The provider loads its signing keys, and makes any that are missing,
 	// before anything is served: a wrong XERMESS_SECRET_KEY stops the server
 	// here rather than failing the first sign-in.
-	provider, err := oidc.New(context.Background(), cfg, st, mail.New(cfg.Mail, log), log)
+	provider, err := oidc.New(context.Background(), cfg, st, mailer, log)
 	if err != nil {
 		return err
 	}
@@ -131,6 +151,23 @@ func run(log *slog.Logger) error {
 		listener(cfg.Addr, public),
 		listener(cfg.AdminAddr, admin),
 	})
+}
+
+// ensureMailSettings writes the mail server a fresh installation starts with,
+// from XERMESS_SMTP_*, sealing the password with the secret key the way the
+// panel does when it saves one.
+func ensureMailSettings(ctx context.Context, st *store.Store, sealer *jose.Sealer, cfg config.Mail) error {
+	settings, password := mail.Seed(cfg)
+
+	if password != "" {
+		sealed, err := sealer.SealBytes([]byte(password))
+		if err != nil {
+			return err
+		}
+		settings.Password = sealed
+	}
+
+	return st.EnsureMailSettings(ctx, settings)
 }
 
 // What a connection is given before it is cut off. Without these a caller can

@@ -21,15 +21,19 @@ func (r *flowRequest) applyTo(flow *model.LoginFlow, creating bool) error {
 		flow.Slug = slugify(r.Slug, r.Name)
 	}
 
-	flow.Name = text(r.Name, flow.Name)
-	flow.Description = text(r.Description, flow.Description)
+	flow.Name = validate.Text(r.Name, flow.Name)
+	flow.Description = validate.Text(r.Description, flow.Description)
 
 	flow.IsDefault = validate.Flag(r.IsDefault, flow.IsDefault)
 	flow.Enabled = validate.Flag(r.Enabled, flow.Enabled)
 
+	flow.AllowSignIn = validate.Flag(r.AllowSignIn, flow.AllowSignIn)
 	flow.AllowRegistration = validate.Flag(r.AllowRegistration, flow.AllowRegistration)
 	flow.AllowPasswordReset = validate.Flag(r.AllowPasswordReset, flow.AllowPasswordReset)
+	flow.AllowRememberMe = validate.Flag(r.AllowRememberMe, flow.AllowRememberMe)
+	flow.VerifyEmailOnRegister = validate.Flag(r.VerifyEmailOnRegister, flow.VerifyEmailOnRegister)
 	flow.RequireVerifiedEmail = validate.Flag(r.RequireVerifiedEmail, flow.RequireVerifiedEmail)
+	flow.AllowEmailChange = validate.Flag(r.AllowEmailChange, flow.AllowEmailChange)
 
 	if r.SessionLifetimeHours != nil {
 		flow.SessionLifetimeHours = *r.SessionLifetimeHours
@@ -68,16 +72,6 @@ func cleanSteps(sent []model.LoginStep) model.StepList {
 	}
 
 	return steps
-}
-
-// text reads a setting a request may leave out: what was sent, trimmed, or
-// the stored value when nothing was.
-func text(sent *string, current string) string {
-	if sent == nil {
-		return current
-	}
-
-	return strings.TrimSpace(*sent)
 }
 
 // slugify is the identifier a new flow gets: the one that was sent, or one

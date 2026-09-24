@@ -1,22 +1,29 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { RiSidebarFoldLine, RiSidebarUnfoldLine } from 'svelte-remixicon';
+	import { MediaQuery } from 'svelte/reactivity';
 	import type { Admin } from '$lib/api';
-	import { Icon, Tooltip } from '$lib/components/ui';
+	import { useShell } from '$lib/state/shell.svelte';
+	import SidebarBranch from './sidebar/SidebarBranch.svelte';
 	import SidebarLink from './sidebar/SidebarLink.svelte';
-	import { visibleSections, type Section } from './sidebar/sections';
-	import { useTranslator } from '$lib/i18n';
+	import { visibleBranches, visibleOverview, type Section } from './sidebar/sections';
 
-	type Props = {
-		/** Folded to icons only. The width itself is set by the panel layout. */
-		collapsed: boolean;
-		onToggle: () => void;
-	};
+	const shell = useShell();
 
-	let { collapsed, onToggle }: Props = $props();
+	/** Below this there is no room for a column beside the page, so the
+	    sidebar becomes a panel over it — the same rows, slid in from the edge
+	    and dismissed when one is chosen. The width is the styles' too; it is
+	    here as well because the choice is which component to draw, not only
+	    how to draw it. */
+	const narrow = new MediaQuery('max-width: 55rem');
 
-	const groups = $derived(visibleSections(page.data.admin as Admin | undefined));
+	/** Folded to icons: only the column does that. A panel has the width for
+	    names, so its branches open underneath rather than beside. */
+	const folded = $derived(shell.collapsed && !narrow.current);
+
+	const admin = $derived(page.data.admin as Admin | undefined);
+	const overview = $derived(visibleOverview(admin));
+	const branches = $derived(visibleBranches(admin));
 
 	/** Activity is the dashboard's own page, so it only matches exactly; the
 	    others also match anything below them. */
@@ -29,57 +36,95 @@
 			: path === href || path.startsWith(`${href}/`);
 	}
 
-	const t = useTranslator();
+	// Choosing a page is finishing with the panel, so it closes itself rather
+	// than staying over what it was asked to show.
+	$effect(() => {
+		void page.url.pathname;
+		shell.setMenu(false);
+	});
+
+	// A panel is also finished with when the window grows enough to hold a
+	// column: left open, it would sit over a page that already has one.
+	$effect(() => {
+		if (!narrow.current) shell.setMenu(false);
+	});
+
+	// Escape closes it — listened for on the way down rather than on the way
+	// up, because the control that opens the panel carries a tooltip, and a
+	// tooltip takes Escape for itself before it reaches the window.
+	$effect(() => {
+		function dismiss(event: KeyboardEvent) {
+			if (event.key === 'Escape' && shell.menuOpen) shell.setMenu(false);
+		}
+
+		window.addEventListener('keydown', dismiss, true);
+
+		return () => window.removeEventListener('keydown', dismiss, true);
+	});
 </script>
 
-<aside class:collapsed>
-	<nav aria-label={t('shell.sections')}>
-		{#each groups as group (group.key ?? 'top')}
-			<div class="group" role="group" aria-label={group.key ? t(group.key) : undefined}>
-				{#if group.key}
-					<h2>{t(group.key)}</h2>
-				{/if}
+<!-- Only ever over the page, and only while it is open: at column widths
+     there is nothing to dim. -->
+{#if narrow.current && shell.menuOpen}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="backdrop" onclick={() => shell.setMenu(false)}></div>
+{/if}
 
-				<ul>
-					{#each group.items as item (item.route)}
+<aside class:collapsed={folded} class:open={shell.menuOpen}>
+	<!-- The frame holds the border and the background and never scrolls; the
+	     list inside it does. That is what keeps the scrollbar off the column's
+	     edge, and what lets the gutter be reserved once rather than appearing
+	     under whichever branch was opened last. -->
+	<div class="scroll">
+		<nav aria-label="Sections">
+			{#if overview.length > 0}
+				<ul class="top">
+					{#each overview as item (item.route)}
 						<li>
 							<SidebarLink
 								route={item.route}
-								label={t(item.key)}
+								label={item.label}
 								icon={item.icon}
 								current={isCurrent(item.route)}
-								{collapsed}
+								collapsed={folded}
 							/>
 						</li>
 					{/each}
 				</ul>
-			</div>
-		{/each}
-	</nav>
+			{/if}
 
-	<div class="foot">
-		<Tooltip label={t('shell.expand')} placement="right" disabled={!collapsed}>
-			{#snippet children(trigger)}
-				<button
-					{...trigger()}
-					type="button"
-					class="fold"
-					onclick={onToggle}
-					aria-expanded={!collapsed}
-					aria-label={collapsed ? t('shell.expand') : t('shell.collapse')}
-				>
-					<span class="icon">
-						<Icon icon={collapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine} />
-					</span>
-					<span class="label">{t('shell.collapse')}</span>
-				</button>
-			{/snippet}
-		</Tooltip>
+			{#each branches as branch (branch.id)}
+				<div class="branch">
+					<SidebarBranch
+						{branch}
+						{isCurrent}
+						collapsed={folded}
+						open={shell.isOpen(branch.id)}
+						onToggle={() => shell.toggleBranch(branch.id)}
+					/>
+				</div>
+			{/each}
+		</nav>
 	</div>
 </aside>
 
 <style>
 	aside {
+		/* What every row in the column is drawn with. They are named here, on
+		   the one element that owns the navigation, so a row does not have to
+		   know which of the palette's greys means "the page you are on". */
+		--nav-row-height: 36px;
+		--nav-hover: color-mix(in srgb, var(--color-secondary) 60%, transparent);
+		--nav-current: var(--color-secondary-alt);
+		--nav-group-active: color-mix(in srgb, var(--color-secondary-alt) 42%, transparent);
+		--nav-mark: var(--color-info);
+		/* How far a branch's pages are inset from its rule. */
+		--nav-branch-inset: 10px;
+		/* Content ends before the scrollbar lane, with a visible breathing
+		   room for overlay bars that do not take layout space. */
+		--nav-scrollbar-inset: calc(var(--scrollbar-size) + var(--space-2));
+
 		position: fixed;
 		top: var(--header-height);
 		bottom: 0;
@@ -87,16 +132,27 @@
 		z-index: 9;
 		display: flex;
 		flex-direction: column;
-		justify-content: space-between;
-		gap: var(--space-3);
 		width: var(--sidebar-width);
-		padding: 8px;
 		border-right: 1px solid var(--color-border);
 		background: var(--color-surface);
+		overflow: hidden;
+	}
+
+	/* The one thing that scrolls: the frame around it keeps the border and the
+	   background, so the bar is never against the column's edge and opening a
+	   branch cannot make the whole column jump.
+
+	   The gutter is reserved whether or not there is anything to scroll, so
+	   growing the list never shifts the rows sideways. The right padding also
+	   leaves a visible gap after the scrollbar lane, which matters on systems
+	   where the bar floats over the content instead of taking its own space. */
+	.scroll {
+		flex: 1;
+		padding: var(--space-2) var(--nav-scrollbar-inset) var(--space-3) var(--space-2);
 		overflow-x: hidden;
 		overflow-y: auto;
 		overscroll-behavior: none;
-		scrollbar-width: thin;
+		scrollbar-gutter: stable;
 	}
 
 	nav {
@@ -113,142 +169,91 @@
 		list-style: none;
 	}
 
-	/* A group is its heading and its links; the rule between groups only
-	   shows once the headings have folded away, so the column still reads as
-	   groups without their names. */
-	.group + .group {
-		margin-top: 6px;
-		border-top: 1px solid transparent;
-		transition:
-			border-color var(--speed),
-			padding var(--speed);
+	/* The pages that stand on their own are ruled off from the sections under
+	   them: one line, where the old column needed a heading over every group
+	   to say the same thing. */
+	.top {
+		padding-bottom: var(--space-2);
+		margin-bottom: var(--space-2);
+		border-bottom: 1px solid var(--color-border);
 	}
 
-	h2 {
-		height: 26px;
-		margin: 0;
-		padding: 0 12px;
-		overflow: hidden;
-		color: var(--color-text-hint);
-		font-size: 11px;
-		font-weight: 600;
-		line-height: 28px;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		white-space: nowrap;
-		transition:
-			height var(--speed),
-			opacity var(--speed);
+	.branch + .branch {
+		margin-top: var(--space-2);
+		padding-top: var(--space-1);
+		border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
 	}
 
-	/* Folded: the headings close up and a rule takes their place. */
-	.collapsed .group + .group {
-		padding-top: 6px;
-		border-top-color: var(--color-border);
+	/* Folded, the rows are icons: the gutter would be most of the column, so
+	   the list keeps its inset and loses the reservation. Nothing under the
+	   fold is long enough to scroll anyway. */
+	.collapsed .scroll {
+		padding-inline: 8px;
+		scrollbar-gutter: auto;
 	}
 
-	.collapsed h2 {
-		height: 0;
-		opacity: 0;
+	/* The rail is a compact set of icons, not a stack of section cards. */
+	.collapsed .branch + .branch {
+		margin-top: 1px;
+		padding-top: 0;
+		border-top: 0;
 	}
 
-	.foot {
-		padding-top: 8px;
-		border-top: 1px solid var(--color-border);
-	}
+	/* ---- As a panel, on a screen too narrow for a column ------------------
+	   The same rows, slid in from the edge over a dimmed page, rather than a
+	   row of icons above it: a list that reads top to bottom is a list
+	   somebody can use with a thumb.
 
-	/* The fold button is laid out like a link, so it sits in the column as
-	   one more row rather than a control bolted underneath. */
-	.fold {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		width: 100%;
-		height: var(--nav-item-height);
-		padding: 0 12px;
-		overflow: hidden;
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-base);
-		white-space: nowrap;
-		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			color var(--speed-fast);
-	}
-
-	.fold:hover {
-		background: var(--color-secondary);
-		color: var(--color-text);
-	}
-
-	.fold:focus-visible {
-		outline: 2px solid var(--color-accent);
-		outline-offset: -2px;
-	}
-
-	.fold .icon {
-		display: inline-flex;
-		flex: none;
-		width: 16px;
-		justify-content: center;
-	}
-
-	.fold .label {
-		transition: opacity var(--speed);
-	}
-
-	.collapsed .fold .label {
-		opacity: 0;
-	}
-
-	/* Narrow screens have no room for a column, so the sections become one
-	   scrollable row above the content. */
+	   It is a media query and not only the class the script adds, so a narrow
+	   screen is served a panel that is already off the edge. Waiting for the
+	   script would show the column first and take it away. */
 	@media (max-width: 55rem) {
 		aside {
-			position: sticky;
-			top: var(--header-height);
-			z-index: 9;
-			width: auto;
-			height: auto;
-			padding: 6px var(--space-2);
-			border-right: none;
-			border-bottom: 1px solid var(--color-border);
-			overflow-x: auto;
-			overscroll-behavior-x: none;
+			width: min(17rem, 82vw);
+			box-shadow: var(--shadow-md);
+			transform: translateX(-100%);
+			visibility: hidden;
+			transition:
+				transform var(--speed-drawer) cubic-bezier(0.4, 0, 0.2, 1),
+				visibility var(--speed-drawer);
 		}
 
-		nav,
-		ul {
-			flex-direction: row;
-			gap: 2px;
+		aside.open {
+			transform: translateX(0);
+			visibility: visible;
 		}
 
-		.group + .group,
-		.collapsed .group + .group {
-			margin: 0 0 0 2px;
-			padding: 0 0 0 4px;
-			border-top: none;
-			border-left: 1px solid var(--color-border);
+		/* A panel has room for names, so it never draws itself as a rail. */
+		.collapsed .scroll {
+			padding: var(--space-2) var(--nav-scrollbar-inset) var(--space-3) var(--space-2);
+			scrollbar-gutter: stable;
+		}
+	}
+
+	.backdrop {
+		position: fixed;
+		top: var(--header-height);
+		right: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 8;
+		background: var(--color-overlay);
+		animation: fade var(--speed) ease-out;
+	}
+
+	@keyframes fade {
+		from {
+			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		aside {
+			transition: none;
 		}
 
-		h2,
-		.foot {
-			display: none;
-		}
-
-		/* Folding only means something beside the content, so here every
-		   section keeps its name, and the marks are left to the pages. */
-		aside :global(.label) {
-			opacity: 1 !important;
-		}
-
-		aside :global(.soon),
-		aside :global(.dot) {
-			display: none;
+		.backdrop {
+			animation: none;
 		}
 	}
 </style>

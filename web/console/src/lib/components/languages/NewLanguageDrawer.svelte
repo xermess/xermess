@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiArrowGoBackLine } from 'svelte-remixicon';
-	import { languagesApi, type Language, type ShippedLanguage } from '$lib/api';
+	import { languagesApi, messageOf, type Language, type ShippedLanguage } from '$lib/api';
 	import {
 		Alert,
 		Button,
@@ -13,7 +13,6 @@
 		Select,
 		SwitchField
 	} from '$lib/components/ui';
-	import { messageOf, useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
 	import { languageCode, namesOf } from './translations';
 
@@ -30,7 +29,6 @@
 	let { open = $bindable(false), languages, shipped, onCreated }: Props = $props();
 
 	const queryClient = useQueryClient();
-	const t = useTranslator();
 
 	let code = $state('');
 	let name = $state('');
@@ -66,9 +64,10 @@
 
 	const codeError = $derived.by(() => {
 		if (trimmed === '') return undefined;
-		if (!languageCode.test(trimmed)) return t('languages.code_invalid');
+		if (!languageCode.test(trimmed))
+			return 'A language tag is two or three letters, then optionally a region: de, pt-BR.';
 		if (languages.some((one) => one.code.toLowerCase() === trimmed.toLowerCase())) {
-			return t('languages.code_taken');
+			return 'There is already a language with this code.';
 		}
 		return undefined;
 	});
@@ -106,19 +105,19 @@
 	}
 
 	const sources = $derived([
-		{ value: NOTHING, label: t('languages.start_empty') },
+		{ value: NOTHING, label: 'Nothing — untranslated text is shown in English' },
 		...(shippedMatch
 			? [
 					{
 						value: shippedMatch.code,
-						label: t('languages.start_shipped'),
+						label: 'The shipped translation',
 						description: shippedMatch.native
 					}
 				]
 			: []),
 		...languages.map((language) => ({
 			value: language.code,
-			label: t('languages.start_copy', { language: language.native }),
+			label: `A copy of ${language.native}`,
 			description: language.name
 		}))
 	]);
@@ -138,7 +137,7 @@
 			onCreated(language);
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, t, t('languages.create_failed'));
+			error = messageOf(err, 'Could not add this language');
 		},
 		onSettled: () => {
 			saving = false;
@@ -158,8 +157,8 @@
 
 <Drawer
 	bind:open
-	title={t('languages.new_title')}
-	description={t('languages.new_description')}
+	title="New language"
+	description="It starts off, so it can be translated before anybody is offered it."
 	width="36rem"
 	onsubmit={submit}
 >
@@ -168,7 +167,10 @@
 	{/if}
 
 	{#if shipped.length > 0}
-		<FormSection title={t('languages.restore')} description={t('languages.restore_hint')}>
+		<FormSection
+			title="Bring back a shipped language"
+			description="The server ships these translations, and this installation does not have them."
+		>
 			<div class="restore">
 				{#each shipped as language (language.code)}
 					<Button size="sm" variant="outline" onclick={() => restore(language)}>
@@ -180,11 +182,11 @@
 		</FormSection>
 	{/if}
 
-	<FormSection title={t('languages.names')}>
+	<FormSection title="Names">
 		<Input
-			label={t('languages.code')}
+			label="Code"
 			bind:value={code}
-			hint={t('languages.code_hint')}
+			hint="A language tag: uz, de, pt-BR."
 			error={codeError}
 			placeholder="uz"
 			autocomplete="off"
@@ -194,39 +196,37 @@
 
 		<div class="pair">
 			<Input
-				label={t('languages.name')}
+				label="Name in English"
 				bind:value={name}
 				oninput={() => (namesTyped = true)}
-				hint={t('languages.name_hint')}
+				hint="What this panel calls it."
 				required
 			/>
 			<Input
-				label={t('languages.native')}
+				label="Name in itself"
 				bind:value={native}
 				oninput={() => (namesTyped = true)}
-				hint={t('languages.native_hint')}
+				hint="What the language picker shows, so people can find their own."
 				lang={trimmed || undefined}
 				required
 			/>
 		</div>
 	</FormSection>
 
-	<FormSection title={t('languages.start_from')}>
-		<Select label={t('languages.start_from')} bind:value={copyFrom} options={sources} />
+	<FormSection title="Start from">
+		<Select label="Start from" bind:value={copyFrom} options={sources} />
 
 		<SwitchField
-			label={t('languages.offer_now')}
-			description={t('languages.offer_now_hint')}
+			label="Offer it now"
+			description="Otherwise it stays off until you turn it on, so it can be translated first."
 			bind:checked={enabled}
 		/>
 	</FormSection>
 
 	{#snippet footer()}
 		<div class="actions">
-			<Button variant="subtle" onclick={() => (open = false)}>{t('action.cancel')}</Button>
-			<Button type="submit" loading={saving} disabled={!ready || saving}>
-				{t('languages.create')}
-			</Button>
+			<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
+			<Button type="submit" loading={saving} disabled={!ready || saving}>Add language</Button>
 		</div>
 	{/snippet}
 </Drawer>

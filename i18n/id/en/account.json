@@ -1,0 +1,61 @@
+{
+	"account": {
+		"nav": "Account",
+		"your_account": "Your account",
+		"profile": "Profile",
+		"security": "Security",
+		"applications": "Connected apps",
+		"email_change": "Change",
+		"email_change_title": "Change your email",
+		"email_change_body": "We will send a link to the new address. Your email changes when you open it.",
+		"email_change_sent": "Check {email} for a link. Your email changes when you open it.",
+		"email_change_submit": "Send the link",
+		"email_change_cancel": "Cancel"
+	},
+	"profile": {
+		"head": "Profile",
+		"verified": "Verified",
+		"not_verified": "Not verified",
+		"personal_title": "Personal information",
+		"personal_description": "Your name, as applications you sign in to see it.",
+		"saved": "Your profile has been saved.",
+		"email_hint": "Your email is your sign-in. To change it, contact the administrator of your organization.",
+		"details_title": "Account details",
+		"member_since": "Member since",
+		"last_sign_in": "Last sign-in",
+		"account_id": "Account ID"
+	},
+	"security": {
+		"head": "Security",
+		"title": "Security",
+		"description": "Your password, and the devices you are signed in on.",
+		"password_title": "Change password",
+		"password_description": "Changing it signs you out on every other device, and from every connected app.",
+		"password_changed": "Your password has been changed. Other devices have been signed out.",
+		"sessions_title": "Where you’re signed in",
+		"sessions_description": "Sign out of any device you don’t recognise, then change your password.",
+		"this_device": "This device",
+		"no_other_sessions": "You’re not signed in anywhere else.",
+		"session_line": "{ip} · signed in {when} · until {until}",
+		"unknown_address": "Unknown address"
+	},
+	"apps": {
+		"head": "Connected apps",
+		"title": "Connected apps",
+		"description": "Applications that can keep you signed in and act for you while you are away.",
+		"empty": "No connected apps",
+		"last_used": "Last used {when}",
+		"it_can": "It can",
+		"disconnect": "Disconnect",
+		"disconnect_confirm": "Disconnect {app}?",
+		"keep": "Keep",
+		"empty_body": "No application is keeping you signed in right now. Applications appear here when you allow them to stay signed in.",
+		"connected_since": "Connected since {when}",
+		"visit": "Visit",
+		"scope_openid": "Sign you in",
+		"scope_profile": "See your name",
+		"scope_email": "See your email address",
+		"scope_offline": "Stay signed in when you are away",
+		"scope_roles": "See your roles"
+	}
+}

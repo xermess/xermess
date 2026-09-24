@@ -12,6 +12,7 @@
 		RiSettings3Line
 	} from 'svelte-remixicon';
 	import {
+		messageOf,
 		ssoApi,
 		type Role,
 		type SSOConnection,
@@ -33,7 +34,6 @@
 		Tabs,
 		Textarea
 	} from '$lib/components/ui';
-	import { messageOf, useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
 	import DomainsField from './DomainsField.svelte';
 	import RoleMappings from './RoleMappings.svelte';
@@ -58,7 +58,6 @@
 	}: Props = $props();
 
 	const queryClient = useQueryClient();
-	const t = useTranslator();
 
 	/** The connection as it stands on the server: the one opened, or the one
 	    just made — which the drawer stays open on, since what comes next is
@@ -151,12 +150,19 @@
 	    said beside the button, which takes you there, rather than leaving the
 	    button greyed out for no reason anybody can see. */
 	const missing = $derived.by((): { text: string; tab: string } | null => {
-		if (name.trim() === '') return { text: t('sso.need_name'), tab: 'connection' };
+		if (name.trim() === '') return { text: 'Name the connection to create it.', tab: 'connection' };
 		if (protocol === 'oidc' && (issuer.trim() === '' || clientId.trim() === ''))
-			return { text: t('sso.need_oidc'), tab: 'connection' };
+			return { text: 'Give the issuer and the client ID to create it.', tab: 'connection' };
 		if (protocol === 'saml' && metadataUrl.trim() === '' && metadata.trim() === '')
-			return { text: t('sso.need_metadata'), tab: 'connection' };
-		if (domains.length === 0 && !showOnLogin) return { text: t('sso.need_way_in'), tab: 'signin' };
+			return {
+				text: 'Give the metadata URL or paste the metadata to create it.',
+				tab: 'connection'
+			};
+		if (domains.length === 0 && !showOnLogin)
+			return {
+				text: 'Add a domain or turn on the sign-in button, on Domains & sign-in, to create it.',
+				tab: 'signin'
+			};
 		return null;
 	});
 
@@ -216,7 +222,7 @@
 			open = false;
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, t, t('sso.save_failed'));
+			error = messageOf(err, 'Could not save this connection');
 		},
 		onSettled: () => {
 			saving = false;
@@ -230,7 +236,7 @@
 			await queryClient.invalidateQueries({ queryKey: keys.sso.all });
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, t, t('sso.remove_failed'));
+			error = messageOf(err, 'Could not remove this connection');
 		}
 	}));
 
@@ -241,7 +247,7 @@
 			await queryClient.invalidateQueries({ queryKey: keys.sso.all });
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, t, t('sso.save_failed'));
+			error = messageOf(err, 'Could not save this connection');
 		}
 	}));
 
@@ -259,7 +265,7 @@
 				metadata: metadataUrl.trim() ? undefined : metadata.trim()
 			});
 		} catch (err) {
-			testError = messageOf(err, t);
+			testError = messageOf(err);
 		} finally {
 			testing = false;
 		}
@@ -276,26 +282,34 @@
 	}
 
 	const tabs = $derived([
-		{ value: 'connection', label: t('sso.tab_connection'), icon: RiSettings3Line },
-		{ value: 'provider', label: t('sso.tab_provider'), icon: RiServerLine },
-		{ value: 'signin', label: t('sso.tab_signin'), icon: RiLinksLine },
-		{ value: 'users', label: t('sso.tab_users'), icon: RiGroupLine }
+		{ value: 'connection', label: 'Connection', icon: RiSettings3Line },
+		{ value: 'provider', label: 'Service provider', icon: RiServerLine },
+		{ value: 'signin', label: 'Domains & sign-in', icon: RiLinksLine },
+		{ value: 'users', label: 'Users & roles', icon: RiGroupLine }
 	]);
 
 	const protocols = $derived([
-		{ value: 'oidc', label: t('sso.protocol_oidc'), description: t('sso.protocol_oidc_hint') },
-		{ value: 'saml', label: t('sso.protocol_saml'), description: t('sso.protocol_saml_hint') }
+		{
+			value: 'oidc',
+			label: 'OpenID Connect',
+			description: 'Okta, Entra ID, Google Workspace, Keycloak, Auth0 and most modern providers'
+		},
+		{
+			value: 'saml',
+			label: 'SAML 2.0',
+			description: 'ADFS, Entra ID, Okta, OneLogin, Shibboleth and most enterprise providers'
+		}
 	]);
 
 	const nameIdFormats = $derived([
-		{ value: 'email', label: t('sso.name_id_email') },
-		{ value: 'persistent', label: t('sso.name_id_persistent') },
-		{ value: 'unspecified', label: t('sso.name_id_unspecified') }
+		{ value: 'email', label: 'Email address' },
+		{ value: 'persistent', label: 'Persistent' },
+		{ value: 'unspecified', label: 'Unspecified' }
 	]);
 
 	const matchings = $derived([
-		{ value: 'link', label: t('sso.matching_link') },
-		{ value: 'deny', label: t('sso.matching_deny') }
+		{ value: 'link', label: 'Link it: the provider owns the domain' },
+		{ value: 'deny', label: 'Refuse: it signs in the way it was made' }
 	]);
 
 	/** A provider certificate that runs out within a month is worth saying:
@@ -320,8 +334,10 @@
 
 <Drawer
 	bind:open
-	title={current ? current.name : t('sso.new_title')}
-	description={current ? t('sso.edit_description') : t('sso.new_description')}
+	title={current ? current.name : 'New connection'}
+	description={current
+		? 'Where it signs people in, for which domains, and what they become here.'
+		: "An organisation's identity provider. It starts off, so it can be set up and tested before anybody signs in through it."}
 	meta={current?.slug}
 	width="52rem"
 	onsubmit={submit}
@@ -330,100 +346,106 @@
 		<div class="message"><Alert>{error}</Alert></div>
 	{/if}
 
-	<Tabs {tabs} bind:value={tab} label={t('sso.title')}>
+	<Tabs {tabs} bind:value={tab} label="SSO integrations">
 		{#snippet panel(value)}
 			<div class="panel">
 				{#if value === 'connection'}
-					<FormSection title={t('sso.section_connection')}>
+					<FormSection title="Connection">
 						{#if !editing}
-							<Select label={t('sso.protocol')} bind:value={protocol} options={protocols} />
+							<Select label="Protocol" bind:value={protocol} options={protocols} />
 						{/if}
 
 						<div class="pair">
 							<Input
-								label={t('sso.name')}
+								label="Name"
 								bind:value={name}
-								hint={t('sso.name_hint', { name: name.trim() || 'Acme' })}
+								hint={`What the sign-in page calls it: “Continue with ${name.trim() || 'Acme'}”.`}
 								required
 								{readOnly}
 							/>
 							<Input
-								label={t('sso.slug')}
+								label="Identifier"
 								bind:value={slug}
-								hint={t('sso.slug_hint')}
+								hint="In the addresses the provider is given, so it cannot change. Made from the name unless you give one."
 								placeholder="acme"
 								readOnly={editing || readOnly}
 							/>
 						</div>
 
 						<SwitchField
-							label={t('sso.enabled')}
-							description={t('sso.enabled_hint')}
+							label="On"
+							description="Off, nobody signs in through it — set it up and test it first."
 							bind:checked={enabled}
 							disabled={readOnly}
 						/>
 					</FormSection>
 
 					{#if protocol === 'oidc'}
-						<FormSection title={t('sso.section_oidc')} description={t('sso.oidc_description')}>
+						<FormSection
+							title="OpenID Connect"
+							description="Register this server at the provider as a web application, then copy its issuer and credentials here."
+						>
 							<Input
-								label={t('sso.issuer')}
+								label="Issuer"
 								bind:value={issuer}
-								hint={t('sso.issuer_hint')}
+								hint="Its discovery document is read from the issuer's /.well-known/openid-configuration."
 								placeholder="https://acme.okta.com"
 								required
 								{readOnly}
 							/>
 							<div class="pair">
-								<Input label={t('sso.client_id')} bind:value={clientId} required {readOnly} />
+								<Input label="Client ID" bind:value={clientId} required {readOnly} />
 								<div class="secret">
 									<PasswordInput
-										label={t('sso.client_secret')}
+										label="Client secret"
 										bind:value={clientSecret}
 										autocomplete="new-password"
 										disabled={readOnly}
 									/>
 									{#if current?.has_client_secret}
-										<p class="note small">{t('sso.client_secret_stored')}</p>
+										<p class="note small">A secret is stored. Type a new one to replace it.</p>
 									{/if}
 								</div>
 							</div>
 							<Input
-								label={t('sso.scopes')}
+								label="Scopes"
 								bind:value={scopes}
-								hint={t('sso.scopes_hint')}
+								hint="Space separated. openid is always asked for; email and profile unless you name others."
 								placeholder="email profile groups"
 								{readOnly}
 							/>
 						</FormSection>
 					{:else}
-						<FormSection title={t('sso.section_saml')} description={t('sso.saml_description')}>
+						<FormSection
+							title="SAML 2.0"
+							description="Give the provider this server's metadata, then its own here: from an address, or the file it gave you."
+						>
 							<Input
-								label={t('sso.metadata_url')}
+								label="Metadata URL"
 								bind:value={metadataUrl}
-								hint={t('sso.metadata_url_hint')}
+								hint="Read when you save, and again with Refresh metadata."
 								placeholder="https://login.microsoftonline.com/…/federationmetadata.xml"
 								{readOnly}
 							/>
 							{#if !metadataUrl.trim()}
 								<Textarea
-									label={t('sso.metadata')}
+									label="Metadata XML"
 									bind:value={metadata}
 									rows={5}
-									hint={t('sso.metadata_hint')}
+									hint="Or paste the file the provider gave you."
 								/>
 							{/if}
 							<div class="pair">
 								<Select
-									label={t('sso.name_id')}
+									label="Name ID format"
 									bind:value={nameIdFormat}
 									options={nameIdFormats}
 									{readOnly}
 								/>
 							</div>
 							<SwitchField
-								label={t('sso.sign_requests')}
-								description={t('sso.sign_requests_hint')}
+								label="Sign authentication requests"
+								description="For providers that require it. The certificate is in this server's metadata."
 								bind:checked={signRequests}
 								disabled={readOnly}
 							/>
@@ -434,60 +456,61 @@
 						<div class="test">
 							<Button variant="subtle" onclick={test} loading={testing} disabled={testing}>
 								<Icon icon={RiFlaskLine} />
-								{t('sso.test')}
+								Test connection
 							</Button>
 
 							{#if testError}
 								<Alert>{testError}</Alert>
 							{:else if tested?.authorization_endpoint}
 								<Alert tone="success">
-									{t('sso.test_ok_oidc', { url: tested.authorization_endpoint })}
+									{`Discovery worked: people are sent to ${tested.authorization_endpoint} to sign in.`}
 								</Alert>
 								{#if tested.unsupported_scopes?.length}
 									<Alert tone="warning">
-										{t('sso.test_unsupported_scopes', {
-											scopes: tested.unsupported_scopes.join(' ')
-										})}
+										{`The provider does not list ${tested.unsupported_scopes.join(' ')} among its scopes, and some providers — Keycloak among them — refuse the whole sign-in over a scope they do not know. Remove it, or add it at the provider first.`}
 									</Alert>
 								{/if}
 							{:else if tested?.identity_provider}
 								<Alert tone="success">
-									{t('sso.test_ok_saml', {
-										entity: tested.identity_provider.entity_id,
-										url: tested.identity_provider.sso_url
-									})}
+									{`The metadata is ${tested.identity_provider.entity_id}'s: people are sent to ${tested.identity_provider.sso_url} to sign in.`}
 								</Alert>
 							{/if}
 						</div>
 					{/if}
 				{:else if value === 'provider'}
 					{#if !current}
-						<p class="note">{t('sso.save_first')}</p>
+						<p class="note">Create the connection to get the addresses its provider needs.</p>
 					{:else if current.protocol === 'oidc'}
-						<FormSection title={t('sso.section_sp')} description={t('sso.sp_oidc_description')}>
+						<FormSection
+							title="What to give the provider"
+							description="Register this redirect URI with the application at the provider."
+						>
 							<Input
-								label={t('sso.callback_url')}
+								label="Redirect URI"
 								value={current.service_provider.callback_url ?? ''}
 								readOnly
 								copyable
 							/>
 						</FormSection>
 					{:else}
-						<FormSection title={t('sso.section_sp')} description={t('sso.sp_saml_description')}>
+						<FormSection
+							title="What to give the provider"
+							description="Give the provider the metadata URL — or, if it asks for them one by one, these."
+						>
 							<Input
-								label={t('sso.acs_url')}
+								label="ACS URL (reply URL)"
 								value={current.service_provider.acs_url ?? ''}
 								readOnly
 								copyable
 							/>
 							<Input
-								label={t('sso.entity_id')}
+								label="Entity ID (audience)"
 								value={current.service_provider.entity_id ?? ''}
 								readOnly
 								copyable
 							/>
 							<Input
-								label={t('sso.metadata_link')}
+								label="Service provider metadata"
 								value={current.service_provider.metadata_url ?? ''}
 								readOnly
 								copyable
@@ -505,20 +528,20 @@
 										)}
 								>
 									<Icon icon={RiDownload2Line} />
-									{t('sso.certificate_download')}
+									Download signing certificate
 								</Button>
 							</div>
 						</FormSection>
 
 						{#if current.identity_provider}
-							<FormSection title={t('sso.section_idp')}>
+							<FormSection title="The identity provider">
 								<dl class="facts">
-									<dt>{t('sso.idp_entity')}</dt>
+									<dt>Entity ID</dt>
 									<dd><code>{current.identity_provider.entity_id}</code></dd>
-									<dt>{t('sso.idp_sso')}</dt>
+									<dt>Sign-in URL</dt>
 									<dd><code>{current.identity_provider.sso_url}</code></dd>
 									{#if current.identity_provider.certificate_expires}
-										<dt>{t('sso.idp_certificate')}</dt>
+										<dt>Certificate expires</dt>
 										<dd>
 											{new Date(current.identity_provider.certificate_expires).toLocaleDateString()}
 										</dd>
@@ -527,7 +550,7 @@
 
 								{#if expiring}
 									<Alert tone="warning"
-										>{t('sso.idp_expiring', { when: expiring.toLocaleDateString() })}</Alert
+										>{`Its certificate expires on ${expiring.toLocaleDateString()}. Refresh the metadata once the provider has rolled it over.`}</Alert
 									>
 								{/if}
 
@@ -540,7 +563,7 @@
 											loading={refresh.isPending}
 										>
 											<Icon icon={RiRefreshLine} />
-											{t('sso.refresh_metadata')}
+											Refresh metadata
 										</Button>
 									</div>
 								{/if}
@@ -548,70 +571,73 @@
 						{/if}
 					{/if}
 				{:else if value === 'signin'}
-					<FormSection title={t('sso.section_domains')}>
+					<FormSection title="Domains">
 						<DomainsField bind:domains {readOnly} />
 					</FormSection>
 
-					<FormSection title={t('sso.section_signin')}>
+					<FormSection title="Sign-in">
 						<SwitchField
-							label={t('sso.enforce')}
+							label="Require SSO for these domains"
 							description={domains.length > 0
-								? t('sso.enforce_hint')
-								: t('sso.enforce_needs_domain')}
+								? 'Their password sign-in, registration and password reset are refused; the sign-in page sends them to the provider instead.'
+								: 'Add a domain first: SSO is required of the addresses at its domains.'}
 							bind:checked={() => enforced, (value) => (enforceDomains = value)}
 							disabled={readOnly || domains.length === 0}
 						/>
 						<SwitchField
-							label={t('sso.show_on_login')}
-							description={t('sso.show_on_login_hint', { name: name || '…' })}
+							label="Show a button on the sign-in page"
+							description={`“Continue with ${name || '…'}”. Off, people reach it by typing their work address.`}
 							bind:checked={showOnLogin}
 							disabled={readOnly}
 						/>
 					</FormSection>
 				{:else}
-					<FormSection title={t('sso.section_provisioning')}>
+					<FormSection title="Provisioning">
 						<Select
-							label={t('sso.matching')}
+							label="An address that already has an account"
 							bind:value={matching}
 							options={matchings}
 							{readOnly}
 						/>
 						<SwitchField
-							label={t('sso.create_users')}
-							description={t('sso.create_users_hint')}
+							label="Create accounts on first sign-in"
+							description="Just-in-time provisioning. Off, only people who already have an account here can sign in."
 							bind:checked={createUsers}
 							disabled={readOnly}
 						/>
 						<SwitchField
-							label={t('sso.sync_profile')}
-							description={t('sso.sync_profile_hint')}
+							label="Update names on every sign-in"
+							description="The provider is where they are kept, so a change there reaches here."
 							bind:checked={syncProfile}
 							disabled={readOnly}
 						/>
 					</FormSection>
 
-					<FormSection title={t('sso.section_attributes')} description={t('sso.attributes_hint')}>
+					<FormSection
+						title="Where to read"
+						description="The claim or attribute names. Empty reads the usual ones."
+					>
 						<div class="pair">
 							<Input
-								label={t('sso.attr_email')}
+								label="Email"
 								bind:value={emailAttribute}
 								placeholder={protocol === 'oidc' ? 'email' : 'mail'}
 								{readOnly}
 							/>
 							<Input
-								label={t('sso.attr_groups')}
+								label="Groups"
 								bind:value={groupsAttribute}
 								placeholder={protocol === 'oidc' ? 'groups' : 'memberOf'}
 								{readOnly}
 							/>
 							<Input
-								label={t('sso.attr_first')}
+								label="First name"
 								bind:value={firstNameAttribute}
 								placeholder={protocol === 'oidc' ? 'given_name' : 'givenName'}
 								{readOnly}
 							/>
 							<Input
-								label={t('sso.attr_last')}
+								label="Last name"
 								bind:value={lastNameAttribute}
 								placeholder={protocol === 'oidc' ? 'family_name' : 'surname'}
 								{readOnly}
@@ -619,11 +645,14 @@
 						</div>
 					</FormSection>
 
-					<FormSection title={t('sso.section_mappings')} description={t('sso.mappings_hint')}>
+					<FormSection
+						title="Group to role mapping"
+						description="Everybody the provider puts in a group gets the role, at every sign-in."
+					>
 						<RoleMappings bind:mappings {roles} canRead={canReadRoles} {readOnly} />
 						<SwitchField
-							label={t('sso.sync_roles')}
-							description={t('sso.sync_roles_hint')}
+							label="Take mapped roles away too"
+							description="Someone no longer in a group loses its role at their next sign-in. Off, mapped roles are only ever added."
 							bind:checked={syncRoles}
 							disabled={readOnly}
 						/>
@@ -637,13 +666,13 @@
 		{#if canWrite && current}
 			{#if confirmingDelete}
 				<div class="confirm">
-					<span>{t('sso.remove_confirm', { count: current.users })}</span>
+					<span
+						>{`${current.users} people sign in through it. They keep their accounts, and sign in however else they can.`}</span
+					>
 					<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}
-						>{t('sso.keep')}</Button
+						>Keep it</Button
 					>
-					<Button colorPalette="danger" size="sm" onclick={() => remove.mutate()}
-						>{t('sso.remove')}</Button
-					>
+					<Button colorPalette="danger" size="sm" onclick={() => remove.mutate()}>Remove</Button>
 				</div>
 			{:else}
 				<Button
@@ -653,7 +682,7 @@
 					onclick={() => (confirmingDelete = true)}
 				>
 					<Icon icon={RiDeleteBinLine} />
-					{t('sso.remove')}
+					Remove
 				</Button>
 			{/if}
 		{/if}
@@ -664,11 +693,11 @@
 					{missing.text}
 				</button>
 			{/if}
-			<Button variant="subtle" onclick={() => (open = false)}>{t('action.cancel')}</Button>
+			<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
 			{#if canWrite}
 				<Button type="submit" loading={saving} disabled={missing !== null || saving}>
 					<Icon icon={RiCheckLine} />
-					{editing ? t('action.save_changes') : t('sso.create')}
+					{editing ? 'Save changes' : 'Create connection'}
 				</Button>
 			{/if}
 		</div>

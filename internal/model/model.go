@@ -46,6 +46,8 @@ func All() []any {
 	return []any{
 		&Organization{},
 		&AdminSecurity{},
+		&MailSettings{},
+		&OTPSettings{},
 		&LoginFlow{},
 		&Language{},
 		&Translation{},
@@ -71,6 +73,7 @@ func All() []any {
 		&UserSession{},
 		&PasswordReset{},
 		&EmailVerification{},
+		&LoginCode{},
 		&UserIdentity{},
 		&SocialLogin{},
 		&SSOConnection{},

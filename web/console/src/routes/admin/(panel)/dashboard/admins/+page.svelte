@@ -20,15 +20,12 @@
 		keys
 	} from '$lib/query';
 	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import AdminDrawer from '$lib/components/admins/AdminDrawer.svelte';
 	import AdminTable from '$lib/components/admins/AdminTable.svelte';
 	import SecurityPanel from '$lib/components/admins/SecurityPanel.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -137,7 +134,7 @@
 <svelte:head><title>Administrators · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.admins')]}>
+	<PageHeader crumbs={['Dashboard', 'Administrators']}>
 		{#snippet secondary()}
 			<span class="total">{admins.data.total} total</span>
 

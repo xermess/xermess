@@ -9,14 +9,11 @@
 	import { applicationsOptions, keys } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
-	import { useTranslator } from '$lib/i18n';
 	import ApplicationDrawer from '$lib/components/applications/ApplicationDrawer.svelte';
 	import ApplicationTable from '$lib/components/applications/ApplicationTable.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	const t = useTranslator();
 
 	const queryClient = useQueryClient();
 
@@ -125,7 +122,7 @@
 <svelte:head><title>Applications · xermess admin</title></svelte:head>
 
 <div class="heading">
-	<PageHeader crumbs={[t('nav.dashboard'), t('nav.applications')]}>
+	<PageHeader crumbs={['Dashboard', 'Applications']}>
 		{#snippet secondary()}
 			<span class="total">{applications.data.total} total</span>
 

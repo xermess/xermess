@@ -1,5 +1,5 @@
 *
-!locales
+!i18n
 !web
 web/*/node_modules
 web/*/build

@@ -10,9 +10,14 @@
 		RiArrowGoBackLine
 	} from 'svelte-remixicon';
 	import { useQueryClient } from '@tanstack/svelte-query';
-	import { flowsApi, type LoginFlow, type LoginStep, type LoginStepSpec } from '$lib/api';
+	import {
+		flowsApi,
+		messageOf,
+		type LoginFlow,
+		type LoginStep,
+		type LoginStepSpec
+	} from '$lib/api';
 	import { Alert, Button, Icon, IconButton, PageHeader, Tag } from '$lib/components/ui';
-	import { messageOf, useTranslator } from '$lib/i18n';
 	import { keys } from '$lib/query';
 	import { draftOf, download, freeSlug, problemsOf, toFile, type FlowDraft } from '../steps';
 	import FlowCanvas from './FlowCanvas.svelte';
@@ -39,7 +44,6 @@
 
 	let { flow, initial, kinds, taken, editable }: Props = $props();
 
-	const t = useTranslator();
 	const queryClient = useQueryClient();
 
 	// svelte-ignore state_referenced_locally
@@ -61,7 +65,14 @@
 	let leaving = false;
 
 	beforeNavigate(({ cancel }) => {
-		if (!leaving && editable && dirty && !creating && !confirm(t('flows.leave_unsaved'))) cancel();
+		if (
+			!leaving &&
+			editable &&
+			dirty &&
+			!creating &&
+			!confirm('This flow has changes that are not saved. Leave anyway?')
+		)
+			cancel();
 	});
 
 	// ---- Changing the steps ----------------------------------------------------
@@ -88,20 +99,18 @@
 	// ---- What the canvas says ----------------------------------------------------
 
 	function lifetimeText(hours: number): string {
-		return hours % 24 === 0 && hours >= 24
-			? t('flows.days', { count: hours / 24 })
-			: t('flows.hours', { count: hours });
+		return hours % 24 === 0 && hours >= 24 ? `${hours / 24} d` : `${hours} h`;
 	}
 
 	function summaryOf(step: LoginStep): string[] {
 		switch (step) {
 			case 'identifier':
 				return [
-					draft.allow_registration ? t('flows.chip_registration') : t('flows.chip_no_registration'),
-					...(draft.require_verified_email ? [t('flows.chip_verified')] : [])
+					draft.allow_registration ? 'sign-ups' : 'no sign-ups',
+					...(draft.require_verified_email ? ['verified address'] : [])
 				];
 			case 'password':
-				return [draft.allow_password_reset ? t('flows.chip_reset') : t('flows.chip_no_reset')];
+				return [draft.allow_password_reset ? 'reset link' : 'no reset link'];
 			default:
 				return [];
 		}
@@ -115,7 +124,7 @@
 		try {
 			await action();
 		} catch (err) {
-			error = messageOf(err, t);
+			error = messageOf(err);
 		} finally {
 			busy = false;
 		}
@@ -147,7 +156,7 @@
 		run(async () => {
 			const copy: FlowDraft = {
 				...draftOf(draft),
-				name: t('flows.copy_of', { name: draft.name }),
+				name: `Copy of ${draft.name}`,
 				slug: freeSlug(`${draft.slug}-copy`, taken),
 				is_default: false
 			};
@@ -178,29 +187,24 @@
 	<div class="heading">
 		<PageHeader
 			crumbs={[
-				t('nav.dashboard'),
-				{ label: t('nav.flows'), href: resolve('/admin/(panel)/dashboard/flows') },
-				draft.name || t('flows.untitled')
+				'Dashboard',
+				{ label: 'Login flows', href: resolve('/admin/(panel)/dashboard/flows') },
+				draft.name || 'Untitled flow'
 			]}
 		>
 			{#snippet secondary()}
-				{#if flow?.is_default}<Tag tone="info" strong>{t('flows.tag_default')}</Tag>{/if}
-				{#if !draft.enabled}<Tag>{t('flows.tag_off')}</Tag>{/if}
-				{#if editable && dirty && !creating}<Tag tone="warning">{t('flows.tag_unsaved')}</Tag>{/if}
+				{#if flow?.is_default}<Tag tone="info" strong>default</Tag>{/if}
+				{#if !draft.enabled}<Tag>off</Tag>{/if}
+				{#if editable && dirty && !creating}<Tag tone="warning">unsaved</Tag>{/if}
 
 				<IconButton
 					icon={RiDownload2Line}
-					label={t('flows.export')}
+					label="Export as JSON"
 					onclick={() =>
 						download(`${draft.slug || 'flow'}.flow.json`, JSON.stringify(toFile(draft), null, 2))}
 				/>
 				{#if editable && !creating}
-					<IconButton
-						icon={RiFileCopyLine}
-						label={t('flows.duplicate')}
-						onclick={duplicate}
-						disabled={busy}
-					/>
+					<IconButton icon={RiFileCopyLine} label="Duplicate" onclick={duplicate} disabled={busy} />
 				{/if}
 			{/snippet}
 
@@ -209,13 +213,13 @@
 					{#if !creating && !flow?.is_default}
 						{#if confirmingDelete}
 							<span class="confirm"
-								>{t('flows.delete_confirm', { count: flow?.applications ?? 0 })}</span
+								>{`Delete this flow? ${flow?.applications ?? 0} applications fall back to the default.`}</span
 							>
 							<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}>
-								{t('flows.keep')}
+								Keep
 							</Button>
 							<Button colorPalette="danger" size="sm" loading={busy} onclick={remove_}>
-								{t('flows.delete')}
+								Delete
 							</Button>
 						{:else}
 							<Button
@@ -224,19 +228,19 @@
 								onclick={() => (confirmingDelete = true)}
 							>
 								<Icon icon={RiDeleteBinLine} />
-								{t('flows.delete')}
+								Delete
 							</Button>
 						{/if}
 					{/if}
 					{#if dirty && !creating}
 						<Button variant="subtle" onclick={discard} disabled={busy}>
 							<Icon icon={RiArrowGoBackLine} />
-							{t('flows.discard')}
+							Discard changes
 						</Button>
 					{/if}
 					<Button onclick={save} loading={busy} disabled={!dirty || problems.length > 0}>
 						<Icon icon={RiCheckLine} />
-						{creating ? t('flows.create') : t('flows.save')}
+						{creating ? 'Create flow' : 'Save changes'}
 					</Button>
 				{/if}
 			{/snippet}
@@ -249,13 +253,15 @@
 			{#if problems.length > 0}
 				<Alert tone="warning">
 					<span class="problems">
-						{#each problems as problem (problem.key)}
-							<span>{t(problem.key, problem.params)}</span>
+						{#each problems as problem (problem)}
+							<span>{problem}</span>
 						{/each}
 					</span>
 				</Alert>
 			{/if}
-			{#if !editable}<Alert tone="info">{t('flows.read_only')}</Alert>{/if}
+			{#if !editable}<Alert tone="info"
+					>Your roles let you look at login flows, not change them.</Alert
+				>{/if}
 		</div>
 	{/if}
 
@@ -266,8 +272,8 @@
 			steps={draft.steps}
 			{kinds}
 			{summaryOf}
-			startDetail={draft.name || t('flows.untitled')}
-			endDetail={t('flows.session_lasts', { length: lifetimeText(draft.session_lifetime_hours) })}
+			startDetail={draft.name || 'Untitled flow'}
+			endDetail={`session: ${lifetimeText(draft.session_lifetime_hours)}`}
 			{selected}
 			{editable}
 			{waiting}

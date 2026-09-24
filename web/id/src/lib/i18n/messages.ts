@@ -7,11 +7,11 @@
  * only what is left when that request fails: the sign-in pages have to draw
  * themselves in something when nothing else works.
  *
- * The file is nested by screen, as every file under locales/ is, and read
- * here into dotted keys. `vite.config.ts` allows the directory to be read in
- * development.
+ * The shipped catalog is split into semantic groups so a translator can work
+ * on related text together. The groups are merged here into the dotted keys
+ * that the app and `svelte-i18n` use. `vite.config.ts` allows the directory to
+ * be read in development.
  */
-import english from '../../../../../locales/id/en.json';
 import { flatten, type Messages } from './flatten';
 
 export type { Messages } from './flatten';
@@ -20,5 +20,13 @@ export type { Messages } from './flatten';
     there are, and its text is what a missing translation falls back to. */
 export const BASE = 'en';
 
+const groupModules = import.meta.glob('../../../../../i18n/id/en/*.json', {
+	eager: true,
+	import: 'default'
+});
+
 /** The base language's text, as this build shipped it. */
-export const base: Messages = flatten(english) ?? {};
+export const base: Messages = Object.assign(
+	{},
+	...Object.values(groupModules).map((file) => flatten(file) ?? {})
+);

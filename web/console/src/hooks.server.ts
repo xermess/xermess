@@ -1,7 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 
 import { COOKIES } from '$lib/constants';
-import { BASE } from '$lib/i18n';
 
 export { handleFetch } from '$lib/server/proxy';
 
@@ -17,10 +16,10 @@ export { handleFetch } from '$lib/server/proxy';
  * prefers-color-scheme rules in tokens.css to decide — also without a flash,
  * because that happens in CSS rather than after it.
  *
- * The language goes in the same way and for the same reason, and `<html lang>`
- * is what a screen reader reads the page's words with. The root layout's load
- * decides it, from the languages the API has, and leaves it in `locals`; the
- * page is only transformed once the loads have run.
+ * `<html lang>` is written here too — it is what a screen reader reads the
+ * page's words with — and it is always English: the panel is written in
+ * English, in its own markup. The sign-in pages are the app an installation
+ * translates.
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const saved = event.cookies.get(COOKIES.theme);
@@ -30,7 +29,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const response = await resolve(event, {
 		transformPageChunk: ({ html }) =>
-			html.replace('__THEME__', attributes).replace('__LANG__', event.locals.language ?? BASE)
+			html.replace('__THEME__', attributes).replace('__LANG__', 'en')
 	});
 
 	// The panel takes an administrator's password and acts on their behalf,
