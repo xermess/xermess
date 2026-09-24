@@ -1,13 +1,8 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
-	import {
-		RiDownload2Line,
-		RiErrorWarningLine,
-		RiSearchLine,
-		RiUpload2Line
-	} from 'svelte-remixicon';
+	import { RiDownload2Line, RiErrorWarningLine, RiUpload2Line } from 'svelte-remixicon';
 	import type { LocaleApp } from '$lib/api';
-	import { Alert, Button, Icon, Switch } from '$lib/components/ui';
+	import { Alert, Button, Icon, SearchInput, Switch } from '$lib/components/ui';
 	import { nest } from './flatten';
 	import { translationOptions } from '$lib/query';
 	import { download, missingParameters, readTranslationFile } from './translations';
@@ -141,15 +136,7 @@
 		<Alert>Could not load the text. Close this and try again.</Alert>
 	{:else}
 		<div class="toolbar">
-			<label class="search">
-				<Icon icon={RiSearchLine} />
-				<input
-					type="search"
-					placeholder="Search keys and text…"
-					bind:value={search}
-					aria-label="Search"
-				/>
-			</label>
+			<SearchInput label="Search" placeholder="Search keys and text…" bind:value={search} />
 
 			<Switch label="Only untranslated" bind:checked={onlyMissing} />
 		</div>
@@ -245,37 +232,6 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
-	}
-
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 
 	.summary {
@@ -375,7 +331,7 @@
 		width: 100%;
 		min-height: var(--control-height);
 		padding: 10px 13px;
-		border: 1px solid transparent;
+		border: 1px solid var(--color-input-border);
 		border-radius: var(--radius-sm);
 		background: var(--color-input);
 		color: var(--color-text);
@@ -386,11 +342,14 @@
 		/* Grows with what is typed, where the browser can; elsewhere the
 		   handle in the corner does. */
 		field-sizing: content;
-		transition: background-color var(--speed-fast);
+		transition:
+			border-color var(--speed-fast),
+			box-shadow var(--speed-fast);
 	}
 
 	textarea:focus {
-		background: var(--color-input-focus);
+		border-color: var(--color-brand);
+		box-shadow: inset 0 0 0 1px var(--color-brand);
 		outline: none;
 	}
 
@@ -401,13 +360,11 @@
 
 	/* A key with nothing written is the one somebody is looking for. */
 	li.missing textarea {
-		border-color: var(--color-border);
 		border-style: dashed;
-		background: transparent;
 	}
 
 	li.missing textarea:focus {
-		background: var(--color-input-focus);
+		border-style: solid;
 	}
 
 	.warning {

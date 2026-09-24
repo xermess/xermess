@@ -86,7 +86,21 @@ export const adminApi = {
 
 	logout: () => api.post<{ status: string }>('/admin/auth/logout'),
 
-	profileSessions: () => api.get<{ sessions: AdminSession[] }>('/admin/sessions')
+	profileSessions: () => api.get<{ sessions: AdminSession[] }>('/admin/sessions'),
+
+	/** Changes the caller's own name and address. A new address takes their
+	    current password, since it is what they sign in with. */
+	updateProfile: (body: {
+		first_name: string;
+		last_name: string;
+		email: string;
+		current_password?: string;
+	}) => api.patch<{ admin: Admin }>('/admin/me', body),
+
+	/** Changes the caller's own password. Every other session they have
+	    open ends; this one stays. */
+	changePassword: (current_password: string, new_password: string) =>
+		api.post<{ status: string }>('/admin/me/password', { current_password, new_password })
 };
 
 /** The users an organisation manages, and the shape of their records. */

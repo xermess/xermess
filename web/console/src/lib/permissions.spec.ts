@@ -9,6 +9,8 @@ function admin(changes: Partial<Admin>): Admin {
 		username: 'a@example.com',
 		email: 'a@example.com',
 		full_name: 'A',
+		first_name: 'A',
+		last_name: '',
 		status: 'active',
 		roles: [],
 		permissions: [],

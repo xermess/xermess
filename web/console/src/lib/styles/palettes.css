@@ -20,7 +20,7 @@
 [data-palette='neutral'] {
 	--palette-solid: var(--color-primary);
 	--palette-solid-text: var(--color-primary-text);
-	--palette-solid-hover: color-mix(in srgb, var(--color-primary), white 12%);
+	--palette-solid-hover: var(--color-primary-hover);
 	--palette-subtle: var(--color-secondary);
 	--palette-subtle-hover: var(--color-secondary-alt);
 	--palette-fg: var(--color-text);

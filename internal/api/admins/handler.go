@@ -12,7 +12,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 
 	"xermess/internal/api/audit"
 	"xermess/internal/api/respond"
@@ -286,16 +285,13 @@ func (h *Handler) build(c *gin.Context, req *adminRequest, into *model.AdminUser
 	}
 
 	if req.Password != "" {
-		// The password is never stored, only this hash of it.
-		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-		if errors.Is(err, bcrypt.ErrPasswordTooLong) {
-			return nil, respond.Fault{Status: http.StatusBadRequest, Message: "password must be at most 72 bytes"}
+		err := admin.SetPassword(req.Password)
+		if errors.Is(err, model.ErrPasswordTooLong) {
+			return nil, respond.Fault{Status: http.StatusBadRequest, Message: err.Error()}
 		}
 		if err != nil {
 			return nil, err
 		}
-
-		admin.PasswordHash = string(hash)
 
 		// A password set by a super admin is the way back into a locked
 		// account, so the wrong guesses that locked it are forgotten.

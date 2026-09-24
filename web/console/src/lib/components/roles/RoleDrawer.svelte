@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import {
-		RiAddLine,
-		RiCloseLine,
-		RiGlobalLine,
-		RiSearchLine,
-		RiShieldUserLine
-	} from 'svelte-remixicon';
+	import { RiAddLine, RiCloseLine, RiGlobalLine, RiShieldUserLine } from 'svelte-remixicon';
 	import { ApiError, rolesApi, type Admin, type API, type Application, type Role } from '$lib/api';
 	import {
 		Alert,
@@ -18,6 +12,7 @@
 		Icon,
 		IconButton,
 		Input,
+		SearchInput,
 		Select,
 		SwitchField,
 		Textarea,
@@ -265,7 +260,6 @@
 	bind:open
 	title={editing ? (editable ? 'Edit role' : 'Role') : 'New role'}
 	meta={role ? `${role.user_count} ${role.user_count === 1 ? 'user' : 'users'}` : undefined}
-	width="38rem"
 	onsubmit={submit}
 >
 	{#if error}
@@ -422,16 +416,13 @@
 
 				{#if addingScopes}
 					<div class="adding">
-						<label class="scope-search">
-							<Icon icon={RiSearchLine} />
-							<input
-								type="search"
-								placeholder="Search by scope or API…"
-								bind:value={scopeSearch}
-								onkeydown={(event) => event.key === 'Enter' && event.preventDefault()}
-								aria-label="Search API scopes"
-							/>
-						</label>
+						<SearchInput
+							label="Search API scopes"
+							placeholder="Search by scope or API…"
+							size="sm"
+							bind:value={scopeSearch}
+							onkeydown={(event) => event.key === 'Enter' && event.preventDefault()}
+						/>
 
 						<div class="scope-list">
 							{#each scopeCandidates as group (group.api.id)}
@@ -621,30 +612,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-1);
-	}
-
-	.scope-search {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: 38px;
-		padding: 0 12px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-	}
-
-	.scope-search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-	}
-
-	.scope-search input:focus {
-		outline: none;
 	}
 
 	.scope-list {

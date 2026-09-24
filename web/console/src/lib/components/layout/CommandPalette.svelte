@@ -260,7 +260,7 @@
 		max-width: 100%;
 		height: var(--control-height-sm);
 		padding: 0 var(--space-2);
-		border: 1px solid transparent;
+		border: 1px solid var(--color-input-border);
 		border-radius: var(--radius-sm);
 		background: var(--color-input);
 		color: var(--color-text-hint);
@@ -268,18 +268,17 @@
 		font-size: var(--text-base);
 		text-align: left;
 		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			border-color var(--speed-fast);
+		transition: border-color var(--speed-fast);
 	}
 
 	.trigger:hover {
-		background: var(--color-input-focus);
+		border-color: var(--color-input-border-hover);
 	}
 
 	.trigger:focus-visible {
 		outline: none;
-		border-color: var(--color-accent);
+		border-color: var(--color-brand);
+		box-shadow: inset 0 0 0 1px var(--color-brand);
 	}
 
 	.placeholder {

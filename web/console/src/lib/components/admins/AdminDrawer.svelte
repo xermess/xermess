@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { MIN_ADMIN_PASSWORD } from '$lib/constants';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiAddLine, RiCloseLine, RiMailLine } from 'svelte-remixicon';
 	import {
@@ -43,10 +44,6 @@
 	let { admin, self, roles, applications, catalog, open = $bindable(false) }: Props = $props();
 
 	const queryClient = useQueryClient();
-
-	/** The shortest password an administrator may be given; the server holds
-	    to the same. */
-	const MIN_PASSWORD = 10;
 
 	/** The scope value that stands for the whole panel. */
 	const PANEL = 'panel';
@@ -114,7 +111,7 @@
 	]);
 
 	const mismatch = $derived(confirmPassword !== '' && password !== confirmPassword);
-	const tooShort = $derived(password !== '' && password.length < MIN_PASSWORD);
+	const tooShort = $derived(password !== '' && password.length < MIN_ADMIN_PASSWORD);
 
 	const canSubmit = $derived(
 		!saving &&
@@ -247,7 +244,6 @@
 	bind:open
 	title={editing ? 'Edit administrator' : 'New administrator'}
 	meta={isSelf ? 'you' : undefined}
-	width="42rem"
 	onsubmit={submit}
 >
 	{#if error}
@@ -292,7 +288,7 @@
 		title="Password"
 		description={editing
 			? `Leave both fields empty to keep the current password.${isSelf ? '' : ' A new one signs them out everywhere.'}`
-			: `At least ${MIN_PASSWORD} characters.`}
+			: `At least ${MIN_ADMIN_PASSWORD} characters.`}
 	>
 		<div class="names">
 			<PasswordInput
@@ -312,7 +308,7 @@
 		{#if mismatch}
 			<p class="hint danger">The passwords do not match.</p>
 		{:else if tooShort}
-			<p class="hint danger">At least {MIN_PASSWORD} characters.</p>
+			<p class="hint danger">At least {MIN_ADMIN_PASSWORD} characters.</p>
 		{/if}
 	</FormSection>
 

@@ -1,5 +1,5 @@
 import type { Admin } from '$lib/api';
-import { COOKIES } from '$lib/constants';
+import { ADMIN_DEPENDENCY, COOKIES } from '$lib/constants';
 import { apiGet } from '$lib/server/api';
 import { isSidebarState, parseClosedBranches, type SidebarState } from '$lib/state/sidebar';
 import type { LayoutServerLoad } from './$types';
@@ -14,7 +14,9 @@ import type { LayoutServerLoad } from './$types';
  * group needs to know its width — and which of its sections are folded away —
  * and the first frame is already right.
  */
-export const load: LayoutServerLoad = async ({ cookies, fetch }) => {
+export const load: LayoutServerLoad = async ({ cookies, depends, fetch }) => {
+	depends(ADMIN_DEPENDENCY);
+
 	const { admin } = await apiGet<{ admin: Admin }>('/admin/me', fetch);
 
 	const saved = cookies.get(COOKIES.sidebar);

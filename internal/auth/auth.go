@@ -263,19 +263,19 @@ func (s *Service) Session(ctx context.Context, token string) (*model.AdminUser, 
 }
 
 // Authenticate returns the administrator a fully signed-in session belongs
-// to. It is what the middleware calls on every request to the panel's API; a
-// session half way through signing in is no session here.
-func (s *Service) Authenticate(ctx context.Context, token string) (*model.AdminUser, error) {
-	admin, _, state, err := s.Session(ctx, token)
+// to, and the session. It is what the middleware calls on every request to
+// the panel's API; a session half way through signing in is no session here.
+func (s *Service) Authenticate(ctx context.Context, token string) (*model.AdminUser, *model.AdminUserSession, error) {
+	admin, session, state, err := s.Session(ctx, token)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if state != StateSignedIn {
-		return nil, ErrNoSession
+		return nil, nil, ErrNoSession
 	}
 
-	return admin, nil
+	return admin, session, nil
 }
 
 // Logout revokes the session the token belongs to. Signing out twice is not

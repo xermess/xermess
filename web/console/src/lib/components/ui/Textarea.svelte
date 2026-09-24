@@ -28,6 +28,6 @@
 	}: Props = $props();
 </script>
 
-<Field {label} {icon} {hint} {error} {required} {disabled}>
+<Field {label} {icon} {hint} {error} {required} {disabled} filled={value !== ''}>
 	<ArkField.Textarea bind:value {rows} {...textarea} />
 </Field>

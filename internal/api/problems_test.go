@@ -84,6 +84,7 @@ func TestErrorParametersAreSent(t *testing.T) {
 		"rate_limited":             {"seconds"},
 		"cross_origin":             {"origin"},
 		"password_too_short":       {"min"},
+		"admin_password_too_short": {"min"},
 		"language_copy_missing":    {"code"},
 		"translation_too_long":     {"key", "max"},
 		"sso_required":             {"slug", "name"},

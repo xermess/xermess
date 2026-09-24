@@ -91,3 +91,14 @@ pre {
 	outline: 2px solid var(--color-info);
 	outline-offset: 1px;
 }
+
+/* A number is typed, not stepped: no spinner buttons in any number field. */
+input[type='number'] {
+	appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+	margin: 0;
+	appearance: none;
+}

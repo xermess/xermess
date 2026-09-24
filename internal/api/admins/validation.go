@@ -7,12 +7,13 @@ import (
 
 	"xermess/internal/api/respond"
 	"xermess/internal/api/validate"
+	"xermess/internal/model"
 )
 
 // minPasswordLength is the shortest password an administrator may be given:
 // the same floor the first super admin's password keeps, since an admin
 // account opens the panel.
-const minPasswordLength = 10
+const minPasswordLength = model.MinAdminPasswordLength
 
 // validate checks the form. `creating` says whether this makes a new
 // administrator, which is the one time a password has to be given.

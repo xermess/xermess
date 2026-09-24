@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
+	import { RiRefreshLine } from 'svelte-remixicon';
 	import ActivityTable from '$lib/components/activity/ActivityTable.svelte';
 	import {
 		categoryLabels,
@@ -8,7 +8,7 @@
 		describe,
 		type Category
 	} from '$lib/components/activity/actions';
-	import { Icon, IconButton, PageHeader } from '$lib/components/ui';
+	import { IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -87,15 +87,14 @@
 		{/each}
 	</div>
 
-	<label class="search">
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			bind:value={search}
+	<div class="search-slot">
+		<SearchInput
+			label="Search the log"
 			placeholder="Search who, what or where…"
-			aria-label="Search the log"
+			bind:value={search}
+			size="sm"
 		/>
-	</label>
+	</div>
 </div>
 
 <ActivityTable
@@ -104,6 +103,11 @@
 />
 
 <style>
+	.search-slot {
+		display: flex;
+		width: min(22rem, 100%);
+	}
+
 	.heading {
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
@@ -162,35 +166,5 @@
 	.chips span {
 		font-size: var(--text-xs);
 		opacity: 0.7;
-	}
-
-	.search {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		width: min(22rem, 100%);
-		height: var(--control-height-sm);
-		padding: 0 12px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-sm);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 </style>

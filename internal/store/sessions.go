@@ -52,3 +52,13 @@ func (s *Store) RevokeSessionsFor(ctx context.Context, adminID uuid.UUID, at tim
 		Where("admin_user_id = ? AND revoked_at IS NULL", adminID).
 		Update("revoked_at", at).Error
 }
+
+// RevokeOtherSessionsFor ends every open session an administrator has but
+// one: the one they changed their password from, which would otherwise sign
+// them out of the page they were using.
+func (s *Store) RevokeOtherSessionsFor(ctx context.Context, adminID, keep uuid.UUID, at time.Time) error {
+	return s.db.WithContext(ctx).
+		Model(&model.AdminUserSession{}).
+		Where("admin_user_id = ? AND id <> ? AND revoked_at IS NULL", adminID, keep).
+		Update("revoked_at", at).Error
+}

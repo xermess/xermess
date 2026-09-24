@@ -30,3 +30,13 @@ export const COOKIES = {
     account menu, so the addresses are written once. */
 export const DOCS_URL = 'https://xermess.org/docs';
 export const GITHUB_URL = 'https://github.com/xermess/xermess';
+
+/** The shortest password an administrator may have: the server's
+    model.MinAdminPasswordLength, said here too so a form can say so before
+    anything is sent. */
+export const MIN_ADMIN_PASSWORD = 10;
+
+/** What a load that reads the signed-in administrator depends on, so a
+    change to their own account can refresh that alone rather than every
+    load on the page. */
+export const ADMIN_DEPENDENCY = 'app:admin';

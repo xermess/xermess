@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 
 	"xermess/internal/api/respond"
 	"xermess/internal/model"
@@ -60,25 +59,21 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	// The password is never stored, only this hash of it.
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
+	admin := model.AdminUser{
+		// The address is the account: it is what this person signs in with,
+		// and one less thing to invent during setup.
+		Username:  req.Email,
+		Email:     req.Email,
+		FirstName: strings.TrimSpace(req.FirstName),
+		LastName:  strings.TrimSpace(req.LastName),
+		Status:    model.StatusActive,
+	}
+	if err := admin.SetPassword(req.Password); err != nil {
 		respond.Failure(c, h.log, err, "hashing the password failed")
 		return
 	}
 
-	admin := model.AdminUser{
-		// The address is the account: it is what this person signs in with,
-		// and one less thing to invent during setup.
-		Username:     req.Email,
-		Email:        req.Email,
-		FirstName:    strings.TrimSpace(req.FirstName),
-		LastName:     strings.TrimSpace(req.LastName),
-		PasswordHash: string(hash),
-		Status:       model.StatusActive,
-	}
-
-	err = h.store.CreateFirstAdmin(c.Request.Context(), &admin)
+	err := h.store.CreateFirstAdmin(c.Request.Context(), &admin)
 	switch {
 	case errors.Is(err, store.ErrAdminExists):
 		respond.Conflict(c, "this panel has already been set up")

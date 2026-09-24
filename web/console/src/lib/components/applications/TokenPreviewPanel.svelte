@@ -367,8 +367,8 @@
 		align-self: flex-start;
 		gap: 2px;
 		padding: 3px;
-		border-radius: var(--radius-md);
-		background: var(--color-input);
+		border-radius: var(--radius-sm);
+		background: var(--color-secondary);
 	}
 
 	.segments button {
@@ -495,7 +495,7 @@
 	.extra {
 		height: 36px;
 		padding: 0 12px;
-		border: 1px solid transparent;
+		border: 1px solid var(--color-input-border);
 		border-radius: var(--radius-sm);
 		background: var(--color-input);
 		color: var(--color-text);
@@ -504,8 +504,9 @@
 	}
 
 	.extra:focus {
-		border-color: var(--color-text-disabled);
+		border-color: var(--color-brand);
 		outline: none;
+		box-shadow: inset 0 0 0 1px var(--color-brand);
 	}
 
 	.param {

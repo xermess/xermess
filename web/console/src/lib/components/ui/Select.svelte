@@ -3,6 +3,7 @@
 	import { createListCollection, Select as ArkSelect } from '@ark-ui/svelte/select';
 	import { Portal } from '@ark-ui/svelte/portal';
 	import { RiArrowDownSLine, RiCheckLine, RiCloseLine } from 'svelte-remixicon';
+	import FieldText from './FieldText.svelte';
 	import Icon from './Icon.svelte';
 	import type { SelectOption } from './select';
 
@@ -78,15 +79,17 @@
 	const canClear = $derived(clearable && value !== '' && !disabled && !readOnly);
 </script>
 
-<!-- A select is the same filled block as an Input — label inside at the top,
-     value below — so a form reads as one column of fields whatever kind of
-     value each one holds. The difference is only what happens on a click: a
-     panel of options rather than a caret.
+<!-- A select is the same outlined box and floating label as an Input, so a
+     form reads as one column of fields whatever kind of value each one holds.
+     The difference is only what happens on a click: a panel of options
+     rather than a caret.
 
      Ark gives this the parts, the keyboard (arrows, home/end, and typing a
      few letters to jump), and a hidden native select for form submission.
-     The look is in styles/ark.css under [data-scope='select']. -->
+     The closed field is styled in styles/fields.css, the open panel in
+     styles/ark.css. -->
 <ArkSelect.Root
+	class="field-root"
 	{collection}
 	{name}
 	{required}
@@ -94,39 +97,33 @@
 	{readOnly}
 	invalid={error !== undefined}
 	value={value === '' ? [] : [value]}
-	positioning={{ sameWidth: true, gutter: 3 }}
+	positioning={{ sameWidth: true, gutter: 4 }}
 	onValueChange={(details) => {
 		value = (details.value[0] ?? '') as Value;
 		onChange?.(value);
 	}}
 >
-	<ArkSelect.Label>
-		{#if icon}
-			<Icon {icon} />
-		{/if}
-		{label}
-		{#if required}
-			<span data-part="required-indicator">*</span>
-		{/if}
-	</ArkSelect.Label>
+	<div class="field-box" data-float={value !== '' || undefined}>
+		<ArkSelect.Label><FieldText {label} {icon} {required} /></ArkSelect.Label>
 
-	<ArkSelect.Control>
-		<ArkSelect.Trigger>
-			{#if chosen?.icon}
-				<Icon icon={chosen.icon} />
+		<ArkSelect.Control>
+			<ArkSelect.Trigger>
+				{#if chosen?.icon}
+					<Icon icon={chosen.icon} />
+				{/if}
+				<ArkSelect.ValueText {placeholder} />
+				<ArkSelect.Indicator>
+					<Icon icon={RiArrowDownSLine} />
+				</ArkSelect.Indicator>
+			</ArkSelect.Trigger>
+
+			{#if canClear}
+				<ArkSelect.ClearTrigger aria-label="Clear {label}">
+					<Icon icon={RiCloseLine} />
+				</ArkSelect.ClearTrigger>
 			{/if}
-			<ArkSelect.ValueText {placeholder} />
-			<ArkSelect.Indicator>
-				<Icon icon={RiArrowDownSLine} />
-			</ArkSelect.Indicator>
-		</ArkSelect.Trigger>
-
-		{#if canClear}
-			<ArkSelect.ClearTrigger aria-label="Clear {label}">
-				<Icon icon={RiCloseLine} />
-			</ArkSelect.ClearTrigger>
-		{/if}
-	</ArkSelect.Control>
+		</ArkSelect.Control>
+	</div>
 
 	<!-- The panel is portalled so it is never clipped by a drawer that
 	     scrolls or by a table cell that hides its overflow; it is placed

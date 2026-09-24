@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Switch } from '@ark-ui/svelte/switch';
+	import { onlyTheSwitch } from './switch';
 
 	type Props = {
 		label: string;
@@ -14,12 +15,13 @@
 </script>
 
 <!-- A setting that is on or off: what it is and what it does on the left, the
-     switch on the right, the whole row one click target. Descriptions line up
-     under their labels however long they run. -->
+     switch on the right. Only the switch turns it; the row around it is for
+     reading. Descriptions line up under their labels however long they run. -->
 <Switch.Root
 	class="switch-field"
 	{checked}
 	{disabled}
+	onclick={onlyTheSwitch}
 	onCheckedChange={(details) => {
 		checked = details.checked;
 		onChange?.(details.checked);

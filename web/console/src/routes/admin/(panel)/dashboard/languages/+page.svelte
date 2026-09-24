@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { RiAddLine, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
+	import { RiAddLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { Language, LocaleApp } from '$lib/api';
-	import { Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
+	import { Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import LanguageDrawer from '$lib/components/languages/LanguageDrawer.svelte';
 	import LanguageTable from '$lib/components/languages/LanguageTable.svelte';
 	import NewLanguageDrawer from '$lib/components/languages/NewLanguageDrawer.svelte';
@@ -103,15 +103,7 @@
 </p>
 
 <div class="toolbar">
-	<label class="search">
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			placeholder="Search name or code…"
-			bind:value={search}
-			aria-label="Search"
-		/>
-	</label>
+	<SearchInput label="Search" placeholder="Search name or code…" bind:value={search} />
 </div>
 
 <LanguageTable
@@ -149,37 +141,5 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-family: var(--font-sans);
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 </style>

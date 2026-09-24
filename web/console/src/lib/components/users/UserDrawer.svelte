@@ -281,7 +281,6 @@
 	bind:open
 	title={editing ? (editable ? 'Edit user' : 'User') : 'New user'}
 	meta={current?.email}
-	width="44rem"
 	onsubmit={submit}
 >
 	{#if !editing}

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { RiAddLine, RiBuilding2Line, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
+	import { RiAddLine, RiBuilding2Line, RiRefreshLine } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { SSOConnection } from '$lib/api';
-	import { Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
+	import { Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import SSODrawer from '$lib/components/sso/SSODrawer.svelte';
 	import SSOTable from '$lib/components/sso/SSOTable.svelte';
 	import { can } from '$lib/permissions';
@@ -110,15 +110,11 @@
 	</section>
 {:else}
 	<div class="toolbar">
-		<label class="search">
-			<Icon icon={RiSearchLine} />
-			<input
-				type="search"
-				placeholder="Search name, identifier or domain…"
-				bind:value={search}
-				aria-label="Search"
-			/>
-		</label>
+		<SearchInput
+			label="Search"
+			placeholder="Search name, identifier or domain…"
+			bind:value={search}
+		/>
 	</div>
 
 	<SSOTable connections={visible} onOpen={open} empty="No connections match this." />
@@ -151,37 +147,6 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 
 	.empty {

@@ -8,12 +8,19 @@
 		RiDeleteBinLine,
 		RiEyeLine,
 		RiEyeOffLine,
-		RiRefreshLine,
-		RiSearchLine
+		RiRefreshLine
 	} from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, socialApi, type SocialProvider } from '$lib/api';
-	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		Icon,
+		IconButton,
+		PageHeader,
+		SearchInput,
+		SelectionBar
+	} from '$lib/components/ui';
 	import SocialDrawer from '$lib/components/social/SocialDrawer.svelte';
 	import SocialTable from '$lib/components/social/SocialTable.svelte';
 	import { can } from '$lib/permissions';
@@ -235,22 +242,13 @@
 </div>
 
 <div class="toolbar">
-	<form
-		class="search"
-		onsubmit={(event) => {
-			event.preventDefault();
-			apply({ search });
-		}}
-	>
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			placeholder="Search name, identifier or client id…"
-			bind:value={search}
-			oninput={debounced}
-			aria-label="Search providers"
-		/>
-	</form>
+	<SearchInput
+		label="Search providers"
+		placeholder="Search name, identifier or client id…"
+		bind:value={search}
+		onsubmit={() => apply({ search })}
+		oninput={debounced}
+	/>
 
 	<div class="filter" role="group" aria-label="Filter by whether it is offered">
 		{#each filters as filter (filter.value)}
@@ -334,38 +332,6 @@
 		padding-inline: var(--page-gutter);
 	}
 
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-family: var(--font-sans);
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
-	}
-
 	/* The same height as the search box beside it and the buttons above it:
 	   the toolbar reads as one row rather than three sizes. */
 	.filter {
@@ -373,8 +339,8 @@
 		gap: 2px;
 		height: var(--control-height);
 		padding: 3px;
-		border-radius: var(--radius-md);
-		background: var(--color-input);
+		border-radius: var(--radius-sm);
+		background: var(--color-secondary);
 	}
 
 	.filter button {

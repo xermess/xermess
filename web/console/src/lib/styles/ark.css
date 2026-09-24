@@ -1,145 +1,7 @@
 /* Ark UI ships no styles: every part it renders carries data-scope and
    data-part, and those attributes are what we style, so component markup
-   stays free of presentational class names.
-
-   The field is PocketBase's: one filled block with the label inside it at the
-   top and the value below, no border anywhere, and focus shown by the block
-   growing slightly darker rather than by an outline. Measured from their
-   settings page — background #e4e8ec, #dce0e5 on focus, 5px radius, a 13px
-   bold label that darkens when the field has focus. */
-
-[data-scope='field'][data-part='root'],
-[data-scope='password-input'][data-part='root'] {
-	position: relative;
-	display: block;
-	border-radius: var(--radius-sm);
-	background: var(--color-input);
-	transition: background-color var(--speed);
-}
-
-[data-scope='field'][data-part='root']:focus-within,
-[data-scope='password-input'][data-part='root']:focus-within {
-	background: var(--color-input-focus);
-}
-
-[data-scope='field'][data-part='root']:hover,
-[data-scope='password-input'][data-part='root']:hover {
-	background: var(--color-input-focus);
-}
-
-[data-scope='field'][data-part='label'],
-[data-scope='password-input'][data-part='label'] {
-	display: flex;
-	align-items: center;
-	gap: var(--space-1);
-	padding: 9px 13px 1px;
-	color: var(--color-text-hint);
-	font-size: var(--text-sm);
-	font-weight: 700;
-	line-height: 13px;
-	cursor: default;
-	transition: color var(--speed);
-}
-
-/* The label darkens with focus, which is the only cue the field gives. */
-[data-scope='field'][data-part='root']:focus-within [data-part='label'],
-[data-scope='password-input'][data-part='root']:focus-within [data-part='label'] {
-	color: var(--color-text);
-}
-
-[data-scope='field'][data-part='required-indicator'] {
-	color: var(--color-danger);
-	font-size: var(--text-base);
-	line-height: 1;
-}
-
-[data-scope='field'][data-part='input'],
-[data-scope='password-input'][data-part='input'] {
-	width: 100%;
-	padding: 10px 13px;
-	border: none;
-	border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-	background: transparent;
-	color: var(--color-text);
-	font-family: var(--font-sans);
-	font-size: var(--text-base);
-	/* 18.5 + 10 + 10 of padding is PocketBase's 38.5px value row. Setting it
-	   here rather than leaving it to the font keeps the height the same
-	   whichever font is actually available. */
-	line-height: 18.5px;
-}
-
-[data-scope='field'][data-part='input']:focus,
-[data-scope='field'][data-part='input']:focus-visible,
-[data-scope='password-input'][data-part='input']:focus,
-[data-scope='password-input'][data-part='input']:focus-visible {
-	outline: none;
-}
-
-[data-scope='field'][data-part='input']::placeholder,
-[data-scope='password-input'][data-part='input']::placeholder {
-	color: var(--color-text-disabled);
-}
-
-[data-scope='field'][data-part='root'][data-disabled],
-[data-scope='password-input'][data-part='root'][data-disabled] {
-	opacity: 0.6;
-}
-
-[data-scope='field'][data-part='input'][data-disabled],
-[data-scope='password-input'][data-part='input'][data-disabled] {
-	cursor: not-allowed;
-}
-
-[data-scope='field'][data-part='root'][data-invalid] {
-	background: var(--surface-danger);
-}
-
-[data-scope='field'][data-part='error-text'] {
-	padding: 0 13px 9px;
-	color: var(--color-danger);
-	font-size: var(--text-sm);
-}
-
-[data-scope='field'][data-part='helper-text'] {
-	padding: 0 13px 9px;
-	color: var(--color-text-hint);
-	font-size: var(--text-sm);
-}
-
-/* The password field keeps its show/hide button inside the block, level with
-   the value rather than the label. */
-
-[data-scope='password-input'][data-part='control'] {
-	display: block;
-}
-
-[data-scope='password-input'][data-part='input'] {
-	padding-right: 45px;
-}
-
-[data-scope='password-input'][data-part='visibility-trigger'] {
-	position: absolute;
-	right: 8px;
-	bottom: 4px;
-	display: grid;
-	place-items: center;
-	width: 32px;
-	height: 32px;
-	border: none;
-	border-radius: var(--radius-sm);
-	background: transparent;
-	color: var(--color-text-hint);
-	cursor: pointer;
-	transition:
-		background-color var(--speed-fast),
-		color var(--speed-fast);
-}
-
-[data-scope='password-input'][data-part='visibility-trigger']:hover {
-	background: color-mix(in srgb, var(--color-text), transparent 88%);
-	color: var(--color-text);
-}
+   stays free of presentational class names. Text fields, text areas and
+   selects are in fields.css. */
 
 /* Menus, used by the account menu in the header. */
 
@@ -147,7 +9,7 @@
 	/* Above the sticky header (10) it opens from; below a drawer (40, 50). */
 	z-index: 30;
 	min-width: 12rem;
-	padding: var(--space-1);
+	padding: 4px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-md);
 	background: var(--color-surface);
@@ -158,25 +20,42 @@
 	outline: none;
 }
 
-/* A row: the ones that do something, the ones that open a submenu, and the
-   ones that are a choice within one all sit the same. */
+/* A row in anything that pops up — a menu's actions and choices, a
+   select's options — is one row: 36px at least, an icon in the hint colour
+   before the words, a quiet fill under the pointer or the arrow keys. */
 [data-scope='menu'][data-part='item'],
 [data-scope='menu'][data-part='trigger-item'],
-[data-scope='menu'][data-part='option-item'] {
+[data-scope='menu'][data-part='option-item'],
+[data-scope='select'][data-part='item'] {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
-	padding: var(--space-2);
+	gap: 10px;
+	min-height: 36px;
+	padding: 8px 10px;
 	border-radius: var(--radius-sm);
 	color: var(--color-text);
 	font-size: var(--text-base);
+	font-weight: 500;
+	line-height: 20px;
+	text-decoration: none;
 	cursor: pointer;
 	user-select: none;
+	transition:
+		background-color var(--speed-fast),
+		color var(--speed-fast);
+}
+
+[data-scope='menu'][data-part='item'] > svg,
+[data-scope='menu'][data-part='option-item'] > svg,
+[data-scope='select'][data-part='item'] > svg {
+	flex: none;
+	color: var(--color-text-hint);
 }
 
 [data-scope='menu'][data-part='item'][data-highlighted],
 [data-scope='menu'][data-part='trigger-item'][data-highlighted],
-[data-scope='menu'][data-part='option-item'][data-highlighted] {
+[data-scope='menu'][data-part='option-item'][data-highlighted],
+[data-scope='select'][data-part='item'][data-highlighted] {
 	background: var(--color-secondary);
 	outline: none;
 }
@@ -195,14 +74,18 @@
 }
 
 [data-scope='menu'][data-part='item-group-label'] {
-	padding: var(--space-2);
+	padding: 8px 10px 4px;
 	color: var(--color-text-hint);
-	font-size: var(--text-sm);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	letter-spacing: 0.02em;
 }
 
+/* Runs the width of the menu, through its padding, so groups read as
+   sections of one card rather than cards of their own. */
 [data-scope='menu'][data-part='separator'] {
 	height: 1px;
-	margin: var(--space-1) 0;
+	margin: 4px -4px;
 	border: none;
 	background: var(--color-border);
 }
@@ -244,66 +127,8 @@
 	}
 }
 
-/* The label and the value sit inside the filled block, and so does the line
-   under them. Ark renders these as spans, hence the display: an inline box
-   only pads its first line, which leaves the second sticking out of the
-   block. */
-[data-scope='field'][data-part='helper-text'],
-[data-scope='field'][data-part='error-text'] {
-	display: block;
-	padding: 2px 13px 9px;
-	font-size: var(--text-sm);
-	line-height: 1.3;
-}
-
-[data-scope='field'][data-part='helper-text'] {
-	color: var(--color-text-hint);
-}
-
-[data-scope='field'][data-part='error-text'] {
-	color: var(--color-danger);
-}
-
-/* An invalid field says so before anyone reads the line under it. */
-[data-scope='field'][data-part='input'][data-invalid],
-[data-scope='field'][data-part='textarea'][data-invalid] {
-	box-shadow: inset 0 0 0 1px var(--color-danger);
-}
-
-[data-scope='field'][data-part='textarea'] {
-	width: 100%;
-	padding: 9px 13px 13px;
-	border: none;
-	border-radius: var(--radius-sm);
-	background: var(--color-input);
-	color: var(--color-text);
-	font: inherit;
-	font-family: var(--font-sans);
-	font-size: var(--text-base);
-	resize: vertical;
-}
-
-[data-scope='field'][data-part='textarea']:focus-visible {
-	outline: none;
-	background: var(--color-input-focus);
-}
-
-/* A field nobody may edit — a record's id, say — is shown rather than hidden,
-   but it reads as a value instead of as somewhere to type. */
-
-[data-scope='field'][data-part='input'][readonly] {
-	color: var(--color-text-hint);
-	font-family: var(--font-mono);
-	font-size: var(--text-sm);
-	cursor: default;
-}
-
-[data-scope='field'][data-part='input'][readonly]:focus-visible {
-	background: var(--color-input);
-}
-
-/* Checkbox. Used to tick rows in a table: a square that turns green when it
-   is on, the way PocketBase marks a chosen record. */
+/* Checkbox. Used to tick rows in a table: a square that fills with the
+   brand colour when it is on. */
 
 [data-scope='checkbox'][data-part='root'] {
 	display: inline-flex;
@@ -320,7 +145,7 @@
 	border: 2px solid var(--color-input-border);
 	border-radius: var(--radius-sm);
 	background: var(--color-surface);
-	color: var(--color-success);
+	color: var(--color-brand-text);
 	transition:
 		border-color var(--speed),
 		background-color var(--speed);
@@ -332,8 +157,9 @@
 
 [data-scope='checkbox'][data-part='control'][data-state='checked'],
 [data-scope='checkbox'][data-part='control'][data-state='indeterminate'] {
-	border-color: var(--color-success);
-	background: color-mix(in srgb, var(--color-success), var(--color-surface) 88%);
+	border-color: var(--color-brand);
+	background: var(--color-brand);
+	color: var(--color-brand-text);
 }
 
 /* The indicator carries the hidden attribute when the box is off, so it must
@@ -359,37 +185,43 @@
 /* Switch. A boolean is the toggle itself: no filled box around it, the way
    PocketBase shows a record's true/false fields. */
 
+/* Only the switch itself is pressed (see components/ui/switch.ts), so only
+   it says so under the pointer; the words beside it are for reading. */
 [data-scope='switch'][data-part='root'] {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--space-3);
 	padding: var(--space-1) 0;
-	cursor: pointer;
+	cursor: default;
+}
+
+[data-scope='switch'][data-part='root'][data-disabled] [data-part='control'] {
+	cursor: not-allowed;
 }
 
 [data-scope='switch'][data-part='control'] {
 	flex: none;
+	cursor: pointer;
 	display: flex;
 	align-items: center;
 	width: 42px;
 	height: 25px;
 	padding: 2px;
-	/* A rounded rectangle rather than a pill, which is what makes the thumb
-	   read as a switch and not a radio. */
-	border-radius: 7px;
+	/* A pill with a round thumb, the way Telegram draws one. */
+	border-radius: var(--radius-pill);
 	background: var(--color-secondary-alt);
 	transition: background-color var(--speed);
 }
 
 [data-scope='switch'][data-part='control'][data-state='checked'] {
-	background: var(--color-success);
+	background: var(--color-brand);
 }
 
 [data-scope='switch'][data-part='thumb'] {
 	width: 21px;
 	height: 21px;
-	border-radius: 5px;
-	background: var(--color-primary-text);
+	border-radius: var(--radius-pill);
+	background: #fff;
 	box-shadow: var(--shadow-sm);
 	transition: transform var(--speed);
 }
@@ -553,163 +385,10 @@
 	}
 }
 
-/* Select. Closed, it is the same filled block as an input — the label inside
-   it at the top, the value below — so a column of fields reads as one column
-   whatever kind of value each holds. Open, it is PocketBase's dropdown: a
-   card with a 2px border, 5px corners and rows that light up under the
-   pointer. Measured from their record panel — 5px of padding around the
-   list, rows of 10px/12px, #e4e8ec under the pointer. */
-
-[data-scope='select'][data-part='root'] {
-	position: relative;
-	display: block;
-	border-radius: var(--radius-sm);
-	background: var(--color-input);
-	transition: background-color var(--speed);
-}
-
-/* Pointed at, or open: the block darkens. That and the label are the only
-   cues it gives, the same as every other field. */
-[data-scope='select'][data-part='root']:hover,
-[data-scope='select'][data-part='root']:has([data-part='trigger']:focus-visible),
-[data-scope='select'][data-part='root']:has([data-part='trigger'][data-state='open']) {
-	background: var(--color-input-focus);
-}
-
-[data-scope='select'][data-part='root'][data-disabled] {
-	opacity: 0.6;
-}
-
-[data-scope='select'][data-part='root'][data-invalid] {
-	background: var(--surface-danger);
-}
-
-[data-scope='select'][data-part='label'] {
-	display: flex;
-	align-items: center;
-	gap: var(--space-1);
-	padding: 9px 13px 1px;
-	color: var(--color-text-hint);
-	font-size: var(--text-sm);
-	font-weight: 700;
-	line-height: 13px;
-	cursor: default;
-	transition: color var(--speed);
-}
-
-[data-scope='select'][data-part='root']:has([data-part='trigger']:focus-visible)
-	[data-part='label'],
-[data-scope='select'][data-part='root']:has([data-part='trigger'][data-state='open'])
-	[data-part='label'] {
-	color: var(--color-text);
-}
-
-[data-scope='select'][data-part='label'] [data-part='required-indicator'] {
-	color: var(--color-danger);
-	font-size: var(--text-base);
-	line-height: 1;
-}
-
-[data-scope='select'][data-part='control'] {
-	position: relative;
-	display: block;
-}
-
-[data-scope='select'][data-part='trigger'] {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	width: 100%;
-	/* The same 18.5px line inside 10px of padding as an input, so a select
-	   and a text field next to each other are the same height. */
-	padding: 10px 13px;
-	border: none;
-	border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-	background: transparent;
-	color: var(--color-text);
-	font-family: var(--font-sans);
-	font-size: var(--text-base);
-	line-height: 18.5px;
-	text-align: left;
-	cursor: pointer;
-}
-
-[data-scope='select'][data-part='trigger']:focus-visible {
-	outline: none;
-}
-
-[data-scope='select'][data-part='trigger'][data-disabled] {
-	cursor: not-allowed;
-}
-
-/* Nobody may change this one. It is shown rather than hidden, but it reads
-   as a value: no chevron to press, and no block darkening under the pointer
-   to suggest there is anything to press. */
-[data-scope='select'][data-part='trigger'][data-readonly] {
-	color: var(--color-text-hint);
-	cursor: default;
-}
-
-[data-scope='select'][data-part='indicator'][data-readonly] {
-	display: none;
-}
-
-[data-scope='select'][data-part='root']:has([data-part='trigger'][data-readonly]):hover {
-	background: var(--color-input);
-}
-
-[data-scope='select'][data-part='value-text'] {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-}
-
-/* Nothing chosen yet: the placeholder reads as absence, not as a value. */
-[data-scope='select'][data-part='trigger'][data-placeholder-shown] [data-part='value-text'] {
-	color: var(--color-text-disabled);
-}
-
-[data-scope='select'][data-part='indicator'] {
-	display: flex;
-	color: var(--color-text-hint);
-	transition: transform var(--speed);
-}
-
-/* The chevron points at the panel: down at one about to open, up at one that
-   is. */
-[data-scope='select'][data-part='indicator'][data-state='open'] {
-	transform: rotate(180deg);
-}
-
-/* The clear button sits level with the value, left of the chevron. It is a
-   sibling of the trigger rather than a child: a button inside a button is
-   not something a browser will accept. */
-[data-scope='select'][data-part='clear-trigger'] {
-	position: absolute;
-	right: 34px;
-	bottom: 7px;
-	display: grid;
-	place-items: center;
-	width: 24px;
-	height: 24px;
-	border: none;
-	border-radius: var(--radius-sm);
-	background: transparent;
-	color: var(--color-text-hint);
-	cursor: pointer;
-	transition:
-		background-color var(--speed-fast),
-		color var(--speed-fast);
-}
-
-[data-scope='select'][data-part='clear-trigger']:hover {
-	background: color-mix(in srgb, var(--color-text), transparent 88%);
-	color: var(--color-text);
-}
-
-/* The panel. */
+/* Select. Closed, it is a field like any other — see fields.css. Open, it
+   is a list on its own sheet: a hairline border, the menus' corners, rows
+   that light up under the pointer or the arrow keys, and the chosen one in
+   the brand colour with a tick. */
 
 [data-scope='select'][data-part='content'] {
 	/* It is portalled to the end of the document, so it has to name the layer
@@ -717,13 +396,14 @@
 	   copies this value onto the positioner that wraps it — the positioner's
 	   own z-index is written inline and cannot be styled from here. */
 	z-index: 70;
-	max-height: 330px;
-	padding: var(--space-1);
+	max-height: 320px;
+	padding: 4px;
 	overflow-y: auto;
-	border: 2px solid var(--color-input-focus);
-	border-radius: var(--radius-sm);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
 	background: var(--color-surface);
 	box-shadow: var(--shadow-md);
+	overscroll-behavior: contain;
 }
 
 [data-scope='select'][data-part='content']:focus-visible {
@@ -737,7 +417,7 @@
 @keyframes select-in {
 	from {
 		opacity: 0;
-		transform: translateY(-3px);
+		transform: translateY(-4px);
 	}
 }
 
@@ -747,29 +427,34 @@
 	}
 }
 
+[data-scope='select'][data-part='list'] {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
 [data-scope='select'][data-part='list']:focus-visible {
 	outline: none;
 }
 
-[data-scope='select'][data-part='item'] {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	padding: 10px 12px;
-	border-radius: var(--radius-sm);
-	color: var(--color-text);
-	font-size: var(--text-base);
-	line-height: 16px;
-	cursor: pointer;
-	user-select: none;
-	transition: background-color var(--speed-fast);
+/* A select's row is the shared popover row (above), with the label and
+   its description stacked, and the tick at the far end.
+
+   The chosen row: a light wash of the brand colour, and its words, icon
+   and tick in the brand colour itself. Under the pointer it keeps the wash,
+   so the chosen row never looks like just another highlighted one. */
+[data-scope='select'][data-part='item'][data-state='checked'],
+[data-scope='select'][data-part='item'][data-state='checked'][data-highlighted] {
+	background: var(--color-brand-subtle);
+	color: var(--color-brand);
 }
 
-/* One highlight, whether it was reached with the pointer or with the arrow
-   keys: Ark marks both as highlighted, so the list never shows two. */
-[data-scope='select'][data-part='item'][data-highlighted] {
-	background: var(--color-secondary);
-	outline: none;
+[data-scope='select'][data-part='item'][data-state='checked'] > svg {
+	color: var(--color-brand);
+}
+
+[data-scope='select'][data-part='item'][data-state='checked'] [data-part='item-text'] {
+	font-weight: 600;
 }
 
 [data-scope='select'][data-part='item'][data-disabled] {
@@ -784,6 +469,7 @@
 /* Stands in for the icon an option does not have, so its label starts where
    the others do. */
 [data-scope='select'][data-part='item'] [data-part='item-gutter'] {
+	flex: none;
 	width: 1rem;
 }
 
@@ -792,7 +478,7 @@
 	flex: 1;
 	min-width: 0;
 	flex-direction: column;
-	gap: 2px;
+	gap: 1px;
 }
 
 [data-scope='select'][data-part='item-text'] {
@@ -801,46 +487,27 @@
 	text-overflow: ellipsis;
 }
 
-[data-scope='select'][data-part='item'][data-state='checked'] [data-part='item-text'] {
-	font-weight: 600;
-}
-
 [data-scope='select'][data-part='item'] [data-part='item-description'] {
 	color: var(--color-text-hint);
-	font-size: var(--text-sm);
-	line-height: 1.3;
+	font-weight: 400;
+	font-size: var(--text-xs);
+	line-height: 16px;
 }
 
 /* The tick marks what is already chosen. Ark hides it with the hidden
    attribute on every other row, so it must not be given a display of its own
    — that would show a tick against all of them. */
 [data-scope='select'][data-part='item-indicator'] {
-	color: var(--color-success);
+	flex: none;
+	margin-left: auto;
+	color: var(--color-brand);
 	line-height: 0;
 }
 
 [data-scope='select'][data-part='list'] [data-part='empty'] {
 	margin: 0;
-	padding: 10px 12px;
+	padding: 12px;
 	color: var(--color-text-hint);
 	font-size: var(--text-sm);
 	text-align: center;
-}
-
-/* The line under the control, inside the block, the same as a field's. */
-
-[data-scope='select'][data-part='root'] > [data-part='helper-text'],
-[data-scope='select'][data-part='root'] > [data-part='error-text'] {
-	display: block;
-	padding: 2px 13px 9px;
-	font-size: var(--text-sm);
-	line-height: 1.3;
-}
-
-[data-scope='select'][data-part='root'] > [data-part='helper-text'] {
-	color: var(--color-text-hint);
-}
-
-[data-scope='select'][data-part='root'] > [data-part='error-text'] {
-	color: var(--color-danger);
 }

@@ -111,9 +111,17 @@
 		   one is a solid colour: a wash mixed with transparency reads as a
 		   different grey over every surface it lands on. */
 		--nav-row-height: 36px;
-		--nav-hover: var(--color-surface-alt);
-		--nav-current: var(--color-secondary);
-		--nav-mark: var(--color-accent);
+		/* Every row is in the full text colour: on white a grey name reads as
+		   disabled, not as a place to go. Sections are told from pages by
+		   weight, not by fading them. */
+		--nav-text: var(--color-text);
+		--nav-hover: var(--color-secondary);
+		/* The page being read is the one row in the brand colour, the way
+		   Telegram marks the open chat: nothing else in the column is blue,
+		   so it is found without looking for it. */
+		--nav-current: var(--color-brand);
+		--nav-current-text: var(--color-brand-text);
+		--nav-mark: var(--color-brand);
 		/* How far a branch's pages are inset from its rule. */
 		--nav-branch-inset: 8px;
 

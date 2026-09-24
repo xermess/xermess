@@ -18,7 +18,7 @@
 	} from '$lib/api';
 	import { Alert, Button, Input, List, ListItem, Panel, Tag, Thumb } from '$lib/components/ui';
 	import { keys } from '$lib/query';
-	import { formatDate } from '$lib/utils/format';
+	import { formatDate, initials } from '$lib/utils/format';
 
 	type Props = {
 		organization: Organization;
@@ -81,13 +81,7 @@
 	/** Two letters standing in for a logo there is none of, or none that
 	    loads: the initials of a name in several words, or the start of a name
 	    in one. */
-	const initials = $derived.by(() => {
-		const words = input.name.split(/\s+/).filter(Boolean);
-		const letters =
-			words.length > 1 ? words.slice(0, 2).map((word) => word[0]) : (words[0] ?? '').slice(0, 2);
-
-		return [...letters].join('').toUpperCase();
-	});
+	const monogram = $derived(initials(input.name));
 
 	/** The address that did not load, rather than a flag: a new one is given
 	    its own chance without anything having to reset it. */
@@ -153,7 +147,7 @@
 				{#if logo}
 					<img class="logo" src={logo} alt="" onerror={() => (failed = logo)} />
 				{:else}
-					<Thumb text={initials} size="md" />
+					<Thumb text={monogram} size="md" />
 				{/if}
 			{/snippet}
 

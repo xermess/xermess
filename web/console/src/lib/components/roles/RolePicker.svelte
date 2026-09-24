@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { RiGlobalLine, RiSearchLine, RiShieldUserLine } from 'svelte-remixicon';
+	import { RiGlobalLine, RiShieldUserLine } from 'svelte-remixicon';
 	import type { Application, Role } from '$lib/api';
-	import { Badge, Icon } from '$lib/components/ui';
+	import { Badge, Icon, SearchInput } from '$lib/components/ui';
 	import Choice from './Choice.svelte';
 	import { byScope } from './roles';
 
@@ -57,16 +57,12 @@
 </script>
 
 <div class="picker">
-	<label class="search">
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			placeholder="Search by role or application…"
-			bind:value={search}
-			onkeydown={stayPut}
-			aria-label="Search roles"
-		/>
-	</label>
+	<SearchInput
+		label="Search roles"
+		placeholder="Search by role or application…"
+		bind:value={search}
+		onkeydown={stayPut}
+	/>
 
 	<div class="list">
 		{#each groups as group (group.scope)}
@@ -107,35 +103,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-3);
-	}
-
-	.search {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 12px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 
 	.list {

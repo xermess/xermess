@@ -51,8 +51,8 @@
 		height: var(--nav-row-height);
 		padding: 0 10px;
 		overflow: hidden;
-		border-radius: var(--radius-md);
-		color: var(--color-text-hint);
+		border-radius: var(--radius-sm);
+		color: var(--nav-text);
 		font-size: var(--text-base);
 		white-space: nowrap;
 		text-decoration: none;
@@ -71,23 +71,24 @@
 		outline-offset: -2px;
 	}
 
-	/* The page being read: filled, named in full, and marked down its left
-	   edge. The fill alone was easy to miss beside a hover; the mark is what
-	   the eye finds first when it comes back to the column. */
+	/* The page being read: filled in the brand colour, which no hover comes
+	   near, so it needs no other mark. */
 	.row.current {
 		background: var(--nav-current);
-		color: var(--color-text);
+		color: var(--nav-current-text);
 		font-weight: 500;
 	}
 
-	.row.current::before {
+	/* Under a branch it also marks the tree's rule beside it, which is what
+	   ties the page to its section. */
+	.row.nested.current::before {
 		content: '';
 		position: absolute;
 		top: 50%;
-		left: 0;
+		left: calc(var(--nav-branch-inset) * -1);
 		width: 3px;
-		height: 16px;
-		border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+		height: calc(100% - 8px);
+		border-radius: var(--radius-pill);
 		background: var(--nav-mark);
 		transform: translateY(-50%);
 	}
@@ -126,12 +127,6 @@
 		height: calc(var(--nav-row-height) - 2px);
 		padding-left: 8px;
 		overflow: visible;
-	}
-
-	.row.nested.current::before {
-		left: calc(var(--nav-branch-inset) * -1);
-		height: calc(100% - 8px);
-		border-radius: var(--radius-pill);
 	}
 
 	.nested .icon {

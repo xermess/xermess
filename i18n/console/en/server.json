@@ -34,6 +34,10 @@
 		"session_not_found": "That session has ended or never existed.",
 		"mail_test_needs_recipient": "Say where the test message should go.",
 		"mail_test_failed": "The mail server did not take the message: {reason}",
-		"mail_content_key_unknown": "{key} is not part of any email this server sends."
+		"mail_content_key_unknown": "{key} is not part of any email this server sends.",
+		"admin_wrong_password": "Your current password is not right.",
+		"admin_email_taken": "An administrator with this email already exists.",
+		"admin_password_too_short": "The password must be at least {min} characters.",
+		"admin_password_too_long": "The password is too long."
 	}
 }

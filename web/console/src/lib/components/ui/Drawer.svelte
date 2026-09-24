@@ -12,9 +12,6 @@
 		description?: string;
 		/** Shown next to the title, for a record's id and the like. */
 		meta?: string;
-		/** How wide the panel opens, as a CSS length. It never passes the edge
-		    of a narrow screen, whatever this says. */
-		width?: string;
 		/** Given when the body is a form, so the footer's submit button
 		    belongs to it and Enter saves. Without it the panel is a plain
 		    container. */
@@ -28,7 +25,6 @@
 		title,
 		description,
 		meta,
-		width,
 		onsubmit,
 		children,
 		footer
@@ -87,7 +83,9 @@
 	<Portal>
 		<Dialog.Backdrop />
 		<Dialog.Positioner>
-			<Dialog.Content style={width ? `--drawer-width: ${width}` : undefined}>
+			<!-- Every drawer opens at one width, --drawer-width: a form reads
+			     the same wherever it is, and nothing needs deciding per panel. -->
+			<Dialog.Content>
 				{#if onsubmit}
 					<form class="layout" {onsubmit} bind:this={panelEl} tabindex="-1">
 						{@render panel()}

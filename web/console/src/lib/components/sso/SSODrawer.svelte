@@ -332,6 +332,34 @@
 	}
 </script>
 
+<!-- Testing reads the fields of the protocol's section, so it sits in that
+     section's header, and what it found is the last thing in the section. -->
+{#snippet testButton()}
+	<Button variant="subtle" size="sm" onclick={test} loading={testing} disabled={testing}>
+		<Icon icon={RiFlaskLine} />
+		Test connection
+	</Button>
+{/snippet}
+
+{#snippet testResult()}
+	{#if testError}
+		<Alert>{testError}</Alert>
+	{:else if tested?.authorization_endpoint}
+		<Alert tone="success">
+			{`Discovery worked: people are sent to ${tested.authorization_endpoint} to sign in.`}
+		</Alert>
+		{#if tested.unsupported_scopes?.length}
+			<Alert tone="warning">
+				{`The provider does not list ${tested.unsupported_scopes.join(' ')} among its scopes, and some providers — Keycloak among them — refuse the whole sign-in over a scope they do not know. Remove it, or add it at the provider first.`}
+			</Alert>
+		{/if}
+	{:else if tested?.identity_provider}
+		<Alert tone="success">
+			{`The metadata is ${tested.identity_provider.entity_id}'s: people are sent to ${tested.identity_provider.sso_url} to sign in.`}
+		</Alert>
+	{/if}
+{/snippet}
+
 <Drawer
 	bind:open
 	title={current ? current.name : 'New connection'}
@@ -339,7 +367,6 @@
 		? 'Where it signs people in, for which domains, and what they become here.'
 		: "An organisation's identity provider. It starts off, so it can be set up and tested before anybody signs in through it."}
 	meta={current?.slug}
-	width="52rem"
 	onsubmit={submit}
 >
 	{#if error}
@@ -384,6 +411,7 @@
 						<FormSection
 							title="OpenID Connect"
 							description="Register this server at the provider as a web application, then copy its issuer and credentials here."
+							action={canWrite ? testButton : undefined}
 						>
 							<Input
 								label="Issuer"
@@ -414,11 +442,13 @@
 								placeholder="email profile groups"
 								{readOnly}
 							/>
+							{@render testResult()}
 						</FormSection>
 					{:else}
 						<FormSection
 							title="SAML 2.0"
 							description="Give the provider this server's metadata, then its own here: from an address, or the file it gave you."
+							action={canWrite ? testButton : undefined}
 						>
 							<Input
 								label="Metadata URL"
@@ -449,33 +479,8 @@
 								bind:checked={signRequests}
 								disabled={readOnly}
 							/>
+							{@render testResult()}
 						</FormSection>
-					{/if}
-
-					{#if canWrite}
-						<div class="test">
-							<Button variant="subtle" onclick={test} loading={testing} disabled={testing}>
-								<Icon icon={RiFlaskLine} />
-								Test connection
-							</Button>
-
-							{#if testError}
-								<Alert>{testError}</Alert>
-							{:else if tested?.authorization_endpoint}
-								<Alert tone="success">
-									{`Discovery worked: people are sent to ${tested.authorization_endpoint} to sign in.`}
-								</Alert>
-								{#if tested.unsupported_scopes?.length}
-									<Alert tone="warning">
-										{`The provider does not list ${tested.unsupported_scopes.join(' ')} among its scopes, and some providers — Keycloak among them — refuse the whole sign-in over a scope they do not know. Remove it, or add it at the provider first.`}
-									</Alert>
-								{/if}
-							{:else if tested?.identity_provider}
-								<Alert tone="success">
-									{`The metadata is ${tested.identity_provider.entity_id}'s: people are sent to ${tested.identity_provider.sso_url} to sign in.`}
-								</Alert>
-							{/if}
-						</div>
 					{/if}
 				{:else if value === 'provider'}
 					{#if !current}
@@ -720,7 +725,6 @@
 		gap: var(--space-3);
 	}
 
-	.test,
 	.files {
 		display: flex;
 		flex-direction: column;

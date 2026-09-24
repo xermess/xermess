@@ -3,16 +3,10 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import {
-		RiAddLine,
-		RiCloseLine,
-		RiRefreshLine,
-		RiSearchLine,
-		RiUpload2Line
-	} from 'svelte-remixicon';
+	import { RiAddLine, RiCloseLine, RiRefreshLine, RiUpload2Line } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { flowsApi, messageOf, type LoginFlow } from '$lib/api';
-	import { Alert, Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import FlowTable from '$lib/components/flows/FlowTable.svelte';
 	import { TEMPLATES, freeSlug, fromFile } from '$lib/components/flows/steps';
 	import { can } from '$lib/permissions';
@@ -199,22 +193,13 @@
 {/if}
 
 <div class="toolbar">
-	<form
-		class="search"
-		onsubmit={(event) => {
-			event.preventDefault();
-			apply({ search });
-		}}
-	>
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			placeholder="Search name, identifier or description…"
-			bind:value={search}
-			oninput={debounced}
-			aria-label="Search login flows"
-		/>
-	</form>
+	<SearchInput
+		label="Search login flows"
+		placeholder="Search name, identifier or description…"
+		bind:value={search}
+		onsubmit={() => apply({ search })}
+		oninput={debounced}
+	/>
 </div>
 
 <FlowTable
@@ -301,37 +286,5 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-family: var(--font-sans);
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 </style>

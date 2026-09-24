@@ -16,6 +16,8 @@ type adminResponse struct {
 	Username  string     `json:"username"`
 	Email     string     `json:"email"`
 	FullName  string     `json:"full_name"`
+	FirstName string     `json:"first_name"`
+	LastName  string     `json:"last_name"`
 	Status    string     `json:"status"`
 	LastLogin *time.Time `json:"last_login_at,omitempty"`
 
@@ -47,6 +49,8 @@ func newAdminResponse(a *model.AdminUser) adminResponse {
 		Username:  a.Username,
 		Email:     a.Email,
 		FullName:  a.FullName(),
+		FirstName: a.FirstName,
+		LastName:  a.LastName,
 		Status:    string(a.Status),
 		Roles:     roles,
 		LastLogin: a.LastLoginAt,

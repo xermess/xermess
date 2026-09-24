@@ -3,12 +3,20 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { RiAddLine, RiDeleteBinLine, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
+	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, apisApi, type API } from '$lib/api';
 	import { apisOptions, keys } from '$lib/query';
 	import { can } from '$lib/permissions';
-	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		Icon,
+		IconButton,
+		PageHeader,
+		SearchInput,
+		SelectionBar
+	} from '$lib/components/ui';
 	import ApiDrawer from '$lib/components/apis/ApiDrawer.svelte';
 	import ApiTable from '$lib/components/apis/ApiTable.svelte';
 	import type { PageData } from './$types';
@@ -145,22 +153,13 @@
 </p>
 
 <div class="toolbar">
-	<form
-		class="search"
-		onsubmit={(event) => {
-			event.preventDefault();
-			apply({ search });
-		}}
-	>
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			placeholder="Search name, identifier or description…"
-			bind:value={search}
-			oninput={debounced}
-			aria-label="Search APIs"
-		/>
-	</form>
+	<SearchInput
+		label="Search APIs"
+		placeholder="Search name, identifier or description…"
+		bind:value={search}
+		onsubmit={() => apply({ search })}
+		oninput={debounced}
+	/>
 </div>
 
 {#if error}
@@ -241,38 +240,6 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-family: var(--font-sans);
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 
 	@media (max-width: 40rem) {

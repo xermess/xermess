@@ -16,6 +16,7 @@ export type { ColorPalette, ControlProps, Size, Variant } from './control';
 // Form fields
 export { default as Field } from './Field.svelte';
 export { default as Input } from './Input.svelte';
+export { default as SearchInput } from './SearchInput.svelte';
 export { default as PasswordInput } from './PasswordInput.svelte';
 export { default as Select } from './Select.svelte';
 export type { SelectOption } from './select';

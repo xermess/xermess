@@ -112,3 +112,12 @@ function calendarDaysBetween(from: Date, to: Date): number {
 
 	return Math.round((end.getTime() - start.getTime()) / DAY);
 }
+
+/** Two letters standing in for a picture: the first letters of a name in
+    several words, or the start of a name in one. */
+export function initials(name: string): string {
+	const words = name.split(/\s+/).filter(Boolean);
+	const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? '').slice(0, 2);
+
+	return letters.toUpperCase();
+}

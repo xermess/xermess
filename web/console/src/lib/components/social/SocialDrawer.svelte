@@ -213,7 +213,6 @@
 		? 'What this server sends to the provider, and what it may do here.'
 		: 'Register this server with a provider, then paste what it gave you here.'}
 	meta={editing ? provider!.slug : undefined}
-	width="34rem"
 	onsubmit={submit}
 >
 	{#if error}

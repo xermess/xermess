@@ -78,7 +78,6 @@
 	<button
 		type="button"
 		class="row"
-		class:holds={holdsCurrent}
 		aria-expanded={open}
 		aria-controls="branch-{branch.id}"
 		onclick={onToggle}
@@ -126,9 +125,9 @@
 		padding: 0 8px 0 10px;
 		overflow: hidden;
 		border: none;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-sm);
 		background: transparent;
-		color: var(--color-text-hint);
+		color: var(--nav-text);
 		font: inherit;
 		font-size: var(--text-base);
 		white-space: nowrap;
@@ -142,7 +141,6 @@
 	   smaller and heavier than the rows under it: the column reads as
 	   headings with their pages, not as one long list. */
 	.row:not(.folded) {
-		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		font-weight: 600;
 	}
@@ -155,13 +153,6 @@
 	.row:focus-visible {
 		outline: 2px solid var(--color-accent);
 		outline-offset: -2px;
-	}
-
-	/* A branch whose page is being read is darkened, so the eye lands on the
-	   right section before it reads any row under it. The page itself
-	   carries the fill; filling the section too would be shouting. */
-	.row.holds {
-		color: var(--color-text);
 	}
 
 	.icon {
@@ -188,14 +179,14 @@
 	.chevron {
 		display: inline-flex;
 		flex: none;
-		color: var(--color-text-disabled);
+		color: var(--color-text-hint);
 		transition:
 			transform var(--speed),
 			color var(--speed-fast);
 	}
 
 	.row:hover .chevron {
-		color: var(--color-text-hint);
+		color: var(--color-text);
 	}
 
 	.chevron.open {
@@ -280,7 +271,8 @@
 	}
 
 	:global(.branch-menu a[data-part='item'].current) {
-		background: var(--nav-current);
+		background: var(--color-brand);
+		color: var(--color-brand-text);
 		font-weight: 600;
 	}
 

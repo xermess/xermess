@@ -234,6 +234,17 @@ func (s *Store) SaveAdmin(ctx context.Context, admin *model.AdminUser) error {
 	}))
 }
 
+// SaveOwnAccount writes the columns an administrator may change about
+// themselves — their name, their address, their password — and nothing
+// else, so a change made from their own profile can never reach the roles
+// they hold. A taken address is ErrDuplicate.
+func (s *Store) SaveOwnAccount(ctx context.Context, admin *model.AdminUser) error {
+	return translate(s.db.WithContext(ctx).
+		Model(admin).
+		Select("first_name", "last_name", "email", "username", "password_hash").
+		Updates(admin).Error)
+}
+
 // writeAssignments inserts the administrator's assignments. The roles and
 // applications they point at already exist, so only the assignments are
 // written.

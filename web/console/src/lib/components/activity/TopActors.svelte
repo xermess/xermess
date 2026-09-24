@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Overview } from '$lib/api';
 	import { List, ListItem, Tag, Thumb } from '$lib/components/ui';
+	import { initials } from '$lib/utils/format';
 
 	type Props = {
 		actors: Overview['top_actors'];
@@ -10,12 +11,10 @@
 
 	const most = $derived(Math.max(1, ...actors.map((actor) => actor.events)));
 
-	/** Two letters for the thumb, from the address before the @. */
-	function initials(actor: string): string {
-		const local = actor.split('@')[0] ?? actor;
-		const parts = local.split(/[._-]+/).filter(Boolean);
-
-		return (parts.length > 1 ? parts[0][0] + parts[1][0] : local.slice(0, 2)).toUpperCase();
+	/** Two letters for the thumb, from the address before the @, read as
+	    words where dots, dashes or underscores part it. */
+	function actorInitials(actor: string): string {
+		return initials((actor.split('@')[0] ?? actor).replace(/[._-]+/g, ' '));
 	}
 </script>
 
@@ -25,7 +24,7 @@
 	<List label="Most active administrators">
 		{#each actors as actor (actor.actor)}
 			<ListItem>
-				{#snippet lead()}<Thumb text={initials(actor.actor)} />{/snippet}
+				{#snippet lead()}<Thumb text={actorInitials(actor.actor)} />{/snippet}
 
 				<span class="name" title={actor.actor}>{actor.actor}</span>
 				<span class="track">

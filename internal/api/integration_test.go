@@ -449,6 +449,81 @@ func TestLiveLoginResetsFailures(t *testing.T) {
 	}
 }
 
+// An administrator changes their own account from the profile: a name
+// freely, a new address and a new password only with the one they have. A
+// new password signs every other browser out and keeps the one it came from.
+func TestLiveOwnAccount(t *testing.T) {
+	s := newLiveServer(t)
+	here := s.superAdmin()
+
+	elsewhere := s.client()
+	if status := elsewhere.login(superEmail, superPassword); status != http.StatusOK {
+		t.Fatalf("second sign-in = %d", status)
+	}
+
+	var answer struct {
+		Admin struct {
+			Email     string `json:"email"`
+			FirstName string `json:"first_name"`
+			LastName  string `json:"last_name"`
+			FullName  string `json:"full_name"`
+		} `json:"admin"`
+	}
+	here.must(http.StatusOK, http.MethodPatch, "/me", map[string]string{
+		"first_name": "Ada", "last_name": "Lovelace", "email": superEmail,
+	}, &answer)
+	if answer.Admin.FullName != "Ada Lovelace" || answer.Admin.LastName != "Lovelace" {
+		t.Errorf("after renaming = %+v, want Ada Lovelace", answer.Admin)
+	}
+
+	const moved = "ada@example.com"
+	for _, tt := range []struct {
+		name     string
+		password string
+		want     int
+	}{
+		{"a new address without the password", "", http.StatusBadRequest},
+		{"a new address with the wrong password", "not-the-password", http.StatusBadRequest},
+		{"a new address with the password", superPassword, http.StatusOK},
+	} {
+		status := here.do(http.MethodPatch, "/me", map[string]string{
+			"first_name": "Ada", "email": moved, "current_password": tt.password,
+		}, nil)
+		if status != tt.want {
+			t.Errorf("%s = %d, want %d", tt.name, status, tt.want)
+		}
+	}
+
+	if status := s.client().login(moved, superPassword); status != http.StatusOK {
+		t.Errorf("sign-in with the new address = %d, want 200", status)
+	}
+
+	const next = "a-brand-new-password"
+	if status := here.do(http.MethodPost, "/me/password", map[string]string{
+		"current_password": "not-the-password", "new_password": next,
+	}, nil); status != http.StatusBadRequest {
+		t.Errorf("new password with the wrong current one = %d, want 400", status)
+	}
+	if status := here.do(http.MethodPost, "/me/password", map[string]string{
+		"current_password": superPassword, "new_password": "short",
+	}, nil); status != http.StatusBadRequest {
+		t.Errorf("a new password that is too short = %d, want 400", status)
+	}
+	here.must(http.StatusOK, http.MethodPost, "/me/password", map[string]string{
+		"current_password": superPassword, "new_password": next,
+	}, nil)
+
+	if status := here.do(http.MethodGet, "/me", nil, nil); status != http.StatusOK {
+		t.Errorf("the session that changed the password = %d, want still signed in", status)
+	}
+	if status := elsewhere.do(http.MethodGet, "/me", nil, nil); status != http.StatusUnauthorized {
+		t.Errorf("another session after a new password = %d, want 401", status)
+	}
+	if status := s.client().login(moved, next); status != http.StatusOK {
+		t.Errorf("sign-in with the new password = %d, want 200", status)
+	}
+}
+
 // An administrator of one application manages its roles, but cannot reach
 // the global roles or another application's through them.
 func TestLiveScopedAdminStaysInTheirApplication(t *testing.T) {

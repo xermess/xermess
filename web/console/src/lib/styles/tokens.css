@@ -1,9 +1,7 @@
-/* Design tokens, taken from the PocketBase admin UI so this panel reads the
-   same way: a near-black primary, a soft grey secondary, a navy accent bar,
-   and filled inputs that only show their border on focus.
-
-   The dark palette is built the way PocketBase builds it — one base colour
-   mixed with increasing amounts of white — so the greys stay in step. */
+/* Design tokens. The layout and spacing come from the PocketBase admin UI;
+   the colour is Telegram's: a white or near-black (#0f0f0f) page, cool greys
+   a step apart, and one brand blue, #0088cc, for everything chosen, pressed
+   or current. Inputs are filled and only show their border on focus. */
 
 :root {
 	/* Type */
@@ -18,9 +16,9 @@
 	--line-height: 1.5;
 
 	/* Shape */
-	--radius-sm: 5px;
-	--radius-md: 6px;
-	--radius-lg: 12px;
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 14px;
 	--radius-pill: 999px;
 
 	/* Spacing, on a 5px step like PocketBase */
@@ -67,65 +65,130 @@
 	   beside it. See styles/scrollbars.css. */
 	--scrollbar-size: 10px;
 
-	/* Light palette */
+	/* Light palette, after Telegram's: white, cool greys a step apart, and
+	   the brand blue for whatever is chosen, pressed or current. Every value
+	   is solid — a colour mixed with transparency is a different grey over
+	   every surface it lands on. */
+	--color-brand: #0088cc;
+	--color-brand-hover: #0077b3;
+	--color-brand-text: #fff;
+	/* The brand as a quiet fill: a selected row, a chosen chip. */
+	--color-brand-subtle: #e5f3fa;
+
 	--color-surface: #fff;
 	--color-body: #fff;
-	--color-primary: #25272d;
-	--color-primary-text: #fff;
-	--color-secondary: #e4e8ec;
-	--color-secondary-alt: #dce0e5;
-	--color-accent: #263b5e;
-	--color-accent-text: #fff;
+	--color-primary: var(--color-brand);
+	--color-primary-hover: var(--color-brand-hover);
+	--color-primary-text: var(--color-brand-text);
+	--color-secondary: #f1f2f4;
+	--color-secondary-alt: #e6e8eb;
+	--color-accent: var(--color-brand);
+	--color-accent-text: var(--color-brand-text);
 
-	--color-text: #25272d;
-	--color-text-hint: #687278;
-	--color-text-disabled: #a2a9ae;
+	/* Text is near-black and the hint a dark grey: a light grey on white
+	   reads as disabled rather than as secondary. */
+	--color-text: #16191d;
+	--color-text-hint: #5b6168;
+	--color-text-disabled: #969ba1;
 
-	--color-input: #e4e8ec;
-	--color-input-focus: #dce0e5;
-	--color-input-border: #d3d9df;
-	--color-border: #d3d9df;
+	/* A field has no fill of its own and a hairline border, Telegram's: it
+	   takes the colour of whatever it sits on — the page, a panel, a drawer
+	   — so it never reads as a block of a different grey. */
+	--color-input: transparent;
+	--color-input-border: #d3d7dc;
+	--color-input-border-hover: #aab0b7;
+	--color-border: #e4e6e9;
 
-	--color-success: #22a96d;
-	--color-danger: #c33751;
-	--color-warning: #e57534;
-	--color-info: #3376e5;
+	--color-success: #31a24c;
+	--color-danger: #e53935;
+	--color-warning: #e8871e;
+	--color-info: var(--color-brand);
 
-	--surface-success: color-mix(in srgb, var(--color-success), var(--color-surface) 80%);
-	--surface-danger: color-mix(in srgb, var(--color-danger), var(--color-surface) 80%);
-	--surface-info: color-mix(in srgb, var(--color-info), var(--color-surface) 80%);
-	--surface-warning: color-mix(in srgb, var(--color-warning), var(--color-surface) 80%);
+	--surface-success: #e8f5eb;
+	--surface-danger: #fce9e9;
+	--surface-info: var(--color-brand-subtle);
+	--surface-warning: #fcf1e3;
 
-	/* PocketBase's surfaceAlt1: the faintest tint, for the header strip of a
-	   panel and the wash under a hovered row. */
-	--color-surface-alt: #f8f9fa;
+	/* The faintest tint: the header strip of a panel, and the wash under a
+	   hovered row. */
+	--color-surface-alt: #f7f7f8;
 
-	--shadow-sm: 0 2px 5px 0 rgb(0 0 0 / 6%);
-	/* The drop under an open panel, PocketBase's --boxShadow. */
-	--shadow-panel: 0 8px 5px -5px rgb(34 36 36 / 10%);
-	--shadow-md: 0 2px 12px 0 rgb(0 0 0 / 8%);
-	/* The hairline down the left of an open drawer, PocketBase's
-	   --leftBoxShadow. It stands in for a border: a line that is part of the
-	   panel would travel with it as it slides. */
-	--shadow-drawer: -1px 0 5px 0 rgb(34 36 36 / 10%);
-	--selection: #465a7340;
-	/* What the page behind an open drawer is washed with: PocketBase's
-	   --modalOverlayColor, a blue-grey rather than black, so the page under
-	   it reads as dimmed instead of switched off. */
-	--color-overlay: rgb(70 90 115 / 25%);
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 8%);
+	/* The drop under an open panel. */
+	--shadow-panel: 0 6px 16px -6px rgb(0 0 0 / 14%);
+	--shadow-md: 0 4px 20px 0 rgb(0 0 0 / 10%);
+	/* The hairline down the left of an open drawer. It stands in for a
+	   border: a line that is part of the panel would travel with it as it
+	   slides. */
+	--shadow-drawer: -1px 0 6px 0 rgb(0 0 0 / 10%);
+	--selection: #b3dcf0;
+	/* What the page behind an open drawer is dimmed with. */
+	--color-overlay: rgb(0 0 0 / 30%);
 
-	--scrollbar-thumb: color-mix(in srgb, #25272d, transparent 78%);
-	--scrollbar-thumb-hover: color-mix(in srgb, #25272d, transparent 58%);
+	--scrollbar-thumb: #d4d6da;
+	--scrollbar-thumb-hover: #b6b9be;
 
-	--tooltip-surface: #25272d;
+	--tooltip-surface: #2b2b2e;
 	--tooltip-text: #fff;
 
-	/* The wash a row takes under the pointer. PocketBase uses #f8f9fa on
-	   white: barely there, which is what keeps a long table calm. */
-	--row-hover: #f8f9fa;
+	--row-hover: #f7f7f8;
+
+	/* What floats over the page comes in two kinds, each with its own set:
+	   a popover — a menu, a select's list — and a dialog — a drawer, the
+	   command palette. In the light theme both are white like the page, set
+	   apart by a hairline, a shadow and, for a dialog, the dimmed page. */
+	--popover-surface: #fff;
+	--popover-surface-alt: #f7f7f8;
+	--popover-secondary: #f1f2f4;
+	--popover-secondary-alt: #e6e8eb;
+	--popover-border: #e4e6e9;
+	--popover-input-border: #d3d7dc;
+	--popover-input-border-hover: #aab0b7;
+	--popover-row-hover: #f7f7f8;
+
+	/* A dialog — a drawer, the command palette — is a large sheet rather
+	   than a small card, so in the dark theme it sits closer to the page
+	   than a menu does. In the light theme it is the same white. */
+	--dialog-surface: var(--popover-surface);
+	--dialog-surface-alt: var(--popover-surface-alt);
+	--dialog-secondary: var(--popover-secondary);
+	--dialog-secondary-alt: var(--popover-secondary-alt);
+	--dialog-border: var(--popover-border);
+	--dialog-input-border: var(--popover-input-border);
+	--dialog-input-border-hover: var(--popover-input-border-hover);
+	--dialog-row-hover: var(--popover-row-hover);
 
 	--color-scheme: light;
 	color-scheme: light;
+}
+
+/* Inside anything that floats over the page, the page's own surface
+   colours are swapped for its set, so every component in it — panels, rows,
+   fields, dividers — is drawn at that level without knowing where it is.
+   A popover: a menu, or a select's list. */
+[data-scope='menu'][data-part='content'],
+[data-scope='select'][data-part='content'],
+[data-scope='popover'][data-part='content'] {
+	--color-surface: var(--popover-surface);
+	--color-surface-alt: var(--popover-surface-alt);
+	--color-secondary: var(--popover-secondary);
+	--color-secondary-alt: var(--popover-secondary-alt);
+	--color-border: var(--popover-border);
+	--color-input-border: var(--popover-input-border);
+	--color-input-border-hover: var(--popover-input-border-hover);
+	--row-hover: var(--popover-row-hover);
+}
+
+/* A dialog: a drawer, or the command palette. */
+[data-scope='dialog'][data-part='content'] {
+	--color-surface: var(--dialog-surface);
+	--color-surface-alt: var(--dialog-surface-alt);
+	--color-secondary: var(--dialog-secondary);
+	--color-secondary-alt: var(--dialog-secondary-alt);
+	--color-border: var(--dialog-border);
+	--color-input-border: var(--dialog-input-border);
+	--color-input-border-hover: var(--dialog-input-border-hover);
+	--row-hover: var(--dialog-row-hover);
 }
 
 /* The dark palette, applied by choice. The second block covers the case where
@@ -134,46 +197,72 @@
    together when changing one. */
 
 :root[data-theme='dark'] {
-	--color-dark-base: #1c1c1c;
+	--color-dark-base: #0f0f0f;
+
+	--color-brand-hover: #1a9ad9;
+	--color-brand-subtle: #0d2533;
 
 	--color-surface: var(--color-dark-base);
 	--color-body: var(--color-dark-base);
-	--color-primary: color-mix(in srgb, var(--color-dark-base), white 14%);
-	--color-primary-text: #ebebeb;
-	--color-secondary: color-mix(in srgb, var(--color-dark-base), white 7%);
-	--color-secondary-alt: color-mix(in srgb, var(--color-dark-base), white 12%);
-	--color-accent: #263b5e;
-	--color-accent-text: #ebebeb;
+	--color-secondary: #1f1f1f;
+	--color-secondary-alt: #2a2a2a;
 
-	--color-text: #ebebeb;
-	--color-text-hint: color-mix(in srgb, #ebebeb, transparent 40%);
-	--color-text-disabled: color-mix(in srgb, #ebebeb, transparent 55%);
+	--color-text: #e8e8ea;
+	--color-text-hint: #a9a9ae;
+	--color-text-disabled: #6b6b70;
 
-	--color-input: color-mix(in srgb, var(--color-dark-base), white 7%);
-	--color-input-focus: color-mix(in srgb, var(--color-dark-base), white 12%);
-	--color-input-border: color-mix(in srgb, var(--color-dark-base), white 14%);
-	--color-border: color-mix(in srgb, var(--color-dark-base), white 14%);
+	--color-input-border: #303030;
+	--color-input-border-hover: #4a4a4a;
+	--color-border: #242424;
 
-	--color-success: #27865d;
-	--color-danger: #bb303e;
-	--color-warning: #cf4e17;
-	--color-info: #4273bd;
+	--color-success: #4cbb5e;
+	--color-danger: #ef5350;
+	--color-warning: #f0a040;
+	/* Text-level brand, lifted so it reads on near-black; fills keep #0088cc. */
+	--color-info: #3ea6e6;
 
-	--color-surface-alt: color-mix(in srgb, var(--color-dark-base), white 2%);
+	--surface-success: #10261a;
+	--surface-danger: #2e1414;
+	--surface-warning: #2e2112;
 
-	--shadow-sm: 0 2px 5px 0 rgb(0 0 0 / 30%);
-	--shadow-panel: 0 8px 5px -5px rgb(0 0 0 / 30%);
-	--shadow-md: 0 2px 12px 0 rgb(0 0 0 / 40%);
-	--shadow-drawer: -1px 0 5px 0 rgb(0 0 0 / 30%);
-	--color-overlay: rgb(18 18 18 / 50%);
+	--color-surface-alt: #161616;
 
-	--scrollbar-thumb: color-mix(in srgb, #ebebeb, transparent 80%);
-	--scrollbar-thumb-hover: color-mix(in srgb, #ebebeb, transparent 60%);
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 50%);
+	--shadow-panel: 0 6px 16px -6px rgb(0 0 0 / 60%);
+	--shadow-md: 0 4px 20px 0 rgb(0 0 0 / 60%);
+	--shadow-drawer: -1px 0 6px 0 rgb(0 0 0 / 60%);
+	--selection: #0a4d73;
+	--color-overlay: rgb(0 0 0 / 60%);
 
-	--tooltip-surface: color-mix(in srgb, var(--color-dark-base), white 26%);
-	--tooltip-text: #fff;
+	--scrollbar-thumb: #333;
+	--scrollbar-thumb-hover: #4a4a4a;
 
-	--row-hover: color-mix(in srgb, var(--color-dark-base), white 6%);
+	--tooltip-surface: #2c2c2e;
+
+	--row-hover: #161616;
+
+	/* In the dark theme what floats is lighter than the page, Telegram's
+	   way — a shadow barely shows on near-black, a lighter sheet does — in
+	   two steps: a dialog just above the page (#141416), a popover a step
+	   above that (#18181b), so a menu opened over a drawer still stands
+	   apart from it. Every grey inside each steps up with it. */
+	--popover-surface: #18181b;
+	--popover-surface-alt: #1d1d20;
+	--popover-secondary: #25252a;
+	--popover-secondary-alt: #2f2f34;
+	--popover-border: #2a2a2e;
+	--popover-input-border: #38383c;
+	--popover-input-border-hover: #505055;
+	--popover-row-hover: #1f1f23;
+
+	--dialog-surface: #141416;
+	--dialog-surface-alt: #19191b;
+	--dialog-secondary: #202023;
+	--dialog-secondary-alt: #2a2a2d;
+	--dialog-border: #242427;
+	--dialog-input-border: #323235;
+	--dialog-input-border-hover: #4a4a4e;
+	--dialog-row-hover: #19191b;
 
 	--color-scheme: dark;
 	color-scheme: dark;
@@ -181,46 +270,68 @@
 
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		--color-dark-base: #1c1c1c;
+		--color-dark-base: #0f0f0f;
+
+		--color-brand-hover: #1a9ad9;
+		--color-brand-subtle: #0d2533;
 
 		--color-surface: var(--color-dark-base);
 		--color-body: var(--color-dark-base);
-		--color-primary: color-mix(in srgb, var(--color-dark-base), white 14%);
-		--color-primary-text: #ebebeb;
-		--color-secondary: color-mix(in srgb, var(--color-dark-base), white 7%);
-		--color-secondary-alt: color-mix(in srgb, var(--color-dark-base), white 12%);
-		--color-accent: #263b5e;
-		--color-accent-text: #ebebeb;
+		--color-secondary: #1f1f1f;
+		--color-secondary-alt: #2a2a2a;
 
-		--color-text: #ebebeb;
-		--color-text-hint: color-mix(in srgb, #ebebeb, transparent 40%);
-		--color-text-disabled: color-mix(in srgb, #ebebeb, transparent 55%);
+		--color-text: #e8e8ea;
+		--color-text-hint: #a9a9ae;
+		--color-text-disabled: #6b6b70;
 
-		--color-input: color-mix(in srgb, var(--color-dark-base), white 7%);
-		--color-input-focus: color-mix(in srgb, var(--color-dark-base), white 12%);
-		--color-input-border: color-mix(in srgb, var(--color-dark-base), white 14%);
-		--color-border: color-mix(in srgb, var(--color-dark-base), white 14%);
+		--color-input-border: #303030;
+		--color-input-border-hover: #4a4a4a;
+		--color-border: #242424;
 
-		--color-success: #27865d;
-		--color-danger: #bb303e;
-		--color-warning: #cf4e17;
-		--color-info: #4273bd;
+		--color-success: #4cbb5e;
+		--color-danger: #ef5350;
+		--color-warning: #f0a040;
+		/* Text-level brand, lifted so it reads on near-black; fills keep #0088cc. */
+		--color-info: #3ea6e6;
 
-		--color-surface-alt: color-mix(in srgb, var(--color-dark-base), white 2%);
+		--surface-success: #10261a;
+		--surface-danger: #2e1414;
+		--surface-warning: #2e2112;
 
-		--shadow-sm: 0 2px 5px 0 rgb(0 0 0 / 30%);
-		--shadow-panel: 0 8px 5px -5px rgb(0 0 0 / 30%);
-		--shadow-md: 0 2px 12px 0 rgb(0 0 0 / 40%);
-		--shadow-drawer: -1px 0 5px 0 rgb(0 0 0 / 30%);
-		--color-overlay: rgb(18 18 18 / 50%);
+		--color-surface-alt: #161616;
 
-		--scrollbar-thumb: color-mix(in srgb, #ebebeb, transparent 80%);
-		--scrollbar-thumb-hover: color-mix(in srgb, #ebebeb, transparent 60%);
+		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 50%);
+		--shadow-panel: 0 6px 16px -6px rgb(0 0 0 / 60%);
+		--shadow-md: 0 4px 20px 0 rgb(0 0 0 / 60%);
+		--shadow-drawer: -1px 0 6px 0 rgb(0 0 0 / 60%);
+		--selection: #0a4d73;
+		--color-overlay: rgb(0 0 0 / 60%);
 
-		--tooltip-surface: color-mix(in srgb, var(--color-dark-base), white 26%);
-		--tooltip-text: #fff;
+		--scrollbar-thumb: #333;
+		--scrollbar-thumb-hover: #4a4a4a;
 
-		--row-hover: color-mix(in srgb, var(--color-dark-base), white 6%);
+		--tooltip-surface: #2c2c2e;
+
+		--row-hover: #161616;
+
+		/* The same two steps as the block above: a dialog, then a popover. */
+		--popover-surface: #18181b;
+		--popover-surface-alt: #1d1d20;
+		--popover-secondary: #25252a;
+		--popover-secondary-alt: #2f2f34;
+		--popover-border: #2a2a2e;
+		--popover-input-border: #38383c;
+		--popover-input-border-hover: #505055;
+		--popover-row-hover: #1f1f23;
+
+		--dialog-surface: #141416;
+		--dialog-surface-alt: #19191b;
+		--dialog-secondary: #202023;
+		--dialog-secondary-alt: #2a2a2d;
+		--dialog-border: #242427;
+		--dialog-input-border: #323235;
+		--dialog-input-border-hover: #4a4a4e;
+		--dialog-row-hover: #19191b;
 
 		--color-scheme: dark;
 		color-scheme: dark;

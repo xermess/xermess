@@ -183,7 +183,6 @@
 	title={language?.native ?? ''}
 	description="Its names, where it is offered, and its text."
 	meta={language?.code}
-	width="56rem"
 	onsubmit={submit}
 >
 	{#if error}

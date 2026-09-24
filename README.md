@@ -149,7 +149,7 @@ web/console/src/lib/utils/             how values are shown
 web/console/src/lib/data/demo.ts       placeholder rows for the sections with no backend
 web/console/src/lib/server/api.ts      calling the API from a server load, with the session
 web/console/src/lib/constants.ts       the names both sides agree on: the cookies
-web/console/src/lib/styles/            fonts.css, tokens.css, base.css, ark.css
+web/console/src/lib/styles/            fonts.css, tokens.css, base.css, fields.css, ark.css
 web/console/src/routes/admin/login/    the sign-in page
 web/console/src/routes/admin/(panel)/  everything behind a session
 
@@ -337,6 +337,8 @@ code is defining its problem and adding the sentence to
 | `POST` | `/api/v1/admin/auth/login`    | no              | Sign in, sets the session cookie |
 | `POST` | `/api/v1/admin/auth/logout`   | yes             | Sign out, revokes the session  |
 | `GET`  | `/api/v1/admin/me`            | yes             | The signed-in administrator    |
+| `PATCH`| `/api/v1/admin/me`            | yes             | Change your own name and email; a new email takes your current password |
+| `POST` | `/api/v1/admin/me/password`   | yes             | Change your own password; signs out your other sessions |
 | `GET`  | `/api/v1/admin/overview`      | yes             | Counts and recent activity     |
 | `GET`  | `/api/v1/admin/logs`          | yes             | The activity log (`?limit=`)   |
 | `GET`  | `/api/v1/admin/users`         | yes             | List users (`?search=&verified=&limit=&offset=`) |
@@ -603,17 +605,32 @@ carries `data-scope` and `data-part`, and `lib/styles/ark.css` styles those
 attributes. Everything else refers to the tokens in `tokens.css`. There is no
 CSS framework.
 
-The palette is taken from the [PocketBase](https://pocketbase.io) admin UI —
-its near-black primary, soft grey secondary, navy header and filled inputs —
-with the dark theme built the way PocketBase builds it: one base colour mixed
-with increasing amounts of white, so the greys stay in step.
+The layout is taken from the [PocketBase](https://pocketbase.io) admin UI,
+and the colour from Telegram's: a white page in the light theme and #0f0f0f
+in the dark one, cool greys a step apart, and one brand blue, `#0088cc`, for
+whatever is chosen, pressed or current — the primary button, the page open in
+the sidebar, a ticked box, a switch that is on. Every colour is solid; none is
+mixed with transparency.
 
-Fields follow their settings page exactly: one filled block with the label
-inside it at the top and the value below, no border anywhere, and focus shown
-by the block darkening (`#e4e8ec` to `#dce0e5`) while the label goes from
-`#687278` to the full text colour. The measurements — a 24px label row over a
-38.5px value row, 5px radius, 13px bold label, 13px side padding — are in
-`lib/styles/ark.css`.
+Fields — inputs, text areas, passwords and selects — are an outlined box
+with a floating label inside it, and the hint or error on its own line under
+the box. In an empty field the label rests exactly where the value is typed;
+with focus or a value it rises to the top of the box at three quarters of its
+size, on the same left edge, and the value takes its line. The box has no
+fill, so it takes the colour of whatever it sits on, and a hairline border
+that darkens under the pointer and turns brand blue while typing. Number
+fields have no spinner buttons, and a text area grows with its text up to a
+screenful. All of it is in `lib/styles/fields.css`.
+
+What floats over the page is drawn from its own tokens: popovers — menus
+and a select's list — from `--popover-*`, dialogs — drawers and the command
+palette — from `--dialog-*`. In the light theme both are white, set apart by
+a hairline and a shadow; in the dark one a dialog is a shade lighter than the
+page (`#141416` on `#0f0f0f`) and a popover a step above that (`#18181b`), so
+a menu opened over a drawer still stands apart. A row in any popover is one
+design: 36px, an icon in the hint colour, a quiet fill under the pointer, and
+in a select the chosen option on a light wash of the brand colour.
+Everything inside picks its level up without knowing where it is.
 
 **Theme.** Light or dark, switched by the toggle in the header — one click,
 no menu — and remembered in a cookie.

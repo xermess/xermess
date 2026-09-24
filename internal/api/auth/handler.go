@@ -9,16 +9,30 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"xermess/internal/api/audit"
 	"xermess/internal/api/respond"
 	"xermess/internal/api/session"
 	authsvc "xermess/internal/auth"
+	"xermess/internal/model"
 	"xermess/internal/store"
 )
+
+// The problems these endpoints answer with that are their own.
+var (
+	wrongPassword    = respond.Define(http.StatusBadRequest, "admin_wrong_password", respond.Admin)
+	emailTaken       = respond.Define(http.StatusConflict, "admin_email_taken", respond.Admin)
+	passwordTooShort = respond.Define(http.StatusBadRequest, "admin_password_too_short", respond.Admin)
+	passwordTooLong  = respond.Define(http.StatusBadRequest, "admin_password_too_long", respond.Admin)
+)
+
+// targetType is what an administrator is called in the activity log.
+const targetType = "admin_user"
 
 // Handler holds what these endpoints need.
 type Handler struct {
 	auth  *authsvc.Service
 	store *store.Store
+	audit audit.Recorder
 	log   *slog.Logger
 
 	// secure sets the cookie's Secure flag: true once served over HTTPS.
@@ -26,8 +40,8 @@ type Handler struct {
 }
 
 // New returns a Handler.
-func New(service *authsvc.Service, st *store.Store, log *slog.Logger, secure bool) *Handler {
-	return &Handler{auth: service, store: st, log: log, secure: secure}
+func New(service *authsvc.Service, st *store.Store, recorder audit.Recorder, log *slog.Logger, secure bool) *Handler {
+	return &Handler{auth: service, store: st, audit: recorder, log: log, secure: secure}
 }
 
 // Login checks the credentials and sets the session cookie.
@@ -125,6 +139,74 @@ func (h *Handler) Logout(c *gin.Context) {
 // find out whether it still has a session.
 func (h *Handler) Me(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"admin": newAdminResponse(session.Admin(c))})
+}
+
+// UpdateMe changes the caller's own name and address. It reaches nothing
+// else about the account — not the roles, not the status — so every
+// administrator may use it, whatever their roles allow.
+func (h *Handler) UpdateMe(c *gin.Context) {
+	var req profileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := req.validate(); err != nil {
+		respond.Failure(c, h.log, err, "validating a profile failed")
+		return
+	}
+
+	admin := session.Admin(c)
+	profile := authsvc.Profile{FirstName: req.FirstName, LastName: req.LastName, Email: req.Email}
+
+	err := h.auth.UpdateProfile(c.Request.Context(), admin, profile, req.CurrentPassword)
+	switch {
+	case errors.Is(err, authsvc.ErrWrongPassword):
+		respond.Fail(c, wrongPassword)
+		return
+	case errors.Is(err, store.ErrDuplicate):
+		respond.Fail(c, emailTaken)
+		return
+	case err != nil:
+		respond.Failure(c, h.log, err, "updating a profile failed")
+		return
+	}
+
+	h.audit.Record(c, "admin.profile_updated", targetType, admin.ID.String())
+
+	c.JSON(http.StatusOK, gin.H{"admin": newAdminResponse(admin)})
+}
+
+// ChangePassword sets the caller's own password, given the one they have.
+// Every other session they have open ends; the one they are using stays.
+func (h *Handler) ChangePassword(c *gin.Context) {
+	var req passwordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respond.Fail(c, respond.InvalidBody)
+		return
+	}
+	if err := req.validate(); err != nil {
+		respond.Failure(c, h.log, err, "validating a password change failed")
+		return
+	}
+
+	admin := session.Admin(c)
+
+	err := h.auth.ChangePassword(c.Request.Context(), admin, session.ID(c), req.CurrentPassword, req.NewPassword)
+	switch {
+	case errors.Is(err, authsvc.ErrWrongPassword):
+		respond.Fail(c, wrongPassword)
+		return
+	case errors.Is(err, model.ErrPasswordTooLong):
+		respond.Fail(c, passwordTooLong)
+		return
+	case err != nil:
+		respond.Failure(c, h.log, err, "changing a password failed")
+		return
+	}
+
+	h.audit.Record(c, "admin.password_changed", targetType, admin.ID.String())
+
+	c.JSON(http.StatusOK, gin.H{"status": "changed"})
 }
 
 // Sessions lists the caller's own sessions, so they can see where they are

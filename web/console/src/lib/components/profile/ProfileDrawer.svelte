@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
+	import { invalidate } from '$app/navigation';
+	import { ADMIN_DEPENDENCY, MIN_ADMIN_PASSWORD } from '$lib/constants';
 	import {
 		RiComputerLine,
 		RiLockPasswordLine,
-		RiMailLine,
 		RiShieldKeyholeLine,
 		RiUserLine
 	} from 'svelte-remixicon';
@@ -25,23 +27,100 @@
 		List,
 		ListItem,
 		Panel,
+		PasswordInput,
 		Tag,
 		Thumb
 	} from '$lib/components/ui';
-	import { formatDateTime, formatRelative } from '$lib/utils/format';
-
-	/** Which part of the drawer to open on. The account menu has a row for
-	    each, so a reader looking for two-factor lands on it rather than on
-	    the top of a panel they then have to read through. */
-	export type ProfileSection = 'account' | 'security' | 'sessions';
+	import { formatRelative } from '$lib/utils/format';
 
 	type Props = {
 		admin: Admin;
 		open?: boolean;
-		section?: ProfileSection;
 	};
 
-	let { admin, open = $bindable(false), section = 'account' }: Props = $props();
+	let { admin, open = $bindable(false) }: Props = $props();
+
+	/* ---- Profile: name and address ------------------------------------ */
+
+	let firstName = $state('');
+	let lastName = $state('');
+	let email = $state('');
+	/** Asked for only when the address changes: it is what they sign in
+	    with, so a session left open is not enough to move it. */
+	let emailPassword = $state('');
+	let savingProfile = $state(false);
+	let profileError = $state('');
+	let profileSaved = $state(false);
+
+	const emailChanged = $derived(email.trim().toLowerCase() !== admin.email.toLowerCase());
+	const profileChanged = $derived(
+		firstName.trim() !== admin.first_name || lastName.trim() !== admin.last_name || emailChanged
+	);
+
+	async function saveProfile(event: SubmitEvent) {
+		event.preventDefault();
+		savingProfile = true;
+		profileError = '';
+		profileSaved = false;
+
+		try {
+			await adminApi.updateProfile({
+				first_name: firstName.trim(),
+				last_name: lastName.trim(),
+				email: email.trim(),
+				current_password: emailChanged ? emailPassword : undefined
+			});
+			emailPassword = '';
+			profileSaved = true;
+			// The name is in the header and the address in the menu: both
+			// come from the layout's read of the administrator, and only that
+			// is read again — not the page open behind the drawer.
+			await invalidate(ADMIN_DEPENDENCY);
+		} catch (err) {
+			profileError = messageOf(err, 'Could not save your profile');
+		} finally {
+			savingProfile = false;
+		}
+	}
+
+	/* ---- Password ------------------------------------------------------ */
+
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let confirmPassword = $state('');
+	let changingPassword = $state(false);
+	let passwordError = $state('');
+	let passwordChanged = $state(false);
+
+	async function changePassword(event: SubmitEvent) {
+		event.preventDefault();
+		passwordError = '';
+		passwordChanged = false;
+
+		if (newPassword.length < MIN_ADMIN_PASSWORD) {
+			passwordError = `The new password must be at least ${MIN_ADMIN_PASSWORD} characters.`;
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			passwordError = 'The two new passwords are not the same.';
+			return;
+		}
+
+		changingPassword = true;
+
+		try {
+			await adminApi.changePassword(currentPassword, newPassword);
+			currentPassword = newPassword = confirmPassword = '';
+			passwordChanged = true;
+			// Every other session has just ended, which the list should say;
+			// nothing else here changed.
+			void loadSessions();
+		} catch (err) {
+			passwordError = messageOf(err, 'Could not change your password');
+		} finally {
+			changingPassword = false;
+		}
+	}
 
 	/** What the panel is doing: reading the account, or one of the two things
 	    that take over the whole body while they are under way. A second
@@ -63,24 +142,6 @@
 	let busy = $state(false);
 	let newCodes = $state<string[]>([]);
 
-	const initials = $derived(
-		(admin.full_name || admin.username)
-			.split(/\s+/)
-			.filter(Boolean)
-			.slice(0, 2)
-			.map((part) => part[0])
-			.join('')
-			.toUpperCase() || admin.email.slice(0, 2).toUpperCase()
-	);
-
-	/** What this account is, in one line: the standing that outranks every
-	    role, or else the roles themselves. */
-	const standing = $derived(
-		admin.is_super_admin
-			? 'Super administrator'
-			: admin.roles.filter((role) => role !== 'super_admin').join(' · ')
-	);
-
 	const activeSessions = $derived(sessions.filter((session) => session.active).length);
 
 	/** Read out of the status here rather than inside the rows: a snippet is
@@ -90,6 +151,14 @@
 	/** Read when the panel opens, and again after anything here changes one
 	    of them: the drawer is built fresh each time it opens, so there is no
 	    stale copy to invalidate. */
+	async function loadSessions() {
+		try {
+			sessions = (await adminApi.profileSessions()).sessions;
+		} catch (err) {
+			error = messageOf(err, 'Could not read your sessions');
+		}
+	}
+
 	async function load() {
 		loading = true;
 		error = '';
@@ -105,20 +174,22 @@
 		}
 	}
 
+	// Opening starts every form from the account as it stands, and reads
+	// the second factor and the sessions again.
+	// Only opening is tracked: saving refreshes `admin`, and that must not
+	// start the forms over and wipe the note saying it worked.
 	$effect(() => {
-		if (open) void load();
-	});
+		if (!open) return;
 
-	/** The panel to scroll to, once the drawer has been built. The drawer
-	    mounts when it opens, so the element does not exist before this. */
-	let body = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		if (!open || section === 'account' || !body) return;
-
-		body
-			.querySelector(`[data-section='${section}']`)
-			?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+		untrack(() => {
+			firstName = admin.first_name;
+			lastName = admin.last_name;
+			email = admin.email;
+			emailPassword = currentPassword = newPassword = confirmPassword = '';
+			profileError = passwordError = '';
+			profileSaved = passwordChanged = false;
+			void load();
+		});
 	});
 
 	function backToReading() {
@@ -163,12 +234,10 @@
 
 <Drawer
 	bind:open
-	title="Your account"
-	description="Who you are here, how you sign in, and where you are signed in."
-	meta={admin.username}
-	width="34rem"
+	title="Settings"
+	description="Your name and email, your password, two-factor sign-in, and where you are signed in."
 >
-	<div class="sections" bind:this={body}>
+	<div class="sections">
 		{#if mode === 'enrolling' || mode === 'replacing'}
 			<Panel
 				title={mode === 'replacing' ? 'Replace your authenticator' : 'Set up an authenticator'}
@@ -187,63 +256,92 @@
 		{:else}
 			{#if error}<Alert>{error}</Alert>{/if}
 
-			<!-- Who is signed in, the way every other record opens: the thumb, the
-		     name, and what the account is — not a card of its own. -->
-			<List bordered label="Account">
-				<ListItem title={admin.full_name || admin.username} description={admin.email}>
-					{#snippet lead()}
-						<Thumb text={initials} size="md" />
-					{/snippet}
+			<Panel title="Profile" icon={RiUserLine}>
+				<form class="form" onsubmit={saveProfile}>
+					<div class="pair">
+						<Input label="First name" bind:value={firstName} autocomplete="given-name" required />
+						<Input label="Last name" bind:value={lastName} autocomplete="family-name" />
+					</div>
+					<Input
+						label="Email"
+						type="email"
+						bind:value={email}
+						autocomplete="email"
+						hint="You sign in with it, and anything about this account is sent to it."
+						required
+					/>
+					{#if emailChanged}
+						<PasswordInput
+							label="Current password, to change your email"
+							bind:value={emailPassword}
+							required
+						/>
+					{/if}
 
-					{#snippet end()}
-						<Tag tone={admin.status === 'active' ? 'success' : 'neutral'} dot strong>
-							{admin.status}
-						</Tag>
-					{/snippet}
-				</ListItem>
-			</List>
+					{#if profileError}<Alert>{profileError}</Alert>{/if}
+					{#if profileSaved}<Alert tone="success">Your profile is saved.</Alert>{/if}
 
-			<div data-section="account">
-				<Panel title="Account" icon={RiUserLine} flush>
-					{#snippet meta()}
-						{#if standing}<Tag small>{standing}</Tag>{/if}
-					{/snippet}
+					<div class="actions">
+						<Button
+							type="submit"
+							size="sm"
+							loading={savingProfile}
+							disabled={savingProfile ||
+								!profileChanged ||
+								firstName.trim() === '' ||
+								(emailChanged && emailPassword === '')}
+						>
+							Save profile
+						</Button>
+					</div>
+				</form>
+			</Panel>
 
-					<List label="Account details">
-						<ListItem title="Username" description="What you sign in with.">
-							{#snippet end()}<span class="value">{admin.username}</span>{/snippet}
-						</ListItem>
+			<Panel title="Password" icon={RiLockPasswordLine}>
+				<form class="form" onsubmit={changePassword}>
+					<PasswordInput label="Current password" bind:value={currentPassword} required />
+					<div class="pair">
+						<PasswordInput
+							label="New password"
+							bind:value={newPassword}
+							autocomplete="new-password"
+							required
+						/>
+						<PasswordInput
+							label="Repeat the new password"
+							bind:value={confirmPassword}
+							autocomplete="new-password"
+							required
+						/>
+					</div>
+					<p class="quiet">
+						{`At least ${MIN_ADMIN_PASSWORD} characters. Changing it signs you out everywhere but here.`}
+					</p>
 
-						<ListItem title="Email" description="Where anything about this account is sent.">
-							{#snippet lead()}<Thumb icon={RiMailLine} />{/snippet}
-							{#snippet end()}<span class="value">{admin.email}</span>{/snippet}
-						</ListItem>
+					{#if passwordError}<Alert>{passwordError}</Alert>{/if}
+					{#if passwordChanged}
+						<Alert tone="success"
+							>Your password is changed. Your other sessions are signed out.</Alert
+						>
+					{/if}
 
-						<ListItem title="Password" description="Changing it signs out every other session.">
-							{#snippet lead()}<Thumb icon={RiLockPasswordLine} />{/snippet}
-							{#snippet end()}
-								<Button size="sm" variant="subtle" disabled>Change</Button>
-							{/snippet}
-						</ListItem>
+					<div class="actions">
+						<Button
+							type="submit"
+							size="sm"
+							loading={changingPassword}
+							disabled={changingPassword ||
+								currentPassword === '' ||
+								newPassword === '' ||
+								confirmPassword === ''}
+						>
+							Change password
+						</Button>
+					</div>
+				</form>
+			</Panel>
 
-						<ListItem title="Last signed in">
-							{#snippet end()}
-								<span class="value">
-									{#if admin.last_login_at}
-										<span title={formatDateTime(admin.last_login_at)}>
-											{formatRelative(admin.last_login_at)}
-										</span>
-									{:else}
-										Never
-									{/if}
-								</span>
-							{/snippet}
-						</ListItem>
-					</List>
-				</Panel>
-			</div>
-
-			<div data-section="security">
+			<div>
 				<Panel title="Two-factor sign-in" icon={RiShieldKeyholeLine} flush>
 					{#snippet meta()}
 						{#if mfa?.enabled}
@@ -256,7 +354,7 @@
 					{/snippet}
 
 					{#if !mfa}
-						<p class="quiet">{loading ? 'Reading your account…' : 'Not available.'}</p>
+						<p class="quiet padded">{loading ? 'Reading your account…' : 'Not available.'}</p>
 					{:else if !mfa.enabled}
 						<div class="prose">
 							<p>
@@ -356,7 +454,7 @@
 				</Panel>
 			</div>
 
-			<div data-section="sessions">
+			<div>
 				<Panel title="Sessions" icon={RiComputerLine} flush>
 					{#snippet meta()}
 						<Tag tone={activeSessions > 0 ? 'success' : 'neutral'} dot small>
@@ -384,32 +482,47 @@
 		scroll-behavior: smooth;
 	}
 
-	/* A value read off the row rather than typed into it: the same size as
-	   the title, and never wider than the room left beside it. */
-	.value {
-		max-width: 16rem;
-		overflow: hidden;
-		color: var(--color-text);
-		font-size: var(--text-sm);
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
 	.quiet {
 		margin: 0;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 	}
 
+	.form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+
+	.pair {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--space-3);
+	}
+
+	@media (max-width: 34rem) {
+		.pair {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.actions {
+		display: flex;
+		justify-content: flex-end;
+	}
+
 	.padded {
 		padding: var(--space-4);
 	}
 
+	/* The panel is flush for its list rows, so text in it brings its own
+	   padding back. */
 	.prose {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
 		gap: var(--space-3);
+		padding: var(--space-4);
 	}
 
 	.prose p {

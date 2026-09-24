@@ -20,7 +20,7 @@
 	justify-content: center;
 	gap: var(--space-2);
 	border: 1px solid transparent;
-	border-radius: var(--radius-md);
+	border-radius: var(--radius-sm);
 	background: transparent;
 	color: var(--palette-fg);
 	font-family: var(--font-sans);
@@ -32,13 +32,7 @@
 		background-color var(--speed-fast),
 		border-color var(--speed-fast),
 		color var(--speed-fast),
-		opacity var(--speed-fast),
-		transform var(--speed-fast);
-}
-
-/* A press that moves is a press that happened. */
-.control:active:not(:disabled, [aria-disabled='true']) {
-	transform: scale(0.98);
+		opacity var(--speed-fast);
 }
 
 .control:disabled,
@@ -85,10 +79,6 @@
 
 .control[data-icon][data-size='lg'] {
 	width: var(--control-height-lg);
-}
-
-.control[data-icon]:active:not(:disabled, [aria-disabled='true']) {
-	transform: scale(0.94);
 }
 
 /* ------------------------------------------------------------- variants */

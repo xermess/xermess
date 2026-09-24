@@ -369,6 +369,12 @@ const actions: Record<string, Action> = {
 		category: 'admins',
 		icon: RiAdminLine
 	},
+	'admin.profile_updated': {
+		label: 'Profile updated',
+		verb: 'updated their own profile',
+		category: 'admins',
+		icon: RiAdminLine
+	},
 	'admin.deleted': {
 		label: 'Administrator removed',
 		verb: 'removed administrator',

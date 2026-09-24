@@ -3,11 +3,11 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { RiCloseLine, RiRefreshLine, RiSearchLine } from 'svelte-remixicon';
+	import { RiCloseLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { messageOf, sessionsApi, type UserSessionRecord } from '$lib/api';
 	import { keys, sessionsOptions } from '$lib/query';
-	import { Alert, Button, Icon, IconButton, PageHeader } from '$lib/components/ui';
+	import { Alert, Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import SessionTable from '$lib/components/sessions/SessionTable.svelte';
 	import { can } from '$lib/permissions';
 	import type { PageData } from './$types';
@@ -121,22 +121,13 @@
 </div>
 
 <div class="toolbar">
-	<form
-		class="search"
-		onsubmit={(event) => {
-			event.preventDefault();
-			apply({ search });
-		}}
-	>
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			placeholder="Search by the start of an email…"
-			bind:value={search}
-			oninput={debounced}
-			aria-label="Search sessions"
-		/>
-	</form>
+	<SearchInput
+		label="Search sessions"
+		placeholder="Search by the start of an email…"
+		bind:value={search}
+		onsubmit={() => apply({ search })}
+		oninput={debounced}
+	/>
 
 	{#if data.user}
 		<button
@@ -241,38 +232,6 @@
 		gap: var(--space-2);
 		margin-bottom: var(--space-3);
 		padding-inline: var(--page-gutter);
-	}
-
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-family: var(--font-sans);
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 
 	.chip {

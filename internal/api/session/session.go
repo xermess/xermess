@@ -19,8 +19,12 @@ import (
 // scripting bug from turning into a stolen session.
 const Cookie = "xermess_session"
 
-// key is the Gin context key the signed-in administrator is stored under.
-const key = "admin"
+// The Gin context keys the signed-in administrator, and the session the
+// request came with, are stored under.
+const (
+	key        = "admin"
+	sessionKey = "session_id"
+)
 
 // Set stores the token in the browser. `secure` adds the Secure flag, which
 // can only be on once the API is served over HTTPS.
@@ -52,13 +56,14 @@ func Require(service *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, _ := c.Cookie(Cookie)
 
-		user, err := service.Authenticate(c.Request.Context(), token)
+		user, current, err := service.Authenticate(c.Request.Context(), token)
 		if err != nil {
 			respond.Abort(c, respond.NotSignedIn)
 			return
 		}
 
 		c.Set(key, user)
+		c.Set(sessionKey, current.ID)
 
 		c.Next()
 	}
@@ -175,6 +180,15 @@ func RequireSuperAdmin() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// ID returns the session the request came with. Like Admin, it is only valid
+// behind Require.
+func ID(c *gin.Context) uuid.UUID {
+	id, _ := c.Get(sessionKey)
+	current, _ := id.(uuid.UUID)
+
+	return current
 }
 
 // Admin returns the administrator making the request. It is only valid behind

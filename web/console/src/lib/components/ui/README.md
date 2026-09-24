@@ -15,6 +15,7 @@ never writes a colour, a height or a hover state — it names one.
 <Input label="email" bind:value={email} type="email" required />
 <Select label="Type" bind:value={type} options={['text', 'number', 'bool']} />
 <Switch label="Verified" bind:checked={verified} />
+<SearchInput label="Search users" bind:value={search} onsubmit={apply} oninput={debounced} />
 ```
 
 ## Buttons that are links
@@ -88,13 +89,14 @@ That indirection is the whole trick, and it is why:
 
 ## Where each kind of styling lives
 
-| Looking for                                                     | It is in                |
-| --------------------------------------------------------------- | ----------------------- |
-| a colour, a size, a radius, a font                              | `styles/tokens.css`     |
-| what `danger` or `success` means                                | `styles/palettes.css`   |
-| buttons, icon buttons, link buttons                             | `styles/controls.css`   |
-| inputs, selects, switches, checkboxes, drawers, tooltips, menus | `styles/ark.css`        |
-| one component's own layout                                      | its own `<style>` block |
+| Looking for                                               | It is in                |
+| --------------------------------------------------------- | ----------------------- |
+| a colour, a size, a radius, a font                        | `styles/tokens.css`     |
+| what `danger` or `success` means                          | `styles/palettes.css`   |
+| buttons, icon buttons, link buttons                       | `styles/controls.css`   |
+| inputs, text areas, passwords, selects                    | `styles/fields.css`     |
+| switches, checkboxes, drawers, tooltips, menus, dropdowns | `styles/ark.css`        |
+| one component's own layout                                | its own `<style>` block |
 
 `ark.css` styles Ark UI's parts through the `data-scope` / `data-part`
 attributes they render. Styling `[data-scope='field'][data-part='input']` once
@@ -108,7 +110,7 @@ A record opens in a drawer, the way PocketBase opens one: a full-height panel
 against the right edge, over a washed-out page.
 
 ```svelte
-<Drawer bind:open title="Edit user" meta={user.id} width="44rem" onsubmit={save}>
+<Drawer bind:open title="Edit user" meta={user.id} onsubmit={save}>
 	<FormSection title="Account">…</FormSection>
 
 	{#snippet footer()}
@@ -137,8 +139,12 @@ animation _name_ change, and a reversed one never changes it.
 1. If it is shaped like a button, give it `class="control"` and pass the three
    props through. Do not write colours.
 2. If it is a form field, build it on `Field.svelte` — it already lays out the
-   label, the required mark, the hint and the error. A field that brings its
-   own anatomy, as `Select` does, matches that layout in `ark.css` instead.
+   outlined box, the floating label, the required mark, and the hint or error
+   under the box — and pass `filled` when the control holds a value, so the
+   label rises out of its way. A field that brings its own anatomy, as
+   `Select` and `PasswordInput` do, puts `class="field-root"` on its root, a
+   `.field-box` around the label and the control, and `FieldText` inside the
+   label, and `fields.css` does the rest.
 3. If it is neither, its own `<style>` block is the right place, and it should
    use tokens rather than literal values.
 4. Export it from `index.ts`.

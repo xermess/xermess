@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import type { ComponentType } from 'svelte';
 	import { Field } from '@ark-ui/svelte/field';
-	import Icon from './Icon.svelte';
+	import FieldText from './FieldText.svelte';
 
 	type Props = {
 		label: string;
@@ -19,27 +19,33 @@
 		required?: boolean;
 		disabled?: boolean;
 		readOnly?: boolean;
+		/** The control holds a value, so the label sits raised in the top of
+		    the box rather than where the value would go. */
+		filled?: boolean;
 	};
 
-	let { label, children, icon, hint, error, required, disabled, readOnly }: Props = $props();
+	let {
+		label,
+		children,
+		icon,
+		hint,
+		error,
+		required,
+		disabled,
+		readOnly,
+		filled = false
+	}: Props = $props();
 </script>
 
-<!-- Every field in the panel is this: a label inside the filled block, the
-     control under it, and one line of help or of blame. The parts are Ark's,
-     so they are styled once in styles/ark.css and every field that uses this
-     looks the same without saying so. -->
-<Field.Root {required} {disabled} {readOnly} invalid={error !== undefined}>
-	<Field.Label>
-		{#if icon}
-			<Icon {icon} />
-		{/if}
-		{label}
-		{#if required}
-			<Field.RequiredIndicator>*</Field.RequiredIndicator>
-		{/if}
-	</Field.Label>
-
-	{@render children()}
+<!-- Every field in the panel is this: an outlined box holding a floating
+     label and the control, and under the box one line of help or of blame.
+     The parts are Ark's, styled once in styles/fields.css, so every field
+     that uses this looks the same without saying so. -->
+<Field.Root class="field-root" {required} {disabled} {readOnly} invalid={error !== undefined}>
+	<div class="field-box" data-float={filled || undefined}>
+		<Field.Label><FieldText {label} {icon} {required} /></Field.Label>
+		{@render children()}
+	</div>
 
 	{#if error}
 		<Field.ErrorText>{error}</Field.ErrorText>

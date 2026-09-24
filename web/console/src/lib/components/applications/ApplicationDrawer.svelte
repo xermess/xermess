@@ -560,7 +560,6 @@
 	bind:open
 	title={editing ? (editable ? 'Edit application' : 'Application') : 'New application'}
 	meta={current?.name}
-	width="42rem"
 	onsubmit={submit}
 >
 	{#if secret && current}

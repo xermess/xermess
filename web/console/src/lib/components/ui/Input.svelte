@@ -36,9 +36,18 @@
 	}: Props = $props();
 </script>
 
-<Field {label} {icon} {hint} {error} {required} {disabled} {readOnly}>
+<Field
+	{label}
+	{icon}
+	{hint}
+	{error}
+	{required}
+	{disabled}
+	{readOnly}
+	filled={value !== '' && value !== null && value !== undefined}
+>
 	{#if copyable || suffix}
-		<div class="control" class:copyable class:suffixed={suffix !== undefined}>
+		<div class="adorned" class:copyable class:suffixed={suffix !== undefined}>
 			<ArkField.Input bind:value readonly={readOnly} {...input} />
 			{#if suffix}
 				<span class="suffix">{suffix}</span>
@@ -55,7 +64,7 @@
 <style>
 	/* The value keeps the whole width; what sits after it — a unit, a copy
 	   button — is laid over its right end, level with the value. */
-	.control {
+	.adorned {
 		position: relative;
 		display: flex;
 		align-items: center;
@@ -69,14 +78,22 @@
 		padding-right: 5.5rem;
 	}
 
+	/* Both sit at the right end, above the input they are laid over: the
+	   copy button centred on the box, the unit on the value's own line. */
 	.action {
 		position: absolute;
+		top: 50%;
 		right: 6px;
+		z-index: 2;
+		transform: translateY(-50%);
 	}
 
 	.suffix {
 		position: absolute;
-		right: 13px;
+		top: 26px;
+		right: 14px;
+		z-index: 2;
+		line-height: 20px;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		pointer-events: none;

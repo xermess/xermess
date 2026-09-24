@@ -138,7 +138,7 @@
 		min-width: 0;
 		height: 34px;
 		padding: 0 10px;
-		border: 1px solid transparent;
+		border: 1px solid var(--color-input-border);
 		border-radius: var(--radius-sm);
 		background: var(--color-input);
 		color: var(--color-text);
@@ -147,9 +147,9 @@
 	}
 
 	input:focus {
-		border-color: var(--color-text-disabled);
+		border-color: var(--color-brand);
 		outline: none;
-		background: var(--color-input-focus);
+		box-shadow: inset 0 0 0 1px var(--color-brand);
 	}
 
 	input[readonly] {

@@ -110,7 +110,7 @@
 	}
 </script>
 
-<Drawer bind:open title="New API" width="42rem" onsubmit={submit}>
+<Drawer bind:open title="New API" onsubmit={submit}>
 	{#if error}
 		<div class="error"><Alert>{error}</Alert></div>
 	{/if}

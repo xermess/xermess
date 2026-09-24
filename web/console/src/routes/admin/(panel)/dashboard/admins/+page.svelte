@@ -3,13 +3,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import {
-		RiAddLine,
-		RiCloseLine,
-		RiDeleteBinLine,
-		RiRefreshLine,
-		RiSearchLine
-	} from 'svelte-remixicon';
+	import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, adminsApi, type AdminRecord } from '$lib/api';
 	import {
@@ -19,7 +13,15 @@
 		applicationChoicesOptions,
 		keys
 	} from '$lib/query';
-	import { Alert, Button, Icon, IconButton, PageHeader, SelectionBar } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		Icon,
+		IconButton,
+		PageHeader,
+		SearchInput,
+		SelectionBar
+	} from '$lib/components/ui';
 	import AdminDrawer from '$lib/components/admins/AdminDrawer.svelte';
 	import AdminTable from '$lib/components/admins/AdminTable.svelte';
 	import SecurityPanel from '$lib/components/admins/SecurityPanel.svelte';
@@ -161,22 +163,13 @@
 </div>
 
 <div class="toolbar">
-	<form
-		class="search"
-		onsubmit={(event) => {
-			event.preventDefault();
-			apply({ search });
-		}}
-	>
-		<Icon icon={RiSearchLine} />
-		<input
-			type="search"
-			placeholder="Search email or name…"
-			bind:value={search}
-			oninput={debounced}
-			aria-label="Search administrators"
-		/>
-	</form>
+	<SearchInput
+		label="Search administrators"
+		placeholder="Search email or name…"
+		bind:value={search}
+		onsubmit={() => apply({ search })}
+		oninput={debounced}
+	/>
 
 	{#if data.role}
 		<button
@@ -284,38 +277,6 @@
 		padding-inline: var(--page-gutter);
 	}
 
-	.search {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--control-height);
-		padding: 0 13px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-		transition: background-color var(--speed-fast);
-	}
-
-	.search:focus-within {
-		background: var(--color-input-focus);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-family: var(--font-sans);
-		font-size: var(--text-base);
-	}
-
-	.search input:focus {
-		outline: none;
-	}
-
 	.chip {
 		display: flex;
 		align-items: center;
@@ -344,8 +305,8 @@
 		gap: 2px;
 		height: var(--control-height);
 		padding: 3px;
-		border-radius: var(--radius-md);
-		background: var(--color-input);
+		border-radius: var(--radius-sm);
+		background: var(--color-secondary);
 	}
 
 	.filter button {

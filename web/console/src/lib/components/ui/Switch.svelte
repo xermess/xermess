@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Switch } from '@ark-ui/svelte/switch';
+	import { onlyTheSwitch } from './switch';
 
 	type Props = {
 		label: string;
@@ -17,6 +18,7 @@
 <Switch.Root
 	{checked}
 	{disabled}
+	onclick={onlyTheSwitch}
 	onCheckedChange={(details) => {
 		checked = details.checked;
 		onChange?.(details.checked);

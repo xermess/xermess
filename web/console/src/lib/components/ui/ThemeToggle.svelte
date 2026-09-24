@@ -101,9 +101,5 @@
 		.sun {
 			transition: none;
 		}
-
-		button:active {
-			transform: none;
-		}
 	}
 </style>

@@ -1,10 +1,12 @@
 package model
 
 import (
+	"errors"
 	"slices"
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminUser is a member of staff who can sign in to the admin panel.
@@ -38,6 +40,28 @@ type AdminUser struct {
 // the table.
 func (AdminUser) TableName() string {
 	return "admin_users"
+}
+
+// MinAdminPasswordLength is the shortest password an administrator may have,
+// whoever sets it: an admin account opens the panel, so it is held to more
+// than a user's.
+const MinAdminPasswordLength = 10
+
+// SetPassword replaces the administrator's password with a hash of the one
+// given. The password itself is never stored; one bcrypt cannot hash is
+// ErrPasswordTooLong, the same as a user's.
+func (a *AdminUser) SetPassword(password string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if errors.Is(err, bcrypt.ErrPasswordTooLong) {
+		return ErrPasswordTooLong
+	}
+	if err != nil {
+		return err
+	}
+
+	a.PasswordHash = string(hash)
+
+	return nil
 }
 
 // FullName is the admin's display name.

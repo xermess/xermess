@@ -159,7 +159,6 @@
 	bind:open
 	title="New language"
 	description="It starts off, so it can be translated before anybody is offered it."
-	width="36rem"
 	onsubmit={submit}
 >
 	{#if error}

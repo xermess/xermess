@@ -118,7 +118,7 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 	recorder := audit.New(st, log)
 
 	registerAdminRoutes(r, service, adminHandlers{
-		auth:         apiauth.New(service, st, log, cfg.SecureAdminCookies),
+		auth:         apiauth.New(service, st, recorder, log, cfg.SecureAdminCookies),
 		mfa:          mfa.New(service, log),
 		setup:        setup.New(st, log),
 		users:        users.New(st, recorder, log),
@@ -349,6 +349,8 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			// Everything about the caller's own account is open to every
 			// administrator who can sign in.
 			signedIn.GET("/me", h.auth.Me)
+			signedIn.PATCH("/me", h.limit, h.auth.UpdateMe)
+			signedIn.POST("/me/password", h.limit, h.auth.ChangePassword)
 
 			// Changing a second factor that is on takes a code from it.
 			signedIn.DELETE("/mfa/totp", h.limit, h.mfa.Disable)

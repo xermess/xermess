@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { RiAppsLine, RiSearchLine } from 'svelte-remixicon';
+	import { RiAppsLine } from 'svelte-remixicon';
 	import {
 		ApiError,
 		apisApi,
@@ -10,7 +10,7 @@
 		type API,
 		type APIApplication
 	} from '$lib/api';
-	import { Alert, Badge, Checkbox, Icon, Switch } from '$lib/components/ui';
+	import { Alert, Badge, Checkbox, Icon, SearchInput, Switch } from '$lib/components/ui';
 	import { can } from '$lib/permissions';
 	import { keys } from '$lib/query';
 	import { types } from '$lib/components/applications/applications';
@@ -119,15 +119,14 @@
 		</p>
 
 		{#if applications.data.length > 5}
-			<label class="search">
-				<Icon icon={RiSearchLine} />
-				<input
-					type="search"
-					bind:value={search}
+			<div class="search-slot">
+				<SearchInput
+					label="Filter applications"
 					placeholder="Filter applications…"
-					aria-label="Filter applications"
+					bind:value={search}
+					size="sm"
 				/>
-			</label>
+			</div>
 		{/if}
 	</div>
 
@@ -184,6 +183,11 @@
 {/if}
 
 <style>
+	.search-slot {
+		display: flex;
+		width: min(18rem, 100%);
+	}
+
 	.lead {
 		margin: 0 0 var(--space-4);
 		color: var(--color-text-hint);
@@ -218,32 +222,6 @@
 
 	.summary strong {
 		color: var(--color-text);
-	}
-
-	.search {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		width: min(18rem, 100%);
-		height: 34px;
-		padding: 0 10px;
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
-		color: var(--color-text-hint);
-	}
-
-	.search input {
-		flex: 1;
-		min-width: 0;
-		border: none;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-sm);
-	}
-
-	.search input:focus {
-		outline: none;
 	}
 
 	.list {

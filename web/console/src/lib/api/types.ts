@@ -7,6 +7,8 @@ export type Admin = {
 	username: string;
 	email: string;
 	full_name: string;
+	first_name: string;
+	last_name: string;
 	status: string;
 	/** The names of the roles held for the whole panel. */
 	roles: string[];
