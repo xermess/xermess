@@ -123,7 +123,7 @@
 		gap: var(--space-2);
 		width: 100%;
 		height: var(--nav-row-height);
-		padding: 0 10px 0 12px;
+		padding: 0 8px 0 10px;
 		overflow: hidden;
 		border: none;
 		border-radius: var(--radius-md);
@@ -135,15 +135,16 @@
 		cursor: pointer;
 		transition:
 			background-color var(--speed-fast),
-			color var(--speed-fast),
-			box-shadow var(--speed-fast);
+			color var(--speed-fast);
 	}
 
+	/* A branch names a subject rather than a page, so it is set a step
+	   smaller and heavier than the rows under it: the column reads as
+	   headings with their pages, not as one long list. */
 	.row:not(.folded) {
-		color: var(--color-text);
+		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		font-weight: 600;
-		letter-spacing: 0.01em;
 	}
 
 	.row:hover {
@@ -156,17 +157,11 @@
 		outline-offset: -2px;
 	}
 
-	/* A branch whose page is being read is named in full, so the eye lands on
-	   the right section before it reads any row under it. The page itself
-	   carries the mark; naming the section twice would be shouting. */
+	/* A branch whose page is being read is darkened, so the eye lands on the
+	   right section before it reads any row under it. The page itself
+	   carries the fill; filling the section too would be shouting. */
 	.row.holds {
-		background: var(--nav-group-active);
 		color: var(--color-text);
-		font-weight: 600;
-	}
-
-	.row.holds:hover {
-		background: var(--nav-hover);
 	}
 
 	.icon {
@@ -209,36 +204,28 @@
 
 	/* The pages sit under their branch with a rule down the left: the one
 	   line that makes the column a tree rather than a list with gaps. The
-	   branch opens as a height, not a jump. The inner element is the grid item
-	   that can actually shrink; the outer one owns the transition and the
-	   tree's left rule. */
+	   branch opens as a height, not a jump, and without a fade: the rows are
+	   solid the whole way. The inner element is the grid item that can
+	   actually shrink; the outer one owns the transition and the tree's left
+	   rule. */
 	.pages {
 		display: grid;
 		grid-template-rows: 0fr;
-		margin: 0 0 0 20px;
-		opacity: 0;
+		margin: 0 0 0 17px;
 		visibility: hidden;
-		transform: translateY(-4px);
 		transition:
 			grid-template-rows var(--speed) ease,
 			margin var(--speed) ease,
-			opacity var(--speed-fast) ease,
-			transform var(--speed) ease,
 			visibility 0s linear var(--speed);
 	}
 
 	.pages.open {
 		grid-template-rows: 1fr;
-		margin-top: 2px;
-		margin-bottom: var(--space-1);
-		opacity: 1;
+		margin-top: 1px;
 		visibility: visible;
-		transform: translateY(0);
 		transition:
 			grid-template-rows var(--speed) ease,
-			margin var(--speed) ease,
-			opacity var(--speed-fast) ease,
-			transform var(--speed) ease;
+			margin var(--speed) ease;
 	}
 
 	.pages-inner {
@@ -260,7 +247,7 @@
 	/* Folded, the row is the icon alone. */
 	.row.folded {
 		justify-content: flex-start;
-		padding-right: 12px;
+		padding-right: 10px;
 	}
 
 	.row.folded .name {

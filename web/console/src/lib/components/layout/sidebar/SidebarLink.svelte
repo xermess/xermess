@@ -49,7 +49,7 @@
 		align-items: center;
 		gap: var(--space-2);
 		height: var(--nav-row-height);
-		padding: 0 12px;
+		padding: 0 10px;
 		overflow: hidden;
 		border-radius: var(--radius-md);
 		color: var(--color-text-hint);
@@ -77,7 +77,7 @@
 	.row.current {
 		background: var(--nav-current);
 		color: var(--color-text);
-		font-weight: 600;
+		font-weight: 500;
 	}
 
 	.row.current::before {
@@ -86,7 +86,7 @@
 		top: 50%;
 		left: 0;
 		width: 3px;
-		height: 18px;
+		height: 16px;
 		border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
 		background: var(--nav-mark);
 		transform: translateY(-50%);
@@ -124,7 +124,7 @@
 	   only thing the clip was for. */
 	.row.nested {
 		height: calc(var(--nav-row-height) - 2px);
-		padding-left: 10px;
+		padding-left: 8px;
 		overflow: visible;
 	}
 

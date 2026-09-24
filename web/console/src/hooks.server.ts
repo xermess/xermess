@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 
 import { COOKIES } from '$lib/constants';
+import { DEFAULT_FONT, isFont } from '$lib/state/font.svelte';
 
 export { handleFetch } from '$lib/server/proxy';
 
@@ -20,12 +21,21 @@ export { handleFetch } from '$lib/server/proxy';
  * page's words with — and it is always English: the panel is written in
  * English, in its own markup. The sign-in pages are the app an installation
  * translates.
+ *
+ * The typeface chosen in the header's picker is written beside the theme,
+ * for the same reason: text painted in one face and redrawn in another is a
+ * visible jump.
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const saved = event.cookies.get(COOKIES.theme);
 	const theme = saved === 'dark' || saved === 'light' ? saved : null;
 
-	const attributes = theme ? `data-theme="${theme}"` : '';
+	const chosen = event.cookies.get(COOKIES.font);
+	const font = isFont(chosen) && chosen !== DEFAULT_FONT ? chosen : null;
+
+	const attributes = [theme && `data-theme="${theme}"`, font && `data-font="${font}"`]
+		.filter(Boolean)
+		.join(' ');
 
 	const response = await resolve(event, {
 		transformPageChunk: ({ html }) =>

@@ -226,3 +226,17 @@
 		color-scheme: dark;
 	}
 }
+
+/* The faces the header's font picker switches between. Roboto is the
+   default above and needs no rule; the others replace the two families and
+   nothing else, so every size and weight stays where it was. The server
+   writes the attribute from a cookie, the way it writes data-theme, so a
+   page arrives in the chosen face rather than switching after it loads. */
+:root[data-font='product-sans'] {
+	--font-sans: 'Product Sans', 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+:root[data-font='plex'] {
+	--font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}

@@ -12,7 +12,7 @@
 		RiSidebarUnfoldLine
 	} from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
-	import { Icon, IconButton, IconLink, ThemeToggle } from '$lib/components/ui';
+	import { FontPicker, Icon, IconButton, IconLink, ThemeToggle } from '$lib/components/ui';
 	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
 	import { useShell } from '$lib/state/shell.svelte';
 	import AccountMenu from './AccountMenu.svelte';
@@ -104,6 +104,7 @@
 
 		<span class="rule" aria-hidden="true"></span>
 
+		<FontPicker size="sm" variant="ghost" />
 		<ThemeToggle size="sm" variant="ghost" />
 	</div>
 

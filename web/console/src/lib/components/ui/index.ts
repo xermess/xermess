@@ -46,4 +46,5 @@ export type { Column } from './table';
 export { default as Icon } from './Icon.svelte';
 export { default as PageContainer } from './PageContainer.svelte';
 export { default as PageHeader } from './PageHeader.svelte';
+export { default as FontPicker } from './FontPicker.svelte';
 export { default as ThemeToggle } from './ThemeToggle.svelte';

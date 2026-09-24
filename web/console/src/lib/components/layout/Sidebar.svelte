@@ -72,58 +72,50 @@
 {/if}
 
 <aside class:collapsed={folded} class:open={shell.menuOpen}>
-	<!-- The frame holds the border and the background and never scrolls; the
-	     list inside it does. That is what keeps the scrollbar off the column's
-	     edge, and what lets the gutter be reserved once rather than appearing
-	     under whichever branch was opened last. -->
-	<div class="scroll">
-		<nav aria-label="Sections">
-			{#if overview.length > 0}
-				<ul class="top">
-					{#each overview as item (item.route)}
-						<li>
-							<SidebarLink
-								route={item.route}
-								label={item.label}
-								icon={item.icon}
-								current={isCurrent(item.route)}
-								collapsed={folded}
-							/>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+	<nav aria-label="Sections">
+		{#if overview.length > 0}
+			<ul class="top">
+				{#each overview as item (item.route)}
+					<li>
+						<SidebarLink
+							route={item.route}
+							label={item.label}
+							icon={item.icon}
+							current={isCurrent(item.route)}
+							collapsed={folded}
+						/>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 
-			{#each branches as branch (branch.id)}
-				<div class="branch">
-					<SidebarBranch
-						{branch}
-						{isCurrent}
-						collapsed={folded}
-						open={shell.isOpen(branch.id)}
-						onToggle={() => shell.toggleBranch(branch.id)}
-					/>
-				</div>
-			{/each}
-		</nav>
-	</div>
+		{#each branches as branch (branch.id)}
+			<div class="branch">
+				<SidebarBranch
+					{branch}
+					{isCurrent}
+					collapsed={folded}
+					open={shell.isOpen(branch.id)}
+					onToggle={() => shell.toggleBranch(branch.id)}
+				/>
+			</div>
+		{/each}
+	</nav>
 </aside>
 
 <style>
 	aside {
 		/* What every row in the column is drawn with. They are named here, on
 		   the one element that owns the navigation, so a row does not have to
-		   know which of the palette's greys means "the page you are on". */
+		   know which of the palette's greys means "the page you are on". Every
+		   one is a solid colour: a wash mixed with transparency reads as a
+		   different grey over every surface it lands on. */
 		--nav-row-height: 36px;
-		--nav-hover: color-mix(in srgb, var(--color-secondary) 60%, transparent);
-		--nav-current: var(--color-secondary-alt);
-		--nav-group-active: color-mix(in srgb, var(--color-secondary-alt) 42%, transparent);
-		--nav-mark: var(--color-info);
+		--nav-hover: var(--color-surface-alt);
+		--nav-current: var(--color-secondary);
+		--nav-mark: var(--color-accent);
 		/* How far a branch's pages are inset from its rule. */
-		--nav-branch-inset: 10px;
-		/* Content ends before the scrollbar lane, with a visible breathing
-		   room for overlay bars that do not take layout space. */
-		--nav-scrollbar-inset: calc(var(--scrollbar-size) + var(--space-2));
+		--nav-branch-inset: 8px;
 
 		position: fixed;
 		top: var(--header-height);
@@ -138,26 +130,24 @@
 		overflow: hidden;
 	}
 
-	/* The one thing that scrolls: the frame around it keeps the border and the
-	   background, so the bar is never against the column's edge and opening a
-	   branch cannot make the whole column jump.
-
-	   The gutter is reserved whether or not there is anything to scroll, so
-	   growing the list never shifts the rows sideways. The right padding also
-	   leaves a visible gap after the scrollbar lane, which matters on systems
-	   where the bar floats over the content instead of taking its own space. */
-	.scroll {
+	/* The rows are sized to fit the column without a scrollbar. On a window
+	   too short even for that the list still moves under a wheel or a
+	   thumb, so nothing becomes unreachable, but it draws no bar and reserves
+	   no gutter for one. */
+	nav {
+		display: flex;
 		flex: 1;
-		padding: var(--space-2) var(--nav-scrollbar-inset) var(--space-3) var(--space-2);
+		flex-direction: column;
+		gap: var(--space-1);
+		padding: var(--space-2) var(--space-2) var(--space-3);
 		overflow-x: hidden;
 		overflow-y: auto;
 		overscroll-behavior: none;
-		scrollbar-gutter: stable;
+		scrollbar-width: none;
 	}
 
-	nav {
-		display: flex;
-		flex-direction: column;
+	nav::-webkit-scrollbar {
+		display: none;
 	}
 
 	ul {
@@ -173,30 +163,15 @@
 	   them: one line, where the old column needed a heading over every group
 	   to say the same thing. */
 	.top {
-		padding-bottom: var(--space-2);
-		margin-bottom: var(--space-2);
+		padding-bottom: var(--space-1);
 		border-bottom: 1px solid var(--color-border);
 	}
 
-	.branch + .branch {
-		margin-top: var(--space-2);
-		padding-top: var(--space-1);
-		border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-	}
-
-	/* Folded, the rows are icons: the gutter would be most of the column, so
-	   the list keeps its inset and loses the reservation. Nothing under the
-	   fold is long enough to scroll anyway. */
-	.collapsed .scroll {
+	/* Folded, the rows are icons and the column is narrow: the same inset
+	   on both sides keeps them centred under the header's mark. */
+	.collapsed nav {
+		gap: 1px;
 		padding-inline: 8px;
-		scrollbar-gutter: auto;
-	}
-
-	/* The rail is a compact set of icons, not a stack of section cards. */
-	.collapsed .branch + .branch {
-		margin-top: 1px;
-		padding-top: 0;
-		border-top: 0;
 	}
 
 	/* ---- As a panel, on a screen too narrow for a column ------------------
@@ -224,9 +199,9 @@
 		}
 
 		/* A panel has room for names, so it never draws itself as a rail. */
-		.collapsed .scroll {
-			padding: var(--space-2) var(--nav-scrollbar-inset) var(--space-3) var(--space-2);
-			scrollbar-gutter: stable;
+		.collapsed nav {
+			gap: var(--space-1);
+			padding-inline: var(--space-2);
 		}
 	}
 
