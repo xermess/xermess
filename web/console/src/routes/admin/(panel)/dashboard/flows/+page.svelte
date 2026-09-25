@@ -142,6 +142,8 @@
 		{#snippet actions()}
 			{#if canWrite}
 				<input
+					id="flow-import-file"
+					name="flow-import-file"
 					bind:this={file}
 					type="file"
 					accept="application/json,.json"

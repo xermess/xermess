@@ -153,6 +153,8 @@
 			<span class="files">
 				{#if !readOnly}
 					<input
+						id={`translation-${code}-${app}-file`}
+						name={`translation-${code}-${app}-file`}
 						bind:this={fileInput}
 						class="file"
 						type="file"
@@ -193,6 +195,8 @@
 
 						<div class="target">
 							<textarea
+								id={`translation-${code}-${app}-${key}`}
+								name={`translation-${code}-${app}-${key}`}
 								{value}
 								lang={code}
 								rows="1"

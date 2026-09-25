@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { navigating } from '$app/state';
 	import { NavigationProgress } from '$lib/state/progress.svelte';
 
 	/** How long the finished bar takes to fade out. */
-	const FADE = 300;
+	const FADE = 150;
 
 	let bar: HTMLDivElement;
 
@@ -17,13 +18,31 @@
 		void bar.offsetWidth;
 	});
 
-	// Only whether a navigation is under way is watched; what start and
-	// finish read of the bar's own state is not, or showing it would run
-	// this again.
-	$effect(() => {
-		const going = navigating.to !== null;
+	// Each navigation is caught as it begins. Finishing is shared by all
+	// successful navigations because SvelteKit does not run another
+	// beforeNavigate callback while one is already in progress; an aborted
+	// navigation must therefore leave the bar alone when another one has
+	// already replaced it. The navigating watcher below catches a failed
+	// replacement, while afterNavigate also covers a very quick preload.
+	// Leaving the app is the browser's to show, not ours.
+	const finish = () => void progress.finish();
 
-		untrack(() => (going ? progress.start() : progress.finish()));
+	beforeNavigate((navigation) => {
+		if (navigation.willUnload) return;
+
+		progress.start();
+		void navigation.complete.catch(() => {
+			queueMicrotask(() => {
+				if (navigating.to === null) finish();
+			});
+		});
+	});
+
+	afterNavigate(finish);
+
+	$effect(() => {
+		if (navigating.to !== null) return;
+		untrack(finish);
 	});
 
 	$effect(() => () => progress.dispose());
@@ -51,47 +70,31 @@
 		left: 0;
 		z-index: 100;
 		width: 100%;
-		height: 3px;
+		height: 2px;
 		background: var(--color-brand);
 		opacity: 0;
 		pointer-events: none;
 		transform: translateX(calc((var(--progress) - 1) * 100%));
 		transition:
-			transform 250ms ease-out,
-			opacity var(--fade) ease;
+			transform 120ms linear,
+			opacity var(--fade) linear;
 	}
 
 	.visible {
 		opacity: 1;
 		/* Only while it is out does it get a layer of its own. */
 		will-change: transform;
-		transition: transform 250ms ease-out;
+		transition: transform 120ms linear;
 	}
 
 	.instant {
 		transition: none;
 	}
 
-	/* NProgress's glow at the leading edge: a soft light where the bar is
-	   heading, which is what makes it read as moving rather than as a line. */
-	.progress::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		right: 0;
-		width: 96px;
-		height: 100%;
-		box-shadow:
-			0 0 10px var(--color-brand),
-			0 0 5px var(--color-brand);
-		opacity: 0.9;
-		transform: rotate(2deg) translateY(-3px);
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		.progress,
 		.visible {
-			transition: opacity var(--fade) ease;
+			transition: opacity var(--fade) linear;
 		}
 	}
 </style>

@@ -31,6 +31,7 @@
 		clearable?: boolean;
 		/** Submitted with a surrounding form, through a hidden native select. */
 		name?: string;
+		id?: string;
 		onChange?: (value: Value) => void;
 	};
 
@@ -47,6 +48,7 @@
 		readOnly,
 		clearable = false,
 		name,
+		id,
 		onChange
 	}: Props = $props();
 
@@ -95,6 +97,7 @@
 <ArkSelect.Root
 	class="field-root"
 	data-disabled={disabled || undefined}
+	{id}
 	{collection}
 	{name}
 	{required}

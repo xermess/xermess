@@ -33,6 +33,8 @@
 				{@const issue = scopeProblem(rows, row)}
 				<div class="row" class:invalid={issue !== undefined} role="row">
 					<input
+						id={`scope-name-${row.key}`}
+						name={`scope-name-${row.key}`}
 						class="name"
 						bind:value={row.name}
 						placeholder="orders:read"
@@ -43,6 +45,8 @@
 						onkeydown={(event) => event.key === 'Enter' && event.preventDefault()}
 					/>
 					<input
+						id={`scope-description-${row.key}`}
+						name={`scope-description-${row.key}`}
 						bind:value={row.description}
 						placeholder="What it allows"
 						aria-label="Scope description"

@@ -5,15 +5,19 @@
 	type Props = {
 		checked: boolean;
 		disabled?: boolean;
+		id?: string;
+		name?: string;
 		/** The label, which may hold links. */
 		children: Snippet;
 	};
 
-	let { checked = $bindable(false), disabled = false, children }: Props = $props();
+	let { checked = $bindable(false), disabled = false, id, name, children }: Props = $props();
+
+	const uid = $props.id();
 </script>
 
 <label class="checkbox" class:disabled>
-	<input type="checkbox" bind:checked {disabled} />
+	<input id={id ?? `checkbox-${uid}`} {name} type="checkbox" bind:checked {disabled} />
 	<span class="box" aria-hidden="true"><Icon name="check" size="0.875rem" /></span>
 	<span class="text">{@render children()}</span>
 </label>

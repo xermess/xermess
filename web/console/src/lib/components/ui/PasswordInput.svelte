@@ -9,6 +9,7 @@
 		value: string;
 		disabled?: boolean;
 		required?: boolean;
+		name?: string;
 		autocomplete?: 'current-password' | 'new-password';
 	};
 
@@ -17,6 +18,7 @@
 		value = $bindable(''),
 		disabled,
 		required,
+		name,
 		autocomplete = 'current-password'
 	}: Props = $props();
 </script>
@@ -27,7 +29,7 @@
 	<div class="field-box" data-float={value !== '' || undefined}>
 		<PasswordInput.Label><FieldText {label} {required} /></PasswordInput.Label>
 		<PasswordInput.Control>
-			<PasswordInput.Input bind:value {autocomplete} />
+			<PasswordInput.Input {name} bind:value {autocomplete} />
 			<PasswordInput.VisibilityTrigger aria-label="Show password">
 				<!-- The indicator renders `children` while the password is
 				     visible and `fallback` while it is hidden. -->

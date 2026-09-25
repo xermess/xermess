@@ -11,13 +11,14 @@
 		RiExternalLinkLine,
 		RiGithubFill,
 		RiLogoutBoxRLine,
-		RiSettings3Line
+		RiSettings3Line,
+		RiUserLine
 	} from 'svelte-remixicon';
 	import { adminApi, type Admin } from '$lib/api';
 	import { Button, Icon, Tag, type Size } from '$lib/components/ui';
 	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
 	import { initials } from '$lib/utils/format';
-	import ProfileDrawer from '$lib/components/profile/ProfileDrawer.svelte';
+	import ProfileDrawer, { type ProfileView } from '$lib/components/profile/ProfileDrawer.svelte';
 
 	type Props = { admin: Admin; size?: Size };
 
@@ -26,7 +27,14 @@
 	const queryClient = useQueryClient();
 
 	let signingOut = $state(false);
-	let settingsOpen = $state(false);
+	let drawerOpen = $state(false);
+	/** Which half of the account drawer the chosen row opens. */
+	let drawerView = $state<ProfileView>('account');
+
+	function openDrawer(view: ProfileView) {
+		drawerView = view;
+		drawerOpen = true;
+	}
 	let confirmingSignOut = $state(false);
 
 	/** The name the account goes by — the server's first and last name —
@@ -35,14 +43,9 @@
 
 	const monogram = $derived(initials(name));
 
-	/** What this account is, in one line under the address: the standing that
-	    outranks every role, or else the roles themselves. A super
-	    administrator is said once rather than again as the role behind it. */
-	const standing = $derived(
-		admin.is_super_admin
-			? 'Super administrator'
-			: admin.roles.filter((role) => role !== 'super_admin').join(' · ')
-	);
+	/** The roles shown under the address. The super administrator badge is
+	    separate because it is a standing, not one of the roles the API lists. */
+	const roles = $derived(admin.roles.filter((role) => role !== 'super_admin'));
 
 	async function signOut() {
 		signingOut = true;
@@ -63,8 +66,8 @@
 
 <!-- The account, named in the bar: who is signed in is the one thing the
      header answers without being asked. The menu under it says the rest —
-     the address and the standing — and holds the two things done to an
-     account from here: its settings, and leaving. -->
+     the address and roles — and holds the two things done to an account from
+     here: its settings, and leaving. -->
 <Menu.Root positioning={{ placement: 'bottom-end', gutter: 6 }}>
 	<Menu.Trigger
 		class="control account-trigger"
@@ -81,32 +84,42 @@
 	<Portal>
 		<Menu.Positioner>
 			<Menu.Content class="account-menu">
+				<!-- Who is signed in, by the address they sign in with and what they
+				     may do: the name is on the button this menu opens from. -->
 				<div class="identity">
-					<span class="avatar large" aria-hidden="true">{monogram}</span>
-					<span class="who">
-						<strong>{name}</strong>
-						<span class="hint">{admin.email}</span>
-					</span>
+					<span class="caption">Signed in as</span>
+					<span class="email" title={admin.email}>{admin.email}</span>
+					{#if admin.is_super_admin || roles.length > 0}
+						<span class="roles">
+							{#if admin.is_super_admin}
+								<Tag small tone="info">Super administrator</Tag>
+							{/if}
+							{#each roles as role (role)}
+								<Tag small>{role}</Tag>
+							{/each}
+						</span>
+					{/if}
 				</div>
-
-				{#if standing}
-					<div class="standing">
-						<Tag small tone={admin.is_super_admin ? 'info' : 'neutral'}>{standing}</Tag>
-					</div>
-				{/if}
 
 				<Menu.Separator />
 
-				<Menu.Item value="settings" onSelect={() => (settingsOpen = true)}>
-					<Icon icon={RiSettings3Line} />
-					Settings
-				</Menu.Item>
+				<Menu.ItemGroup>
+					<Menu.Item value="account" onSelect={() => openDrawer('account')}>
+						<Icon icon={RiUserLine} />
+						Account
+					</Menu.Item>
+					<Menu.Item value="settings" onSelect={() => openDrawer('settings')}>
+						<Icon icon={RiSettings3Line} />
+						Settings
+					</Menu.Item>
+				</Menu.ItemGroup>
 
 				<!-- The header carries these two as icons and drops them when
 				     the bar runs out of room, so they appear here only at the
 				     width where they are missing up there: never both at once,
 				     and never gone. Real links, so they can be opened in a
 				     tab, copied or middle-clicked the way any other link is. -->
+				<Menu.Separator class="when-narrow" />
 				<Menu.ItemGroup class="when-narrow">
 					<Menu.Item value="documentation">
 						{#snippet asChild(item)}
@@ -147,7 +160,7 @@
 	</Portal>
 </Menu.Root>
 
-<ProfileDrawer {admin} bind:open={settingsOpen} />
+<ProfileDrawer {admin} view={drawerView} bind:open={drawerOpen} />
 
 <Dialog.Root
 	open={confirmingSignOut}
@@ -197,8 +210,7 @@
 		background: var(--palette-subtle);
 	}
 
-	/* The initials in a circle: small in the bar, larger at the head of the
-	   menu. */
+	/* The initials in a circle, beside the name in the bar. */
 	.avatar {
 		--avatar-size: 26px;
 
@@ -212,12 +224,6 @@
 		color: var(--color-accent-text);
 		font-size: var(--text-xs);
 		font-weight: 700;
-	}
-
-	.avatar.large {
-		--avatar-size: 36px;
-
-		font-size: var(--text-sm);
 	}
 
 	.name {
@@ -238,41 +244,44 @@
 		transform: rotate(180deg);
 	}
 
-	/* One width, whoever is signed in: a menu that is as wide as the longest
-	   name in it is a menu that changes shape between accounts. Long names
-	   and addresses are cut instead. */
+	/* One width, whoever is signed in: a menu that changes shape with the
+	   longest name or role list is harder to scan. Long names and addresses
+	   are cut; roles wrap onto another line instead. */
 	:global(.account-menu) {
-		width: 17rem;
+		width: min(20rem, calc(100vw - var(--space-4)));
 	}
 
+	/* The head of the menu: a quiet caption, the address, and the roles. */
 	.identity {
 		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-3) var(--space-2) var(--space-2);
-	}
-
-	.who {
-		display: flex;
 		flex-direction: column;
+		gap: 2px;
 		min-width: 0;
-		gap: 1px;
+		padding: 10px 10px 12px;
 	}
 
-	.who strong,
-	.hint {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.hint {
+	.caption {
 		color: var(--color-text-hint);
-		font-size: var(--text-sm);
+		font-size: var(--text-xs);
+		font-weight: 500;
 	}
 
-	.standing {
-		padding: 0 var(--space-2) var(--space-3);
+	.email {
+		overflow: hidden;
+		color: var(--color-text);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	/* The standing, then each role, wrapping onto another line rather than
+	   widening the menu. */
+	.roles {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin-top: 6px;
 	}
 
 	/* The links' own mark, that they open somewhere else, at the far end. */

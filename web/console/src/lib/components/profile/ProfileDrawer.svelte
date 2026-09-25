@@ -33,12 +33,30 @@
 	} from '$lib/components/ui';
 	import { formatRelative } from '$lib/utils/format';
 
+	/** Which half of the drawer the account menu asked for: the account itself
+	    — who you are and how you sign in — or its settings — the second factor
+	    and where you are signed in. */
+	export type ProfileView = 'account' | 'settings';
+
 	type Props = {
 		admin: Admin;
 		open?: boolean;
+		view?: ProfileView;
 	};
 
-	let { admin, open = $bindable(false) }: Props = $props();
+	let { admin, open = $bindable(false), view = 'account' }: Props = $props();
+
+	const heading = $derived(
+		view === 'account'
+			? {
+					title: 'Account',
+					description: 'Your name, the email you sign in with, and your password.'
+				}
+			: {
+					title: 'Settings',
+					description: 'Two-factor sign-in, and everywhere you are signed in.'
+				}
+	);
 
 	/* ---- Profile: name and address ------------------------------------ */
 
@@ -112,9 +130,8 @@
 			await adminApi.changePassword(currentPassword, newPassword);
 			currentPassword = newPassword = confirmPassword = '';
 			passwordChanged = true;
-			// Every other session has just ended, which the list should say;
-			// nothing else here changed.
-			void loadSessions();
+			// The settings view reads sessions when it opens; this view has no
+			// session list to refresh.
 		} catch (err) {
 			passwordError = messageOf(err, 'Could not change your password');
 		} finally {
@@ -133,6 +150,9 @@
 	let mfa = $state<MfaStatus | null>(null);
 	let loading = $state(false);
 	let error = $state('');
+	let settingsRequest = 0;
+	let wasOpen = false;
+	let previousView: ProfileView | undefined;
 
 	/** Turning a factor off, and asking for new recovery codes, both take a
 	    code from the authenticator: the field is shown in place of the row
@@ -148,47 +168,72 @@
 	    a closure of its own, so narrowing `mfa` above it does not reach in. */
 	const codesLeft = $derived(mfa?.recovery_codes_left ?? 0);
 
-	/** Read when the panel opens, and again after anything here changes one
-	    of them: the drawer is built fresh each time it opens, so there is no
-	    stale copy to invalidate. */
-	async function loadSessions() {
-		try {
-			sessions = (await adminApi.profileSessions()).sessions;
-		} catch (err) {
-			error = messageOf(err, 'Could not read your sessions');
-		}
-	}
-
-	async function load() {
+	/** Read the settings when the panel opens, and again after anything here
+	    changes one of them: the drawer is built fresh each time it opens, so
+	    there is no stale copy to invalidate. */
+	async function loadSettings() {
+		const request = ++settingsRequest;
 		loading = true;
+		sessions = [];
+		mfa = null;
 		error = '';
 
 		try {
 			const [own, status] = await Promise.all([adminApi.profileSessions(), mfaApi.status()]);
+			if (request !== settingsRequest || !open || view !== 'settings') return;
 			sessions = own.sessions;
 			mfa = status.mfa;
 		} catch (err) {
-			error = messageOf(err, 'Could not read your account');
+			if (request === settingsRequest && open && view === 'settings') {
+				error = messageOf(err, 'Could not read your account');
+			}
 		} finally {
-			loading = false;
+			if (request === settingsRequest) loading = false;
 		}
 	}
 
-	// Opening starts every form from the account as it stands, and reads
-	// the second factor and the sessions again.
-	// Only opening is tracked: saving refreshes `admin`, and that must not
-	// start the forms over and wipe the note saying it worked.
+	// Opening starts every form from the account as it stands. A view change
+	// while the drawer is already open only swaps the settings pane, so an
+	// account edit is not silently discarded. Saving refreshes `admin` and
+	// must not start the forms over.
 	$effect(() => {
-		if (!open) return;
+		const currentView = view;
+		const currentOpen = open;
+		if (!currentOpen) {
+			wasOpen = false;
+			previousView = currentView;
+			settingsRequest += 1;
+			loading = false;
+			return;
+		}
+
+		const opening = !wasOpen;
+		const changedView = previousView !== currentView;
+		wasOpen = true;
+		previousView = currentView;
 
 		untrack(() => {
-			firstName = admin.first_name;
-			lastName = admin.last_name;
-			email = admin.email;
-			emailPassword = currentPassword = newPassword = confirmPassword = '';
-			profileError = passwordError = '';
-			profileSaved = passwordChanged = false;
-			void load();
+			if (opening) {
+				firstName = admin.first_name;
+				lastName = admin.last_name;
+				email = admin.email;
+				emailPassword = currentPassword = newPassword = confirmPassword = '';
+				profileError = passwordError = '';
+				profileSaved = passwordChanged = false;
+			}
+
+			if (opening || changedView) {
+				mode = 'reading';
+				asking = null;
+				code = '';
+				newCodes = [];
+				error = '';
+				if (currentView === 'settings') void loadSettings();
+				else {
+					settingsRequest += 1;
+					loading = false;
+				}
+			}
 		});
 	});
 
@@ -197,7 +242,7 @@
 		asking = null;
 		code = '';
 		newCodes = [];
-		void load();
+		if (open && view === 'settings') void loadSettings();
 	}
 
 	async function disable() {
@@ -232,11 +277,7 @@
 	}
 </script>
 
-<Drawer
-	bind:open
-	title="Settings"
-	description="Your name and email, your password, two-factor sign-in, and where you are signed in."
->
+<Drawer bind:open title={heading.title} description={heading.description}>
 	<div class="sections">
 		{#if mode === 'enrolling' || mode === 'replacing'}
 			<Panel
@@ -254,102 +295,106 @@
 				<RecoveryCodes codes={newCodes} onDone={backToReading} />
 			</Panel>
 		{:else}
-			{#if error}<Alert>{error}</Alert>{/if}
+			{#if view === 'settings' && error}<Alert>{error}</Alert>{/if}
 
-			<Panel title="Profile" icon={RiUserLine}>
-				<form class="form" onsubmit={saveProfile}>
-					<div class="pair">
-						<Input label="First name" bind:value={firstName} autocomplete="given-name" required />
-						<Input label="Last name" bind:value={lastName} autocomplete="family-name" />
-					</div>
-					<Input
-						label="Email"
-						type="email"
-						bind:value={email}
-						autocomplete="email"
-						hint="You sign in with it, and anything about this account is sent to it."
-						required
-					/>
-					{#if emailChanged}
-						<PasswordInput
-							label="Current password, to change your email"
-							bind:value={emailPassword}
+			{#if view === 'account'}
+				<Panel title="Profile" icon={RiUserLine}>
+					<form class="form" onsubmit={saveProfile}>
+						<div class="pair">
+							<Input label="First name" bind:value={firstName} autocomplete="given-name" required />
+							<Input label="Last name" bind:value={lastName} autocomplete="family-name" />
+						</div>
+						<Input
+							label="Email"
+							type="email"
+							bind:value={email}
+							autocomplete="email"
+							hint="You sign in with it, and anything about this account is sent to it."
 							required
 						/>
-					{/if}
+						{#if emailChanged}
+							<PasswordInput
+								label="Current password, to change your email"
+								bind:value={emailPassword}
+								required
+							/>
+						{/if}
 
-					{#if profileError}<Alert>{profileError}</Alert>{/if}
-					{#if profileSaved}<Alert tone="success">Your profile is saved.</Alert>{/if}
+						{#if profileError}<Alert>{profileError}</Alert>{/if}
+						{#if profileSaved}<Alert tone="success">Your profile is saved.</Alert>{/if}
 
-					<div class="actions">
-						<Button
-							type="submit"
-							size="sm"
-							loading={savingProfile}
-							disabled={savingProfile ||
-								!profileChanged ||
-								firstName.trim() === '' ||
-								(emailChanged && emailPassword === '')}
-						>
-							Save profile
-						</Button>
-					</div>
-				</form>
-			</Panel>
+						<div class="actions">
+							<Button
+								type="submit"
+								size="sm"
+								loading={savingProfile}
+								disabled={savingProfile ||
+									!profileChanged ||
+									firstName.trim() === '' ||
+									(emailChanged && emailPassword === '')}
+							>
+								Save profile
+							</Button>
+						</div>
+					</form>
+				</Panel>
 
-			<Panel title="Password" icon={RiLockPasswordLine}>
-				<form class="form" onsubmit={changePassword}>
-					<PasswordInput label="Current password" bind:value={currentPassword} required />
-					<div class="pair">
-						<PasswordInput
-							label="New password"
-							bind:value={newPassword}
-							autocomplete="new-password"
-							required
-						/>
-						<PasswordInput
-							label="Repeat the new password"
-							bind:value={confirmPassword}
-							autocomplete="new-password"
-							required
-						/>
-					</div>
-					<p class="quiet">
-						{`At least ${MIN_ADMIN_PASSWORD} characters. Changing it signs you out everywhere but here.`}
-					</p>
+				<Panel title="Password" icon={RiLockPasswordLine}>
+					<form class="form" onsubmit={changePassword}>
+						<PasswordInput label="Current password" bind:value={currentPassword} required />
+						<div class="pair">
+							<PasswordInput
+								label="New password"
+								bind:value={newPassword}
+								autocomplete="new-password"
+								required
+							/>
+							<PasswordInput
+								label="Repeat the new password"
+								bind:value={confirmPassword}
+								autocomplete="new-password"
+								required
+							/>
+						</div>
+						<p class="quiet">
+							{`At least ${MIN_ADMIN_PASSWORD} characters. Changing it signs you out everywhere but here.`}
+						</p>
 
-					{#if passwordError}<Alert>{passwordError}</Alert>{/if}
-					{#if passwordChanged}
-						<Alert tone="success"
-							>Your password is changed. Your other sessions are signed out.</Alert
-						>
-					{/if}
+						{#if passwordError}<Alert>{passwordError}</Alert>{/if}
+						{#if passwordChanged}
+							<Alert tone="success"
+								>Your password is changed. Your other sessions are signed out.</Alert
+							>
+						{/if}
 
-					<div class="actions">
-						<Button
-							type="submit"
-							size="sm"
-							loading={changingPassword}
-							disabled={changingPassword ||
-								currentPassword === '' ||
-								newPassword === '' ||
-								confirmPassword === ''}
-						>
-							Change password
-						</Button>
-					</div>
-				</form>
-			</Panel>
-
-			<div>
+						<div class="actions">
+							<Button
+								type="submit"
+								size="sm"
+								loading={changingPassword}
+								disabled={changingPassword ||
+									currentPassword === '' ||
+									newPassword === '' ||
+									confirmPassword === ''}
+							>
+								Change password
+							</Button>
+						</div>
+					</form>
+				</Panel>
+			{:else}
 				<Panel title="Two-factor sign-in" icon={RiShieldKeyholeLine} flush>
 					{#snippet meta()}
-						{#if mfa?.enabled}
+						{#if loading}
+							<Tag>Loading</Tag>
+						{:else if mfa?.enabled}
 							<Tag tone="success" dot strong>On</Tag>
 						{:else if mfa?.required}
 							<Tag tone="danger" dot strong>Required</Tag>
-						{:else}
+						{:else if mfa}
 							<Tag dot>Off</Tag>
+						{:else}
+							<Tag>Unknown</Tag>
 						{/if}
 					{/snippet}
 
@@ -452,14 +497,16 @@
 						{/if}
 					{/if}
 				</Panel>
-			</div>
 
-			<div>
 				<Panel title="Sessions" icon={RiComputerLine} flush>
 					{#snippet meta()}
-						<Tag tone={activeSessions > 0 ? 'success' : 'neutral'} dot small>
-							{activeSessions} active
-						</Tag>
+						{#if loading}
+							<Tag>Loading</Tag>
+						{:else}
+							<Tag tone={activeSessions > 0 ? 'success' : 'neutral'} dot small>
+								{activeSessions} active
+							</Tag>
+						{/if}
 					{/snippet}
 
 					{#if loading && sessions.length === 0}
@@ -468,7 +515,7 @@
 						<SessionList {sessions} />
 					{/if}
 				</Panel>
-			</div>
+			{/if}
 		{/if}
 	</div>
 </Drawer>

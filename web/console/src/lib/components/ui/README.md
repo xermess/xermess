@@ -105,6 +105,10 @@ used. Fields are the same idea in `fields.css`: every `Input`, `Textarea`,
 styling those once is what makes them match without any of them saying so.
 Anything else shaped like a field — `SearchInput`, the command palette's
 button — wears `.field-box` too and gets the same border, hover and focus.
+The reusable field controls give their native inputs stable ids when the
+caller does not provide one; explicit names are preserved where a control
+supports native form values. This keeps browser autofill and form diagnostics
+able to identify the fields.
 
 ## Drawers
 

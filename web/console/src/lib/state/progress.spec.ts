@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CEILING, DELAY, HOLD, NavigationProgress, TRICKLE } from './progress.svelte';
+import { CEILING, HOLD, NavigationProgress, START, TRICKLE } from './progress.svelte';
 
 describe('the navigation progress bar', () => {
 	beforeEach(() => {
@@ -10,27 +10,15 @@ describe('the navigation progress bar', () => {
 		vi.useRealTimers();
 	});
 
-	it('shows nothing for a navigation that finishes before the delay', async () => {
+	it('appears as a navigation starts and creeps without reaching the end', async () => {
 		const bar = new NavigationProgress();
 
 		bar.start();
-		await vi.advanceTimersByTimeAsync(DELAY - 10);
-		bar.finish();
-		await vi.advanceTimersByTimeAsync(1000);
-
-		expect(bar.visible).toBe(false);
-		expect(bar.value).toBe(0);
-	});
-
-	it('appears after the delay and creeps without reaching the end', async () => {
-		const bar = new NavigationProgress();
-
-		bar.start();
-		await vi.advanceTimersByTimeAsync(DELAY);
-
 		expect(bar.visible).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(0);
 		expect(bar.instant).toBe(false);
-		expect(bar.value).toBe(0.1);
+		expect(bar.value).toBe(START);
 
 		let last = bar.value;
 		for (let step = 0; step < 40; step++) {
@@ -43,30 +31,41 @@ describe('the navigation progress bar', () => {
 		bar.dispose();
 	});
 
-	it('fills when the page arrives, then hides', async () => {
+	it('still sweeps across for a page that arrives at once', async () => {
 		const bar = new NavigationProgress();
 
 		bar.start();
-		await vi.advanceTimersByTimeAsync(DELAY + TRICKLE * 3);
-		bar.finish();
+		const finishing = bar.finish();
+		expect(bar.visible).toBe(true);
 
+		await finishing;
 		expect(bar.value).toBe(1);
 		expect(bar.visible).toBe(true);
 
 		await vi.advanceTimersByTimeAsync(HOLD);
 		expect(bar.visible).toBe(false);
-
-		// Nothing is left running once it has gone.
-		const settled = bar.value;
-		await vi.advanceTimersByTimeAsync(TRICKLE * 4);
-		expect(bar.value).toBe(settled);
 	});
 
-	it('carries on with the same bar when a navigation starts while it is out', async () => {
+	it('fills when the page arrives, then hides, and stops creeping', async () => {
 		const bar = new NavigationProgress();
 
 		bar.start();
-		await vi.advanceTimersByTimeAsync(DELAY + TRICKLE * 4);
+		await vi.advanceTimersByTimeAsync(TRICKLE * 3);
+		await bar.finish();
+
+		expect(bar.value).toBe(1);
+		await vi.advanceTimersByTimeAsync(HOLD);
+		expect(bar.visible).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(TRICKLE * 4);
+		expect(bar.value).toBe(1);
+	});
+
+	it('carries on with the same bar when a navigation starts while one is under way', async () => {
+		const bar = new NavigationProgress();
+
+		bar.start();
+		await vi.advanceTimersByTimeAsync(TRICKLE * 4);
 		const along = bar.value;
 
 		bar.start();
@@ -81,28 +80,47 @@ describe('the navigation progress bar', () => {
 		const bar = new NavigationProgress();
 
 		bar.start();
-		await vi.advanceTimersByTimeAsync(DELAY + TRICKLE);
-		bar.finish();
+		await bar.finish();
 		await vi.advanceTimersByTimeAsync(HOLD);
 
 		bar.start();
-		await vi.advanceTimersByTimeAsync(DELAY);
+		expect(bar.value).toBe(0);
+		await vi.advanceTimersByTimeAsync(0);
 
 		expect(bar.visible).toBe(true);
-		expect(bar.value).toBe(0.1);
+		expect(bar.value).toBe(START);
 		bar.dispose();
 	});
 
-	it('does not start creeping if the page arrives while the bar is being put in place', async () => {
-		let release: () => void = () => {};
-		const bar = new NavigationProgress(() => new Promise((resolve) => (release = resolve)));
+	it('keeps the bar when a new navigation begins while the last is being put in place', async () => {
+		const pending: (() => void)[] = [];
+		const bar = new NavigationProgress(() => new Promise<void>((resolve) => pending.push(resolve)));
 
 		bar.start();
-		await vi.advanceTimersByTimeAsync(DELAY);
-		bar.finish();
-		release();
-		await vi.advanceTimersByTimeAsync(TRICKLE * 4);
+		const finishing = bar.finish();
+		bar.start();
+		pending.forEach((release) => release());
+		await finishing;
+		await vi.advanceTimersByTimeAsync(0);
 
-		expect(bar.value).toBe(1);
+		expect(bar.visible).toBe(true);
+		expect(bar.value).toBeLessThan(1);
+		expect(vi.getTimerCount()).toBe(1);
+		bar.dispose();
+	});
+
+	it('hides without rejecting when the bar cannot settle', async () => {
+		let reject!: (reason?: unknown) => void;
+		const settling = new Promise<void>((_, fail) => (reject = fail));
+		const bar = new NavigationProgress(() => settling);
+
+		bar.start();
+		const finishing = bar.finish();
+		reject(new Error('the bar went away'));
+		await expect(finishing).resolves.toBeUndefined();
+
+		expect(bar.visible).toBe(false);
+		expect(bar.value).toBe(0);
+		bar.dispose();
 	});
 });

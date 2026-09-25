@@ -8,10 +8,20 @@
 		description?: string;
 		checked: boolean;
 		disabled?: boolean;
+		id?: string;
+		name?: string;
 		onChange?: (checked: boolean) => void;
 	};
 
-	let { label, description, checked = $bindable(false), disabled, onChange }: Props = $props();
+	let {
+		label,
+		description,
+		checked = $bindable(false),
+		disabled,
+		id,
+		name,
+		onChange
+	}: Props = $props();
 </script>
 
 <!-- A setting that is on or off: what it is and what it does on the left, the
@@ -19,6 +29,8 @@
      reading. Descriptions line up under their labels however long they run. -->
 <Switch.Root
 	class="switch-field"
+	{id}
+	{name}
 	{checked}
 	{disabled}
 	onclick={onlyTheSwitch}

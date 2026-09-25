@@ -81,16 +81,25 @@
 	const matches = $derived(commands.filter((command) => fuzzy(command, query)));
 
 	/** The matches under their group headings, in the order the groups first
-	    appear, so filtering never reshuffles the list. */
+	    appear, so filtering never reshuffles the list. Keep each match's
+	    original index while grouping; the active descendant and keyboard
+	    selection use that index, and it avoids searching the list again. */
 	const grouped = $derived(
-		matches.reduce<{ name: string; items: Command[] }[]>((groups, command) => {
-			const last = groups.at(-1);
-			if (last?.name === command.group) last.items.push(command);
-			else groups.push({ name: command.group, items: [command] });
+		matches.reduce<{ name: string; items: { command: Command; index: number }[] }[]>(
+			(groups, command, index) => {
+				const last = groups.at(-1);
+				const item = { command, index };
+				if (last?.name === command.group) last.items.push(item);
+				else groups.push({ name: command.group, items: [item] });
 
-			return groups;
-		}, [])
+				return groups;
+			},
+			[]
+		)
 	);
+
+	/** The option the input's active descendant points at. */
+	const activeId = $derived(matches[active] ? `command-palette-option-${active}` : undefined);
 
 	/** Whether the query's letters appear in the name, in order. The group's
 	    name counts too, so "settings" brings up everything filed under it. */
@@ -198,6 +207,15 @@
 					<Icon icon={RiSearchLine} size="1.125rem" />
 					<!-- svelte-ignore a11y_autofocus -->
 					<input
+						id="command-palette-search"
+						name="command-palette-search"
+						role="combobox"
+						aria-label="Search pages"
+						aria-controls="command-palette-results"
+						aria-expanded={open}
+						aria-haspopup="listbox"
+						aria-autocomplete="list"
+						aria-activedescendant={activeId}
 						autofocus
 						type="text"
 						autocomplete="off"
@@ -209,26 +227,35 @@
 					/>
 				</div>
 
-				<div class="results" bind:this={list}>
-					{#each grouped as group (group.name)}
-						<div class="group">
-							<h2>{group.name}</h2>
+				<div
+					id="command-palette-results"
+					class="results"
+					role="listbox"
+					aria-label="Pages"
+					bind:this={list}
+				>
+					{#each grouped as group, groupIndex (group.name)}
+						<div class="group" role="group" aria-labelledby={`command-palette-group-${groupIndex}`}>
+							<h2 id={`command-palette-group-${groupIndex}`}>{group.name}</h2>
 
-							{#each group.items as command (command.id)}
-								{@const index = matches.indexOf(command)}
+							{#each group.items as item (item.command.id)}
 								<button
+									id={`command-palette-option-${item.index}`}
 									type="button"
 									class="row"
-									data-active={index === active}
-									onclick={() => run(command)}
-									onmousemove={() => (active = index)}
+									role="option"
+									aria-selected={item.index === active}
+									tabindex="-1"
+									data-active={item.index === active}
+									onclick={() => run(item.command)}
+									onmousemove={() => (active = item.index)}
 								>
-									<Icon icon={command.icon} />
-									<span class="label">{command.label}</span>
+									<Icon icon={item.command.icon} />
+									<span class="label">{item.command.label}</span>
 
-									{#if command.external}
+									{#if item.command.external}
 										<Icon icon={RiExternalLinkLine} size="0.875rem" />
-									{:else if index === active}
+									{:else if item.index === active}
 										<Icon icon={RiCornerDownLeftLine} size="0.875rem" />
 									{/if}
 								</button>

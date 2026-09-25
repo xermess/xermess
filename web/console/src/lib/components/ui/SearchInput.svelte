@@ -13,6 +13,8 @@
 		/** Given, Enter submits the search as a form; left out, the box is a
 		    filter that reacts as it is typed in. */
 		onsubmit?: () => void;
+		id?: string;
+		name?: string;
 		oninput?: (event: Event) => void;
 		onkeydown?: (event: KeyboardEvent) => void;
 	};
@@ -23,14 +25,28 @@
 		placeholder,
 		size = 'md',
 		onsubmit,
+		id,
+		name,
 		oninput,
 		onkeydown
 	}: Props = $props();
+
+	/** Search boxes are fields too, even when they sit outside a form. */
+	const uid = $props.id();
 </script>
 
 {#snippet field()}
 	<Icon icon={RiSearchLine} />
-	<input type="search" {placeholder} bind:value {oninput} {onkeydown} aria-label={label} />
+	<input
+		id={id ?? uid}
+		{name}
+		type="search"
+		{placeholder}
+		bind:value
+		{oninput}
+		{onkeydown}
+		aria-label={label}
+	/>
 {/snippet}
 
 <!-- The search box every list has: the same outlined box as a field — it

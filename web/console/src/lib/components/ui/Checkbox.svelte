@@ -13,12 +13,16 @@
 		label?: string;
 		title?: string;
 		disabled?: boolean;
+		id?: string;
+		name?: string;
 	};
 
-	let { checked, onChange, label, title, disabled }: Props = $props();
+	let { checked, onChange, label, title, disabled, id, name }: Props = $props();
 </script>
 
 <Checkbox.Root
+	{id}
+	{name}
 	{checked}
 	{disabled}
 	onCheckedChange={(details) => onChange(details.checked === true)}

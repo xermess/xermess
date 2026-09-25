@@ -215,6 +215,8 @@
 					<label class="search">
 						<Icon icon={RiSearchLine} />
 						<input
+							id="token-preview-user-search"
+							name="token-preview-user-search"
 							type="search"
 							placeholder="Search users by email or any field…"
 							bind:value={userSearch}
@@ -261,6 +263,8 @@
 			</div>
 		{/if}
 		<input
+			id="token-preview-extra-scopes"
+			name="token-preview-extra-scopes"
 			class="extra"
 			bind:value={extra}
 			placeholder="Other scopes, separated by spaces"

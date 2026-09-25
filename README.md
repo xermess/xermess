@@ -566,8 +566,9 @@ asking the authenticator for a code first. Whether *every* administrator needs
 one is not here; that is the policy, and it lives on the Administrators page
 along with resetting somebody else's factor.
 
-Changing the email or the password is not built yet; those rows say so and
-their buttons are disabled rather than pretending.
+The account view changes the reader's name, email and password. Changing the
+email asks for the current password first; changing the password signs out
+the reader's other sessions.
 
 `web/console/.env` names the admin API in `API_URL`. The browser never uses it:
 it calls `/api/v1/admin/...` on the panel's own origin, and the proxy routes

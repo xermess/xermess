@@ -1,22 +1,27 @@
 /**
- * The navigation bar's timing, apart from its drawing: when it appears, how
- * it creeps while a page loads, and how it finishes. NavigationProgress.svelte
- * draws `value` and `visible` and calls `start` and `finish`; nothing here
- * touches the page, so the timing can be tested with a fake clock.
+ * The navigation bar's timing, apart from its drawing: how it starts, how it
+ * creeps while a page loads, and how it finishes. NavigationProgress.svelte
+ * calls `start` as each navigation begins and `finish` once it has, and draws
+ * `value` and `visible`; nothing here touches the page, so the timing can be
+ * tested with a fake clock.
+ *
+ * It starts at once, the way NProgress and nextjs-toploader do, and every
+ * navigation shows it: a quick one as a short sweep, a slow one as a bar
+ * that creeps until the page arrives.
  */
-
-/** A navigation that finishes this fast shows nothing: a bar that flashes
-    for a frame on every quick page reads as flicker, not as progress. */
-export const DELAY = 80;
 
 /** How often the bar creeps forward while the page is still loading, and
     how far it may creep: it never reaches the end on its own, because only
     the page arriving says the wait is over. */
-export const TRICKLE = 250;
-export const CEILING = 0.92;
+export const TRICKLE = 200;
+export const CEILING = 0.94;
+
+/** Where the bar jumps to as soon as it appears, so even a short wait shows
+    a clear line rather than a sliver. */
+export const START = 0.3;
 
 /** How long the full bar stays before it fades. */
-export const HOLD = 200;
+export const HOLD = 80;
 
 export class NavigationProgress {
 	/** How far along, from 0 to 1. */
@@ -26,7 +31,13 @@ export class NavigationProgress {
 	    slide backwards from the end. */
 	instant = $state(false);
 
-	#delay: ReturnType<typeof setTimeout> | undefined;
+	/** A navigation is under way. */
+	#running = false;
+	/** Distinguishes overlapping navigations while a previous one settles. */
+	#navigation = 0;
+	/** Settles once the bar has been put back at the start on the page. */
+	#ready: Promise<void> = Promise.resolve();
+
 	#trickle: ReturnType<typeof setTimeout> | undefined;
 	#hide: ReturnType<typeof setTimeout> | undefined;
 
@@ -41,40 +52,69 @@ export class NavigationProgress {
 	start() {
 		clearTimeout(this.#hide);
 
-		// A navigation that starts while the bar is still out — a redirect,
-		// or a second click — carries on with the same bar.
-		if (this.visible || this.#delay) return;
+		// A navigation that starts while another is still under way — a
+		// redirect, or a second click — carries on with the same bar.
+		if (this.#running) return;
 
-		this.#delay = setTimeout(async () => {
-			this.#delay = undefined;
-			this.instant = true;
-			this.value = 0;
-			this.visible = true;
+		this.#running = true;
+		const navigation = ++this.#navigation;
+		clearTimeout(this.#trickle);
 
-			await this.#settle();
+		this.instant = true;
+		this.value = 0;
+		this.visible = true;
 
-			// The page may have arrived in the meantime, and finished the bar.
-			if (this.value !== 0) return;
+		let ready: Promise<void>;
+		try {
+			ready = this.#settle();
+		} catch {
+			ready = Promise.reject(new Error('navigation progress could not settle'));
+		}
+		this.#ready = ready.then(
+			() => {
+				// A newer navigation may have taken over while this one settled.
+				if (!this.#running || navigation !== this.#navigation) return;
 
-			this.instant = false;
-			this.value = 0.1;
-			this.#creep();
-		}, DELAY);
+				this.instant = false;
+				this.value = START;
+				this.#creep();
+			},
+			() => {
+				// A failed settle means there is no bar to move. This is also
+				// a teardown path, so do not leave a rejected promise behind.
+				if (navigation !== this.#navigation) return;
+
+				this.#navigation += 1;
+				this.instant = false;
+				this.#running = false;
+				this.value = 0;
+				this.visible = false;
+			}
+		);
 	}
 
-	finish() {
-		clearTimeout(this.#delay);
-		clearTimeout(this.#trickle);
-		this.#delay = undefined;
+	/** Fills the bar and lets it go. A page that arrived before the bar was
+	    even in place still gets it drawn from the start and filled, so a
+	    quick navigation reads as a sweep rather than as nothing. */
+	async finish() {
+		if (!this.#running) return;
 
-		if (!this.visible) return;
+		const navigation = this.#navigation;
+		this.#running = false;
+		clearTimeout(this.#trickle);
+
+		await this.#ready;
+
+		// Another navigation began while this one was being put in place.
+		if (this.#running || navigation !== this.#navigation) return;
 
 		this.value = 1;
 		this.#hide = setTimeout(() => (this.visible = false), HOLD);
 	}
 
 	dispose() {
-		clearTimeout(this.#delay);
+		this.#running = false;
+		this.#navigation += 1;
 		clearTimeout(this.#trickle);
 		clearTimeout(this.#hide);
 	}
@@ -84,7 +124,7 @@ export class NavigationProgress {
 	    like a metronome. */
 	#creep() {
 		this.#trickle = setTimeout(() => {
-			this.value += (CEILING - this.value) * (0.08 + Math.random() * 0.08);
+			this.value += (CEILING - this.value) * (0.1 + Math.random() * 0.1);
 			this.#creep();
 		}, TRICKLE);
 	}
