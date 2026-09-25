@@ -606,8 +606,8 @@ attributes. Everything else refers to the tokens in `tokens.css`. There is no
 CSS framework.
 
 The layout is taken from the [PocketBase](https://pocketbase.io) admin UI,
-and the colour from Telegram's: a white page in the light theme and #0f0f0f
-in the dark one, cool greys a step apart, and one brand blue, `#0088cc`, for
+and the colour from Telegram's: a white page in the light theme and a black
+one (`#000`) in the dark, cool greys a step apart, and one brand blue, `#0088cc`, for
 whatever is chosen, pressed or current — the primary button, the page open in
 the sidebar, a ticked box, a switch that is on. Every colour is solid; none is
 mixed with transparency.
@@ -625,12 +625,13 @@ screenful. All of it is in `lib/styles/fields.css`.
 What floats over the page is drawn from its own tokens: popovers — menus
 and a select's list — from `--popover-*`, dialogs — drawers and the command
 palette — from `--dialog-*`. In the light theme both are white, set apart by
-a hairline and a shadow; in the dark one a dialog is a shade lighter than the
-page (`#141416` on `#0f0f0f`) and a popover a step above that (`#18181b`), so
-a menu opened over a drawer still stands apart. A row in any popover is one
-design: 36px, an icon in the hint colour, a quiet fill under the pointer, and
-in a select the chosen option on a light wash of the brand colour.
-Everything inside picks its level up without knowing where it is.
+a hairline and a shadow. In dark mode they are flat, with no shadow or glow:
+a dialog sits at `#090909`, while a popover takes the next step at `#0c0c0c`
+so a select or menu opened over a dialog remains distinct. Hairline borders
+define both surfaces. A row in any popover is one design: 36px, an icon in the
+hint colour, a quiet fill under the pointer, and in a select the chosen option
+on a light wash of the brand colour. Everything inside picks its level up
+without knowing where it is.
 
 **Theme.** Light or dark, switched by the toggle in the header — one click,
 no menu — and remembered in a cookie.
@@ -652,16 +653,21 @@ Transitions API, rather than per-element transitions that each start at a
 slightly different moment. Browsers without it simply change. Both that and
 the toggle's own icon animation stop at `prefers-reduced-motion`.
 
-**Fonts.** Roboto for text and Roboto Mono for code, bundled with each app
-from `src/assets/fonts/Roboto` and `src/assets/fonts/Roboto Mono` under the
-SIL Open Font License (the `LICENSE` beside them), so every machine shows the
-same thing. Each is a variable font — every weight in one file — split by
-alphabet: Latin and Cyrillic and their extended sets, with `unicode-range` in
-`lib/styles/fonts.css` so a page downloads only what it shows. They come from
-[Fontsource](https://fontsource.org) (`@fontsource-variable/roboto` and
-`roboto-mono`, 5.3.0); a language in another alphabet needs that subset's
-files added the same way. The Product Sans files in the console's
-`assets/fonts` are kept for later and are not loaded.
+**Fonts.** The sign-in app uses Roboto for text and Roboto Mono for code,
+bundled from `src/assets/fonts/Roboto` and `src/assets/fonts/Roboto Mono`
+under the SIL Open Font License (the `LICENSE` beside them), so every machine
+shows the same thing. Each is a variable font — every weight in one file —
+split by alphabet: Latin and Cyrillic and their extended sets, with
+`unicode-range` in `lib/styles/fonts.css` so a page downloads only what it
+shows. They come from [Fontsource](https://fontsource.org)
+(`@fontsource-variable/roboto` and `roboto-mono`, 5.3.0); a language in
+another alphabet needs that subset's files added the same way.
+
+The console uses Chirp as its primary typeface. Its Latin and Latin Extended
+files at 400, 500 and 700 are bundled; the system sans and monospace stacks
+cover scripts and code Chirp does not provide. Chirp is X's typeface rather
+than an open font; its licensing note is in
+`web/console/src/assets/fonts/README.md`.
 
 **Icons** are [Remix Icon](https://remixicon.com), through `svelte-remixicon`.
 They are components, so only the ones actually used are bundled — there is no

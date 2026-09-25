@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { QueryClientProvider } from '@tanstack/svelte-query';
+	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
 	import { createQueryClient } from '$lib/query';
 	import '$lib/styles/app.css';
 	import type { LayoutProps } from './$types';
@@ -15,6 +16,8 @@
      the app has booted, so it lands between the one the browser already has
      and the one the page sets, which shows as a second flicker. The default
      lives in app.html instead, where it is in the very first byte. -->
+<NavigationProgress />
+
 <QueryClientProvider client={queryClient}>
 	{@render children()}
 </QueryClientProvider>

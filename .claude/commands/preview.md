@@ -24,11 +24,15 @@ it:
      XERMESS_ISSUER=http://localhost:5183 XERMESS_ACCOUNT_URL=http://localhost:5183 \
      XERMESS_ADMIN_URL=http://localhost:5184 XERMESS_ADMIN_MFA=optional \
      XERMESS_SECRET_KEY=preview-secret-key-0123456789abcdef \
+     XERMESS_REDIS_PREFIX=xermess-preview: \
      bin/xermess-preview &
    ```
 
    `XERMESS_ADMIN_MFA=optional` is what makes signing in one step instead of
-   needing an authenticator.
+   needing an authenticator. `XERMESS_REDIS_PREFIX` keeps its cache apart
+   from the running stack's: the binary reads `.env`, so without it the two
+   share one Redis, each reads the other's cached rows — an organisation
+   whose id is not in its own database, say — and saves go wrong.
 
 3. The panel against it: `API_URL=http://localhost:8091 bunx vite dev --port 5184 --strictPort`
    from `web/console`.
@@ -45,5 +49,6 @@ it:
    toggle switches them.
 
 Then take it all down: stop both processes, `DROP DATABASE xermess_preview WITH (FORCE)`,
+clear its cache (`redis-cli --scan --pattern 'xermess-preview:*' | xargs redis-cli del`),
 and close the tab. Say what you saw, and what you changed if you fixed
 something.

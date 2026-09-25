@@ -121,7 +121,7 @@
 		align-items: center;
 		gap: var(--space-2);
 		width: 100%;
-		height: var(--nav-row-height);
+		height: var(--nav-item-height);
 		padding: 0 8px 0 10px;
 		overflow: hidden;
 		border: none;

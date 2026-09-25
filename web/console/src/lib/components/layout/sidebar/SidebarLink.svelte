@@ -48,7 +48,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		height: var(--nav-row-height);
+		height: var(--nav-item-height);
 		padding: 0 10px;
 		overflow: hidden;
 		border-radius: var(--radius-sm);
@@ -124,7 +124,7 @@
 	   the label clips itself, and a nested row is never folded, which is the
 	   only thing the clip was for. */
 	.row.nested {
-		height: calc(var(--nav-row-height) - 2px);
+		height: calc(var(--nav-item-height) - 2px);
 		padding-left: 8px;
 		overflow: visible;
 	}

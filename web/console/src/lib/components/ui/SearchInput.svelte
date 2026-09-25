@@ -33,11 +33,12 @@
 	<input type="search" {placeholder} bind:value {oninput} {onkeydown} aria-label={label} />
 {/snippet}
 
-<!-- The search box every list has: the same outlined box as a field
-     (styles/fields.css), at a control's height, with the magnifier inside. -->
+<!-- The search box every list has: the same outlined box as a field — it
+     wears .field-box, so its border, hover and focus are the field's
+     (styles/fields.css) — at a control's height, with the magnifier inside. -->
 {#if onsubmit}
 	<form
-		class="search"
+		class="search field-box"
 		data-size={size}
 		role="search"
 		onsubmit={(event) => {
@@ -48,43 +49,33 @@
 		{@render field()}
 	</form>
 {:else}
-	<label class="search" data-size={size}>
+	<label class="search field-box" data-size={size}>
 		{@render field()}
 	</label>
 {/if}
 
 <style>
-	/* It takes the width a toolbar row leaves it, and keeps its height in a
-	   column: a basis of auto rather than 0, so growing never squeezes it. */
+	/* It takes the width a toolbar row leaves it, and holds its height in a
+	   column: a basis of auto, so growing never squeezes it, and a max
+	   height, so a tall column cannot stretch it either. */
 	.search {
+		--search-height: var(--control-height);
+
 		flex: 1 1 auto;
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
 		min-width: 0;
-		height: var(--control-height);
+		height: var(--search-height);
+		max-height: var(--search-height);
 		padding: 0 12px;
-		border: 1px solid var(--color-input-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
 		color: var(--color-text-hint);
-		transition:
-			border-color var(--speed),
-			box-shadow var(--speed);
 	}
 
 	.search[data-size='sm'] {
-		height: var(--control-height-sm);
+		--search-height: var(--control-height-sm);
+
 		padding: 0 10px;
-	}
-
-	.search:hover {
-		border-color: var(--color-input-border-hover);
-	}
-
-	.search:focus-within {
-		border-color: var(--color-brand);
-		box-shadow: inset 0 0 0 1px var(--color-brand);
 	}
 
 	input {

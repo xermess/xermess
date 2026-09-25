@@ -1,12 +1,23 @@
 /* Design tokens. The layout and spacing come from the PocketBase admin UI;
-   the colour is Telegram's: a white or near-black (#0f0f0f) page, cool greys
+   the colour is Telegram's: a white or a black page, cool greys
    a step apart, and one brand blue, #0088cc, for everything chosen, pressed
-   or current. Inputs are filled and only show their border on focus. */
+   or current. */
 
 :root {
 	/* Type */
-	--font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-mono: 'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+	/* Chirp is the panel's only bundled family. The system's faces are its
+	   fallback while it downloads and for scripts Chirp does not cover; the
+	   emoji faces keep an emoji in a name in colour rather than as a box. */
+	--font-system-sans:
+		system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Noto Sans', Ubuntu,
+		Cantarell, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+	--font-system-mono:
+		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono',
+		monospace;
+
+	--font-sans: 'Chirp', var(--font-system-sans);
+	--font-mono: var(--font-system-mono);
 	--text-xs: 12px;
 	--text-sm: 13px;
 	--text-base: 14px;
@@ -42,7 +53,7 @@
 	/* A row in a list of places to go, rather than a control to press: the
 	   sidebar is a column of these, and a column of 45px rows would be a
 	   column of buttons. */
-	--nav-item-height: 38px;
+	--nav-item-height: 36px;
 	--header-height: 55px;
 	--sidebar-width: 240px;
 	--content-max-width: 1440px;
@@ -59,6 +70,9 @@
 
 	/* How wide a drawer opens. It never passes the edge of a narrow screen. */
 	--drawer-width: 40rem;
+	/* Dark mode uses a real border for the drawer's left edge; light mode's
+	   travelling shadow serves the same purpose. */
+	--drawer-border-color: transparent;
 
 	/* Scrollbars. The thumb is drawn inside a transparent border, so the bar
 	   reads thinner than the space it reserves and never touches the content
@@ -137,14 +151,14 @@
 	   a popover — a menu, a select's list — and a dialog — a drawer, the
 	   command palette. In the light theme both are white like the page, set
 	   apart by a hairline, a shadow and, for a dialog, the dimmed page. */
-	--popover-surface: #fff;
-	--popover-surface-alt: #f7f7f8;
-	--popover-secondary: #f1f2f4;
-	--popover-secondary-alt: #e6e8eb;
-	--popover-border: #e4e6e9;
-	--popover-input-border: #d3d7dc;
-	--popover-input-border-hover: #aab0b7;
-	--popover-row-hover: #f7f7f8;
+	--popover-surface: var(--color-surface);
+	--popover-surface-alt: var(--color-surface-alt);
+	--popover-secondary: var(--color-secondary);
+	--popover-secondary-alt: var(--color-secondary-alt);
+	--popover-border: var(--color-border);
+	--popover-input-border: var(--color-input-border);
+	--popover-input-border-hover: var(--color-input-border-hover);
+	--popover-row-hover: var(--row-hover);
 
 	/* A dialog — a drawer, the command palette — is a large sheet rather
 	   than a small card, so in the dark theme it sits closer to the page
@@ -197,72 +211,76 @@
    together when changing one. */
 
 :root[data-theme='dark'] {
-	--color-dark-base: #0f0f0f;
+	--color-dark-base: #000;
 
 	--color-brand-hover: #1a9ad9;
-	--color-brand-subtle: #0d2533;
+	--color-brand-subtle: #06202e;
 
 	--color-surface: var(--color-dark-base);
 	--color-body: var(--color-dark-base);
-	--color-secondary: #1f1f1f;
-	--color-secondary-alt: #2a2a2a;
+	--color-secondary: #16181c;
+	--color-secondary-alt: #202327;
 
-	--color-text: #e8e8ea;
-	--color-text-hint: #a9a9ae;
-	--color-text-disabled: #6b6b70;
+	--color-text: #e7e9ea;
+	--color-text-hint: #8b9096;
+	--color-text-disabled: #50555a;
 
-	--color-input-border: #303030;
-	--color-input-border-hover: #4a4a4a;
-	--color-border: #242424;
+	--color-input-border: #2f3336;
+	--color-input-border-hover: #4c5257;
+	--color-border: #202327;
 
 	--color-success: #4cbb5e;
 	--color-danger: #ef5350;
 	--color-warning: #f0a040;
-	/* Text-level brand, lifted so it reads on near-black; fills keep #0088cc. */
+	/* Text-level brand, lifted so it reads on black; fills keep #0088cc. */
 	--color-info: #3ea6e6;
 
-	--surface-success: #10261a;
-	--surface-danger: #2e1414;
-	--surface-warning: #2e2112;
+	--surface-success: #081a0f;
+	--surface-danger: #220b0b;
+	--surface-warning: #221808;
 
-	--color-surface-alt: #161616;
+	--color-surface-alt: #0a0b0c;
 
-	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 50%);
-	--shadow-panel: 0 6px 16px -6px rgb(0 0 0 / 60%);
-	--shadow-md: 0 4px 20px 0 rgb(0 0 0 / 60%);
-	--shadow-drawer: -1px 0 6px 0 rgb(0 0 0 / 60%);
+	/* No shadows in the dark theme: surfaces are set apart by their colour and
+	   a hairline border, and nothing glows or floats. */
+	--shadow-sm: none;
+	--shadow-panel: none;
+	--shadow-md: none;
+	--shadow-drawer: none;
+	--drawer-border-color: #262626;
 	--selection: #0a4d73;
-	--color-overlay: rgb(0 0 0 / 60%);
+	/* The page behind a drawer is dimmed with black, the theme's own colour:
+	   the page is black already, but its words, panels and borders are not,
+	   and dimming them is what brings the sheet forward. */
+	--color-overlay: rgb(0 0 0 / 72%);
 
-	--scrollbar-thumb: #333;
-	--scrollbar-thumb-hover: #4a4a4a;
+	--scrollbar-thumb: #2f3336;
+	--scrollbar-thumb-hover: #4c5257;
 
-	--tooltip-surface: #2c2c2e;
+	--tooltip-surface: #202327;
 
-	--row-hover: #161616;
+	--row-hover: #0e1012;
 
-	/* In the dark theme what floats is lighter than the page, Telegram's
-	   way — a shadow barely shows on near-black, a lighter sheet does — in
-	   two steps: a dialog just above the page (#141416), a popover a step
-	   above that (#18181b), so a menu opened over a drawer still stands
-	   apart from it. Every grey inside each steps up with it. */
-	--popover-surface: #18181b;
-	--popover-surface-alt: #1d1d20;
-	--popover-secondary: #25252a;
-	--popover-secondary-alt: #2f2f34;
-	--popover-border: #2a2a2e;
-	--popover-input-border: #38383c;
-	--popover-input-border-hover: #505055;
-	--popover-row-hover: #1f1f23;
+	/* The page is black and a dialog sits at #090909. A popover — a menu or
+	   a select's list — takes the next step at #0c0c0c, so one opened over a
+	   dialog remains distinct without a shadow. */
+	--popover-surface: #0c0c0c;
+	--popover-surface-alt: #141414;
+	--popover-secondary: #1c1c1c;
+	--popover-secondary-alt: #262626;
+	--popover-border: #2a2a2a;
+	--popover-input-border: #363636;
+	--popover-input-border-hover: #505050;
+	--popover-row-hover: #161616;
 
-	--dialog-surface: #141416;
-	--dialog-surface-alt: #19191b;
-	--dialog-secondary: #202023;
-	--dialog-secondary-alt: #2a2a2d;
-	--dialog-border: #242427;
-	--dialog-input-border: #323235;
-	--dialog-input-border-hover: #4a4a4e;
-	--dialog-row-hover: #19191b;
+	--dialog-surface: #090909;
+	--dialog-surface-alt: #131313;
+	--dialog-secondary: #1a1a1a;
+	--dialog-secondary-alt: #242424;
+	--dialog-border: #202020;
+	--dialog-input-border: #303030;
+	--dialog-input-border-hover: #4a4a4a;
+	--dialog-row-hover: #141414;
 
 	--color-scheme: dark;
 	color-scheme: dark;
@@ -270,84 +288,70 @@
 
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		--color-dark-base: #0f0f0f;
+		/* The same values as the block above; its comments say why. */
+		--color-dark-base: #000;
 
 		--color-brand-hover: #1a9ad9;
-		--color-brand-subtle: #0d2533;
+		--color-brand-subtle: #06202e;
 
 		--color-surface: var(--color-dark-base);
 		--color-body: var(--color-dark-base);
-		--color-secondary: #1f1f1f;
-		--color-secondary-alt: #2a2a2a;
+		--color-secondary: #16181c;
+		--color-secondary-alt: #202327;
 
-		--color-text: #e8e8ea;
-		--color-text-hint: #a9a9ae;
-		--color-text-disabled: #6b6b70;
+		--color-text: #e7e9ea;
+		--color-text-hint: #8b9096;
+		--color-text-disabled: #50555a;
 
-		--color-input-border: #303030;
-		--color-input-border-hover: #4a4a4a;
-		--color-border: #242424;
+		--color-input-border: #2f3336;
+		--color-input-border-hover: #4c5257;
+		--color-border: #202327;
 
 		--color-success: #4cbb5e;
 		--color-danger: #ef5350;
 		--color-warning: #f0a040;
-		/* Text-level brand, lifted so it reads on near-black; fills keep #0088cc. */
 		--color-info: #3ea6e6;
 
-		--surface-success: #10261a;
-		--surface-danger: #2e1414;
-		--surface-warning: #2e2112;
+		--surface-success: #081a0f;
+		--surface-danger: #220b0b;
+		--surface-warning: #221808;
 
-		--color-surface-alt: #161616;
+		--color-surface-alt: #0a0b0c;
 
-		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 50%);
-		--shadow-panel: 0 6px 16px -6px rgb(0 0 0 / 60%);
-		--shadow-md: 0 4px 20px 0 rgb(0 0 0 / 60%);
-		--shadow-drawer: -1px 0 6px 0 rgb(0 0 0 / 60%);
+		--shadow-sm: none;
+		--shadow-panel: none;
+		--shadow-md: none;
+		--shadow-drawer: none;
+		--drawer-border-color: #262626;
 		--selection: #0a4d73;
-		--color-overlay: rgb(0 0 0 / 60%);
+		--color-overlay: rgb(0 0 0 / 72%);
 
-		--scrollbar-thumb: #333;
-		--scrollbar-thumb-hover: #4a4a4a;
+		--scrollbar-thumb: #2f3336;
+		--scrollbar-thumb-hover: #4c5257;
 
-		--tooltip-surface: #2c2c2e;
+		--tooltip-surface: #202327;
 
-		--row-hover: #161616;
+		--row-hover: #0e1012;
 
-		/* The same two steps as the block above: a dialog, then a popover. */
-		--popover-surface: #18181b;
-		--popover-surface-alt: #1d1d20;
-		--popover-secondary: #25252a;
-		--popover-secondary-alt: #2f2f34;
-		--popover-border: #2a2a2e;
-		--popover-input-border: #38383c;
-		--popover-input-border-hover: #505055;
-		--popover-row-hover: #1f1f23;
+		--popover-surface: #0c0c0c;
+		--popover-surface-alt: #141414;
+		--popover-secondary: #1c1c1c;
+		--popover-secondary-alt: #262626;
+		--popover-border: #2a2a2a;
+		--popover-input-border: #363636;
+		--popover-input-border-hover: #505050;
+		--popover-row-hover: #161616;
 
-		--dialog-surface: #141416;
-		--dialog-surface-alt: #19191b;
-		--dialog-secondary: #202023;
-		--dialog-secondary-alt: #2a2a2d;
-		--dialog-border: #242427;
-		--dialog-input-border: #323235;
-		--dialog-input-border-hover: #4a4a4e;
-		--dialog-row-hover: #19191b;
+		--dialog-surface: #090909;
+		--dialog-surface-alt: #131313;
+		--dialog-secondary: #1a1a1a;
+		--dialog-secondary-alt: #242424;
+		--dialog-border: #202020;
+		--dialog-input-border: #303030;
+		--dialog-input-border-hover: #4a4a4a;
+		--dialog-row-hover: #141414;
 
 		--color-scheme: dark;
 		color-scheme: dark;
 	}
-}
-
-/* The faces the header's font picker switches between. Roboto is the
-   default above and needs no rule; the others replace the two families and
-   nothing else, so every size and weight stays where it was. The server
-   writes the attribute from a cookie, the way it writes data-theme, so a
-   page arrives in the chosen face rather than switching after it loads. */
-:root[data-font='product-sans'] {
-	--font-sans: 'Product Sans', 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
-}
-
-:root[data-font='plex'] {
-	--font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }

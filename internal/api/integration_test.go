@@ -20,11 +20,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"xermess/i18n"
+	"xermess/internal/cache"
 	"xermess/internal/cache/cachetest"
 	"xermess/internal/config"
 	"xermess/internal/database"
 	"xermess/internal/mail"
+	"xermess/internal/model"
 	"xermess/internal/oidc"
 	"xermess/internal/store"
 )
@@ -51,6 +55,9 @@ type liveServer struct {
 	mail      *mailbox
 	// store is the server's own, for a test that checks what it keeps.
 	store *store.Store
+	// cache is the Redis the server reads through, or nil when the tests
+	// have none.
+	cache *cache.Cache
 }
 
 // testAccountURL is where the provider sends browsers to sign in. Nothing is
@@ -238,7 +245,7 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	t.Cleanup(publicServer.Close)
 	t.Cleanup(adminServer.Close)
 
-	return &liveServer{t: t, url: adminRoot + "/api/v1/admin", root: root, adminRoot: adminRoot, mail: mailer, store: st}
+	return &liveServer{t: t, url: adminRoot + "/api/v1/admin", root: root, adminRoot: adminRoot, mail: mailer, store: st, cache: shared}
 }
 
 // client is one browser: it keeps its own session cookie.
@@ -867,6 +874,47 @@ func TestLiveOverviewListsAreNeverNull(t *testing.T) {
 // The organisation is one record of settings every installation starts with:
 // an update changes what it names and leaves the rest as it was, and the log
 // says which settings moved.
+// A stale organisation in the cache — cached before the database was reset,
+// or by another server sharing the Redis — is not what a save writes back:
+// the save reads the row itself, and succeeds.
+func TestLiveOrganizationSaveIgnoresAStaleCache(t *testing.T) {
+	s := newLiveServer(t)
+	if s.cache == nil {
+		t.Skip("no test Redis: set " + cachetest.Env)
+	}
+	super := s.superAdmin()
+
+	// Something reads the organisation first, so the group is in use.
+	super.must(http.StatusOK, http.MethodGet, "/organization", nil, nil)
+
+	stale := model.DefaultOrganization()
+	stale.ID = uuid.New()
+	stale.Name = "stale"
+	s.cache.Set(context.Background(), cache.Organization, "settings", stale)
+
+	var answer struct {
+		Organization struct {
+			Name     string `json:"name"`
+			TermsURL string `json:"terms_url"`
+		} `json:"organization"`
+	}
+	super.must(http.StatusOK, http.MethodPatch, "/organization", map[string]any{
+		"terms_url": "https://acme.example.com/terms",
+	}, &answer)
+
+	if answer.Organization.TermsURL != "https://acme.example.com/terms" || answer.Organization.Name != "xermess" {
+		t.Errorf("after the save = %+v, want the stored organization with its terms", answer.Organization)
+	}
+
+	stored, err := s.store.OrganizationForUpdate(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.TermsURL != "https://acme.example.com/terms" {
+		t.Errorf("stored terms = %q, want the saved link", stored.TermsURL)
+	}
+}
+
 func TestLiveOrganizationSettings(t *testing.T) {
 	s := newLiveServer(t)
 	super := s.superAdmin()

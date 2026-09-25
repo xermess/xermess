@@ -1,3 +1,4 @@
+import { resolve } from '$app/paths';
 import type { RouteId } from '$app/types';
 import type { ComponentType } from 'svelte';
 import {
@@ -54,7 +55,8 @@ export type SidebarBranch = {
 };
 
 /** The sidebar in order: the pages that answer "what is happening" on their
-    own at the top, and everything else under the subject it belongs to.
+    own in an Overview group at the top, and everything else under the
+    subject it belongs to.
     A branch is a subject, not a bucket — which is why One-time codes sits
     under Authentication, where it is read, rather than under Settings, where
     it merely lives. */
@@ -195,6 +197,17 @@ export const branches: SidebarBranch[] = [
 		]
 	}
 ];
+
+/** Whether a page is the one being read. Activity is the dashboard's own
+    page, so it only matches exactly; the others also match anything below
+    them. The sidebar and the header ask the same question the same way. */
+export function isCurrentSection(route: Section, pathname: string): boolean {
+	const href = resolve(route);
+
+	return route === '/admin/(panel)/dashboard'
+		? pathname === href
+		: pathname === href || pathname.startsWith(`${href}/`);
+}
 
 /** What an administrator sees: the pages their roles allow, and a branch only
     where it still has one. The page checks the permission again on the

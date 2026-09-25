@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { resolve } from '$app/paths';
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { Admin } from '$lib/api';
 	import { useShell } from '$lib/state/shell.svelte';
 	import SidebarBranch from './sidebar/SidebarBranch.svelte';
 	import SidebarLink from './sidebar/SidebarLink.svelte';
-	import { visibleBranches, visibleOverview, type Section } from './sidebar/sections';
+	import {
+		isCurrentSection,
+		visibleBranches,
+		visibleOverview,
+		type Section
+	} from './sidebar/sections';
 
 	const shell = useShell();
 
@@ -25,16 +29,7 @@
 	const overview = $derived(visibleOverview(admin));
 	const branches = $derived(visibleBranches(admin));
 
-	/** Activity is the dashboard's own page, so it only matches exactly; the
-	    others also match anything below them. */
-	function isCurrent(route: Section): boolean {
-		const href = resolve(route);
-		const path = page.url.pathname;
-
-		return route === '/admin/(panel)/dashboard'
-			? path === href
-			: path === href || path.startsWith(`${href}/`);
-	}
+	const isCurrent = (route: Section) => isCurrentSection(route, page.url.pathname);
 
 	// Choosing a page is finishing with the panel, so it closes itself rather
 	// than staying over what it was asked to show.
@@ -73,20 +68,30 @@
 
 <aside class:collapsed={folded} class:open={shell.menuOpen}>
 	<nav aria-label="Sections">
+		<!-- What is happening, before where things are: its own group at the
+		     top, named, and ruled off from the subjects below it. Folded, the
+		     name gives way and the rule keeps the two apart. -->
 		{#if overview.length > 0}
-			<ul class="top">
-				{#each overview as item (item.route)}
-					<li>
-						<SidebarLink
-							route={item.route}
-							label={item.label}
-							icon={item.icon}
-							current={isCurrent(item.route)}
-							collapsed={folded}
-						/>
-					</li>
-				{/each}
-			</ul>
+			<section class="overview" aria-labelledby="overview-heading">
+				<h2 id="overview-heading" class="group-label">Overview</h2>
+				<ul>
+					{#each overview as item (item.route)}
+						<li>
+							<SidebarLink
+								route={item.route}
+								label={item.label}
+								icon={item.icon}
+								current={isCurrent(item.route)}
+								collapsed={folded}
+							/>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if branches.length > 0}
+			<h2 class="group-label">Manage</h2>
 		{/if}
 
 		{#each branches as branch (branch.id)}
@@ -109,9 +114,9 @@
 		   the one element that owns the navigation, so a row does not have to
 		   know which of the palette's greys means "the page you are on". Every
 		   one is a solid colour: a wash mixed with transparency reads as a
-		   different grey over every surface it lands on. */
-		--nav-row-height: 36px;
-		/* Every row is in the full text colour: on white a grey name reads as
+		   different grey over every surface it lands on.
+
+		   Every row is in the full text colour: on white a grey name reads as
 		   disabled, not as a place to go. Sections are told from pages by
 		   weight, not by fading them. */
 		--nav-text: var(--color-text);
@@ -158,21 +163,40 @@
 		display: none;
 	}
 
-	ul {
+	/* Two named groups: Overview — its pages, and a rule under them — then
+	   Manage, the subjects. The labels are quiet: they organise the column
+	   without competing with the rows. */
+	.overview {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
+		gap: 2px;
+		padding-bottom: var(--space-2);
+		margin-bottom: 2px;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.group-label {
+		margin: 6px 10px 2px;
+		color: var(--color-text-hint);
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		line-height: 16px;
+		text-transform: uppercase;
+	}
+
+	.overview ul {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
 		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
 
-	/* The pages that stand on their own are ruled off from the sections under
-	   them: one line, where the old column needed a heading over every group
-	   to say the same thing. */
-	.top {
-		padding-bottom: var(--space-1);
-		border-bottom: 1px solid var(--color-border);
+	/* Folded, there is no room for a name: the icons and the rule stay. */
+	.collapsed .group-label {
+		display: none;
 	}
 
 	/* Folded, the rows are icons and the column is narrow: the same inset

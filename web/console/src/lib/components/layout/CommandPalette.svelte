@@ -183,7 +183,7 @@
      what says "type here" without a word of instruction, and the shortcut
      beside it teaches the faster way. Narrow screens get the magnifier
      alone. -->
-<button type="button" class="trigger" onclick={show}>
+<button type="button" class="trigger field-box" onclick={show}>
 	<Icon icon={RiSearchLine} size="1rem" />
 	<span class="placeholder">Search…</span>
 	<kbd>⌘K</kbd>
@@ -260,25 +260,16 @@
 		max-width: 100%;
 		height: var(--control-height-sm);
 		padding: 0 var(--space-2);
-		border: 1px solid var(--color-input-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-input);
 		color: var(--color-text-hint);
 		font: inherit;
 		font-size: var(--text-base);
 		text-align: left;
 		cursor: pointer;
-		transition: border-color var(--speed-fast);
 	}
 
-	.trigger:hover {
-		border-color: var(--color-input-border-hover);
-	}
-
+	/* The border, hover and focus are the field's (.field-box). */
 	.trigger:focus-visible {
 		outline: none;
-		border-color: var(--color-brand);
-		box-shadow: inset 0 0 0 1px var(--color-brand);
 	}
 
 	.placeholder {

@@ -23,10 +23,26 @@ func (s *Store) Organization(ctx context.Context) (*model.Organization, error) {
 		return &organization, nil
 	}
 
+	loaded, err := s.OrganizationForUpdate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s.cache.Set(ctx, cache.Organization, "settings", *loaded)
+
+	return loaded, nil
+}
+
+// OrganizationForUpdate reads the organisation from the database, never from
+// the cache: what is about to be changed and written back has to be the row
+// as it is, or a stale copy — one cached before the database was reset, or
+// by another server sharing the Redis — is saved over it.
+func (s *Store) OrganizationForUpdate(ctx context.Context) (*model.Organization, error) {
+	var organization model.Organization
+
 	err := translate(s.db.WithContext(ctx).Order("created_at").First(&organization).Error)
 	switch {
 	case err == nil:
-		s.cache.Set(ctx, cache.Organization, "settings", organization)
 		return &organization, nil
 	case !errors.Is(err, ErrNotFound):
 		return nil, err
@@ -43,9 +59,17 @@ func (s *Store) Organization(ctx context.Context) (*model.Organization, error) {
 }
 
 // SaveOrganization writes the organisation back.
+//
+// It updates the row it was read from and nothing else. GORM's Save would
+// insert a second organisation when that row is not there; this says so
+// instead, as ErrNotFound.
 func (s *Store) SaveOrganization(ctx context.Context, organization *model.Organization) error {
-	if err := translate(s.db.WithContext(ctx).Save(organization).Error); err != nil {
+	result := s.db.WithContext(ctx).Model(organization).Select("*").Omit("created_at").Updates(organization)
+	if err := translate(result.Error); err != nil {
 		return err
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
 	}
 
 	s.forget(ctx, cache.Organization)

@@ -66,8 +66,6 @@
 	   button — is laid over its right end, level with the value. */
 	.adorned {
 		position: relative;
-		display: flex;
-		align-items: center;
 	}
 
 	.copyable :global([data-part='input']) {
@@ -90,10 +88,10 @@
 
 	.suffix {
 		position: absolute;
-		top: 26px;
+		top: var(--field-value-top);
 		right: 14px;
 		z-index: 2;
-		line-height: 20px;
+		line-height: var(--field-line);
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		pointer-events: none;

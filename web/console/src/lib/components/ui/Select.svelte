@@ -77,6 +77,10 @@
 	const gutter = $derived(items.some((item) => item.icon));
 
 	const canClear = $derived(clearable && value !== '' && !disabled && !readOnly);
+
+	/** Whether the list is open: the box shows focus and the label rises
+	    while it is, the same as a field being typed in. */
+	let open = $state(false);
 </script>
 
 <!-- A select is the same outlined box and floating label as an Input, so a
@@ -90,6 +94,7 @@
      styles/ark.css. -->
 <ArkSelect.Root
 	class="field-root"
+	data-disabled={disabled || undefined}
 	{collection}
 	{name}
 	{required}
@@ -98,12 +103,13 @@
 	invalid={error !== undefined}
 	value={value === '' ? [] : [value]}
 	positioning={{ sameWidth: true, gutter: 4 }}
+	onOpenChange={(details) => (open = details.open)}
 	onValueChange={(details) => {
 		value = (details.value[0] ?? '') as Value;
 		onChange?.(value);
 	}}
 >
-	<div class="field-box" data-float={value !== '' || undefined}>
+	<div class="field-box" data-float={value !== '' || undefined} data-open={open || undefined}>
 		<ArkSelect.Label><FieldText {label} {icon} {required} /></ArkSelect.Label>
 
 		<ArkSelect.Control>

@@ -43,7 +43,8 @@ func (h *Handler) Get(c *gin.Context) {
 // Update changes the settings. What a request leaves out is left as it is,
 // so a client that knows about one field does not clear the rest.
 func (h *Handler) Update(c *gin.Context) {
-	organization, err := h.store.Organization(c.Request.Context())
+	// Read from the database, not the cache: this is written back.
+	organization, err := h.store.OrganizationForUpdate(c.Request.Context())
 	if err != nil {
 		respond.Failure(c, h.log, err, "loading the organization failed")
 		return

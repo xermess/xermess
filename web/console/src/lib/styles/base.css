@@ -102,3 +102,16 @@ input[type='number']::-webkit-outer-spin-button {
 	margin: 0;
 	appearance: none;
 }
+
+/* Native controls can keep a platform shadow when their colours are themed.
+   Dark surfaces are flat, so the reset follows both ways the dark palette can
+   be chosen. */
+:root[data-theme='dark'] :where(button, input, select, textarea) {
+	box-shadow: none;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) :where(button, input, select, textarea) {
+		box-shadow: none;
+	}
+}

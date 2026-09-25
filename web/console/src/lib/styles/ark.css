@@ -3,12 +3,11 @@
    stays free of presentational class names. Text fields, text areas and
    selects are in fields.css. */
 
-/* Menus, used by the account menu in the header. */
+/* Popovers: a menu, and a select's list. One sheet — a hairline border,
+   the menus' corners, a shadow — on the popover surface (tokens.css). */
 
-[data-scope='menu'][data-part='content'] {
-	/* Above the sticky header (10) it opens from; below a drawer (40, 50). */
-	z-index: 30;
-	min-width: 12rem;
+[data-scope='menu'][data-part='content'],
+[data-scope='select'][data-part='content'] {
 	padding: 4px;
 	border: 1px solid var(--color-border);
 	border-radius: var(--radius-md);
@@ -16,24 +15,32 @@
 	box-shadow: var(--shadow-md);
 }
 
-[data-scope='menu'][data-part='content']:focus-visible {
+[data-scope='menu'][data-part='content']:focus-visible,
+[data-scope='select'][data-part='content']:focus-visible {
 	outline: none;
+}
+
+/* A menu opens from the sticky header (10), below a drawer (40, 50). */
+[data-scope='menu'][data-part='content'] {
+	z-index: 30;
+	min-width: 12rem;
 }
 
 /* A row in anything that pops up — a menu's actions and choices, a
    select's options — is one row: 36px at least, an icon in the hint colour
-   before the words, a quiet fill under the pointer or the arrow keys. */
+   before the words, a quiet fill under the pointer or the arrow keys. A row
+   given a palette (data-palette="danger", say) takes its colours from it. */
 [data-scope='menu'][data-part='item'],
 [data-scope='menu'][data-part='trigger-item'],
 [data-scope='menu'][data-part='option-item'],
 [data-scope='select'][data-part='item'] {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: var(--space-2);
 	min-height: 36px;
 	padding: 8px 10px;
 	border-radius: var(--radius-sm);
-	color: var(--color-text);
+	color: var(--palette-fg, var(--color-text));
 	font-size: var(--text-base);
 	font-weight: 500;
 	line-height: 20px;
@@ -49,14 +56,14 @@
 [data-scope='menu'][data-part='option-item'] > svg,
 [data-scope='select'][data-part='item'] > svg {
 	flex: none;
-	color: var(--color-text-hint);
+	color: var(--palette-fg, var(--color-text-hint));
 }
 
 [data-scope='menu'][data-part='item'][data-highlighted],
 [data-scope='menu'][data-part='trigger-item'][data-highlighted],
 [data-scope='menu'][data-part='option-item'][data-highlighted],
 [data-scope='select'][data-part='item'][data-highlighted] {
-	background: var(--color-secondary);
+	background: var(--palette-subtle, var(--color-secondary));
 	outline: none;
 }
 
@@ -89,8 +96,6 @@
 	border: none;
 	background: var(--color-border);
 }
-
-/* Switches, used for boolean fields. */
 
 /* Tooltips, shown by IconButton and by a folded sidebar. */
 
@@ -271,8 +276,14 @@
 	display: flex;
 	justify-content: flex-end;
 	/* A panel on its way in or out sits beyond the right edge; clipping it
-	   here means that is never a scrollbar. */
-	overflow: hidden;
+	   here means that is never a scrollbar.
+
+	   Clip, not hidden: a box with overflow: hidden can still be scrolled
+	   from script, and a browser does exactly that to bring a focused field
+	   into view. Ticking a box inside the panel focused its hidden input,
+	   the browser scrolled this box to show it, and the whole panel slid off
+	   the screen. A clipped box cannot be scrolled at all. */
+	overflow: clip;
 }
 
 [data-scope='dialog'][data-part='content'] {
@@ -281,9 +292,11 @@
 	width: min(var(--drawer-width), 100%);
 	height: 100%;
 	background: var(--color-surface);
-	/* A shadow rather than a border down the left: a line drawn on the panel
-	   travels with it, and for the 30px it is still moving there is nothing
-	   behind it to divide. */
+	/* The border reserves the same geometry in both themes. Light leaves it
+	   transparent and draws the edge with a travelling shadow; dark colours it
+	   as a hairline. A visible border would travel with the panel, and for the
+	   30px it is still moving there would be nothing behind it to divide. */
+	border-left: 1px solid var(--drawer-border-color);
 	box-shadow: var(--shadow-drawer);
 	/* The panel is given its own layer for the length of the slide, so the
 	   text in it is not resampled frame by frame. */
@@ -397,17 +410,8 @@
 	   own z-index is written inline and cannot be styled from here. */
 	z-index: 70;
 	max-height: 320px;
-	padding: 4px;
 	overflow-y: auto;
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius-md);
-	background: var(--color-surface);
-	box-shadow: var(--shadow-md);
 	overscroll-behavior: contain;
-}
-
-[data-scope='select'][data-part='content']:focus-visible {
-	outline: none;
 }
 
 [data-scope='select'][data-part='content'][data-state='open'] {
@@ -443,8 +447,7 @@
    The chosen row: a light wash of the brand colour, and its words, icon
    and tick in the brand colour itself. Under the pointer it keeps the wash,
    so the chosen row never looks like just another highlighted one. */
-[data-scope='select'][data-part='item'][data-state='checked'],
-[data-scope='select'][data-part='item'][data-state='checked'][data-highlighted] {
+[data-scope='select'][data-part='item'][data-state='checked'] {
 	background: var(--color-brand-subtle);
 	color: var(--color-brand);
 }

@@ -3,8 +3,20 @@
    stands on its own. */
 
 :root {
-	--font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
-	--font-mono: 'Roboto Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	/* The system's own faces, which Roboto falls back to: what is shown
+	   while it downloads (font-display: swap) and wherever it cannot load.
+	   Each platform's interface face in turn, then the emoji fonts, so an
+	   emoji in a name is drawn in colour rather than as a box. The same
+	   stacks as the panel's. */
+	--font-system-sans:
+		system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Noto Sans', Ubuntu,
+		Cantarell, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+	--font-system-mono:
+		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono',
+		monospace;
+
+	--font-sans: 'Roboto', var(--font-system-sans);
+	--font-mono: 'Roboto Mono', var(--font-system-mono);
 
 	--text-xs: 12px;
 	--text-sm: 13px;
@@ -87,7 +99,8 @@
 	--color-warning: #ec8a50;
 	--color-info: #7aa7ee;
 
-	--shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
+	/* Dark surfaces are separated by colour and borders, not depth. */
+	--shadow-card: none;
 
 	--color-scheme: dark;
 	color-scheme: dark;
@@ -121,7 +134,7 @@
 		--color-warning: #ec8a50;
 		--color-info: #7aa7ee;
 
-		--shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
+		--shadow-card: none;
 
 		--color-scheme: dark;
 		color-scheme: dark;

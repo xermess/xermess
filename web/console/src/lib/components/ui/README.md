@@ -99,10 +99,12 @@ That indirection is the whole trick, and it is why:
 | one component's own layout                                | its own `<style>` block |
 
 `ark.css` styles Ark UI's parts through the `data-scope` / `data-part`
-attributes they render. Styling `[data-scope='field'][data-part='input']` once
-is what makes every `Input` and `Textarea` in the panel match without any of
-them saying so, and `[data-scope='select']` gives the select the same filled
-block so it lines up with them.
+attributes they render, so a menu or a switch looks the same wherever it is
+used. Fields are the same idea in `fields.css`: every `Input`, `Textarea`,
+`PasswordInput` and `Select` is a `.field-root` holding a `.field-box`, and
+styling those once is what makes them match without any of them saying so.
+Anything else shaped like a field — `SearchInput`, the command palette's
+button — wears `.field-box` too and gets the same border, hover and focus.
 
 ## Drawers
 

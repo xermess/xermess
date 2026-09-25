@@ -46,6 +46,19 @@ input {
 	color: inherit;
 }
 
+/* Native controls can keep a platform shadow when their colours are themed.
+   Dark surfaces are flat, so the reset follows both ways the dark palette can
+   be chosen. */
+:root[data-theme='dark'] :where(button, input, select, textarea) {
+	box-shadow: none;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) :where(button, input, select, textarea) {
+		box-shadow: none;
+	}
+}
+
 :focus-visible {
 	outline: 2px solid var(--color-focus);
 	outline-offset: 2px;

@@ -1,6 +1,5 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
-	import type { ComponentType } from 'svelte';
+	import type { ComponentType, Snippet } from 'svelte';
 	import { Field } from '@ark-ui/svelte/field';
 	import FieldText from './FieldText.svelte';
 

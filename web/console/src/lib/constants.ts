@@ -14,9 +14,6 @@ export const COOKIES = {
 	/** Light or dark, read while rendering so the page arrives themed. */
 	theme: 'xermess-theme',
 
-	/** Which typeface the panel is set in, read the same way. */
-	font: 'xermess-font',
-
 	/** Whether the dashboard sidebar is folded, read the same way. */
 	sidebar: 'xermess-sidebar',
 
