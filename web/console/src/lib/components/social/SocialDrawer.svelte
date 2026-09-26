@@ -14,6 +14,7 @@
 		Alert,
 		Button,
 		Drawer,
+		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
@@ -236,7 +237,7 @@
 			/>
 		{/if}
 
-		<div class="pair">
+		<FieldGrid>
 			<Input label="Name" bind:value={name} required hint="What the button says." />
 			<Input
 				label="Identifier"
@@ -245,7 +246,7 @@
 				required
 				hint="In the callback address."
 			/>
-		</div>
+		</FieldGrid>
 
 		{#if spec?.docs}
 			<p class="note">
@@ -272,10 +273,10 @@
 		<Input label="Client ID" bind:value={clientID} required copyable={editing} />
 
 		{#if signs}
-			<div class="pair">
+			<FieldGrid>
 				<Input label="Team ID" bind:value={teamID} required copyable={editing} />
 				<Input label="Key ID" bind:value={keyID} required copyable={editing} />
-			</div>
+			</FieldGrid>
 
 			<SecretField
 				label="Signing key"
@@ -376,13 +377,6 @@
 		margin-bottom: var(--space-4);
 	}
 
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		align-items: start;
-		gap: var(--space-3);
-	}
-
 	.note {
 		margin: 0;
 		font-size: var(--text-sm);
@@ -414,11 +408,5 @@
 		align-items: center;
 		gap: var(--space-2);
 		margin-left: auto;
-	}
-
-	@media (max-width: 34rem) {
-		.pair {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

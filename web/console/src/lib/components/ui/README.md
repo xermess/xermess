@@ -18,6 +18,41 @@ never writes a colour, a height or a hover state — it names one.
 <SearchInput label="Search users" bind:value={search} onsubmit={apply} oninput={debounced} />
 ```
 
+## Menus and centred dialogs
+
+A button in the header that opens a card of rows is a `DropdownMenu`, and its
+rows are the four pieces below — the help menu and the account menu are both
+built this way, so they read as one family:
+
+```svelte
+<DropdownMenu label="Help and resources">
+	{#snippet trigger()}<Icon icon={RiQuestionLine} />{/snippet}
+
+	<MenuGroup label="Resources">
+		<MenuItem
+			value="docs"
+			icon={RiBookOpenLine}
+			label="Documentation"
+			description="Guides"
+			href={docsUrl}
+		/>
+	</MenuGroup>
+	<MenuSeparator />
+	<MenuInfo icon={RiMailLine} label={email} description="Email" />
+	<MenuItem value="sign-out" icon={RiLogoutBoxRLine} label="Sign out" danger onSelect={ask} />
+</DropdownMenu>
+```
+
+`MenuItem` does something (`onSelect`) or goes somewhere off this site
+(`href`, which opens a tab and marks itself); `MenuInfo` only tells, and takes
+no part in the arrow keys. `shape="avatar"` makes the button round.
+
+A record opens in a `Drawer`; everything else that needs a dialog — a
+question, the account's own settings — is a `Modal`, a card in the middle of
+the window in three widths (`sm`, `md`, `lg`). Its `footer` holds the buttons,
+`closable={false}` keeps it open while something it started is under way, and
+a large one keeps one height, so tabs inside it do not make it jump.
+
 ## Buttons that are links
 
 `LinkButton` and `IconLink` are `Button` and `IconButton` with an anchor
@@ -89,9 +124,14 @@ That indirection is the whole trick, and it is why:
 
 ## Where each kind of styling lives
 
+The values — every colour, light and dark, the scales, the sizes, the
+typefaces — are in `lib/theme/theme.ts`. `bun run theme` renders it into
+`styles/tokens.css` and `styles/fonts.css`, which are generated and checked
+by `bun run check`; everything below refers to the tokens they declare.
+
 | Looking for                                               | It is in                |
 | --------------------------------------------------------- | ----------------------- |
-| a colour, a size, a radius, a font                        | `styles/tokens.css`     |
+| a colour, a size, a radius, a font                        | `lib/theme/theme.ts`    |
 | what `danger` or `success` means                          | `styles/palettes.css`   |
 | buttons, icon buttons, link buttons                       | `styles/controls.css`   |
 | inputs, text areas, passwords, selects                    | `styles/fields.css`     |
@@ -200,7 +240,7 @@ keeps the tabs full width and puts the container inside the tab.
 
 ## Page building blocks
 
-The pieces the Activity page and account drawer are made of, after PocketBase's
+The pieces the Activity page and the account dialog are made of, after PocketBase's
 settings and logs pages. Reach for these before writing a box of your own.
 
 ```svelte
@@ -240,4 +280,9 @@ settings and logs pages. Reach for these before writing a box of your own.
 | `ListItem`      | A row: `lead` (usually a `Thumb`), a title and description or any content, and `end`.                                                                      |
 | `Thumb`         | A small square holding an icon or a few letters.                                                                                                           |
 | `Tag`           | A label in any palette; `dot` marks it with a coloured dot instead, `small` and `strong` size it.                                                          |
+| `Thumb`         | Also a picture — `src`, falling back to the icon or letters if it fails — `circle` for a person, `tone="accent"` for the brand mark.                       |
+| `Code`          | An id, a key, a code in the monospace face on a quiet tint; `tone="quiet"`, `truncate`.                                                                    |
+| `Kbd`           | A key on the keyboard, for writing a shortcut down.                                                                                                        |
+| `Note`          | The quiet sentence under a list or a form; brings no margin of its own.                                                                                    |
+| `FieldGrid`     | Fields side by side, one column when it is narrow (by its own width); a child with `class="full"` spans the row.                                           |
 | `Alert`         | A message: `danger` (the default) is announced as an error; `warning`, `info`, `success` are notes.                                                        |

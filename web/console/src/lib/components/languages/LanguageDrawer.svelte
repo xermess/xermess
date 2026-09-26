@@ -6,9 +6,11 @@
 		Alert,
 		Button,
 		Drawer,
+		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
+		Note,
 		SwitchField,
 		Tabs
 	} from '$lib/components/ui';
@@ -195,7 +197,7 @@
 				<div class="panel">
 					{#if value === 'settings'}
 						<FormSection title="Names">
-							<div class="pair">
+							<FieldGrid>
 								<Input
 									label="Name in English"
 									bind:value={name}
@@ -211,7 +213,7 @@
 									lang={language.code}
 									required
 								/>
-							</div>
+							</FieldGrid>
 						</FormSection>
 
 						<FormSection title="Translated">
@@ -234,7 +236,7 @@
 								{/each}
 							</div>
 
-							<p class="note">
+							<Note>
 								{#if language.base}
 									This is the language every other is a translation of: a key another language has
 									no text for is shown in it. It cannot be turned off or removed.
@@ -245,7 +247,7 @@
 									Added on this page. A key it has no text for is shown in English until somebody
 									translates it.
 								{/if}
-							</p>
+							</Note>
 						</FormSection>
 
 						<FormSection title="Where it is offered">
@@ -349,13 +351,6 @@
 		padding-top: var(--space-4);
 	}
 
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		align-items: start;
-		gap: var(--space-3);
-	}
-
 	.coverage {
 		display: flex;
 		flex-direction: column;
@@ -400,13 +395,6 @@
 		white-space: nowrap;
 	}
 
-	.note {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-		line-height: 1.5;
-	}
-
 	.position {
 		max-width: 16rem;
 	}
@@ -434,12 +422,8 @@
 	}
 
 	@media (max-width: 36rem) {
-		.pair,
 		.row {
 			grid-template-columns: 1fr;
-		}
-
-		.row {
 			gap: var(--space-1);
 		}
 

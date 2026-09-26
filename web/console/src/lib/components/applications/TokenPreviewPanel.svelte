@@ -22,6 +22,7 @@
 		CopyButton,
 		Icon,
 		IconButton,
+		Note,
 		Select,
 		type SelectOption
 	} from '$lib/components/ui';
@@ -198,7 +199,7 @@
 		<div class="field">
 			<span class="label">User</span>
 			{#if !mayPickUsers}
-				<p class="muted">Your roles do not include seeing users.</p>
+				<Note>Your roles do not include seeing users.</Note>
 			{:else if user}
 				<div class="picked">
 					<Icon icon={RiUserLine} />

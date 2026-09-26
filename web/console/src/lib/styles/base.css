@@ -73,19 +73,6 @@ a {
 	text-underline-offset: 2px;
 }
 
-/* The gutter widens with the window: tight on a phone, roomy on a monitor. */
-@media (min-width: 48rem) {
-	:root {
-		--page-gutter: 24px;
-	}
-}
-
-@media (min-width: 90rem) {
-	:root {
-		--page-gutter: 32px;
-	}
-}
-
 code,
 kbd,
 samp,

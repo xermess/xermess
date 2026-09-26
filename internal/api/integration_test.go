@@ -955,6 +955,18 @@ func TestLiveOrganizationSettings(t *testing.T) {
 		t.Errorf("updated = %+v, want the values trimmed and lower cased", got)
 	}
 
+	// The panel's header reads the name from the session's own answer, which
+	// every administrator can ask for.
+	var me struct {
+		Organization struct {
+			Name string `json:"name"`
+		} `json:"organization"`
+	}
+	super.must(http.StatusOK, http.MethodGet, "/me", nil, &me)
+	if me.Organization.Name != "Acme Inc" {
+		t.Errorf("/me organization = %q, want the saved name", me.Organization.Name)
+	}
+
 	// A second update says nothing about the timezone, which therefore stays.
 	var kept organizationBody
 	super.must(http.StatusOK, http.MethodPatch, "/organization", map[string]any{

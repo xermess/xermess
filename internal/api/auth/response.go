@@ -89,3 +89,15 @@ func newSessionResponses(sessions []model.AdminUserSession) []sessionResponse {
 
 	return out
 }
+
+// organizationBrand is the part of the organisation the panel's header
+// shows: what it is called, and its logo. Only what the sign-in pages already
+// publish to anyone belongs in it.
+type organizationBrand struct {
+	Name    string `json:"name"`
+	LogoURL string `json:"logo_url"`
+}
+
+func newOrganizationBrand(organization model.Organization) organizationBrand {
+	return organizationBrand{Name: organization.Name, LogoURL: organization.LogoURL}
+}

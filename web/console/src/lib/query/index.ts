@@ -2,6 +2,7 @@
 //   import { keys, usersOptions } from '$lib/query';
 export { createQueryClient } from './client';
 export { keys } from './keys';
+export { mfaStatusOptions, profileSessionsOptions } from './profile';
 export { usersOptions, userFieldsOptions, type UserListParams } from './users';
 export { roleChoicesOptions, rolesOptions, ROLE_CHOICES_LIMIT, type RoleListParams } from './roles';
 export {

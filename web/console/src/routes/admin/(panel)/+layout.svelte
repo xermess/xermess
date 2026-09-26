@@ -16,7 +16,7 @@
 </script>
 
 <div class="shell" class:mini={shell.collapsed}>
-	<AppHeader admin={data.admin} />
+	<AppHeader admin={data.admin} organization={data.organization} />
 
 	<main>
 		{@render children()}

@@ -1,11 +1,5 @@
-/* Chirp is the console's primary typeface, bundled from assets/fonts so the
-   panel has the same face on every machine. It is X's own typeface rather than
-   an open family; see assets/fonts/README.md before shipping it publicly.
-
-   Chirp is static and covers Latin and Latin Extended. The panel's 400, 500
-   and 700 weights are bundled, with 600 drawn from 700. unicode-range keeps
-   an English page to the smaller Latin file; other scripts use the system
-   fallback from tokens.css. */
+/* Generated from lib/theme/theme.ts by `bun run theme` — do not edit.
+   The typefaces the console bundles. */
 
 @font-face {
 	font-family: 'Chirp';

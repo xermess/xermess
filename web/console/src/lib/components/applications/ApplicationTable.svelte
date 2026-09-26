@@ -9,7 +9,7 @@
 		RiShapesLine
 	} from 'svelte-remixicon';
 	import type { Application } from '$lib/api';
-	import { Badge, DataTable, Icon, type Column } from '$lib/components/ui';
+	import { Badge, Code, type Column, DataTable, Icon } from '$lib/components/ui';
 	import { types } from './applications';
 
 	type Props = {
@@ -61,7 +61,7 @@
 			</span>
 		</td>
 
-		<td><span class="chip">{application.client_id}</span></td>
+		<td><Code>{application.client_id}</Code></td>
 
 		<td>
 			{#if application.redirect_uris.length > 0}
@@ -109,17 +109,6 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
-	}
-
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		height: 25px;
-		padding: 0 7px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary-alt);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
 	}
 
 	.uri {

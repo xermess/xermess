@@ -7,6 +7,7 @@
 		Alert,
 		Button,
 		Drawer,
+		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
@@ -193,7 +194,7 @@
 			required
 		/>
 
-		<div class="pair">
+		<FieldGrid>
 			<Input
 				label="Name in English"
 				bind:value={name}
@@ -209,7 +210,7 @@
 				lang={trimmed || undefined}
 				required
 			/>
-		</div>
+		</FieldGrid>
 	</FormSection>
 
 	<FormSection title="Start from">
@@ -241,23 +242,10 @@
 		gap: var(--space-2);
 	}
 
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		align-items: start;
-		gap: var(--space-3);
-	}
-
 	.actions {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
 		margin-left: auto;
-	}
-
-	@media (max-width: 36rem) {
-		.pair {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

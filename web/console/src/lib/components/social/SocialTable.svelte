@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RiGroupLine, RiKey2Line, RiShareLine, RiToggleLine } from 'svelte-remixicon';
 	import type { SocialProvider, SocialSpec } from '$lib/api';
-	import { Badge, type Column, DataTable, Icon, Tag } from '$lib/components/ui';
+	import { Badge, Code, type Column, DataTable, Icon, Tag } from '$lib/components/ui';
 	import { hostOf, markFor, missingFrom } from './providers';
 
 	type Props = {
@@ -53,7 +53,7 @@
 			</span>
 		</td>
 
-		<td><span class="chip">{provider.client_id}</span></td>
+		<td><Code tone="quiet" truncate title={provider.client_id}>{provider.client_id}</Code></td>
 
 		<td>
 			{#if provider.identities > 0}
@@ -118,21 +118,6 @@
 		color: var(--color-text-hint);
 		font-family: var(--font-mono);
 		font-size: var(--text-sm);
-	}
-
-	.chip {
-		display: inline-block;
-		max-width: 100%;
-		padding: 3px 6px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary-alt);
-		color: var(--color-text-hint);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		vertical-align: middle;
 	}
 
 	.status {

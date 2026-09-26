@@ -630,6 +630,10 @@ export type Organization = {
 	created_at: string;
 };
 
+/** What every page's header shows of the organisation, sent with the session
+    to every administrator: the name and logo the sign-in pages publish. */
+export type OrganizationBrand = Pick<Organization, 'name' | 'logo_url'>;
+
 /** The settings the panel may change: the record without its own bookkeeping. */
 export type OrganizationSettings = Omit<Organization, 'created_at'>;
 

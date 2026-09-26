@@ -8,7 +8,7 @@
 		RiShieldKeyholeLine
 	} from 'svelte-remixicon';
 	import type { AdminRole } from '$lib/api';
-	import { Badge, DataTable, type Column } from '$lib/components/ui';
+	import { Badge, Code, type Column, DataTable } from '$lib/components/ui';
 
 	type Props = {
 		roles: AdminRole[];
@@ -50,7 +50,7 @@
 	{onSelect}
 >
 	{#snippet row(role)}
-		<td><span class="chip">{shortId(role.id)}</span></td>
+		<td><Code title={role.id}>{shortId(role.id)}</Code></td>
 
 		<td>
 			<span class="name">{role.name}</span>
@@ -94,18 +94,6 @@
 </DataTable>
 
 <style>
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		height: 25px;
-		padding: 0 7px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary-alt);
-		color: var(--color-text);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-	}
-
 	.name {
 		margin-right: var(--space-1);
 		font-family: var(--font-mono);

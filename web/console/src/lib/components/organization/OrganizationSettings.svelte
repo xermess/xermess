@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		RiBuildingLine,
@@ -19,6 +20,7 @@
 	import {
 		Alert,
 		Button,
+		FieldGrid,
 		Input,
 		List,
 		ListItem,
@@ -27,6 +29,7 @@
 		Tag,
 		Thumb
 	} from '$lib/components/ui';
+	import { ADMIN_DEPENDENCY } from '$lib/constants';
 	import { keys, organizationOptions } from '$lib/query';
 	import { formatDate, initials } from '$lib/utils/format';
 
@@ -109,14 +112,9 @@
 	    in one. */
 	const monogram = $derived(initials(input.name));
 
-	/** The address that did not load, rather than a flag: a new one is given
-	    its own chance without anything having to reset it. */
-	let failed = $state('');
-
-	/** Shown as the logo while the address looks like one and has not failed. */
-	const logo = $derived(
-		/^https?:\/\/\S+$/.test(input.logo_url) && input.logo_url !== failed ? input.logo_url : ''
-	);
+	/** Shown as the logo while the address looks like one; Thumb falls back
+	    to the monogram if it does not load. */
+	const logo = $derived(/^https?:\/\/\S+$/.test(input.logo_url) ? input.logo_url : '');
 
 	/** What the sign-in pages have nothing to show for, so the page says what
 	    is still missing rather than looking finished. */
@@ -138,8 +136,12 @@
 			queryClient.setQueryData(keys.organization.settings, result);
 			form = settingsOf(result.organization);
 			saved = true;
-			// The log gains an entry for the change.
-			await queryClient.invalidateQueries({ queryKey: keys.admin.overview });
+			// The log gains an entry for the change, and the header shows the
+			// name and logo it was loaded with.
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: keys.admin.overview }),
+				invalidate(ADMIN_DEPENDENCY)
+			]);
 		},
 		onError: (err: unknown) => {
 			error = err instanceof ApiError ? err.message : 'Could not save these settings';
@@ -170,11 +172,7 @@
 			description={input.slug || organization.slug}
 		>
 			{#snippet lead()}
-				{#if logo}
-					<img class="logo" src={logo} alt="" onerror={() => (failed = logo)} />
-				{:else}
-					<Thumb text={monogram} size="md" />
-				{/if}
+				<Thumb src={logo} text={monogram} size="md" />
 			{/snippet}
 
 			{#snippet end()}
@@ -195,7 +193,7 @@
 
 	<fieldset disabled={!editable}>
 		<Panel title="Organization" icon={RiBuildingLine}>
-			<div class="grid">
+			<FieldGrid spacing="comfortable">
 				<Input
 					label="Name"
 					bind:value={form.name}
@@ -212,7 +210,7 @@
 					hint="The slug: lower case letters, numbers and dashes."
 				/>
 
-				<div class="wide">
+				<div class="full">
 					<Input
 						label="Logo URL"
 						icon={RiImageLine}
@@ -223,7 +221,7 @@
 					/>
 				</div>
 
-				<div class="wide">
+				<div class="full">
 					<Select
 						label="Timezone"
 						icon={RiTimeLine}
@@ -234,7 +232,7 @@
 						hint="The dates on a user's account pages, such as when the account was made."
 					/>
 				</div>
-			</div>
+			</FieldGrid>
 		</Panel>
 
 		<Panel title="Contact" icon={RiCustomerService2Line}>
@@ -242,7 +240,7 @@
 				<Tag small>Shown when signing in</Tag>
 			{/snippet}
 
-			<div class="grid">
+			<FieldGrid spacing="comfortable">
 				<Input
 					label="Support email"
 					icon={RiMailLine}
@@ -261,7 +259,7 @@
 					placeholder="+996 555 123456"
 					hint="In the form you want it dialled."
 				/>
-			</div>
+			</FieldGrid>
 		</Panel>
 
 		<Panel title="Agreements" icon={RiFileTextLine}>
@@ -269,8 +267,8 @@
 				<Tag small>In the discovery document</Tag>
 			{/snippet}
 
-			<div class="grid">
-				<div class="wide">
+			<FieldGrid spacing="comfortable">
+				<div class="full">
 					<Input
 						label="Terms of service"
 						icon={RiFileTextLine}
@@ -281,7 +279,7 @@
 					/>
 				</div>
 
-				<div class="wide">
+				<div class="full">
 					<Input
 						label="Privacy policy"
 						icon={RiShieldCheckLine}
@@ -291,7 +289,7 @@
 						hint="Published as op_policy_uri, and agreed to on registration."
 					/>
 				</div>
-			</div>
+			</FieldGrid>
 
 			<p class="note">
 				An application with links of its own shows those instead; these are what users see for every
@@ -342,25 +340,6 @@
 
 	/* Two fields to a row, each as wide as the other, and a `wide` one across
 	   both: an address or a URL is read in full rather than in half. */
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		align-items: start;
-		gap: var(--space-3) var(--space-4);
-	}
-
-	.wide {
-		grid-column: 1 / -1;
-	}
-
-	.logo {
-		width: 38px;
-		height: 38px;
-		border: 1px solid var(--color-secondary-alt);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-alt);
-		object-fit: contain;
-	}
 
 	/* Opaque, and the width of the column: stuck to the foot of the window it
 	   passes over the panels, which it may not show through. */
@@ -391,11 +370,5 @@
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		line-height: 1.5;
-	}
-
-	@media (max-width: 40rem) {
-		.grid {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

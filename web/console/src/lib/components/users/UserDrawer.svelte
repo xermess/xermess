@@ -16,6 +16,7 @@
 		Alert,
 		Button,
 		Drawer,
+		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
@@ -316,10 +317,10 @@
 							required
 						/>
 
-						<div class="pair">
+						<FieldGrid>
 							<Input label="First name" bind:value={firstName} />
 							<Input label="Last name" bind:value={lastName} />
-						</div>
+						</FieldGrid>
 
 						{#if editing}
 							<!-- What every other system refers to this record by: shown and
@@ -336,7 +337,7 @@
 								: 'This user has no password yet.'
 							: 'At least 8 characters.'}
 					>
-						<div class="pair">
+						<FieldGrid>
 							<PasswordInput
 								label={editing ? 'New password' : 'Password'}
 								bind:value={password}
@@ -349,7 +350,7 @@
 								autocomplete="new-password"
 								required={!editing || password !== ''}
 							/>
-						</div>
+						</FieldGrid>
 
 						{#if mismatch}
 							<p class="mismatch">The passwords do not match.</p>
@@ -493,13 +494,6 @@
 		background: var(--surface-success);
 	}
 
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		align-items: start;
-		gap: var(--space-3);
-	}
-
 	.mismatch {
 		margin: calc(var(--space-2) * -1) 0 0;
 		color: var(--color-danger);
@@ -521,11 +515,5 @@
 
 	.spacer {
 		flex: 1;
-	}
-
-	@media (max-width: 34rem) {
-		.pair {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

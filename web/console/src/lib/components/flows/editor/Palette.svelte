@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RiDraggable } from 'svelte-remixicon';
 	import type { LoginStep, LoginStepSpec } from '$lib/api';
-	import { Icon } from '$lib/components/ui';
+	import { Icon, Note } from '$lib/components/ui';
 	import { describe, labelFor, markFor } from '../steps';
 
 	/**
@@ -29,11 +29,11 @@
 
 <aside class="palette" aria-label="Steps">
 	<h2>Steps</h2>
-	<p class="hint">
+	<Note>
 		{waiting
 			? 'Choose the step to add where you clicked +.'
 			: 'Drag a step onto the flow, or click it to add it at the end.'}
-	</p>
+	</Note>
 
 	{#each groups as group (group.label)}
 		<h3>{group.label}</h3>
@@ -93,12 +93,6 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-	}
-
-	.hint {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	ul {

@@ -15,6 +15,7 @@ export type { ColorPalette, ControlProps, Size, Variant } from './control';
 
 // Form fields
 export { default as Field } from './Field.svelte';
+export { default as FieldGrid } from './FieldGrid.svelte';
 export { default as Input } from './Input.svelte';
 export { default as SearchInput } from './SearchInput.svelte';
 export { default as PasswordInput } from './PasswordInput.svelte';
@@ -32,9 +33,18 @@ export { default as Alert } from './Alert.svelte';
 export { default as Badge } from './Badge.svelte';
 export { default as Card } from './Card.svelte';
 export { default as Drawer } from './Drawer.svelte';
+export { default as Modal } from './Modal.svelte';
+export { default as DropdownMenu } from './DropdownMenu.svelte';
+export { default as MenuGroup } from './MenuGroup.svelte';
+export { default as MenuItem } from './MenuItem.svelte';
+export { default as MenuInfo } from './MenuInfo.svelte';
+export { default as MenuSeparator } from './MenuSeparator.svelte';
 export { default as Panel } from './Panel.svelte';
 export { default as StatCard } from './StatCard.svelte';
 export { default as Tag } from './Tag.svelte';
+export { default as Code } from './Code.svelte';
+export { default as Kbd } from './Kbd.svelte';
+export { default as Note } from './Note.svelte';
 export { default as Thumb } from './Thumb.svelte';
 export { default as FormSection } from './FormSection.svelte';
 export { default as SelectionBar } from './SelectionBar.svelte';

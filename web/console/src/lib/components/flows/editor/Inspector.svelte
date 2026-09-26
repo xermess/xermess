@@ -8,6 +8,7 @@
 		FormSection,
 		Icon,
 		Input,
+		Note,
 		Select,
 		SwitchField,
 		Textarea
@@ -146,11 +147,11 @@
 				bind:checked={draft.is_default}
 				disabled={!editable || savedDefault}
 			/>
-			<p class="note">
+			<Note>
 				{draft.is_default
 					? `The default: used by every application without its own flow, and named by ${applications} more.`
 					: `Named by ${applications} applications.`}
-			</p>
+			</Note>
 		</FormSection>
 	{:else if selected === 'end'}
 		<FormSection
@@ -177,7 +178,7 @@
 					onChange={(value) => setUnit(value as 'hours' | 'days')}
 				/>
 			</div>
-			<p class="note">{`At most ${MAX_SESSION_HOURS / 24} days.`}</p>
+			<Note>{`At most ${MAX_SESSION_HOURS / 24} days.`}</Note>
 		</FormSection>
 	{:else if step}
 		<FormSection title={labelFor(step, kinds)} description={describe(step, kinds)}>
@@ -213,9 +214,9 @@
 					bind:checked={draft.allow_email_change}
 					disabled={!editable}
 				/>
-				<p class="note">
+				<Note>
 					Every flow starts by asking who is signing in, so this step cannot move or be removed.
-				</p>
+				</Note>
 			{:else if step === 'password'}
 				<SwitchField
 					label="Offer “Forgot password”"
@@ -230,10 +231,10 @@
 					disabled={!editable}
 				/>
 			{:else if step === 'social'}
-				<p class="note">
+				<Note>
 					Shows a button for each provider turned on at
 					<a href={resolve('/admin/(panel)/dashboard/social')}>Social</a>
-				</p>
+				</Note>
 			{/if}
 
 			{#if removable}
@@ -260,15 +261,5 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: var(--space-2);
-	}
-
-	.note {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.note a {
-		color: var(--color-text);
 	}
 </style>

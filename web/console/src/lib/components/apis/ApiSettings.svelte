@@ -8,9 +8,11 @@
 	import {
 		Alert,
 		Button,
+		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
+		Note,
 		Select,
 		SwitchField,
 		Textarea
@@ -154,17 +156,17 @@
 				bind:checked={enforceRoles}
 			/>
 
-			<p class="note">
+			<Note>
 				Either way, the API must still enforce permissions: it checks the scope an endpoint needs is
 				in the token.
-			</p>
+			</Note>
 		</FormSection>
 
 		<FormSection
 			title="Tokens"
 			description="How access tokens for this API are signed and how long they last."
 		>
-			<div class="pair">
+			<FieldGrid>
 				<Select
 					label="Signing algorithm"
 					bind:value={algorithm}
@@ -182,7 +184,7 @@
 					placeholder="Application's"
 					hint="Empty uses each application's lifetime."
 				/>
-			</div>
+			</FieldGrid>
 
 			<SwitchField
 				label="Allow refresh tokens"
@@ -277,19 +279,6 @@
 		font-size: var(--text-sm);
 	}
 
-	.note {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		align-items: start;
-		gap: var(--space-3);
-	}
-
 	.actions {
 		display: flex;
 		justify-content: flex-end;
@@ -318,11 +307,5 @@
 	.confirm {
 		display: flex;
 		gap: var(--space-2);
-	}
-
-	@media (max-width: 34rem) {
-		.pair {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

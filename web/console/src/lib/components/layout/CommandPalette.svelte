@@ -27,7 +27,7 @@
 	} from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { Icon } from '$lib/components/ui';
+	import { Icon, IconButton, Kbd } from '$lib/components/ui';
 	import { allSections } from './sidebar/sections';
 
 	type Command = {
@@ -127,15 +127,36 @@
 		open = true;
 	}
 
-	/** ⌘K, or Ctrl+K where there is no ⌘. The one shortcut every palette has,
-	    so it is worth taking from the page wherever the reader is. */
+	/** Whether a key pressed here is somebody typing, which a shortcut must
+	    leave alone: a "/" in a search box or a redirect URI is a character. */
+	function typing(target: EventTarget | null): boolean {
+		if (!(target instanceof HTMLElement)) return false;
+
+		return (
+			target.isContentEditable ||
+			['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+			target.closest('[role="dialog"]') !== null
+		);
+	}
+
+	/** "/" opens the search from anywhere on the page, the way GitHub's and
+	    most documentation sites' does. ⌘K (Ctrl+K) still works for anybody
+	    whose fingers expect it; only "/" is advertised, being the shorter. */
 	function onKeydown(event: KeyboardEvent) {
-		if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey)) return;
+		const slash =
+			event.key === '/' &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			!typing(event.target);
+		const commandK = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
+
+		if (!slash && !commandK) return;
 
 		event.preventDefault();
 
-		if (open) open = false;
-		else show();
+		if (open && commandK) open = false;
+		else if (!open) show();
 	}
 
 	/** Arrows move the highlight, Enter follows it. The input keeps the
@@ -188,15 +209,9 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<!-- The trigger reads as the field it opens rather than as a button: that is
-     what says "type here" without a word of instruction, and the shortcut
-     beside it teaches the faster way. Narrow screens get the magnifier
-     alone. -->
-<button type="button" class="trigger field-box" onclick={show}>
-	<Icon icon={RiSearchLine} size="1rem" />
-	<span class="placeholder">Search…</span>
-	<kbd>⌘K</kbd>
-</button>
+<!-- One quiet icon among the header's others. The tooltip names the key,
+     which is the faster way in and the one worth learning. -->
+<IconButton icon={RiSearchLine} label="Search (press /)" size="sm" onclick={show} />
 
 <Dialog.Root bind:open lazyMount unmountOnExit>
 	<Portal>
@@ -267,9 +282,9 @@
 				</div>
 
 				<footer>
-					<span><kbd>↑</kbd><kbd>↓</kbd> move</span>
-					<span><kbd>↵</kbd> open</span>
-					<span><kbd>esc</kbd> close</span>
+					<span><Kbd>↑</Kbd><Kbd>↓</Kbd> move</span>
+					<span><Kbd>↵</Kbd> open</span>
+					<span><Kbd>esc</Kbd> close</span>
 				</footer>
 			</Dialog.Content>
 		</Dialog.Positioner>
@@ -277,46 +292,6 @@
 </Dialog.Root>
 
 <style>
-	/* The trigger: an input's colours at a control's height, which is the
-	   shape everything else in the bar already has. */
-	.trigger {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		width: 18rem;
-		max-width: 100%;
-		height: var(--control-height-sm);
-		padding: 0 var(--space-2);
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-base);
-		text-align: left;
-		cursor: pointer;
-	}
-
-	/* The border, hover and focus are the field's (.field-box). */
-	.trigger:focus-visible {
-		outline: none;
-	}
-
-	.placeholder {
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	kbd {
-		padding: 1px 5px;
-		border: 1px solid var(--color-border);
-		border-radius: 4px;
-		background: var(--color-surface);
-		color: var(--color-text-hint);
-		font-family: var(--font-sans);
-		font-size: var(--text-xs);
-		line-height: 1.4;
-	}
-
 	/* The dialog's anatomy is styled once in styles/ark.css, and it is styled
 	   for the drawer: a full-height panel against the right edge. A palette
 	   is the other kind of dialog, so these three override it by being one
@@ -479,24 +454,8 @@
 		gap: var(--space-1);
 	}
 
-	footer kbd {
-		background: var(--color-surface);
-	}
-
-	/* In a narrow bar the trigger is the magnifier and nothing else — the
-	   shortcut it teaches needs a keyboard anyway. */
+	/* The key hints are for a keyboard, which a narrow screen rarely has. */
 	@media (max-width: 55rem) {
-		.trigger {
-			width: var(--control-height-sm);
-			justify-content: center;
-			padding: 0;
-		}
-
-		.placeholder,
-		.trigger kbd {
-			display: none;
-		}
-
 		footer {
 			display: none;
 		}

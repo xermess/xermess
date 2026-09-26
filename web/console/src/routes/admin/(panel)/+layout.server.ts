@@ -1,4 +1,4 @@
-import type { Admin } from '$lib/api';
+import type { Admin, OrganizationBrand } from '$lib/api';
 import { COOKIES } from '$lib/brand';
 import { ADMIN_DEPENDENCY } from '$lib/constants';
 import { apiGet } from '$lib/server/api';
@@ -18,11 +18,14 @@ import type { LayoutServerLoad } from './$types';
 export const load: LayoutServerLoad = async ({ cookies, depends, fetch }) => {
 	depends(ADMIN_DEPENDENCY);
 
-	const { admin } = await apiGet<{ admin: Admin }>('/admin/me', fetch);
+	const { admin, organization } = await apiGet<{
+		admin: Admin;
+		organization: OrganizationBrand;
+	}>('/admin/me', fetch);
 
 	const saved = cookies.get(COOKIES.sidebar);
 	const sidebar: SidebarState = isSidebarState(saved) ? saved : 'wide';
 	const closedBranches = parseClosedBranches(cookies.get(COOKIES.branches));
 
-	return { admin, sidebar, closedBranches };
+	return { admin, organization, sidebar, closedBranches };
 };

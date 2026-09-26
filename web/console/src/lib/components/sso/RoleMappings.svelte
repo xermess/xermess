@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RiAddLine, RiDeleteBinLine } from 'svelte-remixicon';
 	import type { Role, SSORoleMapping } from '$lib/api';
-	import { Button, IconButton, Icon, Input, Select } from '$lib/components/ui';
+	import { Button, Icon, IconButton, Input, Note, Select } from '$lib/components/ui';
 	import { resolve } from '$app/paths';
 
 	type Props = {
@@ -56,12 +56,12 @@
 	{/each}
 
 	{#if roles.length === 0 && !readOnly && !canRead}
-		<p class="note">Your roles do not let you read roles, so you cannot map groups to them.</p>
+		<Note>Your roles do not let you read roles, so you cannot map groups to them.</Note>
 	{:else if roles.length === 0 && !readOnly}
-		<p class="note">
+		<Note>
 			There are no roles yet, so there is nothing to map a group to.
 			<a href={resolve('/admin/dashboard/roles')}>Create one on the Roles page</a>
-		</p>
+		</Note>
 	{:else if !readOnly}
 		<div>
 			<Button variant="subtle" size="sm" onclick={add}>
@@ -84,16 +84,6 @@
 		grid-template-columns: 1fr 1fr auto;
 		align-items: center;
 		gap: var(--space-2);
-	}
-
-	.note {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.note a {
-		color: var(--color-text);
 	}
 
 	@media (max-width: 36rem) {

@@ -1,7 +1,7 @@
 /* The stylesheet the app imports once, in the root layout.
 
-   fonts   — Chirp, bundled from assets/fonts
-   tokens  — the values everything else refers to, light and dark
+   fonts   — Chirp, bundled from assets/fonts   (generated from lib/theme)
+   tokens  — the values everything else refers to (generated from lib/theme)
    base    — element defaults
    palettes— the colours a component asks for by name
    controls— buttons and anything shaped like one

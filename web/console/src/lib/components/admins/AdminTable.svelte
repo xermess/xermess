@@ -8,7 +8,7 @@
 		RiToggleLine
 	} from 'svelte-remixicon';
 	import type { AdminRecord, AdminStatus } from '$lib/api';
-	import { Badge, DataTable, Tag, type Column } from '$lib/components/ui';
+	import { Badge, Code, type Column, DataTable, Tag } from '$lib/components/ui';
 	import { formatDateTime } from '$lib/utils/format';
 
 	type Props = {
@@ -54,7 +54,7 @@
 	{onSelect}
 >
 	{#snippet row(admin)}
-		<td><span class="chip">{shortId(admin.id)}</span></td>
+		<td><Code title={admin.id}>{shortId(admin.id)}</Code></td>
 
 		<td>
 			<span class="text">{admin.email}</span>
@@ -101,18 +101,6 @@
 </DataTable>
 
 <style>
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		height: 25px;
-		padding: 0 7px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary-alt);
-		color: var(--color-text);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-	}
-
 	.text {
 		margin-right: var(--space-1);
 	}

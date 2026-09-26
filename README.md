@@ -142,14 +142,15 @@ web/console/src/lib/components/admins/ administrators and admin roles
 web/console/src/lib/components/organization/ the organisation's settings
 web/console/src/lib/components/social/ the providers users sign in with, and what each kind needs
 web/console/src/lib/components/activity/ the dashboard: chart, sign-ins, feed, what the log's actions mean
-web/console/src/lib/components/profile/  the account drawer: its two-factor, sessions and signing out
+web/console/src/lib/components/profile/  the account dialog: profile, password, two-factor and sessions
 web/console/src/lib/state/             what the panel remembers: the theme, the sidebar's
                                        width and which of its sections are folded
 web/console/src/lib/utils/             how values are shown
 web/console/src/lib/data/demo.ts       placeholder rows for the sections with no backend
 web/console/src/lib/server/api.ts      calling the API from a server load, with the session
 web/console/src/lib/constants.ts       the names both sides agree on: the cookies
-web/console/src/lib/styles/            fonts.css, tokens.css, base.css, fields.css, ark.css
+web/console/src/lib/theme/             the theme: every colour, size, typeface and speed, in TypeScript
+web/console/src/lib/styles/            the CSS: tokens.css and fonts.css generated from the theme, then base, fields, ark
 web/console/src/routes/admin/login/    the sign-in page
 web/console/src/routes/admin/(panel)/  everything behind a session
 
@@ -666,7 +667,9 @@ another alphabet needs that subset's files added the same way.
 
 The console uses Chirp as its primary typeface. Its Latin and Latin Extended
 files at 400, 500 and 700 are bundled; the system sans and monospace stacks
-cover scripts and code Chirp does not provide. Chirp is X's typeface rather
+cover scripts and code Chirp does not provide. The faces, weights and
+subsets are declared in `web/console/src/lib/theme/theme.ts`, which generates
+the `@font-face` rules. Chirp is X's typeface rather
 than an open font; its licensing note is in
 `web/console/src/assets/fonts/README.md`.
 

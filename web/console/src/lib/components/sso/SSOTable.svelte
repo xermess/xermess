@@ -7,7 +7,7 @@
 		RiToggleLine
 	} from 'svelte-remixicon';
 	import type { SSOConnection } from '$lib/api';
-	import { Badge, type Column, DataTable, Icon, Tag } from '$lib/components/ui';
+	import { Badge, Code, type Column, DataTable, Icon, Tag } from '$lib/components/ui';
 
 	type Props = {
 		connections: SSOConnection[];
@@ -43,7 +43,7 @@
 		<td>
 			<span class="domains">
 				{#each connection.domains.slice(0, 3) as domain (domain)}
-					<span class="chip">{domain}</span>
+					<Code tone="quiet">{domain}</Code>
 				{/each}
 				{#if connection.domains.length > 3}
 					<span class="more">+{connection.domains.length - 3}</span>
@@ -115,15 +115,6 @@
 		align-items: center;
 		flex-wrap: wrap;
 		gap: var(--space-1);
-	}
-
-	.chip {
-		padding: 3px 6px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary-alt);
-		color: var(--color-text-hint);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
 	}
 
 	.more,

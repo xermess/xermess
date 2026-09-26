@@ -158,6 +158,15 @@ nested under its namespace, `{"area": {"thing": "…"}}`. Parameters are
 and formatter; keep its wrapper's `t()` API so components do not need to
 subscribe to package stores themselves.
 
+**A colour, a size, a font in the panel.** `web/console/src/lib/theme/theme.ts`
+is the one place the panel's look is decided: the light palette names every
+colour token, the dark one overrides what differs, and the scales, sizes,
+breakpoints and bundled typefaces sit beside them. `bun run theme` (in
+`web/console`) writes `lib/styles/tokens.css` and `lib/styles/fonts.css` from
+it; `bun run check` fails while either is behind, so never edit those two by
+hand. Components keep naming tokens in CSS — `var(--color-brand)` — and a
+new token is a new key in `theme.ts`, not a line in a stylesheet.
+
 **Text in the panel.** The opposite: the words go in the markup, in English.
 There is no translator to reach for, and an error an administrator is shown
 is the sentence the API sent (`messageOf` in `$lib/api`).

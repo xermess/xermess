@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RiKey2Line, RiShareLine, RiShieldUserLine } from 'svelte-remixicon';
 	import type { Application, SocialKind, UserField, UserRecord } from '$lib/api';
-	import { Badge, DataTable, Icon, Tooltip, type Column } from '$lib/components/ui';
+	import { Badge, Code, type Column, DataTable, Icon, Tooltip } from '$lib/components/ui';
 	import { markFor as providerMark } from '$lib/components/social/providers';
 	import FieldValue from './FieldValue.svelte';
 	import { valueOf } from './fields';
@@ -61,7 +61,7 @@
 	{onSelect}
 >
 	{#snippet row(user)}
-		<td><span class="chip">{shortId(user.id)}</span></td>
+		<td><Code title={user.id}>{shortId(user.id)}</Code></td>
 
 		{#each fields as field (field.name)}
 			<td><FieldValue type={field.type} value={valueOf(user, field)} /></td>
@@ -157,15 +157,4 @@
 
 	/* PocketBase shows the id as a small chip rather than raw text, which
 	   stops it competing with the values beside it. */
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		height: 25px;
-		padding: 0 7px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary-alt);
-		color: var(--color-text);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-	}
 </style>

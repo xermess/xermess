@@ -23,6 +23,7 @@
 		Icon,
 		IconButton,
 		LinkButton,
+		Note,
 		PageHeader,
 		Panel,
 		StatCard,
@@ -202,9 +203,9 @@
 				<SessionList sessions={data.sessions} limit={8} />
 			</Panel>
 
-			<p class="hint">
+			<Note>
 				Your roles do not include reading activity, so the numbers and the log are not shown here.
-			</p>
+			</Note>
 		</div>
 	{/if}
 </div>
@@ -244,12 +245,6 @@
 		flex-direction: column;
 		gap: var(--space-3);
 		max-width: 32rem;
-	}
-
-	.hint {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	@media (max-width: 80rem) {

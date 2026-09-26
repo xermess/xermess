@@ -2,7 +2,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { RiRefreshLine } from 'svelte-remixicon';
 	import { apisApi, type API, type APILogEntry } from '$lib/api';
-	import { Alert, Badge, IconButton } from '$lib/components/ui';
+	import { Alert, Badge, IconButton, Note } from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { formatDateTime } from '$lib/utils/format';
 
@@ -54,7 +54,7 @@
 </div>
 
 {#if logs.isPending}
-	<p class="muted">Loading the log…</p>
+	<Note>Loading the log…</Note>
 {:else if logs.isError}
 	<Alert>Could not load the log.</Alert>
 {:else if logs.data.length === 0}
@@ -103,12 +103,6 @@
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		line-height: 1.5;
-	}
-
-	.muted {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	.none {

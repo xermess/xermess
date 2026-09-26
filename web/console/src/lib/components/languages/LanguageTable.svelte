@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RiGlobalLine, RiHashtag, RiToggleLine, RiTranslate2 } from 'svelte-remixicon';
 	import type { Language, LocaleApp } from '$lib/api';
-	import { Badge, type Column, DataTable, Tag, Tooltip } from '$lib/components/ui';
+	import { Badge, Code, type Column, DataTable, Tag, Tooltip } from '$lib/components/ui';
 
 	type Props = {
 		languages: Language[];
@@ -49,7 +49,7 @@
 			</span>
 		</td>
 
-		<td><span class="chip">{language.code}</span></td>
+		<td><Code tone="quiet">{language.code}</Code></td>
 
 		<td>
 			<span class="bars">
@@ -99,16 +99,6 @@
 
 	.english {
 		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.chip {
-		display: inline-block;
-		padding: 3px 6px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary-alt);
-		color: var(--color-text-hint);
-		font-family: var(--font-mono);
 		font-size: var(--text-sm);
 	}
 

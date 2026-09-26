@@ -24,14 +24,15 @@
 		Badge,
 		Button,
 		Drawer,
+		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
 		Select,
+		type SelectOption,
 		SwitchField,
 		Tabs,
-		Textarea,
-		type SelectOption
+		Textarea
 	} from '$lib/components/ui';
 	import Choice from '$lib/components/roles/Choice.svelte';
 	import { keys, loginFlowChoicesOptions } from '$lib/query';
@@ -295,7 +296,7 @@
 				placeholder="What the application is, for other administrators"
 			/>
 
-			<div class="pair">
+			<FieldGrid>
 				<Input
 					label="Homepage URL"
 					bind:value={form.client_uri}
@@ -309,7 +310,7 @@
 					placeholder="https://shop.example.com/logo.png"
 					hint="https only."
 				/>
-			</div>
+			</FieldGrid>
 
 			<SwitchField
 				label="Enabled"
@@ -491,7 +492,7 @@
 				title="Sign-in page"
 				description="What users see when this application sends them to sign in."
 			>
-				<div class="pair">
+				<FieldGrid>
 					<Input
 						label="Terms of service URL"
 						bind:value={form.tos_uri}
@@ -504,7 +505,7 @@
 						type="url"
 						placeholder="https://shop.example.com/privacy"
 					/>
-				</div>
+				</FieldGrid>
 				<p class="note">
 					Linked at the bottom of every sign-in page. When either is set, new users have to accept
 					them to create an account.
@@ -676,13 +677,6 @@
 		font-size: var(--text-sm);
 	}
 
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		align-items: start;
-		gap: var(--space-3);
-	}
-
 	.triple {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
@@ -764,7 +758,6 @@
 	}
 
 	@media (max-width: 36rem) {
-		.pair,
 		.secret {
 			grid-template-columns: 1fr;
 		}

@@ -137,8 +137,22 @@ func (h *Handler) Logout(c *gin.Context) {
 
 // Me returns the signed-in administrator, and is what the browser calls to
 // find out whether it still has a session.
+//
+// The organisation's name and logo come with it, because every page of the
+// panel draws them in its header. They are what the sign-in pages show any
+// stranger, so no permission is needed to see them here — reading the rest
+// of the organisation's settings still takes organization.read.
 func (h *Handler) Me(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"admin": newAdminResponse(session.Admin(c))})
+	organization, err := h.store.Organization(c.Request.Context())
+	if err != nil {
+		respond.Failure(c, h.log, err, "loading the organization failed")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"admin":        newAdminResponse(session.Admin(c)),
+		"organization": newOrganizationBrand(*organization),
+	})
 }
 
 // UpdateMe changes the caller's own name and address. It reaches nothing

@@ -10,7 +10,16 @@
 		RiUserLine
 	} from 'svelte-remixicon';
 	import { ApiError, mailApi, type MailEncryption, type MailResponse } from '$lib/api';
-	import { Alert, Button, Input, Panel, Select, SwitchField, Tag } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		FieldGrid,
+		Input,
+		Panel,
+		Select,
+		SwitchField,
+		Tag
+	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
 	type Props = {
@@ -193,8 +202,8 @@
 	</Panel>
 
 	<Panel title="Mail server" icon={RiServerLine}>
-		<div class="grid">
-			<div class="wide">
+		<FieldGrid spacing="comfortable">
+			<div class="full">
 				<Input
 					label="Host"
 					icon={RiServerLine}
@@ -242,7 +251,7 @@
 			/>
 
 			{#if stored.has_password}
-				<div class="wide">
+				<div class="full">
 					<SwitchField
 						label="Forget the stored password"
 						description="For a server that takes no credentials. The password is removed when you save."
@@ -251,7 +260,7 @@
 					/>
 				</div>
 			{/if}
-		</div>
+		</FieldGrid>
 	</Panel>
 
 	<Panel title="From" icon={RiMailLine}>
@@ -259,7 +268,7 @@
 			<Tag small>On every message</Tag>
 		{/snippet}
 
-		<div class="grid">
+		<FieldGrid spacing="comfortable">
 			<Input
 				label="From address"
 				icon={RiAtLine}
@@ -277,7 +286,7 @@
 				placeholder="Acme"
 				hint="What a mail client shows instead of the address."
 			/>
-		</div>
+		</FieldGrid>
 	</Panel>
 
 	<Panel title="Try it" icon={RiMailSendLine}>
@@ -344,16 +353,6 @@
 
 	/* Two fields to a row, each as wide as the other, and a `wide` one across
 	   both: a host name is read in full rather than in half. */
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		align-items: start;
-		gap: var(--space-3) var(--space-4);
-	}
-
-	.wide {
-		grid-column: 1 / -1;
-	}
 
 	/* The address and the button on one line, the button sitting on the
 	   field's baseline rather than on its label's. */
@@ -396,11 +395,5 @@
 		margin-right: auto;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	@media (max-width: 40rem) {
-		.grid {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

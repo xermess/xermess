@@ -10,7 +10,7 @@
 		type API,
 		type APIApplication
 	} from '$lib/api';
-	import { Alert, Badge, Checkbox, Icon, SearchInput, Switch } from '$lib/components/ui';
+	import { Alert, Badge, Checkbox, Icon, Note, SearchInput, Switch } from '$lib/components/ui';
 	import { can } from '$lib/permissions';
 	import { keys } from '$lib/query';
 	import { types } from '$lib/components/applications/applications';
@@ -95,7 +95,7 @@
 {/if}
 
 {#if applications.isPending}
-	<p class="muted">Loading applications…</p>
+	<Note>Loading applications…</Note>
 {:else if applications.isError}
 	<Alert>Could not load the applications.</Alert>
 {:else if applications.data.length === 0}
@@ -177,7 +177,7 @@
 				{/if}
 			</section>
 		{:else}
-			<p class="muted">No application matches “{search}”.</p>
+			<Note>No application matches “{search}”.</Note>
 		{/each}
 	</div>
 {/if}
@@ -197,12 +197,6 @@
 
 	.message {
 		margin-bottom: var(--space-3);
-	}
-
-	.muted {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	.toolbar {

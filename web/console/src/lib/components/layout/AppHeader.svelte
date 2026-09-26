@@ -3,24 +3,24 @@
 	import { resolve } from '$app/paths';
 	import { MediaQuery } from 'svelte/reactivity';
 	import {
-		RiBookOpenLine,
 		RiCloseLine,
-		RiGithubFill,
 		RiMenuLine,
-		RiShieldKeyholeLine,
 		RiSidebarFoldLine,
 		RiSidebarUnfoldLine
 	} from 'svelte-remixicon';
-	import type { Admin } from '$lib/api';
+	import type { Admin, OrganizationBrand } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { Icon, IconButton, IconLink, ThemeToggle } from '$lib/components/ui';
+	import { IconButton, ThemeToggle, Thumb } from '$lib/components/ui';
 	import { useShell } from '$lib/state/shell.svelte';
+	import { breakpoints } from '$lib/theme';
+	import { initials } from '$lib/utils/format';
 	import AccountMenu from './AccountMenu.svelte';
 	import CommandPalette from './CommandPalette.svelte';
+	import HelpMenu from './HelpMenu.svelte';
 
-	type Props = { admin: Admin };
+	type Props = { admin: Admin; organization: OrganizationBrand };
 
-	let { admin }: Props = $props();
+	let { admin, organization }: Props = $props();
 
 	/** The logo block is the top of the sidebar's column, so it folds with it. */
 	const shell = useShell();
@@ -33,7 +33,7 @@
 	/** The same width the sidebar reads: below it the column is a panel, so
 	    the control beside the logo opens and closes that panel rather than
 	    folding a column that is not there. */
-	const narrow = new MediaQuery('max-width: 55rem');
+	const narrow = new MediaQuery(`max-width: ${breakpoints.sidebar}`);
 
 	const nav = $derived(
 		narrow.current
@@ -48,67 +48,45 @@
 					press: shell.toggle
 				}
 	);
+
+	/** The organisation's name, or the product's on an installation nobody
+	    has named yet. */
+	const name = $derived(organization.name.trim() || BRAND.name);
 </script>
 
+<!-- Read left to right: whose panel this is, the sidebar's control, and at
+     the far end the tools — search, help, the theme — then who is signed in. -->
 <header class:mini={shell.collapsed}>
 	<div class="brand-column" class:ruled={besideSidebar}>
-		<a class="brand" href={resolve('/admin/dashboard')} aria-label={BRAND.name}>
-			<span class="mark">
-				<Icon icon={RiShieldKeyholeLine} size="1.125rem" />
+		<a class="brand" href={resolve('/admin/dashboard')} aria-label="{name} Console">
+			<Thumb src={organization.logo_url} text={initials(name)} size="xs" tone="accent" />
+
+			<span class="names" aria-hidden={shell.collapsed}>
+				<strong title={name}>{name}</strong>
+				<small>Console</small>
 			</span>
-			<strong aria-hidden={shell.collapsed}>{BRAND.name}</strong>
 		</a>
 	</div>
 
-	<!-- The control for the navigation, the first thing after the logo: it
-	     folds the column where there is one, and opens the panel where the
-	     column has become one. It sits just outside the logo block rather
-	     than inside it — folded, that block is only as wide as the mark, and
-	     a button in there would be clipped away by the same overflow that
-	     hides the name. Only on the dashboard, because that is the only page
-	     with navigation beside it. -->
-	{#if besideSidebar}
-		<span class="fold">
-			<IconButton icon={nav.icon} label={nav.label} size="sm" onclick={nav.press} />
-		</span>
-	{/if}
+	<div class="bar">
+		<div class="start">
+			<!-- The control for the navigation: it folds the column where there
+			     is one, and opens the panel where the column has become one.
+			     Only on the dashboard, the one page with navigation beside it. -->
+			{#if besideSidebar}
+				<IconButton icon={nav.icon} label={nav.label} size="sm" onclick={nav.press} />
+			{/if}
+		</div>
 
-	<!-- The one thing in the bar worth the width: everywhere the panel can go,
-	     two or three letters away. -->
-	<div class="search">
-		<CommandPalette />
-	</div>
-
-	<!-- Somewhere to read rather than something to do, so they are quiet: an
-	     icon each, named by a tooltip, grouped away from the page's own
-	     buttons. The account menu keeps both as named rows, which is what a
-	     narrow screen is left with. -->
-	<div class="utilities">
-		<IconLink
-			href={BRAND.docsUrl}
-			icon={RiBookOpenLine}
-			label="Documentation"
-			size="sm"
-			target="_blank"
-			rel="noreferrer noopener"
-		/>
-
-		<IconLink
-			href={BRAND.githubUrl}
-			icon={RiGithubFill}
-			label="GitHub"
-			size="sm"
-			target="_blank"
-			rel="noreferrer noopener"
-		/>
-
-		<span class="rule" aria-hidden="true"></span>
-
-		<ThemeToggle size="sm" variant="ghost" />
-	</div>
-
-	<div class="account">
-		<AccountMenu {admin} size="sm" />
+		<!-- Search, help and the theme are quiet icons, grouped; a hairline,
+		     then who is signed in, which is a different kind of thing. -->
+		<div class="end">
+			<CommandPalette />
+			<HelpMenu />
+			<ThemeToggle size="sm" variant="ghost" />
+			<span class="rule" aria-hidden="true"></span>
+			<AccountMenu {admin} />
+		</div>
 	</div>
 </header>
 
@@ -124,7 +102,6 @@
 		display: flex;
 		align-items: center;
 		height: var(--header-height);
-		padding-right: var(--space-4);
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-surface);
 		overscroll-behavior: none;
@@ -145,29 +122,23 @@
 		transition: border-color var(--speed);
 	}
 
-	/* Beside the sidebar, the block carries the same vertical rule as the
-	   sections below it, so the logo and navigation read as one column. */
 	.brand-column.ruled {
-		height: 100%;
 		border-right-color: var(--color-border);
-		background: var(--color-surface);
 	}
 
-	/* The mark sits over the sidebar's icons, which are 20px in from the
-	   edge: it is 28px wide to their 16px, so it starts 6px earlier and the
-	   two are centred on one line, folded or not. Nothing moves sideways
-	   while the column folds; the name just runs out of room and fades. */
+	/* The mark sits over the sidebar's icons, centred on the same line folded
+	   or not. Nothing moves sideways while the column folds; the names just
+	   run out of room and fade. */
 	.brand {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: 10px;
+		min-width: 0;
 		height: 100%;
-		padding-left: 14px;
-		border-radius: var(--radius-sm);
-		font-size: var(--text-lg);
+		padding: 0 var(--space-3) 0 14px;
+		color: var(--color-text);
 		text-decoration: none;
 		white-space: nowrap;
-		color: var(--color-text);
 	}
 
 	.brand:focus-visible {
@@ -175,107 +146,90 @@
 		outline-offset: -4px;
 	}
 
-	.mark {
-		display: grid;
-		flex-shrink: 0;
-		place-items: center;
-		width: 28px;
-		height: 28px;
-		border-radius: var(--radius-sm);
-		background: var(--color-accent);
-		color: var(--color-accent-text);
-	}
-
-	.brand strong {
+	/* The organisation, and underneath it, quieter, what this panel is. */
+	.names {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		line-height: 1.25;
 		transition: opacity var(--speed);
 	}
 
-	.mini .brand strong {
+	.names strong {
+		overflow: hidden;
+		font-size: var(--text-base);
+		font-weight: 600;
+		text-overflow: ellipsis;
+	}
+
+	.names small {
+		color: var(--color-text-hint);
+		font-size: var(--text-xs);
+	}
+
+	.mini .names {
 		opacity: 0;
 	}
 
-	/* Just past the column's rule, so it reads as belonging to the column it
-	   folds while staying in the bar, where there is always room for it. */
-	.fold {
+	/* Everything past the logo block: the sidebar's control at the start,
+	   and the tools pushed to the end. */
+	.bar {
 		display: flex;
-		flex: none;
-		padding-left: var(--space-2);
-	}
-
-	/* The start of the content area, just past the sidebar's column, so the
-	   field lines up with the page's own heading rather than floating in the
-	   gap. It takes the width it is given and stops: the bar is not a form. */
-	.search {
 		flex: 1;
+		align-items: center;
+		gap: var(--space-2);
 		min-width: 0;
-		max-width: 18rem;
-		padding-left: var(--space-3);
+		height: 100%;
+		padding: 0 var(--page-gutter) 0 var(--space-2);
 	}
 
-	/* Everything that is not the page and not the account, kept together at
-	   the end so the bar reads left to right: where you are, where you can
-	   go, what is around it, who you are. */
-	.utilities {
-		margin-left: auto;
+	.start {
 		display: flex;
 		align-items: center;
-		gap: var(--space-1);
 	}
 
-	/* A hairline, not a gap: it says the account is a different kind of thing
-	   from the links beside it without spending the width a gap would. */
+	.end {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		margin-left: auto;
+	}
+
+	/* A hairline, not a gap: the account is a different kind of thing from
+	   the icons beside it. */
 	.rule {
 		width: 1px;
-		height: 18px;
-		margin: 0 var(--space-1);
+		height: 20px;
+		margin: 0 var(--space-2);
 		background: var(--color-border);
-	}
-
-	.account {
-		display: flex;
-		align-items: center;
-		padding-left: var(--space-1);
 	}
 
 	/* Narrow screens have no sidebar column — the sections are a panel the
 	   control beside the logo opens — so the logo block is only as wide as
-	   the mark. */
+	   the mark, and the search takes the room in the middle. */
 	@media (max-width: 55rem) {
-		header {
-			padding-right: var(--space-2);
-		}
-
 		.brand-column,
 		.brand-column.ruled {
-			align-self: stretch;
 			width: auto;
-			height: auto;
 			border-right-color: transparent;
 		}
 
 		.brand {
-			padding: 0 var(--space-2);
+			padding: 0 var(--space-1) 0 var(--space-3);
 		}
 
-		.brand strong {
+		.names {
 			display: none;
 		}
 
-		/* No room for them beside the sections; the account menu still has
-		   both as named rows, which is where they are looked for anyway.
-		   The palette stays — folded to its magnifier — because it is the
-		   only way to reach a page quickly without the sidebar. */
-		.utilities :global(a.control) {
-			display: none;
+		.bar {
+			padding-left: 0;
 		}
+	}
 
+	@media (max-width: 40rem) {
 		.rule {
-			display: none;
-		}
-
-		.search {
-			flex: 0 0 auto;
-			padding-left: var(--space-2);
+			margin: 0 var(--space-1);
 		}
 	}
 </style>

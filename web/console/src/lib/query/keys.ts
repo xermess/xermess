@@ -8,6 +8,13 @@ import type { RoleListParams } from './roles';
  * left to right: everything under `users.all` goes when a user changes.
  */
 export const keys = {
+	/** The signed-in administrator's own account. */
+	profile: {
+		all: ['profile'] as const,
+		sessions: ['profile', 'sessions'] as const,
+		mfa: ['profile', 'mfa'] as const
+	},
+
 	users: {
 		all: ['users'] as const,
 		/** One page of the list, as the search box and filter describe it. */

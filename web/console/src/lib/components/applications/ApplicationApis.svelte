@@ -3,7 +3,7 @@
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { RiCodeBoxLine, RiShieldCheckLine } from 'svelte-remixicon';
 	import { ApiError, applicationsApi, type APIAccess } from '$lib/api';
-	import { Alert, Badge, Checkbox, Icon, Switch } from '$lib/components/ui';
+	import { Alert, Badge, Checkbox, Icon, Note, Switch } from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
 	type Props = {
@@ -79,7 +79,7 @@
 {/if}
 
 {#if access.isPending}
-	<p class="muted">Loading APIs…</p>
+	<Note>Loading APIs…</Note>
 {:else if access.isError}
 	<Alert>Could not load the APIs.</Alert>
 {:else if access.data.length === 0}
@@ -145,9 +145,9 @@
 						</div>
 
 						{#if api.scopes.length === 0}
-							<p class="muted">
+							<Note>
 								This API has no scopes: tokens for it carry its audience and nothing else.
-							</p>
+							</Note>
 						{:else}
 							<ul>
 								{#each api.scopes as scope (scope.id)}

@@ -3,7 +3,17 @@
 	import { resolve } from '$app/paths';
 	import { RiGitBranchLine, RiHashtag, RiShieldKeyholeLine, RiTimerLine } from 'svelte-remixicon';
 	import { ApiError, otpApi, type OTPResponse, type OTPSettingsInput } from '$lib/api';
-	import { Alert, Button, Input, List, ListItem, Panel, Tag, Thumb } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		FieldGrid,
+		Input,
+		List,
+		ListItem,
+		Panel,
+		Tag,
+		Thumb
+	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
 	type Props = {
@@ -128,7 +138,7 @@
 	{/if}
 
 	<Panel title="The code" icon={RiHashtag}>
-		<div class="grid">
+		<FieldGrid spacing="comfortable">
 			<Input
 				label="Digits"
 				bind:value={form.length}
@@ -146,7 +156,7 @@
 				max={limits.max_attempts}
 				hint="Wrong codes before the sign-in is over and has to be started again."
 			/>
-		</div>
+		</FieldGrid>
 
 		{#if odds}
 			<p class="note">{odds}</p>
@@ -154,7 +164,7 @@
 	</Panel>
 
 	<Panel title="Timing" icon={RiTimerLine}>
-		<div class="grid">
+		<FieldGrid spacing="comfortable">
 			<Input
 				label="Valid for"
 				bind:value={form.lifetime_minutes}
@@ -174,7 +184,7 @@
 				suffix="seconds"
 				hint="What stops “send it again” being a way to post mail to a stranger. Zero turns the wait off."
 			/>
-		</div>
+		</FieldGrid>
 	</Panel>
 
 	{#if settings.flows.length > 0}
@@ -225,13 +235,6 @@
 		gap: var(--space-4);
 	}
 
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		align-items: start;
-		gap: var(--space-3) var(--space-4);
-	}
-
 	.note {
 		margin: var(--space-3) 0 0;
 		color: var(--color-text-hint);
@@ -258,11 +261,5 @@
 		margin-right: auto;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	@media (max-width: 40rem) {
-		.grid {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

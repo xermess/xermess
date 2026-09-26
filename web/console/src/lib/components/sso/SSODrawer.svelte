@@ -25,6 +25,7 @@
 		Alert,
 		Button,
 		Drawer,
+		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
@@ -382,7 +383,7 @@
 							<Select label="Protocol" bind:value={protocol} options={protocols} />
 						{/if}
 
-						<div class="pair">
+						<FieldGrid>
 							<Input
 								label="Name"
 								bind:value={name}
@@ -397,7 +398,7 @@
 								placeholder="acme"
 								readOnly={editing || readOnly}
 							/>
-						</div>
+						</FieldGrid>
 
 						<SwitchField
 							label="On"
@@ -421,7 +422,7 @@
 								required
 								{readOnly}
 							/>
-							<div class="pair">
+							<FieldGrid>
 								<Input label="Client ID" bind:value={clientId} required {readOnly} />
 								<div class="secret">
 									<PasswordInput
@@ -434,7 +435,7 @@
 										<p class="note small">A secret is stored. Type a new one to replace it.</p>
 									{/if}
 								</div>
-							</div>
+							</FieldGrid>
 							<Input
 								label="Scopes"
 								bind:value={scopes}
@@ -465,14 +466,14 @@
 									hint="Or paste the file the provider gave you."
 								/>
 							{/if}
-							<div class="pair">
+							<FieldGrid>
 								<Select
 									label="Name ID format"
 									bind:value={nameIdFormat}
 									options={nameIdFormats}
 									{readOnly}
 								/>
-							</div>
+							</FieldGrid>
 							<SwitchField
 								label="Sign authentication requests"
 								description="For providers that require it. The certificate is in this server's metadata."
@@ -622,7 +623,7 @@
 						title="Where to read"
 						description="The claim or attribute names. Empty reads the usual ones."
 					>
-						<div class="pair">
+						<FieldGrid>
 							<Input
 								label="Email"
 								bind:value={emailAttribute}
@@ -647,7 +648,7 @@
 								placeholder={protocol === 'oidc' ? 'family_name' : 'surname'}
 								{readOnly}
 							/>
-						</div>
+						</FieldGrid>
 					</FormSection>
 
 					<FormSection
@@ -716,13 +717,6 @@
 
 	.panel {
 		padding-top: var(--space-4);
-	}
-
-	.pair {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		align-items: start;
-		gap: var(--space-3);
 	}
 
 	.files {
@@ -797,11 +791,5 @@
 		align-items: center;
 		gap: var(--space-2);
 		margin-left: auto;
-	}
-
-	@media (max-width: 40rem) {
-		.pair {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>
