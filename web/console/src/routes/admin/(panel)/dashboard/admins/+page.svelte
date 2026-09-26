@@ -130,7 +130,7 @@
 	}));
 
 	const filters = [
-		{ value: '', label: 'All' },
+		{ value: '', label: 'All', reset: true },
 		{ value: 'active', label: 'Active' },
 		{ value: 'suspended', label: 'Suspended' },
 		{ value: 'disabled', label: 'Disabled' }

@@ -122,7 +122,7 @@
 	}));
 
 	const filters = [
-		{ value: '', label: 'All' },
+		{ value: '', label: 'All', reset: true },
 		{ value: 'web', label: 'Web' },
 		{ value: 'spa', label: 'SPA' },
 		{ value: 'native', label: 'Native' },

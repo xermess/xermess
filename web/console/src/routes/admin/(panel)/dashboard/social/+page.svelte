@@ -211,7 +211,7 @@
 	}
 
 	const filters = [
-		{ value: '', label: 'All' },
+		{ value: '', label: 'All', reset: true },
 		{ value: 'enabled', label: 'Offered' },
 		{ value: 'off', label: 'Off' }
 	];

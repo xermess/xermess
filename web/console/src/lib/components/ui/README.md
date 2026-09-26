@@ -230,14 +230,14 @@ left edge, under the title — never centred on its own, so the title and the
 first field line up and nothing moves from page to page. A page with tabs
 keeps the tabs full width and puts the container inside the tab.
 
-| Component          | What it is                                                                                                                                                              |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PageHeader`       | The trail, the title as the h1 with a `count` beside it, `meta` tags about the record, a `description`, and the buttons on the right.                                   |
-| `Toolbar`          | The row over a table: search first, held to a readable width, filters beside it, and an `end` snippet for the far side.                                                 |
-| compact fields     | `Input compact`, `Select compact`: a filter in a toolbar, at a control's height with its label as an inline prefix, so it lines up with the search box and the buttons. |
-| `SegmentedControl` | A few mutually exclusive filters as one control at a field's height.                                                                                                    |
-| `FilterChip`       | A filter that came with the address, shown so it is not forgotten; clicking it clears it.                                                                               |
-| `DataTable`        | A framed card: a tinted header of sentence-case labels, 52px rows, and a sideways scroll inside the frame when it needs one.                                            |
+| Component          | What it is                                                                                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`       | The trail, the title as the h1 with a `count` beside it, `meta` tags about the record, a `description`, and the buttons on the right.                                                         |
+| `Toolbar`          | The row over a table: search first, held to a readable width, filters beside it, and an `end` snippet for the far side.                                                                       |
+| compact fields     | `Input compact`, `Select compact`: a filter in a toolbar, at a control's height with its label as an inline prefix, so it lines up with the search box and the buttons.                       |
+| `SegmentedControl` | A few mutually exclusive filters as one control at a field's height. The chosen one is filled in the brand colour; an option marked `reset` — "All" — is ruled off from the values beside it. |
+| `FilterChip`       | A filter that came with the address, shown so it is not forgotten; clicking it clears it.                                                                                                     |
+| `DataTable`        | A framed card: a tinted header of sentence-case labels, 52px rows, and a sideways scroll inside the frame when it needs one.                                                                  |
 
 ## Page building blocks
 

@@ -199,7 +199,7 @@
 	}
 
 	const filters = [
-		{ value: '', label: 'All' },
+		{ value: '', label: 'All', reset: true },
 		{ value: 'true', label: 'Default' },
 		{ value: 'false', label: 'Not default' }
 	];
