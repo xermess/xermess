@@ -1142,3 +1142,51 @@ func TestLiveSigningKeyRevocation(t *testing.T) {
 		t.Errorf("rotation by an app manager = %d, want 403", status)
 	}
 }
+
+// A password an administrator sets takes the account back: the sessions the old
+// password was holding open end, and so do the refresh tokens applications
+// hold.
+//
+// Finding 22 in SECURITY-AUDIT-2.md: nothing was ended, so the usual answer to
+// a compromised account — reset the password in the panel — left whoever was
+// already inside exactly where they were, browser session and refresh token
+// both, for as long as the login flow's session lasts.
+func TestLiveAnAdminSetPasswordEndsTheAccountsAccess(t *testing.T) {
+	f := newOAuthFixture(t)
+
+	// Ada signs in, and the application is given a refresh token for her.
+	b := f.s.browser()
+	verifier, challenge := pkce(t)
+	back := f.signIn(b, challenge)
+
+	granted := f.exchange(back.Query().Get("code"), verifier)
+	if granted.status != http.StatusOK {
+		t.Fatalf("exchanging the code = %d %v", granted.status, granted.body)
+	}
+	refresh := granted.str("refresh_token")
+	if refresh == "" {
+		t.Fatal("no refresh token was issued, so there is nothing to revoke")
+	}
+
+	if status := b.account(http.MethodGet, "/me", nil, nil); status != http.StatusOK {
+		t.Fatalf("Ada's own session = %d, want 200", status)
+	}
+
+	// An administrator sets a new password on the account.
+	f.super.must(http.StatusOK, http.MethodPatch, "/users/"+f.userID, map[string]any{
+		"email": adaEmail, "password": "a-fresh-password-1", "confirm_password": "a-fresh-password-1",
+	}, nil)
+
+	// The browser that was signed in is out.
+	if status := b.account(http.MethodGet, "/me", nil, nil); status != http.StatusUnauthorized {
+		t.Errorf("Ada's session after the reset = %d, want 401", status)
+	}
+
+	// And the application cannot go on acting for her.
+	refreshed := f.token("/oauth2/token", f.clientID, f.clientSecret, url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {refresh},
+	})
+	if refreshed.status != http.StatusBadRequest || refreshed.str("error") != "invalid_grant" {
+		t.Errorf("refreshing after the reset = %d %v, want invalid_grant", refreshed.status, refreshed.body)
+	}
+}

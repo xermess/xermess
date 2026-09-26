@@ -65,9 +65,11 @@ type profileRequest struct {
 	LastName  string `json:"last_name" validate:"max=100"`
 }
 
-// emailRequest is the body of POST /account/email: the address to move to.
+// emailRequest is the body of POST /account/email: the address to move to,
+// and the password that proves the account is the asker's.
 type emailRequest struct {
-	Email string `json:"email" validate:"required,email,max=255"`
+	Email           string `json:"email" validate:"required,email,max=255"`
+	CurrentPassword string `json:"current_password" validate:"required,max=128"`
 }
 
 // passwordRequest is the body of POST /account/password.

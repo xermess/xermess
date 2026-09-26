@@ -310,3 +310,49 @@ func TestLoadRedis(t *testing.T) {
 		})
 	}
 }
+
+// LOGINER_ADMIN_MFA decides whether every administrator must sign in with a
+// second factor, and it has force exactly once: on the first start of a fresh
+// installation, where the stored setting is seeded from it
+// (store.EnsureAdminSecurity). A value this server does not know is refused
+// rather than read as "optional" — a typo would otherwise seed an installation
+// whose administrators need no second factor, and from then on that would look
+// like somebody's decision rather than a slip.
+//
+// Finding 25 in SECURITY-AUDIT-2.md said this was not checked. It was, and had
+// been since the setting existed; the test is what was missing.
+func TestLoadRefusesAnUnknownMFAMode(t *testing.T) {
+	const base = "LOGINER_DB_DSN=postgres://localhost/x\nLOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef\n"
+
+	tests := []struct {
+		name     string
+		mode     string
+		wantErr  bool
+		required bool
+	}{
+		{name: "nothing said, which is optional"},
+		{name: "optional", mode: "optional"},
+		{name: "required", mode: "required", required: true},
+		{name: "a typo", mode: "require", wantErr: true},
+		{name: "the wrong case", mode: "Required", wantErr: true},
+		{name: "a bool, as somebody might guess", mode: "true", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := base
+			if tt.mode != "" {
+				env += "LOGINER_ADMIN_MFA=" + tt.mode + "\n"
+			}
+			writeEnv(t, env)
+
+			cfg, err := Load()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Load() error = %v, want an error: %v", err, tt.wantErr)
+			}
+			if err == nil && cfg.AdminMFARequired != tt.required {
+				t.Errorf("AdminMFARequired = %v, want %v", cfg.AdminMFARequired, tt.required)
+			}
+		})
+	}
+}

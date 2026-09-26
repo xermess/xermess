@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net/http"
 	"testing"
 	"time"
 
@@ -93,6 +94,129 @@ func TestIDTokenClaimsHoldsATokenToItsProvider(t *testing.T) {
 			_, err := service.idTokenClaims(tt.provider, unsignedIDToken(t, tt.claims))
 			if !errors.Is(err, tt.want) {
 				t.Errorf("idTokenClaims = %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
+
+// Everything the provider fetches from elsewhere goes through one client, and a
+// redirect may not take it out of https.
+//
+// Finding 24 in SECURITY-AUDIT-2.md: the client followed redirects with Go's
+// default policy, so an https address could answer "fetch this http one
+// instead" and this server would.
+func TestKeepTheScheme(t *testing.T) {
+	from := func(scheme string) []*http.Request {
+		req, err := http.NewRequest(http.MethodGet, scheme+"://idp.example.com/metadata", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return []*http.Request{req}
+	}
+
+	to := func(raw string) *http.Request {
+		req, err := http.NewRequest(http.MethodGet, raw, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return req
+	}
+
+	tests := []struct {
+		name    string
+		via     []*http.Request
+		next    *http.Request
+		allowed bool
+	}{
+		{
+			name:    "https to https",
+			via:     from("https"),
+			next:    to("https://elsewhere.example.com/metadata"),
+			allowed: true,
+		},
+		{
+			name: "https to http",
+			via:  from("https"),
+			next: to("http://elsewhere.example.com/metadata"),
+		},
+		{
+			name: "https to an address that only speaks http",
+			via:  from("https"),
+			next: to("http://169.254.169.254/latest/meta-data/"),
+		},
+		{
+			// A provider on this machine, being tried out: it began in the
+			// clear and there is nothing to step down from.
+			name:    "http to http, having started that way",
+			via:     from("http"),
+			next:    to("http://localhost:8080/metadata"),
+			allowed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := keepTheScheme(tt.next, tt.via)
+
+			if tt.allowed && err != nil {
+				t.Errorf("keepTheScheme() = %v, want the redirect followed", err)
+			}
+			if !tt.allowed && err == nil {
+				t.Error("keepTheScheme() = nil, want the redirect refused")
+			}
+		})
+	}
+}
+
+// Replacing CheckRedirect replaces the limit that came with it, so the limit
+// is still there.
+func TestKeepTheSchemeStopsGoingRound(t *testing.T) {
+	req, err := http.NewRequest(http.MethodGet, "https://idp.example.com/metadata", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	via := make([]*http.Request, maxRedirects)
+	for i := range via {
+		via[i] = req
+	}
+
+	if err := keepTheScheme(req, via); err == nil {
+		t.Errorf("keepTheScheme() after %d hops = nil, want it stopped", maxRedirects)
+	}
+}
+
+// Which addresses this server will go and read, for a provider somebody is
+// setting up. The rule lives here because the two fetches apply it, not only
+// the panel that takes the address (finding 24 in SECURITY-AUDIT-2.md).
+func TestFetchable(t *testing.T) {
+	tests := []struct {
+		address string
+		want    bool
+	}{
+		{address: "https://idp.example.com", want: true},
+		{address: "https://idp.internal:8443/realms/acme", want: true},
+		// An identity provider on an internal host is the ordinary case for
+		// single sign-on, so https to one is allowed on purpose.
+		{address: "https://10.0.0.7/metadata", want: true},
+		{address: "http://localhost:8080/realms/acme", want: true},
+		{address: "http://127.0.0.1/metadata", want: true},
+		{address: "http://[::1]:7000/metadata", want: true},
+		{address: "http://idp.example.com", want: false},
+		{address: "http://169.254.169.254/latest/meta-data/", want: false},
+		{address: "http://10.0.0.7/metadata", want: false},
+		{address: "ftp://idp.example.com", want: false},
+		{address: "file:///etc/passwd", want: false},
+		{address: "idp.example.com", want: false},
+		{address: "", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.address, func(t *testing.T) {
+			if got := Fetchable(tt.address); got != tt.want {
+				t.Errorf("Fetchable(%q) = %v, want %v", tt.address, got, tt.want)
 			}
 		})
 	}

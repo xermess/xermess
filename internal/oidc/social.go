@@ -701,7 +701,7 @@ func (s *Service) startSocialSession(
 	// Remembered: a sign-in through a provider has no box to tick, and
 	// somebody who has just been sent back from one is not on a machine they
 	// are passing through.
-	result, err := s.startSession(ctx, user, flow, request, true, client, "user.login")
+	result, err := s.startSession(ctx, user, flow, request, true, client, model.MethodSocial)
 	if err != nil {
 		return nil, err
 	}

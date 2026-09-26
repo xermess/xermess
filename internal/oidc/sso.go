@@ -468,7 +468,7 @@ func (s *Service) signInThroughSSO(
 	// Remembered: a sign-in through a provider has no box to tick, and
 	// somebody who has just been sent back from one is not on a machine they
 	// are passing through.
-	result, err := s.startSession(ctx, user, flow, request, true, client, "user.login")
+	result, err := s.startSession(ctx, user, flow, request, true, client, model.MethodSSO)
 	if err != nil {
 		return nil, err
 	}
@@ -657,4 +657,39 @@ func rolesIDs(roles []model.UserRole) []uuid.UUID {
 	}
 
 	return out
+}
+
+// Fetchable reports whether this server may be sent to read a document from an
+// address somebody chose: https, or plain http on this machine, which is how a
+// provider is tried out.
+//
+// It guards the three places an address somebody typed turns into a request
+// from this server — Discover, FetchSAMLMetadata, and the panel before either
+// (internal/api/sso) — because that is the whole of what this rule can be.
+//
+// It is not a defence against being pointed at an internal host, and cannot be:
+// an organisation's identity provider is very often on one, so refusing private
+// addresses would refuse the ordinary case. What it removes is the plain http
+// fetch — metadata read in the clear, and the addresses that only ever speak
+// http, such as a cloud instance's metadata service.
+func Fetchable(raw string) bool {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return false
+	}
+
+	if parsed.Scheme == "https" {
+		return true
+	}
+
+	host := parsed.Hostname()
+
+	return parsed.Scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1")
+}
+
+// errNotFetchable is what the two fetches answer for an address this server
+// will not go to. It names the address: an administrator typed it, and seeing
+// it back is how they see what is wrong with it.
+func errNotFetchable(address string) error {
+	return fmt.Errorf("%s is not an address this server will read: it has to be https, or http on this machine", address)
 }

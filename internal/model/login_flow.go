@@ -373,6 +373,38 @@ func (f LoginFlow) PublicOptions() PublicLoginOptions {
 	}
 }
 
+// Accepts reports whether a flow signs somebody in on the strength of a
+// session another sign-in already made.
+//
+// It is the same question the ways in answer when a session is being made, so
+// that the two cannot drift: a flow that does not offer passwords does not
+// take a session a password made (Service.SignIn refuses the password
+// itself), one without the provider buttons does not take a session a
+// provider made (Service.SocialStart refuses the button), and one that asks
+// for an emailed code is not satisfied by the password that came before the
+// code (Service.finishSignIn would send one).
+//
+// A method this flow knows nothing about is refused, which is also the answer
+// for a session made before the server recorded methods at all: whoever holds
+// it signs in once more, and the session that replaces it says what proved it.
+func (f LoginFlow) Accepts(method SignInMethod) bool {
+	switch method {
+	case MethodPassword:
+		return f.Offers(StepPassword) && !f.Offers(StepEmailCode)
+	case MethodEmailCode:
+		return f.Offers(StepPassword)
+	case MethodSocial:
+		return f.Offers(StepSocial)
+	case MethodSSO:
+		// An organisation's identity provider is not one of the steps: the
+		// connection decides who reaches this server through it, and which
+		// steps a flow names has never had a say (Service.signInThroughSSO).
+		return true
+	}
+
+	return false
+}
+
 // Offers reports whether a flow names a step.
 func (f LoginFlow) Offers(step LoginStep) bool {
 	for _, named := range f.Steps {

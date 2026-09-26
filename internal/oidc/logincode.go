@@ -112,9 +112,16 @@ func (s *Service) sendLoginCode(
 
 // SubmitLoginCode finishes a sign-in that was waiting for a code.
 //
-// A wrong code is counted before it is refused, and the count is the row's
-// rather than the address's: whoever is guessing has to hold the handle, and
-// the sign-in they hold it for is the one that runs out of guesses.
+// The guess is taken off the row before the code is looked at, and by the
+// database rather than by this function: a six-digit code is guessable, so
+// what stands between it and whoever is guessing is the number of guesses, and
+// a count that is read here and written back is no count at all — a hundred
+// requests sent at once would each read the same number and each be allowed to
+// try (store.ClaimLoginCodeAttempt).
+//
+// The guesses are the row's rather than the address's: whoever is guessing has
+// to hold the handle, and the sign-in they hold it for is the one that runs
+// out of them.
 func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, client Client) (*SignInResult, error) {
 	waiting, err := s.waitingCode(ctx, handle)
 	if err != nil {
@@ -126,12 +133,22 @@ func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, cli
 		return nil, ErrInvalidCredentials
 	}
 
-	if !waiting.code.MatchesOTP(typed) {
-		attempts, err := s.store.RecordLoginCodeAttempt(ctx, waiting.code)
-		if err != nil {
-			return nil, err
-		}
+	// A right code spends a guess too. It is spent for good a moment later
+	// anyway, and taking the guess first is what makes the ceiling hold
+	// however many requests arrive together.
+	attempts, ok, err := s.store.ClaimLoginCodeAttempt(ctx, waiting.code, waiting.settings.MaxAttempts)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		s.record(ctx, user, user.Email, "user.login_code_failed", client, map[string]any{
+			"attempts": attempts, "of": waiting.settings.MaxAttempts, "refused": "no guesses left",
+		})
 
+		return nil, ErrCodeAttemptsUsed
+	}
+
+	if !waiting.code.MatchesOTP(typed) {
 		s.record(ctx, user, user.Email, "user.login_code_failed", client, map[string]any{
 			"attempts": attempts, "of": waiting.settings.MaxAttempts,
 		})
@@ -158,7 +175,7 @@ func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, cli
 		return nil, err
 	}
 
-	return s.startSession(ctx, user, flow, waiting.code.Request, waiting.code.Remember, client, "user.login")
+	return s.startSession(ctx, user, flow, waiting.code.Request, waiting.code.Remember, client, model.MethodEmailCode)
 }
 
 // ResendLoginCode sends another code for a sign-in that is still waiting,
@@ -185,10 +202,16 @@ func (s *Service) ResendLoginCode(ctx context.Context, handle string, client Cli
 		return nil, err
 	}
 
-	// The sign-in keeps its own life rather than gaining another: a code
-	// asked for again and again would otherwise never expire.
-	expires := now.Add(waiting.settings.Lifetime())
-	if err := s.store.ResendLoginCode(ctx, waiting.code, codeHash, now, expires); err != nil {
+	// The message is new; the sign-in is not. Its deadline is left where it
+	// was set when it was held, so asking again moves the code but never the
+	// hour — otherwise a button pressed once a minute would keep one sign-in
+	// alive for as long as somebody kept pressing it.
+	//
+	// Near that deadline this leaves little time to type the new code. That is
+	// the honest answer: what is nearly over is the sign-in, and starting one
+	// again is a password away and makes a fresh code of its own
+	// (store.CreateLoginCode replaces this row).
+	if err := s.store.ResendLoginCode(ctx, waiting.code, codeHash, now); err != nil {
 		return nil, err
 	}
 

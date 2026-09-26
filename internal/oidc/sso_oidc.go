@@ -61,6 +61,13 @@ var ssoMemory = &ssoCache{
 func (s *Service) Discover(ctx context.Context, issuer string) (*oidcDiscovery, error) {
 	issuer = strings.TrimRight(issuer, "/")
 
+	// As in FetchSAMLMetadata: the issuer of a saved connection is read again
+	// every time somebody signs in through it, so the rule holds here too and
+	// not only where the address was typed.
+	if !Fetchable(issuer) {
+		return nil, errNotFetchable(issuer)
+	}
+
 	ssoMemory.mu.Lock()
 	if hit, ok := ssoMemory.discovery[issuer]; ok && s.now().Sub(hit.fetched) < ssoCacheLifetime {
 		ssoMemory.mu.Unlock()

@@ -85,17 +85,43 @@ func (s *Store) LoginCodeByHash(ctx context.Context, hash string) (*model.LoginC
 	return &code, nil
 }
 
-// RecordLoginCodeAttempt counts one wrong code against the sign-in and
-// answers how many have been counted, so the caller can say whether there are
-// any guesses left.
-func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCode) (int, error) {
-	code.Attempts++
+// ClaimLoginCodeAttempt takes one of the guesses a waiting sign-in has left
+// and answers how many have now been taken. `ok` is false when there were
+// none left, which is the whole point of the method: the guess is claimed
+// before the code is looked at, so a code cannot be guessed more times than
+// the settings allow by sending the guesses at the same moment.
+//
+// Reading the count and writing it back would not hold. Ten requests that
+// read `attempts` as 2 all write 3, and every one of them then compares a
+// code against a sign-in that was supposed to have two guesses left. Here the
+// count is raised by the database, and the row that comes back is the one
+// this request is entitled to — the same reasoning as RecordUserFailedLogin.
+//
+// A code already spent is not excluded: raising the count on a sign-in that
+// has been used changes nothing, since ConsumeLoginCode refuses to use it
+// twice. Leaving it out means a false answer has exactly one meaning — the
+// guesses are gone.
+func (s *Store) ClaimLoginCodeAttempt(ctx context.Context, code *model.LoginCode, maxAttempts int) (int, bool, error) {
+	var row struct {
+		Attempts int
+	}
 
-	err := translate(s.db.WithContext(ctx).
-		Model(code).
-		Update("attempts", code.Attempts).Error)
+	result := s.db.WithContext(ctx).Raw(`
+		UPDATE login_codes SET attempts = attempts + 1
+		WHERE id = @id AND attempts < @max
+		RETURNING attempts`,
+		map[string]any{"id": code.ID, "max": maxAttempts},
+	).Scan(&row)
+	if result.Error != nil {
+		return 0, false, translate(result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return code.Attempts, false, nil
+	}
 
-	return code.Attempts, err
+	code.Attempts = row.Attempts
+
+	return row.Attempts, true, nil
 }
 
 // ConsumeLoginCode marks a code used. A code is used once, so the update is
@@ -123,11 +149,14 @@ func (s *Store) ConsumeLoginCode(ctx context.Context, code *model.LoginCode, now
 // starting the sign-in again: the handle the page holds stays as it is, and
 // the guesses already spent stay spent — asking for another message is not a
 // way to start the count over.
-func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash string, sentAt, expiresAt time.Time) error {
+//
+// `expires_at` is not among the columns written, and that is the point: the
+// sign-in keeps the deadline it was given when it was held, so no number of
+// messages extends it.
+func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash string, sentAt time.Time) error {
 	err := translate(s.db.WithContext(ctx).Model(code).Updates(map[string]any{
-		"code_hash":  hash,
-		"sent_at":    sentAt,
-		"expires_at": expiresAt,
+		"code_hash": hash,
+		"sent_at":   sentAt,
 	}).Error)
 	if err != nil {
 		return err
@@ -135,7 +164,6 @@ func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash
 
 	code.CodeHash = hash
 	code.SentAt = sentAt
-	code.ExpiresAt = expiresAt
 
 	return nil
 }

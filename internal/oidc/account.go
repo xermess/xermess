@@ -23,6 +23,33 @@ import (
 // it. It counts towards the lockout, as a wrong password at sign-in does.
 var ErrWrongPassword = problem("wrong_password", "the current password is wrong")
 
+// confirmPassword checks a password somebody typed to prove an account is
+// theirs. It guards the two things a session on its own should not be enough
+// for — replacing the password, and moving the address the account signs in
+// with — because both of them are how an account is taken over for good, and a
+// session may be one left open on a screen somebody walked away from.
+//
+// A wrong password counts towards the lockout, exactly as it does at the
+// sign-in page: otherwise this would be somewhere to try passwords without a
+// limit, with the address already known.
+//
+// An account with no password cannot prove itself this way, so it can do
+// neither. That is not a hole but the same answer the sign-in page gives it:
+// whoever holds such an account arrived through a provider or a reset link, and
+// their address is an administrator's to change (internal/api/users).
+func (s *Service) confirmPassword(ctx context.Context, user *model.User, password string, client Client) error {
+	if user.PasswordHash != "" && bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) == nil {
+		return nil
+	}
+
+	if _, err := s.store.RecordUserFailedLogin(ctx, user, s.now(), maxFailedLogins, lockoutDuration); err != nil {
+		return err
+	}
+	s.record(ctx, user, user.Email, "user.login_failed", client, map[string]any{"reason": "wrong current password"})
+
+	return ErrWrongPassword
+}
+
 // ErrNotYours is a session or application that does not belong to the signed-in
 // user, or does not exist: the two are one answer.
 var ErrNotYours = problem("not_yours", "not the user's")
@@ -64,13 +91,8 @@ func (s *Service) ChangePassword(ctx context.Context, session *Session, current,
 	user := session.User
 	now := s.now()
 
-	if user.PasswordHash == "" || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(current)) != nil {
-		if _, err := s.store.RecordUserFailedLogin(ctx, user, now, maxFailedLogins, lockoutDuration); err != nil {
-			return err
-		}
-		s.record(ctx, user, user.Email, "user.login_failed", client, map[string]any{"reason": "wrong current password"})
-
-		return ErrWrongPassword
+	if err := s.confirmPassword(ctx, user, current, client); err != nil {
+		return err
 	}
 
 	if current == next {

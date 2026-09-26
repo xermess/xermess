@@ -104,16 +104,33 @@ func (r *testRequest) settings(stored *model.MailSettings, sealer *jose.Sealer) 
 		return mail.Of(trying, *r.Password), nil
 	}
 
-	password := ""
-	if len(stored.Password) > 0 {
-		plain, err := sealer.OpenBytes(stored.Password)
-		if err != nil {
-			return mail.Settings{}, err
-		}
-		password = string(plain)
+	if len(stored.Password) == 0 {
+		return mail.Of(trying, ""), nil
 	}
 
-	return mail.Of(trying, password), nil
+	// No password on the form, so the stored one is meant — but only to talk
+	// to the server it belongs to. A test names its own host, port and
+	// username, and this is the one route in the panel that makes the server
+	// sign in somewhere an administrator chose: without this line, a form
+	// naming any host would have the password unsealed and handed to it, and
+	// the stored password is otherwise write-only (settingsResponse says only
+	// whether there is one). Testing the saved server again without retyping
+	// its password still works, which is what the convenience was for.
+	//
+	// Encryption is not among the three. A test that downgrades the saved
+	// server to a plaintext connection cannot carry the password out either:
+	// Go's smtp.PlainAuth refuses to send credentials over a connection that
+	// is not encrypted unless the host is localhost.
+	if trying.Host != stored.Host || trying.Port != stored.Port || trying.Username != stored.Username {
+		return mail.Settings{}, testNeedsPassword.With()
+	}
+
+	plain, err := sealer.OpenBytes(stored.Password)
+	if err != nil {
+		return mail.Settings{}, err
+	}
+
+	return mail.Of(trying, string(plain)), nil
 }
 
 // validate holds the words of an email to the keys there are. A key that is

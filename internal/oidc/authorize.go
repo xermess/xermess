@@ -112,11 +112,20 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 
 	now := s.now()
 
-	// A session counts only when it is recent enough for max_age and the
-	// application did not ask for the password again.
+	// The flow this application signs people in through, which is not
+	// necessarily the one the session in hand was made under: one cookie
+	// carries a session to every application, and each has a flow of its own.
+	flow, err := s.store.EffectiveLoginFlow(ctx, app)
+	if err != nil {
+		return "", err
+	}
+
+	// A session counts only when it is recent enough for max_age, the
+	// application did not ask for the password again, and this flow would
+	// have let it be made.
 	if session != nil {
 		tooOld := maxAge >= 0 && now.Sub(session.Record.AuthTime) > time.Duration(maxAge)*time.Second
-		if tooOld || slices.Contains(prompts, "login") {
+		if tooOld || slices.Contains(prompts, "login") || !takes(flow, session) {
 			session = nil
 		}
 	}
@@ -154,6 +163,30 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 	}
 
 	return withQuery(s.accountURL+PageLogin, url.Values{"request": {handle}}), nil
+}
+
+// takes reports whether an application's login flow signs a user in on the
+// strength of the session the browser already carries. Where it does not, the
+// browser is sent to the sign-in page to go through the flow — the same place
+// it would have gone with no session at all.
+//
+// Without this, a flow's rules would hold only for the application somebody
+// happened to sign in through. The cookie is one per browser, not one per
+// application: a sign-in through the shop's flow, or through the account pages
+// with no application at all, would otherwise be enough to draw a code for the
+// staff tool that asks for an emailed code, refuses unconfirmed addresses, or
+// is closed to sign-ins altogether.
+func takes(flow *model.LoginFlow, session *Session) bool {
+	switch {
+	// A flow whose sign-ins are closed has none to lend: the sign-in page
+	// says so, which is what somebody arriving without a session is told too.
+	case !flow.AllowSignIn:
+		return false
+	case flow.RequireVerifiedEmail && !session.User.EmailVerified:
+		return false
+	}
+
+	return flow.Accepts(session.Record.Method)
 }
 
 // PendingRequest is what the sign-in page shows about a sign-in under way.

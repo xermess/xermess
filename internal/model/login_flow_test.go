@@ -5,6 +5,46 @@ import (
 	"testing"
 )
 
+// Accepts is what an application asks of a session some other sign-in made.
+// It has to answer as the ways in answer when a session is being made, or a
+// flow's rules would hold only for the application somebody signed in
+// through.
+func TestLoginFlowAccepts(t *testing.T) {
+	flow := func(steps ...LoginStep) LoginFlow {
+		return LoginFlow{Steps: append(StepList{StepIdentifier}, steps...)}
+	}
+
+	tests := []struct {
+		name   string
+		flow   LoginFlow
+		method SignInMethod
+		want   bool
+	}{
+		{"a password, where the flow asks for one", flow(StepPassword), MethodPassword, true},
+		{"a password, where the flow asks for a code as well", flow(StepPassword, StepEmailCode), MethodPassword, false},
+		{"a password and a code, where the flow asks for both", flow(StepPassword, StepEmailCode), MethodEmailCode, true},
+		{"a password and a code, where the flow asks only for the password", flow(StepPassword), MethodEmailCode, true},
+		{"a provider, where the flow offers the buttons", flow(StepSocial), MethodSocial, true},
+		{"a provider, where the flow does not offer them", flow(StepPassword), MethodSocial, false},
+		{"a password, where the flow takes none", flow(StepSocial), MethodPassword, false},
+		// A connection decides who signs in through it; the steps never had
+		// a say, so a session it made satisfies any flow.
+		{"an organisation's provider, whatever the steps are", flow(StepPassword, StepEmailCode), MethodSSO, true},
+		// A session made before the server wrote down what proved it, and one
+		// claiming something this server has never issued.
+		{"a session with nothing recorded against it", flow(StepPassword), "", false},
+		{"a way in this server knows nothing about", flow(StepPassword), "fingerprint", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.flow.Accepts(tt.method); got != tt.want {
+				t.Errorf("Accepts(%q) = %v, want %v", tt.method, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestLoginFlowValidate(t *testing.T) {
 	tests := []struct {
 		name   string

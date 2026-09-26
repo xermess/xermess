@@ -12,6 +12,7 @@ package oidc
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -96,9 +97,34 @@ func New(ctx context.Context, cfg config.Config, st *store.Store, mailer mail.Se
 		issuer:     cfg.Issuer,
 		accountURL: cfg.AccountURL,
 		sealer:     sealer,
-		social:     &http.Client{Timeout: socialTimeout},
+		social:     &http.Client{Timeout: socialTimeout, CheckRedirect: keepTheScheme},
 		now:        time.Now,
 	}, nil
+}
+
+// maxRedirects is Go's own default, kept because replacing CheckRedirect
+// replaces the limit that came with it.
+const maxRedirects = 10
+
+// keepTheScheme refuses a redirect that leaves https.
+//
+// Everything this client fetches is somewhere else's: a provider's token and
+// userinfo endpoints, an issuer's discovery document, an identity provider's
+// SAML metadata. Where the address that started it was https, the answer
+// "fetch this http address instead" is either a document read in the clear or
+// a way to reach something that only speaks http at all, and this server is
+// the one being asked to do the reaching. A request that began as plain http
+// is a provider on this machine, being tried out, and is left alone.
+func keepTheScheme(req *http.Request, via []*http.Request) error {
+	if len(via) >= maxRedirects {
+		return fmt.Errorf("stopped after %d redirects", maxRedirects)
+	}
+
+	if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+		return fmt.Errorf("refused a redirect from https to %s", req.URL.Scheme)
+	}
+
+	return nil
 }
 
 // MaintainKeys keeps the signing keys rotating until ctx ends: it makes the

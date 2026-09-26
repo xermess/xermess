@@ -115,11 +115,14 @@ func (h *Handler) Update(c *gin.Context) {
 		h.audit.Record(c, "admin.password_changed", targetType, admin.ID.String())
 	}
 
-	// Your own sessions are left alone, or saving your own password here
-	// would sign you out of the page you saved it from.
+	// A new password, or an account that may no longer sign in, ends the
+	// sessions that account has open. The one this was saved from is the
+	// exception, or saving your own password here would sign you out of the
+	// page you saved it from — and since that session is the caller's, for
+	// anybody else's account it spares nothing.
 	changedAccess := req.Password != "" || admin.Status != model.StatusActive
-	if changedAccess && admin.ID != session.Admin(c).ID {
-		if err := h.store.RevokeSessionsFor(ctx, admin.ID, time.Now()); err != nil {
+	if changedAccess {
+		if err := h.store.RevokeOtherSessionsFor(ctx, admin.ID, session.ID(c), time.Now()); err != nil {
 			respond.Failure(c, h.log, err, "ending the administrator's sessions failed")
 			return
 		}

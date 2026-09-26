@@ -15,37 +15,56 @@ func init() {
 }
 
 // loginSwitches are the columns a login flow gained: what a sign-in through
-// it allows, beyond the steps it is made of.
-var loginSwitches = []string{
-	"allow_sign_in",
-	"allow_remember_me",
-	"verify_email_on_register",
-	"allow_email_change",
+// it allows, beyond the steps it is made of, and what the flows that already
+// exist get for it.
+//
+// Those flows keep behaving exactly as they did, which for three of the four
+// means off. The exception is allow_sign_in: every flow there is signs people
+// in today.
+var loginSwitches = []struct{ column, existing string }{
+	{"allow_sign_in", "true"},
+	{"allow_remember_me", "false"},
+	{"verify_email_on_register", "false"},
+	{"allow_email_change", "false"},
 }
 
 // upLoginManagement adds them, and the address a verification link may be a
 // change to (model.EmailVerification.NewEmail).
 //
-// The flows that already exist keep behaving exactly as they did, which for
-// three of the four means off. The exception is allow_sign_in: every flow
-// there is signs people in today, so it is turned on for all of them — the
-// column is added with that as its default, which fills the rows that exist,
-// and the default is then dropped so GORM cannot quietly store true for a
-// flow somebody meant to close (model_test.TestNoBoolDefaultsToTrue).
+// The switches are added by hand rather than by AutoMigrate: Postgres refuses
+// a not-null column with no default on a table that has rows, and login_flows
+// has held the default flow since the first migration. Each column is added
+// saying what those rows get, and its default is dropped again so GORM cannot
+// quietly store true for a flow somebody meant to close
+// (model_test.TestNoBoolDefaultsToTrue).
 func upLoginManagement(_ context.Context, tx *sql.Tx) error {
 	db, err := gormTx(tx)
 	if err != nil {
 		return err
 	}
 
-	if err := db.AutoMigrate(&model.LoginFlow{}, &model.EmailVerification{}); err != nil {
-		return fmt.Errorf("add the login flow switches: %w", err)
+	for _, switched := range loginSwitches {
+		add := fmt.Sprintf(
+			`ALTER TABLE login_flows ADD COLUMN IF NOT EXISTS %s boolean NOT NULL DEFAULT %s`,
+			switched.column, switched.existing,
+		)
+		if _, err := tx.Exec(add); err != nil {
+			return fmt.Errorf("add %s: %w", switched.column, err)
+		}
+
+		drop := fmt.Sprintf(
+			`ALTER TABLE login_flows ALTER COLUMN %s DROP DEFAULT`,
+			switched.column,
+		)
+		if _, err := tx.Exec(drop); err != nil {
+			return fmt.Errorf("drop the default on %s: %w", switched.column, err)
+		}
 	}
 
-	// AutoMigrate writes a not-null bool with no default, which Postgres
-	// fills with false. Only the master switch has to say otherwise.
-	if _, err := tx.Exec(`UPDATE login_flows SET allow_sign_in = true`); err != nil {
-		return fmt.Errorf("open the flows that already exist: %w", err)
+	// The rest of what the two structs say, which is new_email on the
+	// verifications now the switches are in place.
+	if err := db.AutoMigrate(&model.LoginFlow{}, &model.EmailVerification{}); err != nil {
+		return fmt.Errorf("add the login flow switches: %w", err)
 	}
 
 	return nil
@@ -60,9 +79,9 @@ func downLoginManagement(_ context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	for _, column := range loginSwitches {
-		if err := db.Migrator().DropColumn(&model.LoginFlow{}, column); err != nil {
-			return fmt.Errorf("drop %s: %w", column, err)
+	for _, switched := range loginSwitches {
+		if err := db.Migrator().DropColumn(&model.LoginFlow{}, switched.column); err != nil {
+			return fmt.Errorf("drop %s: %w", switched.column, err)
 		}
 	}
 

@@ -63,7 +63,15 @@ func ParseSAMLMetadata(metadata []byte) (*saml.EntityDescriptor, error) {
 }
 
 // FetchSAMLMetadata reads an identity provider's metadata from its address.
+//
+// The address is checked here rather than only where it was typed, because it
+// is read again on every refresh (Service.RefreshMetadata) — including one
+// saved before this server had a rule about it.
 func (s *Service) FetchSAMLMetadata(ctx context.Context, address string) (string, error) {
+	if !Fetchable(address) {
+		return "", errNotFetchable(address)
+	}
+
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 	if err != nil {
 		return "", err

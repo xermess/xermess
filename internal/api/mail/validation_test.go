@@ -219,25 +219,54 @@ func TestResponseKeepsThePasswordIn(t *testing.T) {
 func TestTestRequestSettings(t *testing.T) {
 	saved := stored(t)
 
-	t.Run("the form's server, the stored password", func(t *testing.T) {
+	t.Run("the saved server again, without retyping its password", func(t *testing.T) {
 		req := testRequest{To: "someone@example.com"}
-		req.Host = sent("smtp.other.example")
 
 		settings, err := req.settings(&saved, sealer(t))
 		if err != nil {
 			t.Fatalf("settings() = %v", err)
 		}
 
-		if settings.Host != "smtp.other.example" {
-			t.Errorf("host = %q, want the form's", settings.Host)
+		if settings.Host != saved.Host {
+			t.Errorf("host = %q, want the saved one", settings.Host)
 		}
 		if settings.Password != "the stored password" {
 			t.Errorf("password = %q, want the stored one unsealed", settings.Password)
 		}
 	})
 
-	t.Run("a password just typed is the one tried", func(t *testing.T) {
+	// Finding 23 in SECURITY-AUDIT-2.md. Until this was closed, the subtest
+	// here asserted the opposite: that a form naming any host at all was sent
+	// the stored password, which is how the password left the server.
+	t.Run("another server is refused rather than sent the stored password", func(t *testing.T) {
+		for _, moved := range []struct {
+			name string
+			to   func(*testRequest)
+		}{
+			{"a host somebody typed", func(r *testRequest) { r.Host = sent("smtp.other.example") }},
+			{"another port", func(r *testRequest) { r.Port = sentInt(2525) }},
+			{"another username", func(r *testRequest) { r.Username = sent("someone-else") }},
+		} {
+			t.Run(moved.name, func(t *testing.T) {
+				req := testRequest{To: "someone@example.com"}
+				moved.to(&req)
+
+				settings, err := req.settings(&saved, sealer(t))
+
+				var fault respond.Fault
+				if !errors.As(err, &fault) || fault.Code != "mail_test_needs_password" {
+					t.Fatalf("settings() = %v (%+v), want mail_test_needs_password", err, settings)
+				}
+				if settings.Password != "" {
+					t.Errorf("the stored password came back anyway: %q", settings.Password)
+				}
+			})
+		}
+	})
+
+	t.Run("a password just typed is the one tried, wherever it is tried", func(t *testing.T) {
 		req := testRequest{To: "someone@example.com"}
+		req.Host = sent("smtp.other.example")
 		req.Password = sent("a new password")
 
 		settings, err := req.settings(&saved, sealer(t))
@@ -247,6 +276,23 @@ func TestTestRequestSettings(t *testing.T) {
 
 		if settings.Password != "a new password" {
 			t.Errorf("password = %q, want the one on the form", settings.Password)
+		}
+	})
+
+	t.Run("a server with no password saved is tried with none", func(t *testing.T) {
+		bare := stored(t)
+		bare.Password = nil
+
+		req := testRequest{To: "someone@example.com"}
+		req.Host = sent("smtp.other.example")
+
+		settings, err := req.settings(&bare, sealer(t))
+		if err != nil {
+			t.Fatalf("settings() = %v", err)
+		}
+
+		if settings.Password != "" {
+			t.Errorf("password = %q, want none", settings.Password)
 		}
 	})
 

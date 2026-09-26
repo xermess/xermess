@@ -1,7 +1,6 @@
 package sso
 
 import (
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -115,6 +114,29 @@ func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jos
 	return settle(connection)
 }
 
+// validate checks a test before this server is sent anywhere. The struct's own
+// rules say how long the fields may be; this says the address is one this
+// server may fetch, which nothing checked before — a test named its address and
+// the server read it, whatever it was.
+func (r *testRequest) validate() error {
+	if err := validate.Struct(r); err != nil {
+		return err
+	}
+
+	switch model.SSOProtocol(r.Protocol) {
+	case model.SSOProtocolOIDC:
+		if !fetchable(r.Issuer) {
+			return issuerInvalid.Fault(nil)
+		}
+	case model.SSOProtocolSAML:
+		if r.MetadataURL != "" && !fetchable(r.MetadataURL) {
+			return invalid("metadata_url")
+		}
+	}
+
+	return nil
+}
+
 // settle checks what a connection has to have, whoever wrote it, with a
 // problem the panel can translate for each; the model's own check is the
 // last word after them.
@@ -127,11 +149,10 @@ func settle(connection *model.SSOConnection) error {
 
 	switch connection.Protocol {
 	case model.SSOProtocolOIDC:
-		parsed, err := url.Parse(connection.Issuer)
 		switch {
 		case connection.Issuer == "":
 			return required("issuer")
-		case err != nil || parsed.Host == "" || parsed.Scheme != "https" && !localhost(parsed):
+		case !fetchable(connection.Issuer):
 			return issuerInvalid.Fault(nil)
 		case connection.ClientID == "":
 			return required("client_id")
@@ -139,6 +160,11 @@ func settle(connection *model.SSOConnection) error {
 	case model.SSOProtocolSAML:
 		if connection.Metadata == "" && connection.MetadataURL == "" {
 			return required("metadata")
+		}
+		// Stored, this address is fetched again on every refresh, so it is
+		// held to what the issuer is held to.
+		if connection.MetadataURL != "" && !fetchable(connection.MetadataURL) {
+			return invalid("metadata_url")
 		}
 		if connection.NameIDFormat == "" {
 			connection.NameIDFormat = model.SSONameIDEmail
@@ -162,11 +188,11 @@ func settle(connection *model.SSOConnection) error {
 	return nil
 }
 
-// localhost is an identity provider on this machine, which may be plain
-// http: that is how one is tried out.
-func localhost(u *url.URL) bool {
-	host := u.Hostname()
-	return u.Scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1")
+// fetchable is oidc.Fetchable, which is where the rule lives: the panel refuses
+// an address here so the answer is one it can translate, and the two fetches
+// refuse it again where the request is actually made.
+func fetchable(raw string) bool {
+	return oidc.Fetchable(raw)
 }
 
 var (

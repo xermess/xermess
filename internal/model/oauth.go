@@ -170,11 +170,43 @@ type UserSession struct {
 	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
 	User      *User     `gorm:"constraint:OnDelete:CASCADE"`
 	AuthTime  time.Time `gorm:"not null"`
+
+	// Method is the way in that made this session, so an application whose
+	// login flow asks for more than it proved can say so (LoginFlow.Accepts).
+	Method SignInMethod `gorm:"type:varchar(16);not null"`
+
 	ExpiresAt time.Time `gorm:"not null;index"`
 	RevokedAt *time.Time
 	IP        string `gorm:"size:45"`
 	UserAgent string `gorm:"size:255"`
 }
+
+// SignInMethod is the way in that made a session: what the person did to prove
+// they were themselves.
+//
+// It is kept on the row because a session outlives the sign-in that made it.
+// One cookie carries it to every application, while the rules it was made
+// under are one login flow's — the flow of whichever application the person
+// happened to sign in through. An application whose flow asks for more has to
+// be able to tell, which is what LoginFlow.Accepts is for.
+type SignInMethod string
+
+const (
+	// MethodPassword is an address and a password typed on the sign-in page.
+	// An account made there is signed in the same way.
+	MethodPassword SignInMethod = "password"
+
+	// MethodEmailCode is a password, and then a code emailed to the address
+	// (StepEmailCode).
+	MethodEmailCode SignInMethod = "email_code"
+
+	// MethodSocial is an account with one of the providers on the Social
+	// page, which proved the address itself.
+	MethodSocial SignInMethod = "social"
+
+	// MethodSSO is an organisation's own identity provider.
+	MethodSSO SignInMethod = "sso"
+)
 
 // TableName pins the table name.
 func (UserSession) TableName() string {

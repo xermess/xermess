@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -208,8 +209,24 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	h.audit.Record(c, "user.updated", targetType, user.ID.String())
+
+	// A password an administrator sets is how a compromised account is taken
+	// back, so it ends what the old password was holding open: every session,
+	// and every refresh token an application holds. Without this the reset
+	// looked done and whoever was already inside stayed inside — for as long
+	// as the login flow's session lasts.
 	if req.Password != "" {
 		h.audit.Record(c, "user.password_changed", targetType, user.ID.String())
+
+		sessions, tokens, err := h.store.SignOutUser(c.Request.Context(), user.ID, time.Now())
+		if err != nil {
+			respond.Failure(c, h.log, err, "ending the user's sessions failed")
+			return
+		}
+
+		h.audit.RecordWith(c, "user.signed_out_everywhere", targetType, user.ID.String(), map[string]any{
+			"sessions": sessions, "tokens": tokens, "reason": "password changed",
+		})
 	}
 
 	visibleRoles(c, user)

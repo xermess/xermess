@@ -300,7 +300,10 @@ func (h *Handler) ResendCode(c *gin.Context) {
 }
 
 // ChangeEmail starts moving the signed-in user to another sign-in address. It
-// answers the same whether or not the address is already somebody else's, so
+// takes the account's password as well as its session, since moving the
+// address is a way of taking the account.
+//
+// It answers the same whether or not the address is already somebody else's, so
 // this cannot be used to find out which addresses have accounts.
 func (h *Handler) ChangeEmail(c *gin.Context) {
 	var req emailRequest
@@ -313,7 +316,8 @@ func (h *Handler) ChangeEmail(c *gin.Context) {
 		return
 	}
 
-	if err := h.provider.RequestEmailChange(c.Request.Context(), signedInSession(c), req.Email, client(c)); err != nil {
+	err := h.provider.RequestEmailChange(c.Request.Context(), signedInSession(c), req.Email, req.CurrentPassword, client(c))
+	if err != nil {
 		h.fail(c, err, "starting an address change failed")
 		return
 	}

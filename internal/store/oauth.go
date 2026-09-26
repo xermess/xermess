@@ -589,6 +589,19 @@ func (s *Store) VerifyEmail(ctx context.Context, verification *model.EmailVerifi
 		}
 
 		err = tx.Model(&model.User{}).Where("id = ?", verification.UserID).Updates(changes).Error
+		if err != nil {
+			return translate(err)
+		}
+
+		if verification.IsChange() {
+			// A reset link already sent goes with the address it was sent to.
+			// It names the user rather than the address, so it would still set
+			// a password — out of an inbox that is no longer the account's.
+			err = tx.Exec(
+				"UPDATE password_resets SET used_at = @at WHERE user_id = @user AND used_at IS NULL",
+				map[string]any{"at": at, "user": verification.UserID},
+			).Error
+		}
 
 		return translate(err)
 	})

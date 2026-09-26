@@ -84,10 +84,23 @@ func (m *mailbox) Send(_ context.Context, msg mail.Message) error {
 func (m *mailbox) wait(t *testing.T, to string) mail.Message {
 	t.Helper()
 
+	return m.nth(t, to, 1)
+}
+
+// nth returns the nth message sent to `to`, counting from one, and waits as
+// wait does. Asking for another code means two messages at one address, and
+// which of them carries the code now being waited for is the thing under test.
+func (m *mailbox) nth(t *testing.T, to string, n int) mail.Message {
+	t.Helper()
+
 	for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
 		m.mu.Lock()
+		seen := 0
 		for _, msg := range m.messages {
-			if strings.EqualFold(msg.To, to) {
+			if !strings.EqualFold(msg.To, to) {
+				continue
+			}
+			if seen++; seen == n {
 				m.mu.Unlock()
 				return msg
 			}
@@ -95,8 +108,28 @@ func (m *mailbox) wait(t *testing.T, to string) mail.Message {
 		m.mu.Unlock()
 	}
 
-	t.Fatalf("no email to %s", to)
+	t.Fatalf("fewer than %d emails to %s", n, to)
 	return mail.Message{}
+}
+
+// none reports whether nothing has been sent to `to`. It waits as long as wait
+// does before saying so: a message that should not have been sent would be on
+// its way just as slowly as one that should.
+func (m *mailbox) none(t *testing.T, to string) bool {
+	t.Helper()
+
+	for deadline := time.Now().Add(time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		m.mu.Lock()
+		for _, msg := range m.messages {
+			if strings.EqualFold(msg.To, to) {
+				m.mu.Unlock()
+				return false
+			}
+		}
+		m.mu.Unlock()
+	}
+
+	return true
 }
 
 // linkIn is the link a message carries to one of the sign-in pages —
@@ -433,6 +466,37 @@ func TestLiveLoginLockout(t *testing.T) {
 
 	if status := c.login(superEmail, superPassword); status != http.StatusUnauthorized {
 		t.Errorf("right password on a locked account = %d, want 401", status)
+	}
+}
+
+// A wrong current password on an administrator's own pages costs what a wrong
+// one at the sign-in page costs.
+//
+// Finding 21 in SECURITY-AUDIT-2.md: it cost nothing at all, so a session found
+// open on a screen was somewhere to try an administrator's password without a
+// limit — and that password is what makes the account somebody else's for good.
+func TestLiveWrongCurrentPasswordCountsTowardsTheLockout(t *testing.T) {
+	s := newLiveServer(t)
+	super := s.superAdmin()
+
+	for range 5 {
+		status := super.do(http.MethodPost, "/me/password", map[string]string{
+			"current_password": "not-the-password", "new_password": "a-new-password-1",
+		}, nil)
+		if status != http.StatusBadRequest {
+			t.Fatalf("a wrong current password = %d, want 400", status)
+		}
+	}
+
+	// The account is locked now, and a locked account's sessions go with it —
+	// including the one the guessing was done from.
+	if status := super.do(http.MethodGet, "/me", nil, nil); status != http.StatusUnauthorized {
+		t.Errorf("the session after five wrong passwords = %d, want 401", status)
+	}
+
+	// Nor does the right password get in, until the lock runs out.
+	if status := s.client().login(superEmail, superPassword); status != http.StatusUnauthorized {
+		t.Errorf("the right password on the locked account = %d, want 401", status)
 	}
 }
 

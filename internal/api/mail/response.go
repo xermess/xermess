@@ -12,6 +12,11 @@ var (
 	// testNeedsRecipient is pressing "send a test" with nowhere to send it.
 	testNeedsRecipient = respond.Define(http.StatusBadRequest, "mail_test_needs_recipient", respond.Admin)
 
+	// testNeedsPassword is a test aimed at a server other than the one the
+	// stored password belongs to. The stored password is never carried to a
+	// host somebody has just typed, so such a test brings its own.
+	testNeedsPassword = respond.Define(http.StatusBadRequest, "mail_test_needs_password", respond.Admin)
+
 	// testFailed is the mail server refusing or not answering. What it said
 	// is the `reason`, since finding that out is the whole point of a test.
 	testFailed = respond.Define(http.StatusBadGateway, "mail_test_failed", respond.Admin)

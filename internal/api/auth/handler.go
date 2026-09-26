@@ -158,7 +158,7 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	admin := session.Admin(c)
 	profile := authsvc.Profile{FirstName: req.FirstName, LastName: req.LastName, Email: req.Email}
 
-	err := h.auth.UpdateProfile(c.Request.Context(), admin, profile, req.CurrentPassword)
+	err := h.auth.UpdateProfile(c.Request.Context(), admin, profile, req.CurrentPassword, requestOf(c))
 	switch {
 	case errors.Is(err, authsvc.ErrWrongPassword):
 		respond.Fail(c, wrongPassword)
@@ -191,7 +191,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 
 	admin := session.Admin(c)
 
-	err := h.auth.ChangePassword(c.Request.Context(), admin, session.ID(c), req.CurrentPassword, req.NewPassword)
+	err := h.auth.ChangePassword(c.Request.Context(), admin, session.ID(c), req.CurrentPassword, req.NewPassword, requestOf(c))
 	switch {
 	case errors.Is(err, authsvc.ErrWrongPassword):
 		respond.Fail(c, wrongPassword)

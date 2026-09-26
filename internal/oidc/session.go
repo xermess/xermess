@@ -169,7 +169,7 @@ func (s *Service) SignIn(ctx context.Context, email, password, request string, r
 		return &SignInResult{ResetToken: token}, nil
 	}
 
-	return s.finishSignIn(ctx, user, flow, request, remember, client, "user.login")
+	return s.finishSignIn(ctx, user, flow, request, remember, client)
 }
 
 // finishSignIn is the end of the ways in that the sign-in page itself drives
@@ -186,16 +186,15 @@ func (s *Service) finishSignIn(
 	request string,
 	remember bool,
 	client Client,
-	action string,
 ) (*SignInResult, error) {
 	if !flow.Offers(model.StepEmailCode) {
-		return s.startSession(ctx, user, flow, request, remember, client, action)
+		return s.startSession(ctx, user, flow, request, remember, client, model.MethodPassword)
 	}
 
 	// A flow that requires a verified address still requires it first: there
 	// is no point emailing a code to an address the flow will not take.
 	if flow.RequireVerifiedEmail && !user.EmailVerified {
-		return s.startSession(ctx, user, flow, request, remember, client, action)
+		return s.startSession(ctx, user, flow, request, remember, client, model.MethodPassword)
 	}
 
 	return s.sendLoginCode(ctx, user, request, remember, client)
@@ -205,6 +204,15 @@ func (s *Service) finishSignIn(
 // requires verified is sent a link to verify it instead, and the session lasts
 // as long as the flow says. Every way in ends here, so the rules hold however
 // somebody arrived.
+//
+// They hold for the sign-in being made. The one thing that happens without a
+// sign-in — an application taking a session another one made — is held to the
+// same rules where that session is used, in Service.Authorize.
+//
+// `method` is which way in this was, and the session carries it: the next
+// application the browser visits may sign people in through a stricter flow,
+// and only the row can say what this session actually proved
+// (model.LoginFlow.Accepts).
 func (s *Service) startSession(
 	ctx context.Context,
 	user *model.User,
@@ -212,7 +220,7 @@ func (s *Service) startSession(
 	request string,
 	remember bool,
 	client Client,
-	action string,
+	method model.SignInMethod,
 ) (*SignInResult, error) {
 	now := s.now()
 
@@ -244,6 +252,7 @@ func (s *Service) startSession(
 		TokenHash: hash,
 		UserID:    user.ID,
 		AuthTime:  now,
+		Method:    method,
 		ExpiresAt: now.Add(time.Duration(flow.SessionLifetimeHours) * time.Hour),
 		IP:        client.IP,
 		UserAgent: truncate(client.UserAgent, 255),
@@ -256,7 +265,7 @@ func (s *Service) startSession(
 		return nil, err
 	}
 
-	s.record(ctx, user, user.Email, action, client, nil)
+	s.record(ctx, user, user.Email, "user.login", client, map[string]any{"method": method})
 
 	return &SignInResult{
 		Session:  &Session{Record: record, User: user},
@@ -385,7 +394,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 		}
 	}
 
-	return s.finishSignIn(ctx, user, flow, r.Request, r.Remember, client, "user.login")
+	return s.finishSignIn(ctx, user, flow, r.Request, r.Remember, client)
 }
 
 // ForgotPassword sends a reset link to the address, if it has an account that
@@ -668,17 +677,26 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) 
 // link goes to the address they typed, and the account only moves when it is
 // used. Nothing is written to the account here.
 //
+// It takes the password as well as the session. The address is what the rest
+// of the account hangs off — a reset link goes to it — so moving it is a way
+// of taking the account, and a session left open on a shared machine should
+// not be enough to do that; see confirmPassword.
+//
 // It answers the same whether or not the address is already somebody else's,
 // so the account page cannot be used to find out which addresses have
 // accounts. An address that is taken is caught when the link is used, where
 // the person holding it has already proved they read that inbox.
-func (s *Service) RequestEmailChange(ctx context.Context, session *Session, email string, client Client) error {
+func (s *Service) RequestEmailChange(ctx context.Context, session *Session, email, password string, client Client) error {
 	flow, err := s.flowFor(ctx, "")
 	if err != nil {
 		return err
 	}
 	if !flow.AllowEmailChange {
 		return ErrEmailChangeNotOffered
+	}
+
+	if err := s.confirmPassword(ctx, session.User, password, client); err != nil {
+		return err
 	}
 
 	email = model.NormalizeEmail(email)

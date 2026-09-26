@@ -2,7 +2,7 @@
 	import { messageOf, useTranslator } from '$lib/i18n';
 	import { invalidateAll } from '$app/navigation';
 	import { account } from '$lib/api';
-	import { Alert, Button, Icon, Panel, TextField } from '$lib/components';
+	import { Alert, Button, Icon, Panel, PasswordField, TextField } from '$lib/components';
 	import { formatDate, initials } from '$lib/utils/format';
 	import type { PageProps } from './$types';
 
@@ -28,6 +28,9 @@
 
 	let changingEmail = $state(false);
 	let newEmail = $state('');
+	/** The account's password, which moving the address takes as well as the
+	    session: it is asked for here and never kept. */
+	let emailPassword = $state('');
 	let emailError = $state('');
 	let emailSent = $state('');
 	let sendingEmail = $state(false);
@@ -35,23 +38,30 @@
 	function startEmailChange() {
 		changingEmail = true;
 		newEmail = '';
+		emailPassword = '';
 		emailError = '';
 		emailSent = '';
+	}
+
+	function cancelEmailChange() {
+		changingEmail = false;
+		emailPassword = '';
 	}
 
 	async function sendEmailChange(event: SubmitEvent) {
 		event.preventDefault();
 
 		const address = newEmail.trim();
-		if (sendingEmail || address === '') return;
+		if (sendingEmail || address === '' || emailPassword === '') return;
 
 		sendingEmail = true;
 		emailError = '';
 
 		try {
-			await account.changeEmail({ email: address });
+			await account.changeEmail({ email: address, current_password: emailPassword });
 			emailSent = address;
 			changingEmail = false;
+			emailPassword = '';
 		} catch (err) {
 			emailError = messageOf(err, t);
 		} finally {
@@ -159,17 +169,19 @@
 						disabled={sendingEmail}
 					/>
 
+					<PasswordField
+						label={t('field.current_password')}
+						bind:value={emailPassword}
+						disabled={sendingEmail}
+					/>
+
 					<div class="email-actions">
-						<Button
-							variant="secondary"
-							disabled={sendingEmail}
-							onclick={() => (changingEmail = false)}
-						>
+						<Button variant="secondary" disabled={sendingEmail} onclick={cancelEmailChange}>
 							{t('account.email_change_cancel')}
 						</Button>
 						<Button
 							loading={sendingEmail}
-							disabled={sendingEmail || newEmail.trim() === ''}
+							disabled={sendingEmail || newEmail.trim() === '' || emailPassword === ''}
 							onclick={(event: MouseEvent) => sendEmailChange(event as unknown as SubmitEvent)}
 						>
 							{t('account.email_change_submit')}

@@ -20,7 +20,6 @@ import (
 
 	"loginer/internal/api/audit"
 	"loginer/internal/api/respond"
-	"loginer/internal/api/validate"
 	"loginer/internal/jose"
 	"loginer/internal/model"
 	"loginer/internal/oidc"
@@ -231,7 +230,7 @@ func (h *Handler) Test(c *gin.Context) {
 		respond.Fail(c, respond.InvalidBody)
 		return
 	}
-	if err := validate.Struct(req); err != nil {
+	if err := req.validate(); err != nil {
 		respond.Failure(c, h.log, err, "validating an SSO test failed")
 		return
 	}

@@ -65,10 +65,23 @@ func TestLiveLoginSwitchesDecideWhatIsAllowed(t *testing.T) {
 		t.Fatalf("signing in = %d %+v", status, out)
 	}
 
-	// Moving to another address: the link goes to the new one, and nothing
-	// changes until it is used.
+	// Moving to another address takes the password as well as the session: the
+	// address is how an account is taken over, and a session may be one left
+	// open on a shared machine (finding 18 in SECURITY-AUDIT-2.md).
+	var unproven problemBody
 	if status := remembered.account(http.MethodPost, "/email", map[string]string{
-		"email": "ada.new@example.com",
+		"email": "ada.new@example.com", "current_password": "not-ada-password",
+	}, &unproven); status != http.StatusBadRequest || unproven.Code != "wrong_password" {
+		t.Fatalf("changing the address with a wrong password = %d %+v, want wrong_password", status, unproven)
+	}
+	if !s.mail.none(t, "ada.new@example.com") {
+		t.Error("a link went to the new address though the password was wrong")
+	}
+
+	// With the password, the link goes to the new one, and nothing changes
+	// until it is used.
+	if status := remembered.account(http.MethodPost, "/email", map[string]string{
+		"email": "ada.new@example.com", "current_password": "ada-password-1",
 	}, nil); status != http.StatusAccepted {
 		t.Fatalf("asking to change the address = %d, want 202", status)
 	}
@@ -107,7 +120,7 @@ func TestLiveLoginSwitchesDecideWhatIsAllowed(t *testing.T) {
 
 	var refused problemBody
 	if status := remembered.account(http.MethodPost, "/email", map[string]string{
-		"email": "ada.third@example.com",
+		"email": "ada.third@example.com", "current_password": "ada-password-1",
 	}, &refused); status != http.StatusForbidden || refused.Code != "email_change_not_offered" {
 		t.Errorf("changing the address where the flow forbids it = %d %+v", status, refused)
 	}
@@ -154,4 +167,56 @@ func TestLiveVerifyEmailOnRegister(t *testing.T) {
 
 	// linkIn fails the test when the message carries none.
 	linkIn(t, f.s.mail.wait(t, "grace@example.com").Body, "/verify-email")
+}
+
+// A reset link goes with the address it was sent to. Finding 18 in
+// SECURITY-AUDIT-2.md: the link names the user, not the address, so one
+// already sitting in the inbox the account is leaving would still have set a
+// password on it.
+func TestLiveMovingTheAddressEndsAResetLinkSentToTheOldOne(t *testing.T) {
+	s := newLiveServer(t)
+	super := s.superAdmin()
+
+	super.must(http.StatusOK, http.MethodPatch, "/login-flows/"+defaultFlow(t, super), map[string]any{
+		"allow_email_change": true,
+	}, nil)
+
+	super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
+		"email": "ada@example.com", "password": "ada-password-1", "confirm_password": "ada-password-1",
+	}, nil)
+
+	b := s.browser()
+	if status := b.account(http.MethodPost, "/login", map[string]string{
+		"email": "ada@example.com", "password": "ada-password-1",
+	}, nil); status != http.StatusOK {
+		t.Fatalf("signing in = %d, want 200", status)
+	}
+
+	// A reset link is asked for, and lands in the inbox the account has now.
+	if status := b.account(http.MethodPost, "/forgot-password", map[string]string{
+		"email": "ada@example.com",
+	}, nil); status != http.StatusAccepted {
+		t.Fatalf("asking for a reset link = %d, want 202", status)
+	}
+	stale := tokenIn(t, s.mail.wait(t, "ada@example.com").Body, "/reset-password")
+
+	// Then the account moves to another address.
+	if status := b.account(http.MethodPost, "/email", map[string]string{
+		"email": "ada.new@example.com", "current_password": "ada-password-1",
+	}, nil); status != http.StatusAccepted {
+		t.Fatalf("asking to change the address = %d, want 202", status)
+	}
+
+	moved := tokenIn(t, s.mail.wait(t, "ada.new@example.com").Body, "/verify-email")
+	if status := b.account(http.MethodPost, "/verify-email", map[string]string{"token": moved}, nil); status != http.StatusOK {
+		t.Fatalf("using the link = %d, want 200", status)
+	}
+
+	// The link left behind is no longer a way into the account.
+	var refused problemBody
+	if status := s.browser().account(http.MethodPost, "/reset-password", map[string]string{
+		"token": stale, "password": "taken-over-1",
+	}, &refused); status != http.StatusGone || refused.Code != "reset_invalid" {
+		t.Errorf("a reset link sent to the address the account left = %d %+v, want reset_invalid", status, refused)
+	}
 }
