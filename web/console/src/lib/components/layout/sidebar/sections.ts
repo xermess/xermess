@@ -1,4 +1,3 @@
-import { resolve } from '$app/paths';
 import type { RouteId } from '$app/types';
 import type { ComponentType } from 'svelte';
 import {
@@ -191,15 +190,18 @@ export const branches: SidebarBranch[] = [
 	}
 ];
 
-/** Whether a page is the one being read. Activity is the dashboard's own
-    page, so it only matches exactly; the others also match anything below
-    them. The sidebar and the header ask the same question the same way. */
-export function isCurrentSection(route: Section, pathname: string): boolean {
-	const href = resolve(route);
-
+/** Whether a page is the one being read. `id` is the route id of the page being
+    read — `/admin/(panel)/dashboard/users` — and the route is one of the same
+    shape, so the two are compared as they are rather than through `resolve`.
+    That answers a path, and SvelteKit has answered those relatively since 2.0,
+    so a resolved path never equals the pathname and no row is ever marked.
+    Activity is the dashboard's own page, so it only matches exactly; the
+    others also match anything below them. The sidebar and the header ask the
+    same question the same way. */
+export function isCurrentSection(route: Section, id: string | null | undefined): boolean {
 	return route === '/admin/(panel)/dashboard'
-		? pathname === href
-		: pathname === href || pathname.startsWith(`${href}/`);
+		? id === route
+		: id === route || Boolean(id?.startsWith(`${route}/`));
 }
 
 /** What an administrator sees: the pages their roles allow, and a branch only

@@ -29,7 +29,10 @@
 	const overview = $derived(visibleOverview(admin));
 	const branches = $derived(visibleBranches(admin));
 
-	const isCurrent = (route: Section) => isCurrentSection(route, page.url.pathname);
+	// The page being read, by its route id rather than its path: that is the
+	// shape the section list is written in, so a row is marked without either
+	// side having to resolve anything.
+	const isCurrent = (route: Section) => isCurrentSection(route, page.route.id);
 
 	// Choosing a page is finishing with the panel, so it closes itself rather
 	// than staying over what it was asked to show.

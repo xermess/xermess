@@ -21,9 +21,10 @@
 
 	let { branch, open, onToggle, isCurrent, collapsed }: Props = $props();
 
-	/** Whether the page being read is one of this branch's. A folded branch
-	    says so with a dot, so the column still answers "where am I" without
-	    being unfolded. */
+	/** Whether the page being read is one of this branch's. Folded, the branch
+	    says so by being filled in the brand colour, the same as any other row
+	    that is where you are, so the rail never has a dot here and a fill
+	    there. */
 	const holdsCurrent = $derived(branch.items.some((item) => isCurrent(item.route)));
 </script>
 
@@ -36,12 +37,17 @@
 	<Menu.Root positioning={{ placement: 'right-start', gutter: 8 }}>
 		<Menu.Trigger>
 			{#snippet asChild(menu)}
-				<button {...menu()} type="button" class="row folded" aria-label={branch.label}>
+				<button
+					{...menu()}
+					type="button"
+					class="row folded"
+					class:current={holdsCurrent}
+					aria-label={branch.label}
+				>
 					<span class="icon"><Icon icon={branch.icon} /></span>
 					<!-- Named on a narrow screen, where the column is a row and
 					     there is width for words but no height for a tree. -->
 					<span class="name">{branch.label}</span>
-					{#if holdsCurrent}<span class="here" aria-hidden="true"></span>{/if}
 				</button>
 			{/snippet}
 		</Menu.Trigger>
@@ -245,17 +251,14 @@
 		display: none;
 	}
 
-	/* Where you are, while the names are away: a dot on the branch holding
-	   the page being read. */
-	.here {
-		position: absolute;
-		top: 50%;
-		right: 7px;
-		width: 5px;
-		height: 5px;
-		border-radius: var(--radius-pill);
-		background: var(--nav-mark);
-		transform: translateY(-50%);
+	/* Folded, the section holding the page being read is the one row in the
+	   rail filled in the brand colour — the mark every other row uses for it,
+	   so where you are looks the same wherever in the column you are. Named
+	   again here because the hover below would otherwise take the fill away
+	   under the pointer. */
+	.row.folded.current {
+		background: var(--nav-current);
+		color: var(--nav-current-text);
 	}
 
 	/* The flyout is an ordinary menu; these are the two things it needs that
@@ -270,10 +273,24 @@
 		text-decoration: none;
 	}
 
-	:global(.branch-menu a[data-part='item'].current) {
+	/* The page being read, filled in the brand colour as it is in the column.
+	   It is named again with the highlight because a menu row takes a grey
+	   wash under the pointer, and that would put the row's own text — which
+	   stays the brand's text colour — on grey. */
+	:global(.branch-menu a[data-part='item'].current),
+	:global(.branch-menu a[data-part='item'].current[data-highlighted]) {
 		background: var(--color-brand);
 		color: var(--color-brand-text);
 		font-weight: 600;
+	}
+
+	/* And its icon with them. This has to be said on the icon rather than
+	   left to the colour the row passes down: ark.css gives a menu row's svg
+	   a colour of its own, so an action's mark is quieter than its words, and
+	   that outranks what the row sets. Left alone, the mark of the page being
+	   read would be the one dark thing on the brand's background. */
+	:global(.branch-menu a[data-part='item'].current > svg) {
+		color: var(--color-brand-text);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -265,6 +265,19 @@
 		--xy-controls-button-color: var(--color-text);
 		--xy-controls-button-border-color: var(--color-border);
 		--xy-node-border-radius: var(--radius-md);
+		/* An edge's label is the + between two steps, a button that draws
+		   its own circle: the box Svelte Flow puts behind a label — white
+		   unless told the colour mode — has nothing to add. */
+		--xy-edge-label-background-color: transparent;
+		--xy-edge-label-color: inherit;
+		--xy-edge-stroke-selected: var(--color-info);
+		--xy-connectionline-stroke: var(--color-info);
+		--xy-handle-background-color: var(--color-text-disabled);
+		--xy-handle-border-color: var(--color-body);
+		--xy-selection-background-color: var(--surface-info);
+		--xy-selection-border: 1px dotted var(--color-info);
+		--xy-minimap-background-color: var(--color-surface);
+		--xy-attribution-background-color: transparent;
 		background: var(--color-body);
 	}
 
