@@ -58,9 +58,16 @@
 		color: var(--color-text);
 	}
 
+	/* Raised out of the track by a shadow in the light theme, and by a hairline
+	   in the dark one: the theme turns shadows off over a black page, and
+	   without either the chosen segment is black on a near-black track and
+	   stops being chosen. The same substitution the drawer's edge makes, and
+	   for the same reason. */
 	button.selected {
 		background: var(--color-surface);
-		box-shadow: var(--shadow-sm);
+		box-shadow:
+			var(--shadow-sm),
+			inset 0 0 0 1px var(--color-text-disabled);
 		color: var(--color-text);
 		font-weight: 600;
 	}

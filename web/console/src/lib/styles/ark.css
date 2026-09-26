@@ -156,8 +156,15 @@
 		background-color var(--speed);
 }
 
-[data-scope='checkbox'][data-part='root']:hover [data-part='control'] {
-	border-color: var(--color-text-disabled);
+/* The pointer says the box can be ticked: halfway to the theme's own text
+   from the resting border. The disabled-text grey that was here sat about the
+   same distance from the box in both themes — 2.8:1 either way — but only
+   1.9:1 above the border it replaced in the light one and 1.7:1 in the dark,
+   and the dark resting border is itself only 1.7:1 on a black box, so the
+   pointer all but went unanswered. Halfway is a step of 3.1:1 and 3.9:1, and
+   it is a grey, which cannot be mistaken for the brand a ticked box wears. */
+[data-scope='checkbox'][data-part='root']:not([data-disabled]):hover [data-part='control'] {
+	border-color: color-mix(in srgb, var(--color-text) 50%, var(--color-input-border));
 }
 
 [data-scope='checkbox'][data-part='control'][data-state='checked'],
@@ -165,6 +172,16 @@
 	border-color: var(--color-brand);
 	background: var(--color-brand);
 	color: var(--color-brand-text);
+}
+
+/* Ticked, the border is already the brand's, so the pointer presses it rather
+   than greying it — the press a button gives. Said after the state above
+   because it is that state plus the pointer, and the two weigh the same. */
+[data-scope='checkbox'][data-part='root']:not([data-disabled]):hover
+	[data-part='control'][data-state='checked'],
+[data-scope='checkbox'][data-part='root']:not([data-disabled]):hover
+	[data-part='control'][data-state='indeterminate'] {
+	border-color: var(--color-brand-hover);
 }
 
 /* The indicator carries the hidden attribute when the box is off, so it must
@@ -220,6 +237,22 @@
 
 [data-scope='switch'][data-part='control'][data-state='checked'] {
 	background: var(--color-brand);
+}
+
+/* The pointer on a switch that had no answer to it at all. Off, the track
+   moves a quarter of the way to the theme's own text — darker than the track
+   on a light page, lighter than it on a dark one, so one rule serves both
+   themes instead of naming a grey that is right in only one of them. On, the
+   press is the brand's own hover, as it is everywhere else in the panel.
+   Neither answers for a switch that is off limits. */
+[data-scope='switch'][data-part='root']:not([data-disabled])
+	[data-part='control']:not([data-state='checked']):hover {
+	background: color-mix(in srgb, var(--color-text) 25%, var(--color-secondary-alt));
+}
+
+[data-scope='switch'][data-part='root']:not([data-disabled])
+	[data-part='control'][data-state='checked']:hover {
+	background: var(--color-brand-hover);
 }
 
 [data-scope='switch'][data-part='thumb'] {
