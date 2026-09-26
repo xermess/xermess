@@ -184,68 +184,66 @@
 </script>
 
 <SvelteFlowProvider>
-	<div class="heading">
-		<PageHeader
-			crumbs={[
-				'Dashboard',
-				{ label: 'Login flows', href: resolve('/admin/(panel)/dashboard/flows') },
-				draft.name || 'Untitled flow'
-			]}
-		>
-			{#snippet secondary()}
-				{#if flow?.is_default}<Tag tone="info" strong>default</Tag>{/if}
-				{#if !draft.enabled}<Tag>off</Tag>{/if}
-				{#if editable && dirty && !creating}<Tag tone="warning">unsaved</Tag>{/if}
+	<PageHeader
+		crumbs={[
+			'Dashboard',
+			{ label: 'Login flows', href: resolve('/admin/(panel)/dashboard/flows') },
+			draft.name || 'Untitled flow'
+		]}
+	>
+		{#snippet meta()}
+			{#if flow?.is_default}<Tag tone="info" strong>default</Tag>{/if}
+			{#if !draft.enabled}<Tag>off</Tag>{/if}
+			{#if editable && dirty && !creating}<Tag tone="warning">unsaved</Tag>{/if}
+		{/snippet}
 
-				<IconButton
-					icon={RiDownload2Line}
-					label="Export as JSON"
-					onclick={() =>
-						download(`${draft.slug || 'flow'}.flow.json`, JSON.stringify(toFile(draft), null, 2))}
-				/>
-				{#if editable && !creating}
-					<IconButton icon={RiFileCopyLine} label="Duplicate" onclick={duplicate} disabled={busy} />
-				{/if}
-			{/snippet}
+		{#snippet secondary()}
+			<IconButton
+				icon={RiDownload2Line}
+				label="Export as JSON"
+				onclick={() =>
+					download(`${draft.slug || 'flow'}.flow.json`, JSON.stringify(toFile(draft), null, 2))}
+			/>
+			{#if editable && !creating}
+				<IconButton icon={RiFileCopyLine} label="Duplicate" onclick={duplicate} disabled={busy} />
+			{/if}
+		{/snippet}
 
-			{#snippet actions()}
-				{#if editable}
-					{#if !creating && !flow?.is_default}
-						{#if confirmingDelete}
-							<span class="confirm"
-								>{`Delete this flow? ${flow?.applications ?? 0} applications fall back to the default.`}</span
-							>
-							<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}>
-								Keep
-							</Button>
-							<Button colorPalette="danger" size="sm" loading={busy} onclick={remove_}>
-								Delete
-							</Button>
-						{:else}
-							<Button
-								variant="subtle"
-								colorPalette="danger"
-								onclick={() => (confirmingDelete = true)}
-							>
-								<Icon icon={RiDeleteBinLine} />
-								Delete
-							</Button>
-						{/if}
-					{/if}
-					{#if dirty && !creating}
-						<Button variant="subtle" onclick={discard} disabled={busy}>
-							<Icon icon={RiArrowGoBackLine} />
-							Discard changes
+		{#snippet actions()}
+			{#if editable}
+				{#if !creating && !flow?.is_default}
+					{#if confirmingDelete}
+						<span class="confirm"
+							>{`Delete this flow? ${flow?.applications ?? 0} applications fall back to the default.`}</span
+						>
+						<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}>
+							Keep
+						</Button>
+						<Button colorPalette="danger" size="sm" loading={busy} onclick={remove_}>Delete</Button>
+					{:else}
+						<Button
+							variant="subtle"
+							colorPalette="danger"
+							onclick={() => (confirmingDelete = true)}
+						>
+							<Icon icon={RiDeleteBinLine} />
+							Delete
 						</Button>
 					{/if}
-					<Button onclick={save} loading={busy} disabled={!dirty || problems.length > 0}>
-						<Icon icon={RiCheckLine} />
-						{creating ? 'Create flow' : 'Save changes'}
+				{/if}
+				{#if dirty && !creating}
+					<Button variant="subtle" onclick={discard} disabled={busy}>
+						<Icon icon={RiArrowGoBackLine} />
+						Discard changes
 					</Button>
 				{/if}
-			{/snippet}
-		</PageHeader>
-	</div>
+				<Button onclick={save} loading={busy} disabled={!dirty || problems.length > 0}>
+					<Icon icon={RiCheckLine} />
+					{creating ? 'Create flow' : 'Save changes'}
+				</Button>
+			{/if}
+		{/snippet}
+	</PageHeader>
 
 	{#if error || problems.length > 0 || !editable}
 		<div class="messages">
@@ -298,17 +296,10 @@
 </SvelteFlowProvider>
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
 	.messages {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
 	}
 
 	.problems {
@@ -323,14 +314,18 @@
 	}
 
 	/* The editor takes the rest of the screen: the canvas is the page, and a
-	   canvas that scrolls with the page is one that fights every drag. */
+	   canvas that scrolls with the page is one that fights every drag. It is
+	   framed the way a table is, so the palette, the canvas and the inspector
+	   read as one tool. */
 	.workspace {
 		display: grid;
 		grid-template-columns: 260px minmax(0, 1fr) 320px;
-		height: calc(100dvh - var(--header-height) - 120px);
+		overflow: hidden;
+		height: calc(100dvh - var(--header-height) - 180px);
 		min-height: 560px;
-		border-top: 1px solid var(--color-border);
-		border-bottom: 1px solid var(--color-border);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
 	}
 
 	@media (max-width: 64rem) {

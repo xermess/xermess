@@ -7,7 +7,15 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { flowsApi, messageOf, type LoginFlow } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { Alert, Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		Icon,
+		IconButton,
+		PageHeader,
+		SearchInput,
+		Toolbar
+	} from '$lib/components/ui';
 	import FlowTable from '$lib/components/flows/FlowTable.svelte';
 	import { TEMPLATES, freeSlug, fromFile } from '$lib/components/flows/steps';
 	import { can } from '$lib/permissions';
@@ -126,56 +134,50 @@
 
 <svelte:head><title>Login flows · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Login flows']}>
-		{#snippet secondary()}
-			<span class="total">{`${flows.data.flows.length} total`}</span>
+<PageHeader
+	crumbs={['Dashboard', 'Login flows']}
+	count={flows.data.flows.length}
+	description="How people sign in, drawn as the steps they go through. Every application follows its own flow or the default one: passwords, other accounts, verified addresses and how long a session lasts are all decided here."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
+	{#snippet actions()}
+		{#if canWrite}
+			<input
+				id="flow-import-file"
+				name="flow-import-file"
+				bind:this={file}
+				type="file"
+				accept="application/json,.json"
+				hidden
+				onchange={importFile}
 			/>
-		{/snippet}
-
-		{#snippet actions()}
-			{#if canWrite}
-				<input
-					id="flow-import-file"
-					name="flow-import-file"
-					bind:this={file}
-					type="file"
-					accept="application/json,.json"
-					hidden
-					onchange={importFile}
-				/>
-				<Button variant="subtle" loading={importing} onclick={() => file?.click()}>
-					<Icon icon={RiUpload2Line} />
-					Import
-				</Button>
-				<Button onclick={() => (choosing = !choosing)}>
-					<Icon icon={choosing ? RiCloseLine : RiAddLine} />
-					New flow
-				</Button>
-			{/if}
-		{/snippet}
-	</PageHeader>
-
-	<p class="lead">
-		How people sign in, drawn as the steps they go through. Every application follows its own flow,
-		or the default: the password, the other accounts, a verified address and how long a session
-		lasts are all decided here.
-	</p>
-</div>
+			<Button variant="subtle" loading={importing} onclick={() => file?.click()}>
+				<Icon icon={RiUpload2Line} />
+				Import
+			</Button>
+			<Button onclick={() => (choosing = !choosing)}>
+				<Icon icon={choosing ? RiCloseLine : RiAddLine} />
+				New flow
+			</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
 
 {#if error}
-	<div class="gutter banner"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 {#if choosing}
-	<section class="gutter templates" aria-label="Start from a template">
+	<section class="templates" aria-label="Start from a template">
 		<h2>Start from a template</h2>
 		<div class="cards">
 			{#each TEMPLATES as template (template.id)}
@@ -195,7 +197,7 @@
 	</section>
 {/if}
 
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search login flows"
 		placeholder="Search name, identifier or description…"
@@ -203,7 +205,7 @@
 		onsubmit={() => apply({ search })}
 		oninput={debounced}
 	/>
-</div>
+</Toolbar>
 
 <FlowTable
 	flows={visible}
@@ -213,30 +215,6 @@
 />
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.lead {
-		max-width: 90ch;
-		margin: var(--space-2) 0 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-
-	.gutter {
-		padding-inline: var(--page-gutter);
-	}
-
-	.banner {
-		margin-bottom: var(--space-3);
-	}
-
-	.templates {
-		margin-bottom: var(--space-4);
-	}
-
 	.templates h2 {
 		margin: 0 0 var(--space-2);
 		font-size: var(--text-base);
@@ -282,12 +260,5 @@
 		margin-bottom: var(--space-1);
 		border-radius: var(--radius-sm);
 		background: var(--color-secondary-alt);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
 	}
 </style>

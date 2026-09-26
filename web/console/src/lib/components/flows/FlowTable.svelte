@@ -17,10 +17,10 @@
 	let { flows, kinds, onOpen, empty }: Props = $props();
 
 	const columns: Column[] = $derived([
-		{ key: 'flow', label: 'flow', icon: RiGitBranchLine, min: '14rem' },
-		{ key: 'steps', label: 'steps', icon: RiListOrdered2, min: '18rem' },
-		{ key: 'applications', label: 'applications', icon: RiAppsLine, min: '9rem' },
-		{ key: 'status', label: 'status', icon: RiToggleLine, min: '10rem' }
+		{ key: 'flow', label: 'Flow', icon: RiGitBranchLine, min: '14rem' },
+		{ key: 'steps', label: 'Steps', icon: RiListOrdered2, min: '18rem' },
+		{ key: 'applications', label: 'Applications', icon: RiAppsLine, min: '9rem' },
+		{ key: 'status', label: 'Status', icon: RiToggleLine, min: '10rem' }
 	]);
 </script>
 

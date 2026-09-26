@@ -23,13 +23,13 @@
 	let { admins, self, onOpen, selected, onSelect }: Props = $props();
 
 	const columns: Column[] = [
-		{ key: 'id', label: 'id', icon: RiKey2Line, min: '10rem' },
-		{ key: 'email', label: 'email', icon: RiMailLine, min: '14rem' },
-		{ key: 'name', label: 'name', icon: RiText, min: '10rem' },
-		{ key: 'status', label: 'status', icon: RiToggleLine, min: '8rem' },
-		{ key: 'mfa', label: 'two-factor', icon: RiShieldKeyholeLine, min: '8rem' },
-		{ key: 'roles', label: 'roles', icon: RiShieldKeyholeLine, min: '12rem' },
-		{ key: 'last_login_at', label: 'last_login_at', icon: RiTimeLine, min: '11rem' }
+		{ key: 'id', label: 'ID', icon: RiKey2Line, min: '10rem' },
+		{ key: 'email', label: 'Email', icon: RiMailLine, min: '14rem' },
+		{ key: 'name', label: 'Name', icon: RiText, min: '10rem' },
+		{ key: 'status', label: 'Status', icon: RiToggleLine, min: '8rem' },
+		{ key: 'mfa', label: 'Two-factor', icon: RiShieldKeyholeLine, min: '8rem' },
+		{ key: 'roles', label: 'Roles', icon: RiShieldKeyholeLine, min: '12rem' },
+		{ key: 'last_login_at', label: 'Last sign-in', icon: RiTimeLine, min: '11rem' }
 	];
 
 	const tones: Record<AdminStatus, 'success' | 'danger' | 'neutral'> = {

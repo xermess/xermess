@@ -23,7 +23,9 @@
 		IconButton,
 		PageHeader,
 		SearchInput,
-		SelectionBar
+		SegmentedControl,
+		SelectionBar,
+		Toolbar
 	} from '$lib/components/ui';
 	import RoleDrawer from '$lib/components/roles/RoleDrawer.svelte';
 	import RoleTable from '$lib/components/roles/RoleTable.svelte';
@@ -205,33 +207,29 @@
 
 <svelte:head><title>Roles · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Roles']}>
-		{#snippet secondary()}
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
+<PageHeader
+	crumbs={['Dashboard', 'Roles']}
+	description="Roles say what users may do in your applications. A global role is the same everywhere; an application role only means something in its own application."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-		{#snippet actions()}
-			{#if canCreate}
-				<Button onclick={() => openRole(null)}>
-					<Icon icon={RiAddLine} />
-					New role
-				</Button>
-			{/if}
-		{/snippet}
-	</PageHeader>
-</div>
-
-<p class="lead">
-	Roles say what users may do in your applications. A global role is the same everywhere; an
-	application role only means something in its own application.
-</p>
+	{#snippet actions()}
+		{#if canCreate}
+			<Button onclick={() => openRole(null)}>
+				<Icon icon={RiAddLine} />
+				New role
+			</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
 
 <div class="tabs" role="tablist" aria-label="Kinds of role">
 	<button
@@ -271,7 +269,7 @@
 	</p>
 {/if}
 
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search roles"
 		placeholder="Search roles…"
@@ -280,22 +278,16 @@
 		oninput={debounced}
 	/>
 
-	<div class="filter" role="group" aria-label="Filter by default">
-		{#each filters as filter (filter.value)}
-			<button
-				type="button"
-				class:selected={data.isDefault === filter.value}
-				aria-pressed={data.isDefault === filter.value}
-				onclick={() => apply({ default: filter.value })}
-			>
-				{filter.label}
-			</button>
-		{/each}
-	</div>
-</div>
+	<SegmentedControl
+		label="Filter by default"
+		options={filters}
+		value={data.isDefault}
+		onChange={(value) => apply({ default: value })}
+	/>
+</Toolbar>
 
 {#if error}
-	<div class="gutter error"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 <RoleTable
@@ -358,22 +350,6 @@
 />
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
-	.lead {
-		margin: 0 0 var(--space-3);
-		padding-inline: var(--page-gutter);
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-
 	/* The two kinds of role are the first choice on the page, so they are
 	   tabs across it rather than a field in the toolbar. */
 	.tabs {
@@ -381,8 +357,6 @@
 		gap: var(--space-1);
 		overflow-x: auto;
 		scrollbar-width: none;
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
 		border-bottom: 1px solid var(--color-border);
 	}
 
@@ -426,8 +400,7 @@
 	}
 
 	.narrowed {
-		margin: 0 0 var(--space-3);
-		padding-inline: var(--page-gutter);
+		margin: 0;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 	}
@@ -451,59 +424,5 @@
 	.warning {
 		color: var(--color-danger);
 		font-size: var(--text-sm);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	/* The same height as the search box beside it and the buttons above it:
-	   the toolbar reads as one row rather than three sizes. */
-	.filter {
-		display: flex;
-		gap: 2px;
-		height: var(--control-height);
-		padding: 3px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary);
-	}
-
-	.filter button {
-		padding: 0 var(--space-4);
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-base);
-		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			color var(--speed-fast);
-	}
-
-	.filter button:hover {
-		color: var(--color-text);
-	}
-
-	.filter button.selected {
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-weight: 600;
-	}
-
-	@media (max-width: 40rem) {
-		.heading,
-		.error {
-			margin-bottom: var(--space-3);
-		}
-
-		.toolbar {
-			flex-direction: column;
-			align-items: stretch;
-		}
 	}
 </style>

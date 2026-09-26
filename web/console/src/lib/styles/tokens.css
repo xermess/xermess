@@ -56,10 +56,18 @@
 	--nav-item-height: 36px;
 	--header-height: 55px;
 	--sidebar-width: 240px;
-	--content-max-width: 1440px;
-	/* How far a page's text is inset. Tables run past it to the edges, the
-	   way PocketBase's do, so the rows meet the sidebar with no gap. */
-	--page-gutter: 20px;
+	/* Every dashboard page sits in one frame: centred, and no wider than this,
+	   so a wide monitor gets margins rather than a search box two thousand
+	   pixels long. It is one width for every page — list, form or record —
+	   so the title and the buttons are in the same place wherever you go. */
+	--content-max-width: 1400px;
+	/* How wide a form's column may grow inside that frame. A field longer than
+	   this is read as a line of its own rather than scanned. */
+	--form-max-width: 760px;
+	/* The space between the frame and the window, and the frame's own inset.
+	   It grows with the window (base.css), so a laptop keeps its width and a
+	   wide monitor does not look cramped at the edges. */
+	--page-gutter: 16px;
 
 	/* Motion */
 	--speed-fast: 70ms;

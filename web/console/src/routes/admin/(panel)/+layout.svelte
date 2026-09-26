@@ -52,9 +52,8 @@
 		}
 	}
 
-	/* Pages fill the width, the way PocketBase does: a table is easier to
-	   read with room for its columns than centred in a narrow column, and it
-	   runs to the edges rather than sitting in a box. */
+	/* The scrolling area under the header. How wide a page may grow and how
+	   far it is inset is the dashboard frame's to say, not this. */
 	main {
 		height: 100%;
 		overflow-y: auto;

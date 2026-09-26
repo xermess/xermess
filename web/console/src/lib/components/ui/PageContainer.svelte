@@ -11,23 +11,24 @@
 	let { size = 'md', children }: Props = $props();
 </script>
 
-<!-- A centred column for a page that reads top to bottom rather than filling
-     the width: PocketBase's .wrapper, at its three widths. The gutter stays
-     on narrow screens, where the column is the whole width. -->
+<!-- A column for content read top to bottom — a form, a page of settings —
+     inside the dashboard's frame. It is held to a readable width but not
+     centred: it starts at the frame's left edge, under the page's title, so
+     the title and the fields line up and nothing moves between pages. -->
 <div class="container {size}">
 	{@render children()}
 </div>
 
 <style>
 	.container {
-		--container-width: 760px;
+		--container-width: var(--form-max-width);
 
-		box-sizing: border-box;
-		width: min(100%, var(--container-width));
-		max-width: calc(100vw - (var(--page-gutter) * 2));
-		margin-inline: auto;
-		padding-inline: var(--page-gutter);
-		padding-block: var(--space-2) var(--space-6);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		width: 100%;
+		max-width: var(--container-width);
+		min-width: 0;
 	}
 
 	.sm {

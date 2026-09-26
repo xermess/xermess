@@ -20,11 +20,11 @@
 	let { roles, onOpen, selected, onSelect }: Props = $props();
 
 	const columns: Column[] = [
-		{ key: 'id', label: 'id', icon: RiKey2Line, min: '10rem' },
-		{ key: 'name', label: 'name', icon: RiShieldKeyholeLine, min: '10rem' },
-		{ key: 'description', label: 'description', icon: RiFileTextLine, min: '14rem' },
-		{ key: 'permissions', label: 'permissions', icon: RiLockLine, min: '16rem' },
-		{ key: 'admins', label: 'administrators', icon: RiAdminLine, min: '8rem' }
+		{ key: 'id', label: 'ID', icon: RiKey2Line, min: '10rem' },
+		{ key: 'name', label: 'Name', icon: RiShieldKeyholeLine, min: '10rem' },
+		{ key: 'description', label: 'Description', icon: RiFileTextLine, min: '14rem' },
+		{ key: 'permissions', label: 'Permissions', icon: RiLockLine, min: '16rem' },
+		{ key: 'admins', label: 'Administrators', icon: RiAdminLine, min: '8rem' }
 	];
 
 	/** How many permissions a cell shows before it says "and N more". */

@@ -2,7 +2,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { RiAddLine } from 'svelte-remixicon';
 	import type { Language, LanguageList, LocaleApp } from '$lib/api';
-	import { Button, Icon, SearchInput } from '$lib/components/ui';
+	import { Button, Icon, SearchInput, Toolbar } from '$lib/components/ui';
 	import { languagesOptions } from '$lib/query';
 	import LanguageDrawer from './LanguageDrawer.svelte';
 	import LanguageTable from './LanguageTable.svelte';
@@ -60,18 +60,20 @@
 		is rebuilt. This panel is English and is not one of them.
 	</p>
 
-	<div class="toolbar">
+	<Toolbar>
 		<SearchInput label="Search" placeholder="Search name or code…" bind:value={search} />
 
-		<span class="total">{`${list.data.languages.length} available`}</span>
+		{#snippet end()}
+			<span class="total">{`${list.data.languages.length} available`}</span>
 
-		{#if canWrite}
-			<Button onclick={() => (creating = true)}>
-				<Icon icon={RiAddLine} />
-				New language
-			</Button>
-		{/if}
-	</div>
+			{#if canWrite}
+				<Button onclick={() => (creating = true)}>
+					<Icon icon={RiAddLine} />
+					New language
+				</Button>
+			{/if}
+		{/snippet}
+	</Toolbar>
 
 	<LanguageTable
 		languages={visible}
@@ -104,14 +106,7 @@
 		line-height: 1.5;
 	}
 
-	.toolbar {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
 	.total {
-		margin-left: auto;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		white-space: nowrap;

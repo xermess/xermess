@@ -3,12 +3,20 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { RiCloseLine, RiRefreshLine } from 'svelte-remixicon';
+	import { RiRefreshLine } from 'svelte-remixicon';
 	import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { messageOf, sessionsApi, type UserSessionRecord } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import { keys, sessionsOptions } from '$lib/query';
-	import { Alert, Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		FilterChip,
+		IconButton,
+		PageHeader,
+		SearchInput,
+		Toolbar
+	} from '$lib/components/ui';
 	import SessionTable from '$lib/components/sessions/SessionTable.svelte';
 	import { can } from '$lib/permissions';
 	import type { PageData } from './$types';
@@ -99,29 +107,23 @@
 
 <svelte:head><title>Sessions · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Sessions']}>
-		{#snippet secondary()}
-			<span class="total">{`${rows.length} shown`}</span>
+<PageHeader
+	crumbs={['Dashboard', 'Sessions']}
+	count={rows.length}
+	description="Everyone signed in right now, where from and since when. Signing a user out everywhere also revokes the tokens their applications hold — the step to take after a lost device or a compromised account."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
+</PageHeader>
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
-	</PageHeader>
-
-	<p class="lead">
-		Everyone signed in right now: the browser session that keeps them signed in, where it is and
-		when it started. Sign one out, or sign a user out everywhere — which also revokes the tokens
-		their applications hold, as after a lost device or a compromised account.
-	</p>
-</div>
-
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search sessions"
 		placeholder="Search by the start of an email…"
@@ -131,43 +133,35 @@
 	/>
 
 	{#if data.user}
-		<button
-			type="button"
-			class="chip"
-			title="Show everyone's sessions"
-			onclick={() => apply({ user: '', email: '' })}
-		>
+		<FilterChip title="Show everyone's sessions" onclear={() => apply({ user: '', email: '' })}>
 			{`Only ${data.email || data.user}`}
-			<Icon icon={RiCloseLine} />
-		</button>
+		</FilterChip>
 	{/if}
-</div>
+</Toolbar>
 
 {#if confirming}
-	<div class="gutter banner">
-		<Alert tone="warning">
-			<span class="confirm">
-				{`Sign ${confirming.email} out of every browser and every application?`}
-				<span class="buttons">
-					<Button variant="subtle" size="sm" onclick={() => (confirming = null)}>Keep</Button>
-					<Button
-						colorPalette="danger"
-						size="sm"
-						loading={signOut.isPending}
-						onclick={() => confirming && signOut.mutate(confirming)}
-					>
-						Sign out
-					</Button>
-				</span>
+	<Alert tone="warning">
+		<span class="confirm">
+			{`Sign ${confirming.email} out of every browser and every application?`}
+			<span class="buttons">
+				<Button variant="subtle" size="sm" onclick={() => (confirming = null)}>Keep</Button>
+				<Button
+					colorPalette="danger"
+					size="sm"
+					loading={signOut.isPending}
+					onclick={() => confirming && signOut.mutate(confirming)}
+				>
+					Sign out
+				</Button>
 			</span>
-		</Alert>
-	</div>
+		</span>
+	</Alert>
 {/if}
 
 {#if error}
-	<div class="gutter banner"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {:else if notice}
-	<div class="gutter banner"><Alert tone="success">{notice}</Alert></div>
+	<Alert tone="success">{notice}</Alert>
 {/if}
 
 <SessionTable
@@ -194,26 +188,6 @@
 {/if}
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.lead {
-		max-width: 90ch;
-		margin: var(--space-2) 0 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-
-	.gutter {
-		padding-inline: var(--page-gutter);
-	}
-
-	.banner {
-		margin-bottom: var(--space-3);
-	}
-
 	.confirm {
 		display: flex;
 		flex-wrap: wrap;
@@ -228,32 +202,9 @@
 		gap: var(--space-1);
 	}
 
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.chip {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		height: var(--control-height);
-		padding: 0 var(--space-3);
-		border: none;
-		border-radius: var(--radius-md);
-		background: var(--surface-info);
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-base);
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
 	.more {
 		display: flex;
 		justify-content: center;
-		padding: var(--space-4) var(--page-gutter);
+		padding-top: var(--space-1);
 	}
 </style>

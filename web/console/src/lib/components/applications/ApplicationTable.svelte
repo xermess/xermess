@@ -23,12 +23,12 @@
 	let { applications, onOpen, selected, onSelect }: Props = $props();
 
 	const columns: Column[] = [
-		{ key: 'name', label: 'name', icon: RiText, min: '12rem' },
-		{ key: 'type', label: 'type', icon: RiShapesLine, min: '11rem' },
-		{ key: 'client_id', label: 'client_id', icon: RiKey2Line, min: '17rem' },
-		{ key: 'redirect_uris', label: 'redirect_uris', icon: RiLinksLine, min: '14rem' },
-		{ key: 'roles', label: 'roles', icon: RiShieldUserLine, min: '6rem' },
-		{ key: 'enabled', label: 'enabled', icon: RiToggleLine, min: '7rem' }
+		{ key: 'name', label: 'Name', icon: RiText, min: '12rem' },
+		{ key: 'type', label: 'Type', icon: RiShapesLine, min: '11rem' },
+		{ key: 'client_id', label: 'Client ID', icon: RiKey2Line, min: '17rem' },
+		{ key: 'redirect_uris', label: 'Redirect URIs', icon: RiLinksLine, min: '14rem' },
+		{ key: 'roles', label: 'Roles', icon: RiShieldUserLine, min: '6rem' },
+		{ key: 'enabled', label: 'Enabled', icon: RiToggleLine, min: '7rem' }
 	];
 
 	/** The roles page, showing this application's roles. */

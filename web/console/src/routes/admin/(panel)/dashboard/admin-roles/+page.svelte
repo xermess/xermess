@@ -15,7 +15,8 @@
 		IconButton,
 		PageHeader,
 		SearchInput,
-		SelectionBar
+		SelectionBar,
+		Toolbar
 	} from '$lib/components/ui';
 	import AdminRoleDrawer from '$lib/components/admins/AdminRoleDrawer.svelte';
 	import AdminRoleTable from '$lib/components/admins/AdminRoleTable.svelte';
@@ -122,35 +123,30 @@
 
 <svelte:head><title>Admin roles · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Admin roles']}>
-		{#snippet secondary()}
-			<span class="total">{roles.data.length} total</span>
+<PageHeader
+	crumbs={['Dashboard', 'Admin roles']}
+	count={roles.data.length}
+	description="What administrators may do in this panel. Each role grants permissions from a fixed catalog; managing administrators and these roles stays with super_admin."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
+	{#snippet actions()}
+		<Button onclick={() => openRole(null)}>
+			<Icon icon={RiAddLine} />
+			New admin role
+		</Button>
+	{/snippet}
+</PageHeader>
 
-		{#snippet actions()}
-			<Button onclick={() => openRole(null)}>
-				<Icon icon={RiAddLine} />
-				New admin role
-			</Button>
-		{/snippet}
-	</PageHeader>
-</div>
-
-<p class="lead">
-	What administrators may do in this panel. Each role grants permissions from a fixed catalog;
-	managing administrators and these roles stays with super_admin.
-</p>
-
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search admin roles"
 		placeholder="Search name or description…"
@@ -158,10 +154,10 @@
 		onsubmit={() => apply({ search })}
 		oninput={debounced}
 	/>
-</div>
+</Toolbar>
 
 {#if error}
-	<div class="gutter error"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 <AdminRoleTable
@@ -211,43 +207,8 @@
 <AdminRoleDrawer role={editing} catalog={catalog.data} bind:open={roleOpen} />
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
-	.lead {
-		margin: 0 0 var(--space-3);
-		padding-inline: var(--page-gutter);
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-
 	.warning {
 		color: var(--color-danger);
 		font-size: var(--text-sm);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	@media (max-width: 40rem) {
-		.heading,
-		.error {
-			margin-bottom: var(--space-3);
-		}
-
-		.toolbar {
-			flex-direction: column;
-			align-items: stretch;
-		}
 	}
 </style>

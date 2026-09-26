@@ -16,7 +16,8 @@
 		IconButton,
 		PageHeader,
 		SearchInput,
-		SelectionBar
+		SelectionBar,
+		Toolbar
 	} from '$lib/components/ui';
 	import ApiDrawer from '$lib/components/apis/ApiDrawer.svelte';
 	import ApiTable from '$lib/components/apis/ApiTable.svelte';
@@ -123,37 +124,32 @@
 
 <svelte:head><title>APIs · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'APIs']}>
-		{#snippet secondary()}
-			<span class="total">{apis.data.length} total</span>
+<PageHeader
+	crumbs={['Dashboard', 'APIs']}
+	count={apis.data.length}
+	description="APIs represent the protected resources that applications can access. Applications request access tokens for an API, and each token is issued for a specific audience."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
+	{#snippet actions()}
+		{#if canWrite}
+			<Button onclick={() => (drawerOpen = true)}>
+				<Icon icon={RiAddLine} />
+				New API
+			</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
 
-		{#snippet actions()}
-			{#if canWrite}
-				<Button onclick={() => (drawerOpen = true)}>
-					<Icon icon={RiAddLine} />
-					New API
-				</Button>
-			{/if}
-		{/snippet}
-	</PageHeader>
-</div>
-
-<p class="lead">
-	APIs represent the protected resources that applications can access. Applications request access
-	tokens for an API, and each token is issued for a specific audience.
-</p>
-
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search APIs"
 		placeholder="Search name, identifier or description…"
@@ -161,10 +157,10 @@
 		onsubmit={() => apply({ search })}
 		oninput={debounced}
 	/>
-</div>
+</Toolbar>
 
 {#if error}
-	<div class="gutter error"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 <ApiTable
@@ -215,43 +211,8 @@
 {/if}
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
-	.lead {
-		margin: 0 0 var(--space-3);
-		padding-inline: var(--page-gutter);
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-
 	.warning {
 		color: var(--color-danger);
 		font-size: var(--text-sm);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	@media (max-width: 40rem) {
-		.heading,
-		.error {
-			margin-bottom: var(--space-3);
-		}
-
-		.toolbar {
-			flex-direction: column;
-			align-items: stretch;
-		}
 	}
 </style>

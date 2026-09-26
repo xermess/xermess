@@ -5,7 +5,6 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import {
 		RiAddLine,
-		RiCloseLine,
 		RiDeleteBinLine,
 		RiDownloadLine,
 		RiRefreshLine,
@@ -25,11 +24,14 @@
 	import {
 		Alert,
 		Button,
+		FilterChip,
 		Icon,
 		IconButton,
 		PageHeader,
 		SearchInput,
-		SelectionBar
+		SegmentedControl,
+		SelectionBar,
+		Toolbar
 	} from '$lib/components/ui';
 	import FieldsDrawer from '$lib/components/users/FieldsDrawer.svelte';
 	import UserDrawer from '$lib/components/users/UserDrawer.svelte';
@@ -203,40 +205,40 @@
 
 <svelte:head><title>Users · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Users']}>
-		{#snippet secondary()}
-			<span class="total">{users.data.total} total</span>
-
-			{#if canEditFields}
-				<IconButton
-					icon={RiSettings3Line}
-					label="Field settings"
-					onclick={() => (fieldsOpen = true)}
-				/>
-			{/if}
-
+<PageHeader
+	crumbs={['Dashboard', 'Users']}
+	count={users.data.total}
+	description="Everyone with an account here, and the fields each of them carries."
+>
+	{#snippet secondary()}
+		{#if canEditFields}
 			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
+				icon={RiSettings3Line}
+				label="Field settings"
+				onclick={() => (fieldsOpen = true)}
 			/>
-		{/snippet}
+		{/if}
 
-		{#snippet actions()}
-			{#if canWrite}
-				<Button onclick={() => openUser(null)}>
-					<Icon icon={RiAddLine} />
-					New user
-				</Button>
-			{/if}
-		{/snippet}
-	</PageHeader>
-</div>
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-<div class="toolbar">
+	{#snippet actions()}
+		{#if canWrite}
+			<Button onclick={() => openUser(null)}>
+				<Icon icon={RiAddLine} />
+				New user
+			</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
+
+<Toolbar>
 	<SearchInput
 		label="Search users"
 		placeholder="Search email or any field…"
@@ -248,34 +250,22 @@
 	{#if data.role}
 		<!-- Arriving from the roles page filters the list to one role's
 		     holders; this says so, and is the way back to everyone. -->
-		<button
-			type="button"
-			class="chip"
-			title="Clear the role filter"
-			onclick={() => apply({ role: '' })}
-		>
+		<FilterChip title="Clear the role filter" onclear={() => apply({ role: '' })}>
 			role: <strong>{filterRole?.name ?? 'unknown'}</strong>
 			{#if filterApp}in {filterApp.name}{/if}
-			<Icon icon={RiCloseLine} />
-		</button>
+		</FilterChip>
 	{/if}
 
-	<div class="filter" role="group" aria-label="Filter by verified">
-		{#each filters as filter (filter.value)}
-			<button
-				type="button"
-				class:selected={data.verified === filter.value}
-				aria-pressed={data.verified === filter.value}
-				onclick={() => apply({ verified: filter.value })}
-			>
-				{filter.label}
-			</button>
-		{/each}
-	</div>
-</div>
+	<SegmentedControl
+		label="Filter by verified"
+		options={filters}
+		value={data.verified}
+		onChange={(verified) => apply({ verified })}
+	/>
+</Toolbar>
 
 {#if error}
-	<div class="gutter error"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 <UserTable
@@ -334,89 +324,3 @@
 {#if canEditFields}
 	<FieldsDrawer fields={fields.data} bind:open={fieldsOpen} />
 {/if}
-
-<style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.chip {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		height: var(--control-height);
-		padding: 0 var(--space-3);
-		border: none;
-		border-radius: var(--radius-md);
-		background: var(--surface-info);
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-base);
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
-	.chip strong {
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-	}
-
-	/* The same height as the search box beside it and the buttons above it:
-	   the toolbar reads as one row rather than three sizes. */
-	.filter {
-		display: flex;
-		gap: 2px;
-		height: var(--control-height);
-		padding: 3px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary);
-	}
-
-	.filter button {
-		padding: 0 var(--space-4);
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-base);
-		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			color var(--speed-fast);
-	}
-
-	.filter button:hover {
-		color: var(--color-text);
-	}
-
-	.filter button.selected {
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-weight: 600;
-	}
-
-	@media (max-width: 40rem) {
-		.heading,
-		.error {
-			margin-bottom: var(--space-3);
-		}
-
-		.toolbar {
-			flex-direction: column;
-			align-items: stretch;
-		}
-	}
-</style>

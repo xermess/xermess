@@ -28,15 +28,15 @@
 	    then whatever this organisation added — then the roles. One list, so a
 	    new field needs no change here. */
 	const columns = $derived<Column[]>([
-		{ key: 'id', label: 'id', icon: idIcon, min: '10rem' },
+		{ key: 'id', label: 'ID', icon: idIcon, min: '10rem' },
 		...fields.map((field) => ({
 			key: field.name,
-			label: field.name,
+			label: field.label || field.name,
 			icon: fieldIcons[field.type],
 			min: field.type === 'email' ? '13rem' : field.type === 'bool' ? '8rem' : '9rem'
 		})),
-		{ key: 'roles', label: 'roles', icon: RiShieldUserLine, min: '10rem' },
-		{ key: 'signs_in_with', label: 'signs_in_with', icon: RiShareLine, min: '9rem' }
+		{ key: 'roles', label: 'Roles', icon: RiShieldUserLine, min: '10rem' },
+		{ key: 'signs_in_with', label: 'Signs in with', icon: RiShareLine, min: '9rem' }
 	]);
 
 	/** The first characters of the id, which is all anyone reads of it. */

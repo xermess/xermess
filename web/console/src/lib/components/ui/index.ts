@@ -24,6 +24,8 @@ export { default as Switch } from './Switch.svelte';
 export { default as SwitchField } from './SwitchField.svelte';
 export { default as Textarea } from './Textarea.svelte';
 export { default as Checkbox } from './Checkbox.svelte';
+export { default as SegmentedControl } from './SegmentedControl.svelte';
+export { default as FilterChip } from './FilterChip.svelte';
 
 // Surfaces and feedback
 export { default as Alert } from './Alert.svelte';
@@ -47,4 +49,5 @@ export type { Column } from './table';
 export { default as Icon } from './Icon.svelte';
 export { default as PageContainer } from './PageContainer.svelte';
 export { default as PageHeader } from './PageHeader.svelte';
+export { default as Toolbar } from './Toolbar.svelte';
 export { default as ThemeToggle } from './ThemeToggle.svelte';

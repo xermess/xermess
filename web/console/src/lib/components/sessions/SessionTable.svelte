@@ -28,11 +28,11 @@
 	let { sessions, empty, onEnd, onSignOutUser, onUser, ending }: Props = $props();
 
 	const columns: Column[] = $derived([
-		{ key: 'user', label: 'user', icon: RiUserLine, min: '16rem' },
-		{ key: 'device', label: 'device', icon: RiComputerLine, min: '12rem' },
-		{ key: 'ip', label: 'ip', icon: RiGlobalLine, min: '8rem' },
-		{ key: 'signed_in', label: 'signed in', icon: RiLoginBoxLine, min: '9rem' },
-		{ key: 'expires', label: 'expires', icon: RiTimeLine, min: '11rem' },
+		{ key: 'user', label: 'User', icon: RiUserLine, min: '16rem' },
+		{ key: 'device', label: 'Device', icon: RiComputerLine, min: '12rem' },
+		{ key: 'ip', label: 'IP address', icon: RiGlobalLine, min: '8rem' },
+		{ key: 'signed_in', label: 'Signed in', icon: RiLoginBoxLine, min: '9rem' },
+		{ key: 'expires', label: 'Expires', icon: RiTimeLine, min: '11rem' },
 		...(onEnd ? [{ key: 'actions', label: '', min: '16rem', align: 'end' as const }] : [])
 	]);
 </script>

@@ -22,10 +22,10 @@
 	let { providers, kinds, onOpen, empty, selected, onSelect }: Props = $props();
 
 	const columns: Column[] = [
-		{ key: 'provider', label: 'provider', icon: RiShareLine, min: '13rem' },
-		{ key: 'client_id', label: 'client_id', icon: RiKey2Line, min: '16rem' },
-		{ key: 'accounts', label: 'accounts', icon: RiGroupLine, min: '8rem' },
-		{ key: 'status', label: 'status', icon: RiToggleLine, min: '11rem' }
+		{ key: 'provider', label: 'Provider', icon: RiShareLine, min: '13rem' },
+		{ key: 'client_id', label: 'Client ID', icon: RiKey2Line, min: '16rem' },
+		{ key: 'accounts', label: 'Accounts', icon: RiGroupLine, min: '8rem' },
+		{ key: 'status', label: 'Status', icon: RiToggleLine, min: '11rem' }
 	];
 
 	function kindOf(provider: SocialProvider): SocialSpec | undefined {

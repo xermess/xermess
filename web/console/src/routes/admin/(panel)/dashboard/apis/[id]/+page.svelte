@@ -70,16 +70,14 @@
 				api.name
 			]}
 		>
-			{#snippet secondary()}
-				<span class="badges">
-					{#if api.enforce_roles}
-						<Badge tone="success">
-							<Icon icon={RiShieldCheckLine} size="0.75rem" />
-							Role-based access
-						</Badge>
-					{/if}
-					<Badge>{api.signing_algorithm}</Badge>
-				</span>
+			{#snippet meta()}
+				{#if api.enforce_roles}
+					<Badge tone="success">
+						<Icon icon={RiShieldCheckLine} size="0.75rem" />
+						Role-based access
+					</Badge>
+				{/if}
+				<Badge>{api.signing_algorithm}</Badge>
 			{/snippet}
 		</PageHeader>
 
@@ -114,22 +112,18 @@
 
 <style>
 	.page {
-		padding-inline: var(--page-gutter);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
 	}
 
 	.heading {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-1);
-		margin-bottom: var(--space-4);
 	}
 
-	.badges {
-		display: flex;
-		gap: var(--space-1);
-	}
-
-	.badges :global(svg) {
+	.heading :global(.meta svg) {
 		margin-right: 2px;
 		vertical-align: -1px;
 	}
@@ -150,7 +144,7 @@
 
 	.description {
 		margin: var(--space-1) 0 0;
-		max-width: 60rem;
+		max-width: 75ch;
 		color: var(--color-text-hint);
 		font-size: var(--text-base);
 	}

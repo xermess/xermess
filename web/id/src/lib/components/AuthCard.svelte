@@ -53,7 +53,7 @@
 
 {#if legal.length > 0}
 	<nav class="legal" aria-label={t('legal.label')}>
-		{#each legal as link (link.href)}
+		{#each legal as link (link.key)}
 			<!-- The application's own pages, or the organisation's, on their
 			     own sites. -->
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->

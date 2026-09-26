@@ -8,74 +8,87 @@
 	type Props = {
 		/** Where the page sits, outermost first; the last is the page itself. */
 		crumbs: Crumb[];
-		/** Small controls right beside the title, such as a refresh button. */
+		/** A sentence under the title saying what the page is for. */
+		description?: string;
+		/** How many records the page lists, shown beside the title. */
+		count?: number;
+		/** Tags beside the title that describe the record itself — "default",
+		    "unsaved", an algorithm — rather than anything that can be done. */
+		meta?: Snippet;
+		/** Small controls — refresh, settings — grouped before the actions. */
 		secondary?: Snippet;
-		/** The page's main actions, at the far end. */
+		/** The page's main actions, at the far end of the title row. */
 		actions?: Snippet;
 	};
 
-	let { crumbs, secondary, actions }: Props = $props();
+	let { crumbs, description, count, meta, secondary, actions }: Props = $props();
 
 	const label = (crumb: Crumb) => (typeof crumb === 'string' ? crumb : crumb.label);
+
+	const trail = $derived(crumbs.slice(0, -1));
 </script>
 
-<!-- PocketBase's page header: breadcrumbs, the secondary buttons right beside
-     them, and the primary ones pushed to the far side. The last crumb is the
-     page's title, so it is the heading. -->
+<!-- Every page's heading, in the order people read one: where they are, what
+     this is, what it is for. The trail is small and above, the title is the
+     page's h1, and everything that can be done sits on the title's row at the
+     far end — the icon buttons first, then the one action that matters. -->
 <header class="page-header">
-	<nav class="breadcrumbs" aria-label="Breadcrumb">
-		{#each crumbs.slice(0, -1) as crumb, index (index)}
-			{#if typeof crumb === 'string'}
-				<span class="crumb">{crumb}</span>
-			{:else}
-				<!-- The page resolved the address: it knows the route. -->
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a class="crumb link" href={crumb.href}>{crumb.label}</a>
-			{/if}
-		{/each}
-		<h1 class="crumb current" aria-current="page">{label(crumbs.at(-1) ?? '')}</h1>
-	</nav>
+	{#if trail.length > 0}
+		<nav class="trail" aria-label="Breadcrumb">
+			{#each trail as crumb, index (index)}
+				{#if index > 0}<span class="separator" aria-hidden="true">/</span>{/if}
+				{#if typeof crumb === 'string'}
+					<span class="crumb">{crumb}</span>
+				{:else}
+					<!-- The page resolved the address: it knows the route. -->
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a class="crumb link" href={crumb.href}>{crumb.label}</a>
+				{/if}
+			{/each}
+		</nav>
+	{/if}
 
-	{#if secondary}<div class="secondary">{@render secondary()}</div>{/if}
-	{#if actions}<div class="actions">{@render actions()}</div>{/if}
+	<div class="title-row">
+		<div class="title">
+			<h1>{label(crumbs.at(-1) ?? '')}</h1>
+			{#if count !== undefined}
+				<span class="count" title="{count} in total">{count.toLocaleString()}</span>
+			{/if}
+			{#if meta}<div class="meta">{@render meta()}</div>{/if}
+		</div>
+
+		{#if secondary || actions}
+			<div class="tools">
+				{#if secondary}<div class="secondary">{@render secondary()}</div>{/if}
+				{#if actions}<div class="actions">{@render actions()}</div>{/if}
+			</div>
+		{/if}
+	</div>
+
+	{#if description}
+		<p class="description">{description}</p>
+	{/if}
 </header>
 
 <style>
 	.page-header {
 		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		min-width: 0;
+	}
+
+	.trail {
+		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 10px var(--space-4);
-		min-height: var(--control-height);
-	}
-
-	.breadcrumbs {
-		display: inline-flex;
-		align-items: center;
-		gap: 30px;
-		min-width: 0;
+		gap: 6px;
 		color: var(--color-text-hint);
-		font-size: 1.286rem;
+		font-size: var(--text-sm);
 	}
 
-	.crumb {
-		position: relative;
-		margin: 0;
-		font-size: inherit;
-		font-weight: normal;
-		white-space: nowrap;
-	}
-
-	.crumb:not(.current)::after {
-		position: absolute;
-		top: 0;
-		right: -18px;
-		height: 100%;
-		align-content: center;
+	.separator {
 		color: var(--color-text-disabled);
-		font-size: 0.85em;
-		content: '/';
-		pointer-events: none;
 	}
 
 	.link {
@@ -88,37 +101,96 @@
 		color: var(--color-text);
 	}
 
-	.current {
-		overflow: hidden;
-		color: var(--color-text);
-		text-overflow: ellipsis;
-	}
-
-	.secondary {
-		display: inline-flex;
+	/* The title and the tools share a row, centred on each other, and the
+	   tools wrap under the title rather than squeezing it. */
+	.title-row {
+		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 10px;
+		justify-content: space-between;
+		gap: var(--space-2) var(--space-4);
+		min-height: var(--control-height);
 	}
 
-	/* The count a list page puts beside its name — "42 total" — is quieter
-	   than the name. The page writes the span; how it looks is decided here,
-	   so every list says it the same way. */
+	.title {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		min-width: 0;
+	}
+
+	h1 {
+		overflow: hidden;
+		margin: 0;
+		color: var(--color-text);
+		font-size: var(--text-2xl);
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		line-height: 1.2;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.count {
+		padding: 2px 8px;
+		border-radius: var(--radius-pill);
+		background: var(--color-secondary);
+		color: var(--color-text-hint);
+		font-size: var(--text-xs);
+		font-variant-numeric: tabular-nums;
+		font-weight: 600;
+		line-height: 1.5;
+	}
+
+	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.tools,
+	.secondary,
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	/* A quiet rule between the icon buttons and the actions, so the two kinds
+	   read as two groups. */
+	.secondary + .actions {
+		padding-left: var(--space-2);
+		border-left: 1px solid var(--color-border);
+	}
+
+	/* The count a page used to put among its buttons — "42 total" — still
+	   reads quietly if a page puts one there. */
 	.secondary :global(.total) {
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
+		white-space: nowrap;
 	}
 
-	.actions {
-		display: inline-flex;
-		align-items: center;
-		gap: 10px;
-		margin-left: auto;
+	.description {
+		max-width: 75ch;
+		margin: 0;
+		color: var(--color-text-hint);
+		font-size: var(--text-base);
+		line-height: 1.55;
 	}
 
-	/* A narrow screen has room for the page's own name only. */
 	@media (max-width: 34rem) {
-		.crumb:not(.current) {
-			display: none;
+		h1 {
+			font-size: var(--text-xl);
+		}
+
+		.tools {
+			width: 100%;
+		}
+
+		.actions {
+			margin-left: auto;
 		}
 	}
 </style>

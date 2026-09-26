@@ -19,10 +19,10 @@
 	let { connections, onOpen, empty }: Props = $props();
 
 	const columns = $derived<Column[]>([
-		{ key: 'connection', label: 'connection', icon: RiBuilding2Line, min: '14rem' },
-		{ key: 'domains', label: 'domains', icon: RiGlobalLine, min: '14rem' },
-		{ key: 'users', label: 'users', icon: RiGroupLine, min: '7rem' },
-		{ key: 'status', label: 'status', icon: RiToggleLine, min: '14rem' }
+		{ key: 'connection', label: 'Connection', icon: RiBuilding2Line, min: '14rem' },
+		{ key: 'domains', label: 'Domains', icon: RiGlobalLine, min: '14rem' },
+		{ key: 'users', label: 'Users', icon: RiGroupLine, min: '7rem' },
+		{ key: 'status', label: 'Status', icon: RiToggleLine, min: '14rem' }
 	]);
 </script>
 

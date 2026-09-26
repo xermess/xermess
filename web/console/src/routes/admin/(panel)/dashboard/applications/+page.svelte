@@ -16,7 +16,9 @@
 		IconButton,
 		PageHeader,
 		SearchInput,
-		SelectionBar
+		SegmentedControl,
+		SelectionBar,
+		Toolbar
 	} from '$lib/components/ui';
 	import ApplicationDrawer from '$lib/components/applications/ApplicationDrawer.svelte';
 	import ApplicationTable from '$lib/components/applications/ApplicationTable.svelte';
@@ -130,37 +132,32 @@
 
 <svelte:head><title>Applications · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Applications']}>
-		{#snippet secondary()}
-			<span class="total">{applications.data.total} total</span>
+<PageHeader
+	crumbs={['Dashboard', 'Applications']}
+	count={applications.data.total}
+	description="The apps and services that sign their users in here with OAuth 2.0 and OpenID Connect. Each defines its own roles, and a token for it carries its roles alone."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
+	{#snippet actions()}
+		{#if canRegister}
+			<Button onclick={() => openApplication(null)}>
+				<Icon icon={RiAddLine} />
+				New application
+			</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
 
-		{#snippet actions()}
-			{#if canRegister}
-				<Button onclick={() => openApplication(null)}>
-					<Icon icon={RiAddLine} />
-					New application
-				</Button>
-			{/if}
-		{/snippet}
-	</PageHeader>
-</div>
-
-<p class="lead">
-	The apps and services that sign their users in here with OAuth 2.0 and OpenID Connect. Each
-	defines its own roles, and a token for it carries its roles alone.
-</p>
-
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search applications"
 		placeholder="Search name, description or client id…"
@@ -169,22 +166,16 @@
 		oninput={debounced}
 	/>
 
-	<div class="filter" role="group" aria-label="Filter by type">
-		{#each filters as filter (filter.value)}
-			<button
-				type="button"
-				class:selected={data.type === filter.value}
-				aria-pressed={data.type === filter.value}
-				onclick={() => apply({ type: filter.value })}
-			>
-				{filter.label}
-			</button>
-		{/each}
-	</div>
-</div>
+	<SegmentedControl
+		label="Filter by type"
+		options={filters}
+		value={data.type}
+		onChange={(type) => apply({ type })}
+	/>
+</Toolbar>
 
 {#if error}
-	<div class="gutter error"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 <ApplicationTable
@@ -234,78 +225,8 @@
 />
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
-	.lead {
-		margin: 0 0 var(--space-3);
-		padding-inline: var(--page-gutter);
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-
 	.warning {
 		color: var(--color-danger);
 		font-size: var(--text-sm);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	/* The same height as the search box beside it and the buttons above it:
-	   the toolbar reads as one row rather than three sizes. */
-	.filter {
-		display: flex;
-		gap: 2px;
-		height: var(--control-height);
-		padding: 3px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary);
-	}
-
-	.filter button {
-		padding: 0 var(--space-4);
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-base);
-		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			color var(--speed-fast);
-	}
-
-	.filter button:hover {
-		color: var(--color-text);
-	}
-
-	.filter button.selected {
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-weight: 600;
-	}
-
-	@media (max-width: 40rem) {
-		.heading,
-		.error {
-			margin-bottom: var(--space-3);
-		}
-
-		.toolbar {
-			flex-direction: column;
-			align-items: stretch;
-		}
 	}
 </style>

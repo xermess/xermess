@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
+	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, adminsApi, type AdminRecord } from '$lib/api';
 	import { BRAND } from '$lib/brand';
@@ -17,11 +17,14 @@
 	import {
 		Alert,
 		Button,
+		FilterChip,
 		Icon,
 		IconButton,
 		PageHeader,
 		SearchInput,
-		SelectionBar
+		SegmentedControl,
+		SelectionBar,
+		Toolbar
 	} from '$lib/components/ui';
 	import AdminDrawer from '$lib/components/admins/AdminDrawer.svelte';
 	import AdminTable from '$lib/components/admins/AdminTable.svelte';
@@ -136,34 +139,28 @@
 
 <svelte:head><title>Administrators · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Administrators']}>
-		{#snippet secondary()}
-			<span class="total">{admins.data.total} total</span>
+<PageHeader crumbs={['Dashboard', 'Administrators']} count={admins.data.total}>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
+	{#snippet actions()}
+		<Button onclick={() => openAdmin(null)}>
+			<Icon icon={RiAddLine} />
+			New administrator
+		</Button>
+	{/snippet}
+</PageHeader>
 
-		{#snippet actions()}
-			<Button onclick={() => openAdmin(null)}>
-				<Icon icon={RiAddLine} />
-				New administrator
-			</Button>
-		{/snippet}
-	</PageHeader>
-</div>
+<SecurityPanel security={data.security} selfHasMFA={data.admin.mfa_enabled} />
 
-<div class="gutter policy">
-	<SecurityPanel security={data.security} selfHasMFA={data.admin.mfa_enabled} />
-</div>
-
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search administrators"
 		placeholder="Search email or name…"
@@ -173,33 +170,21 @@
 	/>
 
 	{#if data.role}
-		<button
-			type="button"
-			class="chip"
-			title="Clear the role filter"
-			onclick={() => apply({ role: '' })}
-		>
+		<FilterChip title="Clear the role filter" onclear={() => apply({ role: '' })}>
 			role: <strong>{filterRole?.name ?? 'unknown'}</strong>
-			<Icon icon={RiCloseLine} />
-		</button>
+		</FilterChip>
 	{/if}
 
-	<div class="filter" role="group" aria-label="Filter by status">
-		{#each filters as filter (filter.value)}
-			<button
-				type="button"
-				class:selected={data.status === filter.value}
-				aria-pressed={data.status === filter.value}
-				onclick={() => apply({ status: filter.value })}
-			>
-				{filter.label}
-			</button>
-		{/each}
-	</div>
-</div>
+	<SegmentedControl
+		label="Filter by status"
+		options={filters}
+		value={data.status}
+		onChange={(status) => apply({ status })}
+	/>
+</Toolbar>
 
 {#if error}
-	<div class="gutter error"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 <AdminTable
@@ -252,97 +237,8 @@
 />
 
 <style>
-	/* The panel's own security sits above the list of who has it. */
-	.policy {
-		margin-bottom: var(--space-4);
-	}
-
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
 	.warning {
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.chip {
-		display: flex;
-		align-items: center;
-		gap: var(--space-1);
-		height: var(--control-height);
-		padding: 0 var(--space-3);
-		border: none;
-		border-radius: var(--radius-md);
-		background: var(--surface-info);
-		color: var(--color-text);
-		font: inherit;
-		font-size: var(--text-base);
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
-	.chip strong {
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-	}
-
-	/* The same height as the search box beside it and the buttons above it:
-	   the toolbar reads as one row rather than three sizes. */
-	.filter {
-		display: flex;
-		gap: 2px;
-		height: var(--control-height);
-		padding: 3px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary);
-	}
-
-	.filter button {
-		padding: 0 var(--space-4);
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-base);
-		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			color var(--speed-fast);
-	}
-
-	.filter button:hover {
-		color: var(--color-text);
-	}
-
-	.filter button.selected {
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-weight: 600;
-	}
-
-	@media (max-width: 40rem) {
-		.heading,
-		.error {
-			margin-bottom: var(--space-3);
-		}
-
-		.toolbar {
-			flex-direction: column;
-			align-items: stretch;
-		}
 	}
 </style>

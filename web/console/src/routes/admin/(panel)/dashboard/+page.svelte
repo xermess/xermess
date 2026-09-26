@@ -214,8 +214,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
-		padding-inline: var(--page-gutter);
-		padding-bottom: var(--space-5);
 	}
 
 	/* The metrics are a strip rather than a row of boxes, so the gap between

@@ -33,44 +33,28 @@
 
 <svelte:head><title>Settings · {BRAND.name}</title></svelte:head>
 
-<PageContainer size="lg">
-	<div class="page">
-		<PageHeader crumbs={['Dashboard', 'Settings']}>
-			{#snippet secondary()}
-				<IconButton icon={RiRefreshLine} label="Reload these settings" onclick={reload} />
-			{/snippet}
-		</PageHeader>
+<PageHeader
+	crumbs={['Dashboard', 'Settings']}
+	description="Who this installation belongs to, and the languages its sign-in pages speak."
+>
+	{#snippet secondary()}
+		<IconButton icon={RiRefreshLine} label="Reload these settings" onclick={reload} />
+	{/snippet}
+</PageHeader>
 
-		<p class="lead">Who this installation belongs to, and the languages its sign-in pages speak.</p>
-
-		<Tabs {tabs} bind:value={tab} label="Settings">
-			{#snippet panel(value)}
-				{#if value === 'organization' && data.organization}
-					<OrganizationSettings
-						initial={data.organization}
-						editable={can(data.admin, 'organization.write')}
-					/>
-				{:else if value === 'languages' && data.languages}
-					<LanguageSettings
-						initial={data.languages}
-						canWrite={can(data.admin, 'languages.write')}
-					/>
-				{/if}
-			{/snippet}
-		</Tabs>
-	</div>
-</PageContainer>
-
-<style>
-	.page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-
-	.lead {
-		margin: calc(var(--space-3) * -1) 0 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-</style>
+<Tabs {tabs} bind:value={tab} label="Settings">
+	{#snippet panel(value)}
+		{#if value === 'organization' && data.organization}
+			<!-- A form is read down one column; the language table below needs
+			     the whole width for its columns. -->
+			<PageContainer>
+				<OrganizationSettings
+					initial={data.organization}
+					editable={can(data.admin, 'organization.write')}
+				/>
+			</PageContainer>
+		{:else if value === 'languages' && data.languages}
+			<LanguageSettings initial={data.languages} canWrite={can(data.admin, 'languages.write')} />
+		{/if}
+	{/snippet}
+</Tabs>

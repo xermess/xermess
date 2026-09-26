@@ -21,15 +21,15 @@
 	const rows = $derived<Row[]>(languages.map((language) => ({ ...language, id: language.code })));
 
 	const columns = $derived<Column[]>([
-		{ key: 'language', label: 'language', icon: RiGlobalLine, min: '14rem' },
-		{ key: 'code', label: 'code', icon: RiHashtag, min: '7rem' },
+		{ key: 'language', label: 'Language', icon: RiGlobalLine, min: '14rem' },
+		{ key: 'code', label: 'Code', icon: RiHashtag, min: '7rem' },
 		{
 			key: 'translated',
-			label: 'translated',
+			label: 'Translated',
 			icon: RiTranslate2,
 			min: '18rem'
 		},
-		{ key: 'status', label: 'status', icon: RiToggleLine, min: '11rem' }
+		{ key: 'status', label: 'Status', icon: RiToggleLine, min: '11rem' }
 	]);
 
 	/** What each app is called in the coverage bars. There is one today —

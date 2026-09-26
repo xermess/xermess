@@ -1,6 +1,6 @@
 <script lang="ts" generics="Row extends { id: string }">
 	import type { Snippet } from 'svelte';
-	import { RiArrowRightLine } from 'svelte-remixicon';
+	import { RiArrowRightLine, RiInbox2Line } from 'svelte-remixicon';
 	import Checkbox from './Checkbox.svelte';
 	import Icon from './Icon.svelte';
 	import IconButton from './IconButton.svelte';
@@ -62,82 +62,93 @@
 	}
 </script>
 
-<div class="scroller" class:scrolled onscroll={track}>
-	<table>
-		{#if heading}
-			<thead>
-				<tr>
-					{#if selectable}
-						<th class="tick">
-							<Checkbox checked={headerState} onChange={tickAll} title="Select every row" />
-						</th>
-					{/if}
+<div class="table-card">
+	<div class="scroller" class:scrolled onscroll={track}>
+		<table>
+			{#if heading}
+				<thead>
+					<tr>
+						{#if selectable}
+							<th class="tick">
+								<Checkbox checked={headerState} onChange={tickAll} title="Select every row" />
+							</th>
+						{/if}
 
-					{#each columns as column (column.key)}
-						<th style:min-width={column.min} class:end={column.align === 'end'}>
-							<span class="label">
-								{#if column.icon}
-									<Icon icon={column.icon} size="0.9375rem" />
-								{/if}
-								{column.label}
-							</span>
-						</th>
-					{/each}
-					{#if onOpen}
-						<th class="pin"></th>
-					{/if}
-				</tr>
-			</thead>
-		{/if}
+						{#each columns as column (column.key)}
+							<th style:min-width={column.min} class:end={column.align === 'end'}>
+								<span class="label">
+									{#if column.icon}
+										<Icon icon={column.icon} size="0.9375rem" />
+									{/if}
+									{column.label}
+								</span>
+							</th>
+						{/each}
+						{#if onOpen}
+							<th class="pin"></th>
+						{/if}
+					</tr>
+				</thead>
+			{/if}
 
-		<tbody>
-			{#each rows as item (item.id)}
-				<tr class:clickable={onOpen !== undefined} onclick={() => onOpen?.(item)}>
-					{#if selectable}
-						<!-- Ticking a row is not opening it, so the click stops here. -->
-						<td class="tick" onclick={(event) => event.stopPropagation()}>
-							<Checkbox
-								checked={ticked.has(item.id)}
-								onChange={(checked) => tick(item.id, checked)}
-								title="Select this row"
-							/>
-						</td>
-					{/if}
+			<tbody>
+				{#each rows as item (item.id)}
+					<tr class:clickable={onOpen !== undefined} onclick={() => onOpen?.(item)}>
+						{#if selectable}
+							<!-- Ticking a row is not opening it, so the click stops here. -->
+							<td class="tick" onclick={(event) => event.stopPropagation()}>
+								<Checkbox
+									checked={ticked.has(item.id)}
+									onChange={(checked) => tick(item.id, checked)}
+									title="Select this row"
+								/>
+							</td>
+						{/if}
 
-					{@render row(item)}
+						{@render row(item)}
 
-					{#if onOpen}
-						<td class="pin">
-							<!-- The row itself is clickable; this is the same action as
+						{#if onOpen}
+							<td class="pin">
+								<!-- The row itself is clickable; this is the same action as
 							     something to tab to, and the click it fires on its way up
 							     is the one the row handles. -->
-							<IconButton
-								icon={RiArrowRightLine}
-								label={label?.(item) ?? 'Open'}
-								size="sm"
-								placement="left"
-							/>
+								<IconButton
+									icon={RiArrowRightLine}
+									label={label?.(item) ?? 'Open'}
+									size="sm"
+									placement="left"
+								/>
+							</td>
+						{/if}
+					</tr>
+				{:else}
+					<tr>
+						<td class="empty" colspan={columns.length + (onOpen ? 1 : 0) + (selectable ? 1 : 0)}>
+							<span class="empty-state">
+								<Icon icon={RiInbox2Line} size="1.5rem" />
+								{empty}
+							</span>
 						</td>
-					{/if}
-				</tr>
-			{:else}
-				<tr>
-					<td class="empty" colspan={columns.length + (onOpen ? 1 : 0) + (selectable ? 1 : 0)}>
-						{empty}
-					</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 </div>
 
 <style>
-	/* The table runs to the edges of the page — only the first and last cells
-	   are inset by the gutter — so it reads as part of the page rather than a
-	   box on it, the way PocketBase's tables do. */
+	/* The table is a card: framed and rounded, so it reads as one object on
+	   the page at any width, and scrolls sideways inside its frame when its
+	   columns need more room than the page has. */
+	.table-card {
+		overflow: hidden;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+	}
+
 	.scroller {
 		overflow-x: auto;
-		border-top: 1px solid var(--color-border);
 	}
 
 	table {
@@ -151,27 +162,40 @@
 	   a `td` says so with :global, anchored to the table itself. */
 	th,
 	table :global(td) {
-		height: 50px;
+		height: 52px;
 		transition: background-color var(--speed-fast);
 		padding: 0 var(--space-3);
 		border-bottom: 1px solid var(--color-border);
 		font-size: var(--text-base);
 		font-weight: 400;
 		text-align: left;
+		vertical-align: middle;
 		white-space: nowrap;
 	}
 
+	table :global(tbody tr:last-child td) {
+		border-bottom: none;
+	}
+
+	/* The header is a tinted band of small labels: it names the columns
+	   without competing with what is in them. */
 	th {
-		height: 45px;
+		height: 40px;
+		background: var(--color-surface-alt);
 		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-		font-weight: 700;
+		font-size: var(--text-xs);
+		font-weight: 600;
+		letter-spacing: 0.02em;
 	}
 
 	.label {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
+		gap: 6px;
+	}
+
+	.label :global(svg) {
+		opacity: 0.8;
 	}
 
 	th.end .label {
@@ -183,14 +207,16 @@
 		text-align: right;
 	}
 
+	/* The first and last cells are inset a little further than the gaps
+	   between columns, so the text does not crowd the frame. */
 	th:first-child,
 	table :global(td:first-child) {
-		padding-left: var(--page-gutter);
+		padding-left: var(--space-4);
 	}
 
 	th:last-child,
 	table :global(td:last-child) {
-		padding-right: var(--page-gutter);
+		padding-right: var(--space-4);
 	}
 
 	tr.clickable {
@@ -209,9 +235,18 @@
 	.tick {
 		position: sticky;
 		left: 0;
+		z-index: 1;
 		width: 1%;
+		padding-right: 0;
+		/* The checkbox is the cell's only content; without a line box around
+		   it, it sits on the row's centre rather than on a text baseline. */
+		line-height: 0;
 		background: var(--color-surface);
 		transition: background-color var(--speed-fast);
+	}
+
+	th.tick {
+		background: var(--color-surface-alt);
 	}
 
 	.tick::after {
@@ -239,9 +274,15 @@
 	.pin {
 		position: sticky;
 		right: 0;
+		z-index: 1;
 		width: 1%;
+		padding-left: var(--space-2);
 		background: var(--color-surface);
 		transition: background-color var(--speed-fast);
+	}
+
+	th.pin {
+		background: var(--color-surface-alt);
 	}
 
 	/* An edge on the pinned column, drawn only once something is passing
@@ -279,8 +320,20 @@
 
 	.empty {
 		height: auto;
-		padding: var(--space-5) var(--page-gutter);
-		color: var(--color-text-hint);
+		padding: var(--space-6) var(--space-4);
 		white-space: normal;
+	}
+
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-2);
+		color: var(--color-text-hint);
+		text-align: center;
+	}
+
+	.empty-state :global(svg) {
+		color: var(--color-text-disabled);
 	}
 </style>

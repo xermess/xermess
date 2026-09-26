@@ -16,38 +16,19 @@
 
 <svelte:head><title>One-time codes · {BRAND.name}</title></svelte:head>
 
+<PageHeader
+	crumbs={['Dashboard', 'One-time codes']}
+	description="The codes this server emails people as they sign in: how long one is, how long it lasts, and how many guesses it takes. The codes an authenticator app shows are not these — those are fixed by the apps that read them."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Reload these settings"
+			onclick={() => queryClient.invalidateQueries({ queryKey: keys.otp.settings })}
+		/>
+	{/snippet}
+</PageHeader>
+
 <PageContainer>
-	<div class="page">
-		<PageHeader crumbs={['Dashboard', 'One-time codes']}>
-			{#snippet secondary()}
-				<IconButton
-					icon={RiRefreshLine}
-					label="Reload these settings"
-					onclick={() => queryClient.invalidateQueries({ queryKey: keys.otp.settings })}
-				/>
-			{/snippet}
-		</PageHeader>
-
-		<p class="lead">
-			The codes this server emails people as they sign in: how long one is, how long it lasts, and
-			how many guesses it takes. The codes an authenticator app shows are not these — those are
-			fixed by the apps that read them.
-		</p>
-
-		<OtpSettings settings={settings.data} />
-	</div>
+	<OtpSettings settings={settings.data} />
 </PageContainer>
-
-<style>
-	.page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-
-	.lead {
-		margin: calc(var(--space-3) * -1) 0 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-</style>

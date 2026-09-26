@@ -9,7 +9,7 @@
 		describe,
 		type Category
 	} from '$lib/components/activity/actions';
-	import { IconButton, PageHeader, SearchInput } from '$lib/components/ui';
+	import { IconButton, PageHeader, SearchInput, Toolbar } from '$lib/components/ui';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -59,24 +59,29 @@
 	<title>Logs · {BRAND.name}</title>
 </svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Logs']}>
-		{#snippet secondary()}
-			<span class="total">latest {data.logs.length}</span>
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
-	</PageHeader>
+<PageHeader
+	crumbs={['Dashboard', 'Logs']}
+	count={data.logs.length}
+	description="Every sign-in and every change administrators made, newest first."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
+</PageHeader>
 
-	<p>Every sign-in and every change administrators made, newest first.</p>
-</div>
+<Toolbar>
+	<SearchInput
+		label="Search the log"
+		placeholder="Search who, what or where…"
+		bind:value={search}
+	/>
 
-<div class="toolbar">
 	<div class="chips" role="group" aria-label="Filter by kind">
 		<button type="button" class:on={category === 'all'} onclick={() => (category = 'all')}>
 			All <span>{data.logs.length}</span>
@@ -87,16 +92,7 @@
 			</button>
 		{/each}
 	</div>
-
-	<div class="search-slot">
-		<SearchInput
-			label="Search the log"
-			placeholder="Search who, what or where…"
-			bind:value={search}
-			size="sm"
-		/>
-	</div>
-</div>
+</Toolbar>
 
 <ActivityTable
 	events={shown}
@@ -104,32 +100,6 @@
 />
 
 <style>
-	.search-slot {
-		display: flex;
-		width: min(22rem, 100%);
-	}
-
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.heading p {
-		margin: var(--space-1) 0 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-
-	.toolbar {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
 	.chips {
 		display: flex;
 		flex-wrap: wrap;

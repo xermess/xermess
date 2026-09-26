@@ -32,41 +32,23 @@
 
 <svelte:head><title>Mail · {BRAND.name}</title></svelte:head>
 
-<PageContainer>
-	<div class="page">
-		<PageHeader crumbs={['Dashboard', 'Mail']}>
-			{#snippet secondary()}
-				<IconButton icon={RiRefreshLine} label="Reload these settings" onclick={reload} />
-			{/snippet}
-		</PageHeader>
+<PageHeader
+	crumbs={['Dashboard', 'Mail']}
+	description="How this installation sends email — the server it hands a message to, and what each message says. Password resets, address confirmations and one-time codes all go this way."
+>
+	{#snippet secondary()}
+		<IconButton icon={RiRefreshLine} label="Reload these settings" onclick={reload} />
+	{/snippet}
+</PageHeader>
 
-		<p class="lead">
-			How this installation sends email — the server it hands a message to, and what each message
-			says. Password resets, address confirmations and one-time codes all go this way.
-		</p>
-
-		<Tabs {tabs} bind:value={tab} label="Mail settings">
-			{#snippet panel(value)}
-				{#if value === 'server'}
-					<MailServer settings={settings.data} />
-				{:else}
-					<MailContent content={content.data} />
-				{/if}
-			{/snippet}
-		</Tabs>
-	</div>
-</PageContainer>
-
-<style>
-	.page {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-
-	.lead {
-		margin: calc(var(--space-3) * -1) 0 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-base);
-	}
-</style>
+<Tabs {tabs} bind:value={tab} label="Mail settings">
+	{#snippet panel(value)}
+		<PageContainer>
+			{#if value === 'server'}
+				<MailServer settings={settings.data} />
+			{:else}
+				<MailContent content={content.data} />
+			{/if}
+		</PageContainer>
+	{/snippet}
+</Tabs>

@@ -2,7 +2,8 @@ import type { Application, Organization } from '$lib/api';
 
 /** One agreement a page links to. The label is a message key rather than
     text: which document it is does not change with the language, and the page
-    drawing it has the translator. */
+    drawing it has the translator. A list of them is keyed by `key`, never
+    `href`: an organisation may publish its terms and its policy as one page. */
 export type LegalLink = { key: string; href: string };
 
 /**

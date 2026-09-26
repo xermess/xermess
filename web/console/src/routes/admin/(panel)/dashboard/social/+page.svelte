@@ -20,7 +20,9 @@
 		IconButton,
 		PageHeader,
 		SearchInput,
-		SelectionBar
+		SegmentedControl,
+		SelectionBar,
+		Toolbar
 	} from '$lib/components/ui';
 	import SocialDrawer from '$lib/components/social/SocialDrawer.svelte';
 	import SocialTable from '$lib/components/social/SocialTable.svelte';
@@ -217,32 +219,28 @@
 
 <svelte:head><title>Social · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'Social']}>
-		{#snippet secondary()}
-			<span class="total">{social.data.providers.length} total</span>
+<PageHeader crumbs={['Dashboard', 'Social']} count={social.data.providers.length}>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
+	{#snippet actions()}
+		{#if canWrite}
+			<Button onclick={() => open(null)}>
+				<Icon icon={RiAddLine} />
+				Add provider
+			</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
 
-		{#snippet actions()}
-			{#if canWrite}
-				<Button onclick={() => open(null)}>
-					<Icon icon={RiAddLine} />
-					Add provider
-				</Button>
-			{/if}
-		{/snippet}
-	</PageHeader>
-</div>
-
-<div class="toolbar">
+<Toolbar>
 	<SearchInput
 		label="Search providers"
 		placeholder="Search name, identifier or client id…"
@@ -251,22 +249,16 @@
 		oninput={debounced}
 	/>
 
-	<div class="filter" role="group" aria-label="Filter by whether it is offered">
-		{#each filters as filter (filter.value)}
-			<button
-				type="button"
-				class:selected={data.status === filter.value}
-				aria-pressed={data.status === filter.value}
-				onclick={() => apply({ status: filter.value })}
-			>
-				{filter.label}
-			</button>
-		{/each}
-	</div>
-</div>
+	<SegmentedControl
+		label="Filter by whether it is offered"
+		options={filters}
+		value={data.status}
+		onChange={(status) => apply({ status })}
+	/>
+</Toolbar>
 
 {#if error}
-	<div class="gutter error"><Alert>{error}</Alert></div>
+	<Alert>{error}</Alert>
 {/if}
 
 <SocialTable
@@ -317,67 +309,9 @@
 <SocialDrawer bind:open={drawerOpen} provider={editing} kinds={social.data.kinds} />
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	/* The same height as the search box beside it and the buttons above it:
-	   the toolbar reads as one row rather than three sizes. */
-	.filter {
-		display: flex;
-		gap: 2px;
-		height: var(--control-height);
-		padding: 3px;
-		border-radius: var(--radius-sm);
-		background: var(--color-secondary);
-	}
-
-	.filter button {
-		padding: 0 var(--space-4);
-		border: none;
-		border-radius: var(--radius-sm);
-		background: transparent;
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-base);
-		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			color var(--speed-fast);
-	}
-
-	.filter button:hover {
-		color: var(--color-text);
-	}
-
-	.filter button.selected {
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-weight: 600;
-	}
-
 	.warning {
 		margin-right: var(--space-2);
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	@media (max-width: 40rem) {
-		.toolbar {
-			flex-direction: column;
-			align-items: stretch;
-		}
 	}
 </style>

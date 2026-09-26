@@ -3,7 +3,7 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { SSOConnection } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
+	import { Button, Icon, IconButton, PageHeader, SearchInput, Toolbar } from '$lib/components/ui';
 	import SSODrawer from '$lib/components/sso/SSODrawer.svelte';
 	import SSOTable from '$lib/components/sso/SSOTable.svelte';
 	import { can } from '$lib/permissions';
@@ -59,37 +59,30 @@
 
 <svelte:head><title>SSO integrations · {BRAND.name}</title></svelte:head>
 
-<div class="heading">
-	<PageHeader crumbs={['Dashboard', 'SSO integrations']}>
-		{#snippet secondary()}
-			<span class="total">{`${list.data.connections.length} total`}</span>
+<PageHeader
+	crumbs={['Dashboard', 'SSO integrations']}
+	count={list.data.connections.length}
+	description="Let an organisation sign its people in through its own identity provider — Okta, Microsoft Entra ID, Google Workspace, ADFS — over OpenID Connect or SAML 2.0. A connection owns email domains: the people at them sign in through it, can be made to, and get accounts and roles from what the provider says."
+>
+	{#snippet secondary()}
+		<IconButton
+			icon={RiRefreshLine}
+			label="Refresh the data"
+			onclick={refresh}
+			loading={refreshing}
+			disabled={refreshing}
+		/>
+	{/snippet}
 
-			<IconButton
-				icon={RiRefreshLine}
-				label="Refresh the data"
-				onclick={refresh}
-				loading={refreshing}
-				disabled={refreshing}
-			/>
-		{/snippet}
-
-		{#snippet actions()}
-			{#if canWrite}
-				<Button onclick={() => open(null)}>
-					<Icon icon={RiAddLine} />
-					New connection
-				</Button>
-			{/if}
-		{/snippet}
-	</PageHeader>
-</div>
-
-<p class="lead">
-	Let an organisation sign its people in through its own identity provider — Okta, Microsoft Entra
-	ID, Google Workspace, ADFS — over OpenID Connect or SAML 2.0. A connection owns email domains: the
-	people at them sign in through it, can be made to, and get accounts and roles from what the
-	provider says.
-</p>
+	{#snippet actions()}
+		{#if canWrite}
+			<Button onclick={() => open(null)}>
+				<Icon icon={RiAddLine} />
+				New connection
+			</Button>
+		{/if}
+	{/snippet}
+</PageHeader>
 
 {#if list.data.connections.length === 0}
 	<section class="empty">
@@ -110,13 +103,13 @@
 		</div>
 	</section>
 {:else}
-	<div class="toolbar">
+	<Toolbar>
 		<SearchInput
 			label="Search"
 			placeholder="Search name, identifier or domain…"
 			bind:value={search}
 		/>
-	</div>
+	</Toolbar>
 
 	<SSOTable connections={visible} onOpen={open} empty="No connections match this." />
 {/if}
@@ -130,32 +123,10 @@
 />
 
 <style>
-	.heading {
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
-	.lead {
-		max-width: 90ch;
-		margin: 0 0 var(--space-3);
-		padding-inline: var(--page-gutter);
-		color: var(--color-text-hint);
-		line-height: 1.5;
-	}
-
-	.toolbar {
-		display: flex;
-		gap: var(--space-2);
-		margin-bottom: var(--space-3);
-		padding-inline: var(--page-gutter);
-	}
-
 	.empty {
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-4);
-		max-width: 60rem;
-		margin-inline: var(--page-gutter);
 		padding: var(--space-5) var(--space-4);
 		border: 1px dashed var(--color-border);
 		border-radius: var(--radius-lg);

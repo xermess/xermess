@@ -155,6 +155,49 @@ animation _name_ change, and a reversed one never changes it.
    use tokens rather than literal values.
 4. Export it from `index.ts`.
 
+## How a page is laid out
+
+The dashboard layout draws every page in one frame: centred, no wider than
+`--content-max-width` (1400px), and inset by `--page-gutter`, which grows from
+16px on a phone to 32px on a wide monitor. It also stacks the page's children
+with one gap. So a page writes no padding, no margins between its parts and no
+maximum width of its own — it lists its parts in order:
+
+```svelte
+<PageHeader
+	crumbs={['Dashboard', 'Users']}
+	count={total}
+	description="Everyone with an account here."
+>
+	{#snippet secondary()}<IconButton icon={RiRefreshLine} label="Refresh" />{/snippet}
+	{#snippet actions()}<Button>New user</Button>{/snippet}
+</PageHeader>
+
+<Toolbar>
+	<SearchInput label="Search users" bind:value={search} />
+	<SegmentedControl label="Filter by verified" {options} value={verified} onChange={apply} />
+	{#if role}<FilterChip title="Clear the role filter" onclear={clear}
+			>role: <strong>{role}</strong></FilterChip
+		>{/if}
+</Toolbar>
+
+<UserTable … />
+```
+
+A form is the exception to the full width: wrap it in `PageContainer`, which
+holds it to a readable column (`--form-max-width`) that starts at the frame's
+left edge, under the title — never centred on its own, so the title and the
+first field line up and nothing moves from page to page. A page with tabs
+keeps the tabs full width and puts the container inside the tab.
+
+| Component          | What it is                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`       | The trail, the title as the h1 with a `count` beside it, `meta` tags about the record, a `description`, and the buttons on the right. |
+| `Toolbar`          | The row over a table: search first, held to a readable width, filters beside it, and an `end` snippet for the far side.               |
+| `SegmentedControl` | A few mutually exclusive filters as one control at a field's height.                                                                  |
+| `FilterChip`       | A filter that came with the address, shown so it is not forgotten; clicking it clears it.                                             |
+| `DataTable`        | A framed card: a tinted header of sentence-case labels, 52px rows, and a sideways scroll inside the frame when it needs one.          |
+
 ## Page building blocks
 
 The pieces the Activity page and account drawer are made of, after PocketBase's
@@ -162,12 +205,7 @@ settings and logs pages. Reach for these before writing a box of your own.
 
 ```svelte
 <PageContainer>
-	<!-- a centred column: sm, md (default), lg -->
-	<PageHeader crumbs={['Account', 'Profile']}>
-		<!-- breadcrumbs; the last is the h1 -->
-		{#snippet secondary()}<IconButton icon={RiRefreshLine} label="Refresh" />{/snippet}
-		{#snippet actions()}<Button>Save</Button>{/snippet}
-	</PageHeader>
+	<!-- a readable column for a form: sm, md (default), lg -->
 
 	<StatCard
 		label="Users"
@@ -194,8 +232,8 @@ settings and logs pages. Reach for these before writing a box of your own.
 
 | Component       | What it is                                                                                                                                                 |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PageContainer` | A centred column for a page read top to bottom.                                                                                                            |
-| `PageHeader`    | Every page's heading: `Dashboard / <section>`, with a link crumb back on a detail page, the count and controls beside it, and the actions at the far end.  |
+| `PageContainer` | A readable column for a form, from the frame's left edge.                                                                                                  |
+| `PageHeader`    | Every page's heading: the trail above, the title, a count and a description, and the controls and actions on the title's row.                              |
 | `Panel`         | A titled block: header strip with an icon and `meta`, then content. `flush` for lists.                                                                     |
 | `StatCard`      | A metric: a number, the name it counts, and a one-line `note` beside it. `href` makes it a link; `tone` colours the note for the one that is an exception. |
 | `List`          | Rows ruled off one under another. `bordered` makes it a box of its own.                                                                                    |
