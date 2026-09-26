@@ -12,24 +12,24 @@ reading. If something is, leave it alone and raise a throwaway instance beside
 it:
 
 1. A database of its own:
-   `psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -c "CREATE DATABASE xermess_preview;"`
+   `psql "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" -c "CREATE DATABASE loginer_preview;"`
 2. The API, built from the working tree into `bin/` (which is ignored), on
    spare ports, applying its migrations on start:
 
    ```sh
-   go build -o bin/xermess-preview ./cmd/xermess
-   XERMESS_ADDR=:8090 XERMESS_ADMIN_ADDR=:8091 \
-     XERMESS_DB_DSN="postgres://postgres:postgres@localhost:5432/xermess_preview?sslmode=disable" \
-     XERMESS_DB_DRIVER=postgres XERMESS_DB_MIGRATE=true XERMESS_DB_MIGRATE_DIR=./migrations \
-     XERMESS_ISSUER=http://localhost:5183 XERMESS_ACCOUNT_URL=http://localhost:5183 \
-     XERMESS_ADMIN_URL=http://localhost:5184 XERMESS_ADMIN_MFA=optional \
-     XERMESS_SECRET_KEY=preview-secret-key-0123456789abcdef \
-     XERMESS_REDIS_PREFIX=xermess-preview: \
-     bin/xermess-preview &
+   go build -o bin/loginer-preview ./cmd/loginer
+   LOGINER_ADDR=:8090 LOGINER_ADMIN_ADDR=:8091 \
+     LOGINER_DB_DSN="postgres://postgres:postgres@localhost:5432/loginer_preview?sslmode=disable" \
+     LOGINER_DB_DRIVER=postgres LOGINER_DB_MIGRATE=true LOGINER_DB_MIGRATE_DIR=./migrations \
+     LOGINER_ISSUER=http://localhost:5183 LOGINER_ACCOUNT_URL=http://localhost:5183 \
+     LOGINER_ADMIN_URL=http://localhost:5184 LOGINER_ADMIN_MFA=optional \
+     LOGINER_SECRET_KEY=preview-secret-key-0123456789abcdef \
+     LOGINER_REDIS_PREFIX=loginer-preview: \
+     bin/loginer-preview &
    ```
 
-   `XERMESS_ADMIN_MFA=optional` is what makes signing in one step instead of
-   needing an authenticator. `XERMESS_REDIS_PREFIX` keeps its cache apart
+   `LOGINER_ADMIN_MFA=optional` is what makes signing in one step instead of
+   needing an authenticator. `LOGINER_REDIS_PREFIX` keeps its cache apart
    from the running stack's: the binary reads `.env`, so without it the two
    share one Redis, each reads the other's cached rows — an organisation
    whose id is not in its own database, say — and saves go wrong.
@@ -48,7 +48,7 @@ it:
    to the path. Look at it in both themes if the change is visual — the header's
    toggle switches them.
 
-Then take it all down: stop both processes, `DROP DATABASE xermess_preview WITH (FORCE)`,
-clear its cache (`redis-cli --scan --pattern 'xermess-preview:*' | xargs redis-cli del`),
+Then take it all down: stop both processes, `DROP DATABASE loginer_preview WITH (FORCE)`,
+clear its cache (`redis-cli --scan --pattern 'loginer-preview:*' | xargs redis-cli del`),
 and close the tab. Say what you saw, and what you changed if you fixed
 something.

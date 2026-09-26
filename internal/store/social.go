@@ -8,8 +8,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"xermess/internal/cache"
-	"xermess/internal/model"
+	"loginer/internal/cache"
+	"loginer/internal/model"
 )
 
 // SocialProviders returns the configured providers, in the order their

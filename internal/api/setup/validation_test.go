@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // TestSetupRequestValidate covers the form the whole panel is opened with.

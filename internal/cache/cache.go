@@ -9,11 +9,11 @@
 //
 // Every key is under the configured prefix, and then under what it is for,
 // so a Redis browser shows a tree and `redis-cli --scan --pattern
-// 'xermess:cache:languages:*'` finds one group:
+// '<prefix>cache:languages:*'` finds one group:
 //
-//	xermess:cache:<group>:generation            the group's current generation
-//	xermess:cache:<group>:v<generation>:<entry> one cached value, as JSON
-//	xermess:ratelimit:<scope>:<address>         one rate-limit bucket
+//	<prefix>cache:<group>:generation            the group's current generation
+//	<prefix>cache:<group>:v<generation>:<entry> one cached value, as JSON
+//	<prefix>ratelimit:<scope>:<address>         one rate-limit bucket
 //
 // Everything cached belongs to a group, and a write forgets the whole group
 // at once by moving the group on to its next generation: forgetting is one
@@ -42,7 +42,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"xermess/internal/config"
+	"loginer/internal/config"
 )
 
 // TTL is how long a cached value lives if nothing forgets it first. Writes
@@ -119,7 +119,7 @@ func Open(ctx context.Context, cfg config.Redis, log *slog.Logger) (*Cache, erro
 
 	if err := client.Ping(ping).Err(); err != nil {
 		_ = client.Close()
-		return nil, fmt.Errorf("redis at %s (database %d) did not answer: %w; start it, or leave XERMESS_REDIS_HOST empty to run without it", cfg.Addr(), cfg.DB, err)
+		return nil, fmt.Errorf("redis at %s (database %d) did not answer: %w; start it, or leave LOGINER_REDIS_HOST empty to run without it", cfg.Addr(), cfg.DB, err)
 	}
 
 	// go-redis writes a line of its own for every failed dial, which in an

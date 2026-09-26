@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 
-import { COOKIES } from '$lib/constants';
+import { COOKIES } from '$lib/brand';
 
 /** The panel is either light or dark. */
 export type Theme = 'light' | 'dark';

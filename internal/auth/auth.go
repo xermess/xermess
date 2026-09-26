@@ -17,9 +17,9 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	"xermess/internal/jose"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/jose"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // SessionLifetime is how long a session lasts before the administrator has to

@@ -9,12 +9,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/audit"
-	"xermess/internal/api/respond"
-	"xermess/internal/api/session"
-	authsvc "xermess/internal/auth"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/api/audit"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/session"
+	authsvc "loginer/internal/auth"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // The problems these endpoints answer with that are their own.

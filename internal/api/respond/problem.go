@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	"xermess/i18n"
+	"loginer/i18n"
 )
 
 // Problem is one thing that can go wrong, as an app is told about it: the

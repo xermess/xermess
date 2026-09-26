@@ -1,6 +1,6 @@
 # console
 
-The xermess **admin panel**: users, roles, applications, APIs, administrators
+The Loginer **admin panel**: users, roles, applications, APIs, administrators
 and the activity log. Only administrators use it; users sign in and manage
 their accounts in `web/id`.
 

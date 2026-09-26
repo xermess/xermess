@@ -15,8 +15,8 @@
 		RiUserLine
 	} from 'svelte-remixicon';
 	import { adminApi, type Admin } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Button, Icon, Tag, type Size } from '$lib/components/ui';
-	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
 	import { initials } from '$lib/utils/format';
 	import ProfileDrawer, { type ProfileView } from '$lib/components/profile/ProfileDrawer.svelte';
 
@@ -126,7 +126,7 @@
 							<!-- Somewhere else entirely, so there is no route for
 							     resolve() to make of it. -->
 							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-							<a {...item()} href={DOCS_URL} target="_blank" rel="noreferrer noopener">
+							<a {...item()} href={BRAND.docsUrl} target="_blank" rel="noreferrer noopener">
 								<Icon icon={RiBookOpenLine} />
 								Documentation
 								<Icon icon={RiExternalLinkLine} size="0.875rem" />
@@ -136,7 +136,7 @@
 					<Menu.Item value="github">
 						{#snippet asChild(item)}
 							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-							<a {...item()} href={GITHUB_URL} target="_blank" rel="noreferrer noopener">
+							<a {...item()} href={BRAND.githubUrl} target="_blank" rel="noreferrer noopener">
 								<Icon icon={RiGithubFill} />
 								GitHub
 								<Icon icon={RiExternalLinkLine} size="0.875rem" />

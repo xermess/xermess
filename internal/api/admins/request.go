@@ -6,9 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"xermess/internal/api/query"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/api/query"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // targetType is what these records are called in the activity log.

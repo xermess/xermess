@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // ApplicationQuery is what a listing of applications asks for.

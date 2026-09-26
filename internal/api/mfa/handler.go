@@ -14,9 +14,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/session"
-	"xermess/internal/auth"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/session"
+	"loginer/internal/auth"
 )
 
 // Handler holds what these endpoints need.

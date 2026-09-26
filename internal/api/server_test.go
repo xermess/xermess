@@ -10,7 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/config"
+	"loginer/internal/config"
 )
 
 func init() {

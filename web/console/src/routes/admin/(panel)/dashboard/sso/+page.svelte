@@ -2,6 +2,7 @@
 	import { RiAddLine, RiBuilding2Line, RiRefreshLine } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { SSOConnection } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import SSODrawer from '$lib/components/sso/SSODrawer.svelte';
 	import SSOTable from '$lib/components/sso/SSOTable.svelte';
@@ -56,7 +57,7 @@
 	}
 </script>
 
-<svelte:head><title>SSO integrations · xermess admin</title></svelte:head>
+<svelte:head><title>SSO integrations · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'SSO integrations']}>

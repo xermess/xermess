@@ -15,7 +15,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"xermess/internal/cache"
+	"loginer/internal/cache"
 )
 
 // Store holds the database connection every query runs on, and the cache in

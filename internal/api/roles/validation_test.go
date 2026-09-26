@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // TestRoleRequestValidate covers the name a role is checked for by, which is

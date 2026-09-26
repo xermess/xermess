@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/model"
 )
 
 // stored is the organisation a request in these tests is applied to.

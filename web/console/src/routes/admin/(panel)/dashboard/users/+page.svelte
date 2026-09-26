@@ -13,6 +13,7 @@
 	} from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, usersApi, type UserRecord } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import {
 		applicationChoicesOptions,
 		keys,
@@ -200,7 +201,7 @@
 	];
 </script>
 
-<svelte:head><title>Users · xermess admin</title></svelte:head>
+<svelte:head><title>Users · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Users']}>

@@ -10,11 +10,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/query"
-	"xermess/internal/api/respond"
-	"xermess/internal/api/session"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/api/query"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/session"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // How much the endpoints return.

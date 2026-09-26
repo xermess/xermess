@@ -12,6 +12,7 @@
 	} from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, socialApi, type SocialProvider } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import {
 		Alert,
 		Button,
@@ -214,7 +215,7 @@
 	];
 </script>
 
-<svelte:head><title>Social · xermess admin</title></svelte:head>
+<svelte:head><title>Social · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Social']}>

@@ -26,8 +26,8 @@
 		RiSearchLine
 	} from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Icon } from '$lib/components/ui';
-	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
 	import { allSections } from './sidebar/sections';
 
 	type Command = {
@@ -65,7 +65,7 @@
 			label: 'Documentation',
 			group: 'Help',
 			icon: RiBookOpenLine,
-			href: DOCS_URL,
+			href: BRAND.docsUrl,
 			external: true
 		},
 		{
@@ -73,7 +73,7 @@
 			label: 'GitHub',
 			group: 'Help',
 			icon: RiGithubFill,
-			href: GITHUB_URL,
+			href: BRAND.githubUrl,
 			external: true
 		}
 	]);

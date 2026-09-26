@@ -1,7 +1,7 @@
 import { invalidate } from '$app/navigation';
 import { tick } from 'svelte';
 
-import { COOKIES, LANGUAGE_DEPENDENCY } from '$lib/constants';
+import { COOKIES, LANGUAGE_DEPENDENCY } from '$lib/brand';
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 

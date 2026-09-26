@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // scopeResponse is one scope of an API.

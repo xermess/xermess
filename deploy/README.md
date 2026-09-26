@@ -1,4 +1,4 @@
-# Deploying xermess
+# Deploying Loginer
 
 ```
                     internet                          staff network / VPN only
@@ -94,12 +94,12 @@ docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml ps
 - [ ] Use a domain you own for the admin host (not `.local`, which is reserved
       for mDNS and cannot get a trusted certificate).
 - [ ] The staff networks in the Caddyfile are right, or the admin host is VPN-only.
-- [ ] `XERMESS_SECRET_KEY` is stored in your secret manager. Losing it signs everyone out.
+- [ ] `LOGINER_SECRET_KEY` is stored in your secret manager. Losing it signs everyone out.
 - [ ] SMTP is configured, or reset emails only reach the log.
 - [ ] Postgres is backed up.
 - [ ] Nothing but Caddy publishes a port (`docker compose ps`).
 - [ ] Register your applications' redirect URIs as `https`.
-- [ ] `XERMESS_ADMIN_MFA` is `required`. `compose.yaml` asks for that unless
+- [ ] `LOGINER_ADMIN_MFA` is `required`. `compose.yaml` asks for that unless
       `deploy/.env` says otherwise — the server's own default is `optional`, so
       do not rely on it elsewhere. Every administrator has saved their recovery
       codes.

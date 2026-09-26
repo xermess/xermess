@@ -12,8 +12,8 @@
 		RiSidebarUnfoldLine
 	} from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Icon, IconButton, IconLink, ThemeToggle } from '$lib/components/ui';
-	import { DOCS_URL, GITHUB_URL } from '$lib/constants';
 	import { useShell } from '$lib/state/shell.svelte';
 	import AccountMenu from './AccountMenu.svelte';
 	import CommandPalette from './CommandPalette.svelte';
@@ -52,11 +52,11 @@
 
 <header class:mini={shell.collapsed}>
 	<div class="brand-column" class:ruled={besideSidebar}>
-		<a class="brand" href={resolve('/admin/dashboard')} aria-label="xermess">
+		<a class="brand" href={resolve('/admin/dashboard')} aria-label={BRAND.name}>
 			<span class="mark">
 				<Icon icon={RiShieldKeyholeLine} size="1.125rem" />
 			</span>
-			<strong aria-hidden={shell.collapsed}>xermess</strong>
+			<strong aria-hidden={shell.collapsed}>{BRAND.name}</strong>
 		</a>
 	</div>
 
@@ -85,7 +85,7 @@
 	     narrow screen is left with. -->
 	<div class="utilities">
 		<IconLink
-			href={DOCS_URL}
+			href={BRAND.docsUrl}
 			icon={RiBookOpenLine}
 			label="Documentation"
 			size="sm"
@@ -94,7 +94,7 @@
 		/>
 
 		<IconLink
-			href={GITHUB_URL}
+			href={BRAND.githubUrl}
 			icon={RiGithubFill}
 			label="GitHub"
 			size="sm"

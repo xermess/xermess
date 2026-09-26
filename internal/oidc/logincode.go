@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"xermess/i18n"
-	"xermess/internal/mail"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/mail"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // The emailed code step (model.StepEmailCode): a flow that names it holds a

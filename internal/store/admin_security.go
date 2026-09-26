@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // AdminSecurity returns how administrators are made to sign in.

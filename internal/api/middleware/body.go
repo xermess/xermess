@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // MaxBodyBytes is how much of a request body either server reads.

@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // ErrWrongPassword is a current password that is not theirs. Changing the

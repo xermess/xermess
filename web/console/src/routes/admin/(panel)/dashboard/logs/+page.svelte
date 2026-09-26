@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { RiRefreshLine } from 'svelte-remixicon';
+	import { BRAND } from '$lib/brand';
 	import ActivityTable from '$lib/components/activity/ActivityTable.svelte';
 	import {
 		categoryLabels,
@@ -55,7 +56,7 @@
 </script>
 
 <svelte:head>
-	<title>Logs · xermess admin</title>
+	<title>Logs · {BRAND.name}</title>
 </svelte:head>
 
 <div class="heading">

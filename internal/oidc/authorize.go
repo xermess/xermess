@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // AuthorizeParams are the parameters of an authorization request.

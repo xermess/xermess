@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // What a signed-in user can do about their own account, in the id app: their

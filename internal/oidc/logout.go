@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"slices"
 
-	"xermess/internal/jose"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/jose"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // LogoutParams are the parameters of an RP-initiated logout (OpenID Connect

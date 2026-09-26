@@ -26,7 +26,7 @@ export const handleFetch: HandleFetch = async ({ event, request, fetch }) => {
 	const cookie = event.request.headers.get('cookie');
 	if (cookie) headers.set('cookie', cookie);
 	// Who is really asking, for the API's log. It only believes this from an
-	// address in its XERMESS_TRUSTED_PROXIES.
+	// address in its LOGINER_TRUSTED_PROXIES.
 	headers.set('x-forwarded-for', event.getClientAddress());
 
 	const target = new URL(url.pathname + url.search, env.API_URL ?? 'http://localhost:8080');

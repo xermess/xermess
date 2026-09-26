@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
-	"xermess/i18n"
-	"xermess/internal/jose"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/jose"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // Signing in with an account somewhere else.

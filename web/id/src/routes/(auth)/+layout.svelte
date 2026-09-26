@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BRAND } from '$lib/brand';
 	import { Icon, LanguagePicker, ThemeToggle } from '$lib/components';
 	import { useTranslator } from '$lib/i18n';
 	import { supportLinks } from '$lib/utils/legal';
@@ -43,7 +44,7 @@
 
 		<p class="secured">
 			<Icon name="shield" size="0.9375rem" />
-			<span>{t('shell.secured_by')} <strong>xermess</strong></span>
+			<span>{t('shell.secured_by')} <strong>{BRAND.name}</strong></span>
 		</p>
 	</footer>
 </div>

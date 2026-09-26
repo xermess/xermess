@@ -23,7 +23,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // What a refused request is told.

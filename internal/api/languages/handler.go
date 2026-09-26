@@ -21,12 +21,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"xermess/i18n"
-	"xermess/internal/api/audit"
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/api/audit"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // Handler holds what these endpoints need.

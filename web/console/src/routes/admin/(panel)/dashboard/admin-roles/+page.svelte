@@ -6,6 +6,7 @@
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, adminsApi, type AdminRole } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { adminPermissionsOptions, adminRolesOptions, keys } from '$lib/query';
 	import {
 		Alert,
@@ -119,7 +120,7 @@
 	}));
 </script>
 
-<svelte:head><title>Admin roles · xermess admin</title></svelte:head>
+<svelte:head><title>Admin roles · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Admin roles']}>

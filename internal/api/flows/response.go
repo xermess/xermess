@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // flowResponse is a flow as the panel sees it: the record, plus the two

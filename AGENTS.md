@@ -1,6 +1,6 @@
 # Working in this repository
 
-xermess is an OAuth 2.0 / OpenID Connect server in Go, with two SvelteKit apps
+Loginer is an OAuth 2.0 / OpenID Connect server in Go, with two SvelteKit apps
 under `web/`: `console` (the admin panel) and `id` (sign-in pages and a user's
 own account). `README.md` is the long-form documentation and is kept current —
 read the part that covers what you are changing, and update it when your change
@@ -29,7 +29,8 @@ reading; `.env.example` documents every variable.
 ## Layout
 
 ```
-cmd/xermess/main.go     startup, in order, in one function
+cmd/loginer/main.go     startup, in order, in one function
+internal/brand          what the project calls itself, and every name built from it
 internal/config         reads .env
 internal/model          one file per table, all listed in model.All
 internal/store          every query in the project, one file per subject
@@ -170,6 +171,25 @@ call in `lib/api/admin.ts`, and the feature's components in
 whose subject it belongs to — with an `allowed` check; the sidebar and the
 command palette both read that list, so nothing else needs touching.
 
+**The project's own name.** Never spell it. `internal/brand` holds it for the
+server and `web/<app>/src/lib/brand.ts` for each app — `Name` for a person to
+read, `Slug` for an identifier, and the cookies, the Redis prefix, the flow
+schema and the URLs built from them, so a rename moves all of them at once. A
+cookie the server sets and an app reads is named in both, which is what
+`TestTheAppsSpellTheSameNames` checks; a page title, a wordmark, a
+`WWW-Authenticate` realm or a test fixture written out by hand is what
+`TestNothingElseSpellsTheName` fails on. So a rename is those constants, the
+module path on the first line of `go.mod`, one `brand.ts` per app, and a
+`git mv` of the command's own directory under `cmd/` — a command is named by
+its directory, so that one cannot be anything else. Outside the code the same
+name is in `.env.example`, `deploy/compose.yaml`, the `Makefile`, `scripts/`
+and the two Dockerfiles; those are configuration an installation touches
+anyway.
+
+In the sign-in pages the one exception to the translation rule above is the
+product's own name, which comes from `$lib/brand` rather than from a
+dictionary: a product is not called something else in another language.
+
 ## Style
 
 The code is written to be read. Comments say *why* something is the way it is,
@@ -185,7 +205,7 @@ server, so data is fetched in `+page.server.ts`, never in `onMount`.
 
 Tests are table-driven, named for what they prove — "a slug with spaces", not
 "TestCase3". The ones that need Postgres are named `TestLive…` and skip
-themselves without `XERMESS_TEST_DB_DSN`.
+themselves without `LOGINER_TEST_DB_DSN`.
 
 ## Seeing a change in the app
 

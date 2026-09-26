@@ -21,7 +21,7 @@ import (
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/logger"
 
-	"xermess/internal/jose"
+	"loginer/internal/jose"
 )
 
 // Enterprise single sign-on, end to end, against identity providers that are
@@ -48,7 +48,7 @@ type fakeCode struct {
 	nonce, challenge, redirect string
 }
 
-const fakeClientID, fakeClientSecret = "xermess", "fake-client-secret"
+const fakeClientID, fakeClientSecret = "fake-client", "fake-client-secret"
 
 // fakeScopes are the scopes the fake provider knows.
 var fakeScopes = []string{"openid", "email", "profile"}

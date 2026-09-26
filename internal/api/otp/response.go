@@ -1,7 +1,7 @@
 package otp
 
 import (
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // settingsResponse is the settings as the panel sees them, built by hand so

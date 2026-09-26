@@ -6,6 +6,7 @@
 	import { RiAddLine, RiCloseLine, RiRefreshLine, RiUpload2Line } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { flowsApi, messageOf, type LoginFlow } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Alert, Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import FlowTable from '$lib/components/flows/FlowTable.svelte';
 	import { TEMPLATES, freeSlug, fromFile } from '$lib/components/flows/steps';
@@ -123,7 +124,7 @@
 	}
 </script>
 
-<svelte:head><title>Login flows · xermess admin</title></svelte:head>
+<svelte:head><title>Login flows · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Login flows']}>

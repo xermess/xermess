@@ -7,9 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/session"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/api/session"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // Recorder writes those lines. Handlers that change something hold one.

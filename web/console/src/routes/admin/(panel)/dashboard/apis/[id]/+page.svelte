@@ -11,6 +11,7 @@
 		RiSettings3Line,
 		RiShieldCheckLine
 	} from 'svelte-remixicon';
+	import { BRAND } from '$lib/brand';
 	import { Badge, CopyButton, Icon, PageHeader, Tabs } from '$lib/components/ui';
 	import { can } from '$lib/permissions';
 	import { apiOptions } from '$lib/query';
@@ -58,7 +59,7 @@
 	]);
 </script>
 
-<svelte:head><title>{api.name} · APIs · xermess admin</title></svelte:head>
+<svelte:head><title>{api.name} · APIs · {BRAND.name}</title></svelte:head>
 
 <div class="page">
 	<div class="heading">

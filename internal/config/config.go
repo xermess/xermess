@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+
+	"loginer/internal/brand"
 )
 
 // Config is every setting the server has.
@@ -55,7 +57,7 @@ type Config struct {
 	// SecureUserCookies and SecureAdminCookies set the Secure flag on each
 	// session cookie. They follow the scheme of AccountURL and AdminURL, so a
 	// deployment on https gets them without remembering to; the
-	// XERMESS_SECURE_COOKIES setting overrides both.
+	// LOGINER_SECURE_COOKIES setting overrides both.
 	SecureUserCookies  bool
 	SecureAdminCookies bool
 
@@ -171,6 +173,13 @@ func (r Redis) Addr() string {
 	return fmt.Sprintf("%s:%d", r.Host, r.Port)
 }
 
+// env names a setting the way .env spells it — the project's own prefix and
+// then the setting — so the prefix is written once, in brand, rather than in
+// every call below and in every message that has to name the variable.
+func env(setting string) string {
+	return brand.EnvPrefix + setting
+}
+
 // read builds the reader both loaders use: .env first, then the environment,
 // which wins. A missing .env is fine: in a container there are only
 // environment variables.
@@ -194,100 +203,100 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	v.SetDefault("XERMESS_ADDR", ":8080")
-	v.SetDefault("XERMESS_ADMIN_ADDR", ":8081")
-	v.SetDefault("XERMESS_CORS_ORIGINS", "")
-	v.SetDefault("XERMESS_TRUSTED_PROXIES", "")
-	v.SetDefault("XERMESS_RATE_LIMIT", 20)
-	v.SetDefault("XERMESS_ADMIN_MFA", "optional")
-	v.SetDefault("XERMESS_KEY_ROTATION_DAYS", 90)
-	v.SetDefault("XERMESS_AUDIT_RETENTION_DAYS", 365)
+	v.SetDefault(env("ADDR"), ":8080")
+	v.SetDefault(env("ADMIN_ADDR"), ":8081")
+	v.SetDefault(env("CORS_ORIGINS"), "")
+	v.SetDefault(env("TRUSTED_PROXIES"), "")
+	v.SetDefault(env("RATE_LIMIT"), 20)
+	v.SetDefault(env("ADMIN_MFA"), "optional")
+	v.SetDefault(env("KEY_ROTATION_DAYS"), 90)
+	v.SetDefault(env("AUDIT_RETENTION_DAYS"), 365)
 	// In development the id app serves the provider on its own origin,
 	// through Vite's proxy, the same way the reverse proxy does in
 	// production.
-	v.SetDefault("XERMESS_ISSUER", "http://localhost:5173")
-	v.SetDefault("XERMESS_ADMIN_URL", "http://localhost:5174")
-	v.SetDefault("XERMESS_SMTP_PORT", 587)
-	v.SetDefault("XERMESS_SMTP_FROM", "xermess <no-reply@localhost>")
-	v.SetDefault("XERMESS_DB_DRIVER", "postgres")
-	v.SetDefault("XERMESS_DB_TIMEZONE", "Asia/Bishkek")
-	v.SetDefault("XERMESS_DB_LOG_QUERIES", false)
-	v.SetDefault("XERMESS_DB_MIGRATE", true)
-	v.SetDefault("XERMESS_DB_MIGRATE_DIR", "./migrations")
-	v.SetDefault("XERMESS_DB_MAX_CONNS", 25)
-	v.SetDefault("XERMESS_REDIS_PORT", 6379)
-	v.SetDefault("XERMESS_REDIS_DB", 0)
-	v.SetDefault("XERMESS_REDIS_PREFIX", "xermess:")
+	v.SetDefault(env("ISSUER"), "http://localhost:5173")
+	v.SetDefault(env("ADMIN_URL"), "http://localhost:5174")
+	v.SetDefault(env("SMTP_PORT"), 587)
+	v.SetDefault(env("SMTP_FROM"), brand.Name+" <no-reply@localhost>")
+	v.SetDefault(env("DB_DRIVER"), "postgres")
+	v.SetDefault(env("DB_TIMEZONE"), "Asia/Bishkek")
+	v.SetDefault(env("DB_LOG_QUERIES"), false)
+	v.SetDefault(env("DB_MIGRATE"), true)
+	v.SetDefault(env("DB_MIGRATE_DIR"), "./migrations")
+	v.SetDefault(env("DB_MAX_CONNS"), 25)
+	v.SetDefault(env("REDIS_PORT"), 6379)
+	v.SetDefault(env("REDIS_DB"), 0)
+	v.SetDefault(env("REDIS_PREFIX"), brand.RedisPrefix)
 
-	issuer := strings.TrimRight(v.GetString("XERMESS_ISSUER"), "/")
-	accountURL := strings.TrimRight(v.GetString("XERMESS_ACCOUNT_URL"), "/")
+	issuer := strings.TrimRight(v.GetString(env("ISSUER")), "/")
+	accountURL := strings.TrimRight(v.GetString(env("ACCOUNT_URL")), "/")
 	if accountURL == "" {
 		accountURL = issuer
 	}
-	adminURL := strings.TrimRight(v.GetString("XERMESS_ADMIN_URL"), "/")
+	adminURL := strings.TrimRight(v.GetString(env("ADMIN_URL")), "/")
 
 	cfg := Config{
-		Addr:               v.GetString("XERMESS_ADDR"),
-		AdminAddr:          v.GetString("XERMESS_ADMIN_ADDR"),
+		Addr:               v.GetString(env("ADDR")),
+		AdminAddr:          v.GetString(env("ADMIN_ADDR")),
 		Issuer:             issuer,
 		AccountURL:         accountURL,
 		AdminURL:           adminURL,
-		CORSOrigins:        splitList(v.GetString("XERMESS_CORS_ORIGINS")),
+		CORSOrigins:        splitList(v.GetString(env("CORS_ORIGINS"))),
 		SecureUserCookies:  strings.HasPrefix(accountURL, "https://"),
 		SecureAdminCookies: strings.HasPrefix(adminURL, "https://"),
-		AdminMFARequired:   v.GetString("XERMESS_ADMIN_MFA") == "required",
-		KeyRotation:        time.Duration(v.GetInt("XERMESS_KEY_ROTATION_DAYS")) * 24 * time.Hour,
-		AuditRetention:     time.Duration(v.GetInt("XERMESS_AUDIT_RETENTION_DAYS")) * 24 * time.Hour,
-		RateLimit:          v.GetInt("XERMESS_RATE_LIMIT"),
-		TrustedProxies:     splitList(v.GetString("XERMESS_TRUSTED_PROXIES")),
-		SecretKey:          v.GetString("XERMESS_SECRET_KEY"),
+		AdminMFARequired:   v.GetString(env("ADMIN_MFA")) == "required",
+		KeyRotation:        time.Duration(v.GetInt(env("KEY_ROTATION_DAYS"))) * 24 * time.Hour,
+		AuditRetention:     time.Duration(v.GetInt(env("AUDIT_RETENTION_DAYS"))) * 24 * time.Hour,
+		RateLimit:          v.GetInt(env("RATE_LIMIT")),
+		TrustedProxies:     splitList(v.GetString(env("TRUSTED_PROXIES"))),
+		SecretKey:          v.GetString(env("SECRET_KEY")),
 		Mail: Mail{
-			Host:     v.GetString("XERMESS_SMTP_HOST"),
-			Port:     v.GetInt("XERMESS_SMTP_PORT"),
-			Username: v.GetString("XERMESS_SMTP_USERNAME"),
-			Password: v.GetString("XERMESS_SMTP_PASSWORD"),
-			From:     v.GetString("XERMESS_SMTP_FROM"),
+			Host:     v.GetString(env("SMTP_HOST")),
+			Port:     v.GetInt(env("SMTP_PORT")),
+			Username: v.GetString(env("SMTP_USERNAME")),
+			Password: v.GetString(env("SMTP_PASSWORD")),
+			From:     v.GetString(env("SMTP_FROM")),
 		},
 		DB: DB{
-			Driver:     v.GetString("XERMESS_DB_DRIVER"),
-			DSN:        v.GetString("XERMESS_DB_DSN"),
-			TimeZone:   v.GetString("XERMESS_DB_TIMEZONE"),
-			LogQueries: v.GetBool("XERMESS_DB_LOG_QUERIES"),
-			Migrate:    v.GetBool("XERMESS_DB_MIGRATE"),
-			MigrateDir: v.GetString("XERMESS_DB_MIGRATE_DIR"),
-			MaxConns:   v.GetInt("XERMESS_DB_MAX_CONNS"),
+			Driver:     v.GetString(env("DB_DRIVER")),
+			DSN:        v.GetString(env("DB_DSN")),
+			TimeZone:   v.GetString(env("DB_TIMEZONE")),
+			LogQueries: v.GetBool(env("DB_LOG_QUERIES")),
+			Migrate:    v.GetBool(env("DB_MIGRATE")),
+			MigrateDir: v.GetString(env("DB_MIGRATE_DIR")),
+			MaxConns:   v.GetInt(env("DB_MAX_CONNS")),
 		},
 		Redis: Redis{
-			Host:     strings.TrimSpace(v.GetString("XERMESS_REDIS_HOST")),
-			Port:     v.GetInt("XERMESS_REDIS_PORT"),
-			Username: v.GetString("XERMESS_REDIS_USERNAME"),
-			Password: v.GetString("XERMESS_REDIS_PASSWORD"),
-			DB:       v.GetInt("XERMESS_REDIS_DB"),
-			Prefix:   v.GetString("XERMESS_REDIS_PREFIX"),
+			Host:     strings.TrimSpace(v.GetString(env("REDIS_HOST"))),
+			Port:     v.GetInt(env("REDIS_PORT")),
+			Username: v.GetString(env("REDIS_USERNAME")),
+			Password: v.GetString(env("REDIS_PASSWORD")),
+			DB:       v.GetInt(env("REDIS_DB")),
+			Prefix:   v.GetString(env("REDIS_PREFIX")),
 		},
 	}
 
-	if v.IsSet("XERMESS_SECURE_COOKIES") && v.GetString("XERMESS_SECURE_COOKIES") != "" {
-		cfg.SecureUserCookies = v.GetBool("XERMESS_SECURE_COOKIES")
+	if v.IsSet(env("SECURE_COOKIES")) && v.GetString(env("SECURE_COOKIES")) != "" {
+		cfg.SecureUserCookies = v.GetBool(env("SECURE_COOKIES"))
 		cfg.SecureAdminCookies = cfg.SecureUserCookies
 	}
 
 	// No default for the DSN: it names the database and carries the password,
 	// so a missing one should stop the server, not quietly connect somewhere.
 	if cfg.DB.DSN == "" {
-		return Config{}, errors.New("XERMESS_DB_DSN is not set")
+		return Config{}, errors.New(env("DB_DSN") + " is not set")
 	}
 
 	// No default for the secret key either: a default would be the same key
 	// on every installation, which is no secret at all.
 	if len(cfg.SecretKey) < minSecretKeyLength {
-		return Config{}, fmt.Errorf("XERMESS_SECRET_KEY must be at least %d characters; make one with: openssl rand -base64 32", minSecretKeyLength)
+		return Config{}, fmt.Errorf("%s must be at least %d characters; make one with: openssl rand -base64 32", env("SECRET_KEY"), minSecretKeyLength)
 	}
 
 	urls := map[string]string{
-		"XERMESS_ISSUER":      cfg.Issuer,
-		"XERMESS_ACCOUNT_URL": cfg.AccountURL,
-		"XERMESS_ADMIN_URL":   cfg.AdminURL,
+		env("ISSUER"):      cfg.Issuer,
+		env("ACCOUNT_URL"): cfg.AccountURL,
+		env("ADMIN_URL"):   cfg.AdminURL,
 	}
 	for name, value := range urls {
 		if parsed, err := url.Parse(value); err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
@@ -298,35 +307,35 @@ func Load() (Config, error) {
 	// One listener for both would put the admin API back on the public one,
 	// which is exactly what the second listener is there to prevent.
 	if cfg.AdminAddr == "" || cfg.AdminAddr == cfg.Addr {
-		return Config{}, errors.New("XERMESS_ADMIN_ADDR must be set, and differ from XERMESS_ADDR: the admin API has its own listener")
+		return Config{}, errors.New(env("ADMIN_ADDR") + " must be set, and differ from " + env("ADDR") + ": the admin API has its own listener")
 	}
 
-	if mode := v.GetString("XERMESS_ADMIN_MFA"); mode != "required" && mode != "optional" {
-		return Config{}, fmt.Errorf("XERMESS_ADMIN_MFA must be required or optional, got %q", mode)
+	if mode := v.GetString(env("ADMIN_MFA")); mode != "required" && mode != "optional" {
+		return Config{}, fmt.Errorf("%s must be required or optional, got %q", env("ADMIN_MFA"), mode)
 	}
 
 	if cfg.KeyRotation < 0 {
-		return Config{}, errors.New("XERMESS_KEY_ROTATION_DAYS must be zero or more")
+		return Config{}, errors.New(env("KEY_ROTATION_DAYS") + " must be zero or more")
 	}
 
 	if cfg.RateLimit < 0 {
-		return Config{}, errors.New("XERMESS_RATE_LIMIT must be zero or more")
+		return Config{}, errors.New(env("RATE_LIMIT") + " must be zero or more")
 	}
 
 	if cfg.AuditRetention < 0 {
-		return Config{}, errors.New("XERMESS_AUDIT_RETENTION_DAYS must be zero or more")
+		return Config{}, errors.New(env("AUDIT_RETENTION_DAYS") + " must be zero or more")
 	}
 
 	if cfg.DB.MaxConns < 1 {
-		return Config{}, errors.New("XERMESS_DB_MAX_CONNS must be one or more")
+		return Config{}, errors.New(env("DB_MAX_CONNS") + " must be one or more")
 	}
 
 	if cfg.Redis.Enabled() {
 		if cfg.Redis.Port < 1 || cfg.Redis.Port > 65535 {
-			return Config{}, fmt.Errorf("XERMESS_REDIS_PORT must be a port number, got %d", cfg.Redis.Port)
+			return Config{}, fmt.Errorf("%s must be a port number, got %d", env("REDIS_PORT"), cfg.Redis.Port)
 		}
 		if cfg.Redis.DB < 0 {
-			return Config{}, errors.New("XERMESS_REDIS_DB must be zero or more")
+			return Config{}, errors.New(env("REDIS_DB") + " must be zero or more")
 		}
 	}
 

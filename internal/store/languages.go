@@ -10,9 +10,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"xermess/i18n"
-	"xermess/internal/cache"
-	"xermess/internal/model"
+	"loginer/i18n"
+	"loginer/internal/cache"
+	"loginer/internal/model"
 )
 
 // ErrProtectedLanguage is returned for removing the base language, or the

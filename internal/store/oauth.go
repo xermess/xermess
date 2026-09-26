@@ -10,7 +10,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"xermess/internal/model"
+	"loginer/internal/brand"
+	"loginer/internal/model"
 )
 
 // ErrAlreadyUsed is returned when a single-use secret — an authorization code,
@@ -487,7 +488,7 @@ func (s *Store) RevokeUserGrant(ctx context.Context, user, application uuid.UUID
 
 // keyLock is the advisory lock that keeps two servers from rotating the
 // signing keys at the same moment.
-const keyLock = "xermess_signing_keys"
+const keyLock = brand.SigningKeysLock
 
 // AddSigningKeyIfDue stores `key` unless its algorithm already has an
 // unretired key made after `dueBefore` — which another server may have just

@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { BRAND } from '$lib/brand';
 </script>
 
 <svelte:head>
-	<title>{page.status} · xermess admin</title>
+	<title>{page.status} · {BRAND.name}</title>
 </svelte:head>
 
 <main>

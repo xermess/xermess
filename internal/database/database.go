@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"xermess/internal/config"
+	"loginer/internal/config"
 )
 
 // Open connects to Postgres and checks the connection works, so a bad

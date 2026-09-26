@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // AdminRoles returns every admin role matching a search, sorted by name.

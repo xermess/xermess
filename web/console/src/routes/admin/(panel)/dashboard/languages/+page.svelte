@@ -2,6 +2,7 @@
 	import { RiAddLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { Language, LocaleApp } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import LanguageDrawer from '$lib/components/languages/LanguageDrawer.svelte';
 	import LanguageTable from '$lib/components/languages/LanguageTable.svelte';
@@ -69,7 +70,7 @@
 	}
 </script>
 
-<svelte:head><title>Languages · xermess admin</title></svelte:head>
+<svelte:head><title>Languages · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Languages']}>

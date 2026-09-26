@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/model"
 )
 
 // status is the status a fault carries, or 0 when the error is not one.

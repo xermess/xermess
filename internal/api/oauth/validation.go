@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"xermess/internal/oidc"
+	"loginer/internal/oidc"
 )
 
 // invalidRequest is the error for a request this package could not read.

@@ -16,8 +16,8 @@ import (
 	"github.com/crewjam/saml/samlsp"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	"xermess/internal/jose"
-	"xermess/internal/model"
+	"loginer/internal/jose"
+	"loginer/internal/model"
 )
 
 // The SAML 2.0 half of enterprise single sign-on (sso.go): reading an

@@ -3,7 +3,7 @@ package oidc
 import (
 	"context"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // LoginOptions is what the sign-in pages are told they may offer: whether an

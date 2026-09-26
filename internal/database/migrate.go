@@ -9,10 +9,10 @@ import (
 	"github.com/pressly/goose/v3"
 	"gorm.io/gorm"
 
-	"xermess/internal/config"
+	"loginer/internal/config"
 	// Registers the migrations with goose. They are Go functions, so they
 	// exist only in a binary that imports them.
-	_ "xermess/migrations"
+	_ "loginer/migrations"
 )
 
 // Migrate applies the migrations that have not run yet. Goose records what it

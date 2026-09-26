@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // adminResponse is an administrator as the browser sees it. It is built by

@@ -6,6 +6,7 @@
 	import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, adminsApi, type AdminRecord } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import {
 		adminPermissionsOptions,
 		adminRolesOptions,
@@ -133,7 +134,7 @@
 	];
 </script>
 
-<svelte:head><title>Administrators · xermess admin</title></svelte:head>
+<svelte:head><title>Administrators · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Administrators']}>

@@ -13,6 +13,7 @@
 	} from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, rolesApi, type Role } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { applicationChoicesOptions, keys, roleChoicesOptions, rolesOptions } from '$lib/query';
 	import { canEditRoles } from '$lib/components/roles/roles';
 	import {
@@ -202,7 +203,7 @@
 	];
 </script>
 
-<svelte:head><title>Roles · xermess admin</title></svelte:head>
+<svelte:head><title>Roles · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Roles']}>

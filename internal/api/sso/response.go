@@ -8,8 +8,8 @@ import (
 
 	"github.com/crewjam/saml"
 
-	"xermess/internal/model"
-	"xermess/internal/oidc"
+	"loginer/internal/model"
+	"loginer/internal/oidc"
 )
 
 // connectionResponse is a connection as the panel shows it: what is stored,

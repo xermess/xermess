@@ -3,9 +3,9 @@ package adminroles
 import (
 	"net/http"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // The rule an admin role's name keeps: the same shape as a user role's.

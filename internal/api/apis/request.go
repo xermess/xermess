@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // maxLogEntries caps how many log entries one request returns.

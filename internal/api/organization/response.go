@@ -3,7 +3,7 @@ package organization
 import (
 	"time"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // organizationResponse is the organisation as the panel sees it. It is built

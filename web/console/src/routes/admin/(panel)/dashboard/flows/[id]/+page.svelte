@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { BRAND } from '$lib/brand';
 	import FlowEditor from '$lib/components/flows/editor/FlowEditor.svelte';
 	import { can } from '$lib/permissions';
 	import type { PageData } from './$types';
@@ -6,7 +7,7 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<svelte:head><title>{data.flow.name} · Login flows · xermess admin</title></svelte:head>
+<svelte:head><title>{data.flow.name} · Login flows · {BRAND.name}</title></svelte:head>
 
 <!-- Keyed, so moving from one flow to another — after Duplicate — starts a
      fresh editor rather than carrying the last one's draft across. -->

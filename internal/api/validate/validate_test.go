@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // fault is the fault an error carries, and whether it carried one at all.

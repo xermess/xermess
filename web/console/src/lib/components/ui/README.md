@@ -10,7 +10,7 @@ never writes a colour, a height or a hover state — it names one.
 <Button size="sm" loading={saving}>Saving…</Button>
 
 <IconButton icon={RiRefreshLine} label="Refresh the data" />
-<IconLink href="https://xermess.org/docs" icon={RiBookOpenLine} label="Documentation" />
+<IconLink href="https://loginer.org/docs" icon={RiBookOpenLine} label="Documentation" />
 
 <Input label="email" bind:value={email} type="email" required />
 <Select label="Type" bind:value={type} options={['text', 'number', 'bool']} />
@@ -169,9 +169,13 @@ settings and logs pages. Reach for these before writing a box of your own.
 		{#snippet actions()}<Button>Save</Button>{/snippet}
 	</PageHeader>
 
-	<StatCard label="Users" value={42} icon={RiGroupLine} href={usersPage}>
-		<Tag small>40 active</Tag>
-	</StatCard>
+	<StatCard
+		label="Users"
+		value={42}
+		icon={RiGroupLine}
+		note="40 active · +3 this week"
+		href={usersPage}
+	/>
 
 	<Panel title="Sessions" icon={RiComputerLine} flush>
 		{#snippet meta()}<Tag tone="success" dot>2 active</Tag>{/snippet}
@@ -188,14 +192,14 @@ settings and logs pages. Reach for these before writing a box of your own.
 </PageContainer>
 ```
 
-| Component       | What it is                                                                                                                                                |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PageContainer` | A centred column for a page read top to bottom.                                                                                                           |
-| `PageHeader`    | Every page's heading: `Dashboard / <section>`, with a link crumb back on a detail page, the count and controls beside it, and the actions at the far end. |
-| `Panel`         | A titled block: header strip with an icon and `meta`, then content. `flush` for lists.                                                                    |
-| `StatCard`      | A number with its name, an icon, tags under it, and a link when `href` is given.                                                                          |
-| `List`          | Rows ruled off one under another. `bordered` makes it a box of its own.                                                                                   |
-| `ListItem`      | A row: `lead` (usually a `Thumb`), a title and description or any content, and `end`.                                                                     |
-| `Thumb`         | A small square holding an icon or a few letters.                                                                                                          |
-| `Tag`           | A label in any palette; `dot` marks it with a coloured dot instead, `small` and `strong` size it.                                                         |
-| `Alert`         | A message: `danger` (the default) is announced as an error; `warning`, `info`, `success` are notes.                                                       |
+| Component       | What it is                                                                                                                                                 |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageContainer` | A centred column for a page read top to bottom.                                                                                                            |
+| `PageHeader`    | Every page's heading: `Dashboard / <section>`, with a link crumb back on a detail page, the count and controls beside it, and the actions at the far end.  |
+| `Panel`         | A titled block: header strip with an icon and `meta`, then content. `flush` for lists.                                                                     |
+| `StatCard`      | A metric: a number, the name it counts, and a one-line `note` beside it. `href` makes it a link; `tone` colours the note for the one that is an exception. |
+| `List`          | Rows ruled off one under another. `bordered` makes it a box of its own.                                                                                    |
+| `ListItem`      | A row: `lead` (usually a `Thumb`), a title and description or any content, and `end`.                                                                      |
+| `Thumb`         | A small square holding an icon or a few letters.                                                                                                           |
+| `Tag`           | A label in any palette; `dot` marks it with a coloured dot instead, `small` and `strong` size it.                                                          |
+| `Alert`         | A message: `danger` (the default) is announced as an error; `warning`, `info`, `success` are notes.                                                        |

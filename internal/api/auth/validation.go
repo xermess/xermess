@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // validate checks the sign-in form before anything is looked up.

@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"xermess/internal/jose"
-	"xermess/internal/model"
+	"loginer/internal/jose"
+	"loginer/internal/model"
 )
 
 // The OpenID Connect half of enterprise single sign-on (sso.go): reading a

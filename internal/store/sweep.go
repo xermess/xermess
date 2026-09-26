@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // What the server stores and stops needing: every sign-in leaves a session,

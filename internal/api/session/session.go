@@ -9,15 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/auth"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/auth"
+	"loginer/internal/brand"
+	"loginer/internal/model"
 )
 
 // Cookie carries the session token between the browser and the server. It is
 // HttpOnly so no script can read it, which is what keeps a cross-site
 // scripting bug from turning into a stolen session.
-const Cookie = "xermess_session"
+const Cookie = brand.AdminSessionCookie
 
 // The Gin context keys the signed-in administrator, and the session the
 // request came with, are stored under.

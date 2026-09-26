@@ -3,8 +3,8 @@ package mail
 import (
 	"net/http"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/model"
 )
 
 // The problems these endpoints answer with.

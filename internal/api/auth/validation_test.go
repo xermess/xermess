@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // TestLoginRequestValidate covers the sign-in form: both fields are wanted,

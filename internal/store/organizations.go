@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"xermess/internal/cache"
-	"xermess/internal/model"
+	"loginer/internal/cache"
+	"loginer/internal/model"
 )
 
 // Organization returns the organisation this installation belongs to.

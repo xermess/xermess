@@ -1,5 +1,5 @@
 // Serves a built app (adapter-node) with its API paths in front, the way it
-// runs in a deployment. There Caddy routes the API paths to xermess before a
+// runs in a deployment. There Caddy routes the API paths to Loginer before a
 // request reaches the app (deploy/Caddyfile); locally, for `scripts/start.sh
 // --prod`, this does that one job. Run it from the app's directory:
 //
@@ -38,7 +38,7 @@ function forward(req, res) {
 
 	upstream.on('error', () => {
 		if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain' });
-		res.end('The xermess API is not reachable.');
+		res.end('The Loginer API is not reachable.');
 	});
 
 	req.pipe(upstream);

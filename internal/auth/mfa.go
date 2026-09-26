@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"xermess/internal/model"
-	"xermess/internal/totp"
+	"loginer/internal/model"
+	"loginer/internal/totp"
 )
 
 // Two-factor sign-in for administrators: a TOTP authenticator app, with

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { RiFileTextLine, RiRefreshLine, RiServerLine } from 'svelte-remixicon';
+	import { BRAND } from '$lib/brand';
 	import { IconButton, PageContainer, PageHeader, Tabs } from '$lib/components/ui';
 	import MailContent from '$lib/components/mail/MailContent.svelte';
 	import MailServer from '$lib/components/mail/MailServer.svelte';
@@ -29,7 +30,7 @@
 	}
 </script>
 
-<svelte:head><title>Mail · xermess admin</title></svelte:head>
+<svelte:head><title>Mail · {BRAND.name}</title></svelte:head>
 
 <PageContainer>
 	<div class="page">

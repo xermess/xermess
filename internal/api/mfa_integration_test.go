@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"xermess/internal/config"
-	"xermess/internal/totp"
+	"loginer/internal/config"
+	"loginer/internal/totp"
 )
 
 // codeFor is the authenticator's code for a moment.

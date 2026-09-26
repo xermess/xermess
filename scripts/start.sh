@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Run the whole stack: the xermess API and the console and id apps.
+# Run the whole stack: the Loginer API and the console and id apps.
 #
 #   scripts/start.sh --dev     Vite dev servers, hot reload (default)
 #   scripts/start.sh --prod    production builds, served by Node
@@ -22,8 +22,8 @@ need node "https://nodejs.org"
 need bun "https://bun.sh"
 load_env
 
-api_port="${XERMESS_ADDR:-:8080}" api_port="${api_port##*:}"
-admin_port="${XERMESS_ADMIN_ADDR:-:8081}" admin_port="${admin_port##*:}"
+api_port="${LOGINER_ADDR:-:8080}" api_port="${api_port##*:}"
+admin_port="${LOGINER_ADMIN_ADDR:-:8081}" admin_port="${admin_port##*:}"
 
 # name  port  API it calls                   paths routed to that API
 apps=(
@@ -69,12 +69,12 @@ if [[ $mode == prod ]]; then
 		pids+=($!)
 	done
 	version="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
-	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$version" -o bin/xermess ./cmd/xermess
+	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$version" -o bin/loginer ./cmd/loginer
 	for build in "${builds[@]}"; do
 		wait "${build#*:}" || { tail -n 30 "$logs/${build%%:*}-build.log"; die "web/${build%%:*} did not build"; }
 	done
 else
-	go build -o bin/xermess ./cmd/xermess
+	go build -o bin/loginer ./cmd/loginer
 fi
 
 for app in "${apps[@]}"; do
@@ -92,9 +92,9 @@ for app in "${apps[@]}"; do
 	pids+=($!)
 done
 
-echo "==> xermess ($mode) — app logs in .logs/"
+echo "==> Loginer ($mode) — app logs in .logs/"
 # Gin's route listing is noise in production.
 [[ $mode == prod ]] && export GIN_MODE="${GIN_MODE:-release}"
-bin/xermess &
+bin/loginer &
 pids+=($!)
 wait $!

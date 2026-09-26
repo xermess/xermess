@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // ---- Second factors -------------------------------------------------------

@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // roleRef names another role, and its scope: enough to show it and to send

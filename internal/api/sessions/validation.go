@@ -3,7 +3,7 @@ package sessions
 import (
 	"github.com/google/uuid"
 
-	"xermess/internal/store"
+	"loginer/internal/store"
 )
 
 // query turns the page's query string into what the store reads. The ids

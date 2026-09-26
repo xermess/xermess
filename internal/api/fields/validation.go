@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // column is what a field may be called: the same shape as a column name,

@@ -11,7 +11,7 @@ func oidcConnection() SSOConnection {
 	return SSOConnection{
 		Slug: "acme", Name: "Acme", Protocol: SSOProtocolOIDC,
 		Domains: StringList{"acme.com"}, Matching: SSOMatchLink,
-		Issuer: "https://acme.okta.com", ClientID: "xermess",
+		Issuer: "https://acme.okta.com", ClientID: "acme-console",
 	}
 }
 

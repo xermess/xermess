@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/config"
+	"loginer/internal/config"
 )
 
 // The time zone is added by hand rather than through url encoding, because

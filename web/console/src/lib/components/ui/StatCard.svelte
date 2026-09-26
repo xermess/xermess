@@ -1,41 +1,51 @@
 <script lang="ts">
-	import type { ComponentType, Snippet } from 'svelte';
+	import type { ComponentType } from 'svelte';
 	import { RiArrowRightSLine } from 'svelte-remixicon';
 	import Icon from './Icon.svelte';
-	import Thumb from './Thumb.svelte';
+	import type { ColorPalette } from './control';
 
 	type Props = {
 		label: string;
 		value: number;
 		icon: ComponentType;
-		/** Labels under the number that give it context. */
-		children?: Snippet;
+		/** What gives the number its context, on one line beside it. A metric
+		    is read in a row, so the note never wraps: four cards of one height
+		    with their numbers on one line is the whole point. */
+		note?: string;
+		/** The palette the note is in, for the one that is the exception —
+		    a note that says an administrator is locked out, say. */
+		tone?: ColorPalette;
 		/** Where the number leads, when the administrator may go there. */
 		href?: string;
 	};
 
-	let { label, value, icon, children, href }: Props = $props();
+	let { label, value, icon, note, tone = 'neutral', href }: Props = $props();
 </script>
 
-<svelte:element this={href ? 'a' : 'div'} class="stat" class:link={href} {href}>
-	<span class="lead"><Thumb {icon} size="md" /></span>
-
-	<span class="body">
+<!-- A metric rather than a card: the number is the point, so the label and
+     the note are one line each beside it and the whole thing is two rows. -->
+<svelte:element this={href ? 'a' : 'div'} class="stat" class:link={href} {href} data-tone={tone}>
+	<span class="head">
+		<Icon {icon} size="0.9375rem" />
 		<span class="label">{label}</span>
-		<strong>{value.toLocaleString()}</strong>
-		{#if children}<span class="tags">{@render children()}</span>{/if}
+		{#if href}
+			<span class="go" aria-hidden="true"><Icon icon={RiArrowRightSLine} size="0.8125rem" /></span>
+		{/if}
 	</span>
 
-	{#if href}<span class="go" aria-hidden="true"><Icon icon={RiArrowRightSLine} /></span>{/if}
+	<span class="figure">
+		<strong>{value.toLocaleString()}</strong>
+		{#if note}<span class="note">{note}</span>{/if}
+	</span>
 </svelte:element>
 
 <style>
 	.stat {
 		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
+		flex-direction: column;
+		gap: 2px;
 		min-width: 0;
-		padding: var(--space-3);
+		padding: var(--space-2) var(--space-3);
 		border: 1px solid var(--color-secondary-alt);
 		border-radius: var(--radius-sm);
 		background: var(--color-surface);
@@ -53,35 +63,26 @@
 		background: var(--color-surface-alt);
 	}
 
-	.body {
+	/* The label and the icon share a line so the number below is the first
+	   thing the card is about; the arrow goes to the far end of it, which is
+	   where a link's other end is expected. */
+	.head {
 		display: flex;
-		flex: 1;
-		flex-direction: column;
-		gap: 2px;
+		align-items: center;
+		gap: 5px;
 		min-width: 0;
+		color: var(--color-text-hint);
 	}
 
 	.label {
-		color: var(--color-text-hint);
+		overflow: hidden;
 		font-size: var(--text-sm);
-	}
-
-	strong {
-		font-size: 1.286rem;
-		font-weight: 600;
-		line-height: 24px;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 5px;
-		margin-top: 6px;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.go {
-		align-self: center;
+		margin-left: auto;
 		color: var(--color-text-disabled);
 		transition: color var(--speed);
 	}
@@ -90,15 +91,53 @@
 		color: var(--color-text);
 	}
 
+	/* Baseline-aligned, so the numbers of a row sit on one line however many
+	   digits each has, and the note takes what is left rather than pushing
+	   the number about. */
+	.figure {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		min-width: 0;
+	}
+
+	strong {
+		flex: none;
+		font-size: var(--text-xl);
+		font-weight: 600;
+		line-height: 1.25;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.note {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		color: var(--color-text-hint);
+		font-size: var(--text-xs);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.stat[data-tone='success'] .note {
+		color: var(--color-success);
+	}
+
+	.stat[data-tone='warning'] .note {
+		color: var(--color-warning);
+	}
+
+	.stat[data-tone='danger'] .note {
+		color: var(--color-danger);
+	}
+
+	.stat[data-tone='info'] .note {
+		color: var(--color-info);
+	}
+
 	@media (max-width: 34rem) {
 		.stat {
-			gap: var(--space-2);
 			padding: var(--space-2);
-		}
-
-		.lead,
-		.go {
-			display: none;
 		}
 	}
 </style>

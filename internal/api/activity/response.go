@@ -3,8 +3,8 @@ package activity
 import (
 	"time"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // targetResponse is what an entry happened to. Name is left out when the

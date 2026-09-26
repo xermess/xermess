@@ -1,4 +1,4 @@
-// Command xermess runs the authentication server.
+// Command loginer runs the authentication server.
 package main
 
 import (
@@ -11,15 +11,16 @@ import (
 	"syscall"
 	"time"
 
-	"xermess/i18n"
-	"xermess/internal/api"
-	"xermess/internal/cache"
-	"xermess/internal/config"
-	"xermess/internal/database"
-	"xermess/internal/jose"
-	"xermess/internal/mail"
-	"xermess/internal/oidc"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/api"
+	"loginer/internal/brand"
+	"loginer/internal/cache"
+	"loginer/internal/config"
+	"loginer/internal/database"
+	"loginer/internal/jose"
+	"loginer/internal/mail"
+	"loginer/internal/oidc"
+	"loginer/internal/store"
 )
 
 // version and commit are stamped in at build time by `make build` and
@@ -44,7 +45,7 @@ func main() {
 // from main so every step can return an error instead of exiting from the
 // middle of the startup.
 func run(log *slog.Logger) error {
-	log.Info("xermess starting", "version", version, "commit", commit)
+	log.Info(brand.Name+" starting", "version", version, "commit", commit)
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -123,7 +124,7 @@ func run(log *slog.Logger) error {
 	mailer := mail.New(mail.FromStore(st, sealer), log)
 
 	// The provider loads its signing keys, and makes any that are missing,
-	// before anything is served: a wrong XERMESS_SECRET_KEY stops the server
+	// before anything is served: a wrong LOGINER_SECRET_KEY stops the server
 	// here rather than failing the first sign-in.
 	provider, err := oidc.New(context.Background(), cfg, st, mailer, log)
 	if err != nil {
@@ -154,7 +155,7 @@ func run(log *slog.Logger) error {
 }
 
 // ensureMailSettings writes the mail server a fresh installation starts with,
-// from XERMESS_SMTP_*, sealing the password with the secret key the way the
+// from LOGINER_SMTP_*, sealing the password with the secret key the way the
 // panel does when it saves one.
 func ensureMailSettings(ctx context.Context, st *store.Store, sealer *jose.Sealer, cfg config.Mail) error {
 	settings, password := mail.Seed(cfg)

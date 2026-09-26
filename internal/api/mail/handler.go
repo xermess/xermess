@@ -16,13 +16,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/i18n"
-	"xermess/internal/api/audit"
-	"xermess/internal/api/respond"
-	"xermess/internal/jose"
-	"xermess/internal/mail"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/api/audit"
+	"loginer/internal/api/respond"
+	"loginer/internal/brand"
+	"loginer/internal/jose"
+	"loginer/internal/mail"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // Handler holds what these endpoints need. The sealer is here because the
@@ -128,7 +129,7 @@ func (h *Handler) Test(c *gin.Context) {
 
 	err = mail.Deliver(c.Request.Context(), settings, mail.Message{
 		To:      to,
-		Subject: "xermess: a test message",
+		Subject: brand.Name + ": a test message",
 		Body:    testBody,
 	})
 	if err != nil {
@@ -155,7 +156,7 @@ func (h *Handler) Test(c *gin.Context) {
 // read by the administrator who pressed the button, in the panel they pressed
 // it in, and it exists to prove a connection rather than to tell anybody
 // anything.
-const testBody = "This is a test message from your xermess installation.\n\n" +
+const testBody = "This is a test message from your " + brand.Name + " installation.\n\n" +
 	"If you are reading it, the mail settings on the Mail page work: " +
 	"password resets, address confirmations and one-time codes will reach people.\n"
 

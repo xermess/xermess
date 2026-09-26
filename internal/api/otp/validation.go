@@ -3,9 +3,9 @@ package otp
 import (
 	"net/http"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // applyTo copies what a request sent onto the settings and returns what it

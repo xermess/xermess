@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/i18n"
-	"xermess/internal/model"
+	"loginer/i18n"
+	"loginer/internal/model"
 )
 
 // languageResponse is one language as the panel sees it: its settings, and

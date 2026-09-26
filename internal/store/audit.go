@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // WriteAudit adds one line to the activity log.

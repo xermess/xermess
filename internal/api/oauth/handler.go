@@ -16,9 +16,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/session"
-	"xermess/internal/oidc"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/session"
+	"loginer/internal/brand"
+	"loginer/internal/oidc"
 )
 
 // Handler holds what these endpoints need.
@@ -349,7 +350,7 @@ func (h *Handler) oauthError(c *gin.Context, err error) {
 	// A client that tried HTTP Basic is told which scheme to use again
 	// (RFC 6749 section 5.2).
 	if failure.Status == http.StatusUnauthorized {
-		c.Header("WWW-Authenticate", `Basic realm="xermess"`)
+		c.Header("WWW-Authenticate", `Basic realm="`+brand.Realm+`"`)
 	}
 
 	c.JSON(failure.Status, errorResponse{Error: failure.Code, Description: failure.Description})
@@ -365,7 +366,7 @@ func (h *Handler) bearerError(c *gin.Context, err error) {
 		return
 	}
 
-	c.Header("WWW-Authenticate", `Bearer realm="xermess", error="`+failure.Code+`", error_description="`+quoteSafe(failure.Description)+`"`)
+	c.Header("WWW-Authenticate", `Bearer realm="`+brand.Realm+`", error="`+failure.Code+`", error_description="`+quoteSafe(failure.Description)+`"`)
 	c.JSON(failure.Status, errorResponse{Error: failure.Code, Description: failure.Description})
 }
 

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { signIn, type PublicLanguage } from '$lib/api';
-import { COOKIES, LANGUAGE_DEPENDENCY } from '$lib/constants';
+import { COOKIES, LANGUAGE_DEPENDENCY } from '$lib/brand';
 import { BASE, chooseLanguage, type Messages } from '$lib/i18n';
 import type { LayoutServerLoad } from './$types';
 

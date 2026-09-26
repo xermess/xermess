@@ -13,8 +13,8 @@ import (
 	"log/slog"
 	"os"
 
-	"xermess/internal/config"
-	"xermess/internal/database"
+	"loginer/internal/config"
+	"loginer/internal/database"
 )
 
 func main() {

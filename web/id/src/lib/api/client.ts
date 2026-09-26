@@ -28,7 +28,7 @@ type Options = {
 };
 
 /**
- * Calls the xermess API, at /api/v1 on this app's own origin. From the browser
+ * Calls the API, at /api/v1 on this app's own origin. From the browser
  * the proxy routes it to the API; from a server load, pass the load's `fetch`,
  * and hooks.server.ts sends it to the API directly with the reader's cookie.
  */

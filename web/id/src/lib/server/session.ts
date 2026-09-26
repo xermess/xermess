@@ -1,6 +1,6 @@
 import { error, redirect, type Cookies } from '@sveltejs/kit';
 import { ApiError, account, type User } from '$lib/api';
-import { COOKIES } from '$lib/constants';
+import { COOKIES } from '$lib/brand';
 
 /** The signed-in user, or null for a request without a usable session. */
 export async function currentUser(

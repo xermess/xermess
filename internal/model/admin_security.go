@@ -4,7 +4,7 @@ package model
 // apply to every one of them, rather than to any single account.
 //
 // There is one row, like the organisation's. It starts as the installation's
-// configuration says (XERMESS_ADMIN_MFA), and is a super admin's to change
+// configuration says (LOGINER_ADMIN_MFA), and is a super admin's to change
 // afterwards — so turning two-factor sign-in on for everybody does not mean
 // editing a file and restarting the server.
 type AdminSecurity struct {

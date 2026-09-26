@@ -7,7 +7,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 func init() {
@@ -20,7 +20,7 @@ func init() {
 // (model.LoginCode).
 //
 // The two settings tables are seeded on the next start rather than here —
-// store.EnsureMailSettings reads XERMESS_SMTP_* and EnsureOTPSettings the
+// store.EnsureMailSettings reads LOGINER_SMTP_* and EnsureOTPSettings the
 // defaults — so a database stepped forward gets the same row a fresh one
 // gets, from the configuration it is actually running with.
 var mailAndOTP = []any{

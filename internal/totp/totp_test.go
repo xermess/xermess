@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"loginer/internal/brand"
 )
 
 // The SHA-1 vectors of RFC 6238 appendix B, which use eight digits; six-digit
@@ -65,9 +67,15 @@ func TestVerifyAcceptsNeighbouringStepsOnce(t *testing.T) {
 }
 
 func TestURI(t *testing.T) {
-	uri := URI("xermess admin", "root@example.com", "JBSWY3DPEHPK3PXP")
+	uri := URI(brand.Name, "root@example.com", "JBSWY3DPEHPK3PXP")
 
-	for _, want := range []string{"otpauth://totp/xermess%20admin:root@example.com?", "secret=JBSWY3DPEHPK3PXP", "issuer=xermess+admin", "digits=6", "period=30"} {
+	for _, want := range []string{
+		"otpauth://totp/" + brand.Name + ":root@example.com?",
+		"secret=JBSWY3DPEHPK3PXP",
+		"issuer=" + brand.Name,
+		"digits=6",
+		"period=30",
+	} {
 		if !strings.Contains(uri, want) {
 			t.Errorf("URI %q lacks %q", uri, want)
 		}

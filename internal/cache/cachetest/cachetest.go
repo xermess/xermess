@@ -1,7 +1,7 @@
 // Package cachetest opens a Redis for a test that wants one.
 //
-// The Redis is named by XERMESS_TEST_REDIS, as host:port, and signed in to
-// with XERMESS_REDIS_USERNAME and XERMESS_REDIS_PASSWORD when those are set —
+// The Redis is named by LOGINER_TEST_REDIS, as host:port, and signed in to
+// with LOGINER_REDIS_USERNAME and LOGINER_REDIS_PASSWORD when those are set —
 // `make test-integration` fills all three in from .env. Each test gets a key
 // prefix of its own, and its keys are removed when it ends, so tests can share
 // a Redis with a running server without either seeing the other's.
@@ -21,12 +21,13 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"xermess/internal/cache"
-	"xermess/internal/config"
+	"loginer/internal/brand"
+	"loginer/internal/cache"
+	"loginer/internal/config"
 )
 
 // Env names the Redis the tests may use.
-const Env = "XERMESS_TEST_REDIS"
+const Env = "LOGINER_TEST_REDIS"
 
 // Open returns a cache on the test Redis, or nil when there is none — which
 // is a cache that never holds anything, and a server has to work with that
@@ -53,9 +54,9 @@ func Open(t *testing.T) *cache.Cache {
 	c, err := cache.Open(context.Background(), config.Redis{
 		Host:     host,
 		Port:     number,
-		Username: os.Getenv("XERMESS_REDIS_USERNAME"),
-		Password: os.Getenv("XERMESS_REDIS_PASSWORD"),
-		Prefix:   "xermess_test_" + hex.EncodeToString(suffix) + ":",
+		Username: os.Getenv("LOGINER_REDIS_USERNAME"),
+		Password: os.Getenv("LOGINER_REDIS_PASSWORD"),
+		Prefix:   brand.Slug + "_test_" + hex.EncodeToString(suffix) + ":",
 	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)

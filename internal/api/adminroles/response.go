@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // roleResponse is one admin role as the panel sees it.

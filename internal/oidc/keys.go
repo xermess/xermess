@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"xermess/internal/jose"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/jose"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // How signing keys come and go.

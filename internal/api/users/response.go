@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // pageResponse is a page of users, with enough about the page for the panel

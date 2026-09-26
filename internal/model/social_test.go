@@ -20,7 +20,7 @@ func TestSocialProviderValidate(t *testing.T) {
 	custom := func() SocialProvider {
 		p := DefaultSocialProvider(SocialOIDC)
 		p.Slug, p.Name = "keycloak", "Keycloak"
-		p.ClientID, p.ClientSecret = "xermess", []byte("sealed")
+		p.ClientID, p.ClientSecret = "keycloak", []byte("sealed")
 		p.AuthorizeURL = "https://sso.example.com/authorize"
 		p.TokenURL = "https://sso.example.com/token"
 		p.UserInfoURL = "https://sso.example.com/userinfo"

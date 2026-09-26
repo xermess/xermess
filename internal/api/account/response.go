@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/model"
-	"xermess/internal/oidc"
+	"loginer/internal/api/respond"
+	"loginer/internal/model"
+	"loginer/internal/oidc"
 )
 
 // The problems these endpoints answer with that are their own.

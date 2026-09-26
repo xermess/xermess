@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/i18n"
-	"xermess/internal/api/respond"
-	"xermess/internal/oidc"
+	"loginer/i18n"
+	"loginer/internal/api/respond"
+	"loginer/internal/oidc"
 )
 
 // clientCodes are the `error.*` keys an app says about a request that never

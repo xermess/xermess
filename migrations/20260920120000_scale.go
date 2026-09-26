@@ -8,7 +8,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 func init() {

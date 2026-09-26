@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/jose"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/jose"
+	"loginer/internal/model"
 )
 
 // applyTo checks the request and copies it onto a provider.

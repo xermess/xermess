@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // MailSettings returns how this installation sends email.

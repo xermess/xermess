@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/jose"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/jose"
+	"loginer/internal/model"
 )
 
 // sealer is the one these tests seal a password with. The key is only ever

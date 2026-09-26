@@ -1,5 +1,6 @@
 import type { Admin } from '$lib/api';
-import { ADMIN_DEPENDENCY, COOKIES } from '$lib/constants';
+import { COOKIES } from '$lib/brand';
+import { ADMIN_DEPENDENCY } from '$lib/constants';
 import { apiGet } from '$lib/server/api';
 import { isSidebarState, parseClosedBranches, type SidebarState } from '$lib/state/sidebar';
 import type { LayoutServerLoad } from './$types';

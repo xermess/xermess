@@ -10,9 +10,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/jose"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/jose"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // idTokenAlgorithm signs every ID token. RS256 is the one algorithm every

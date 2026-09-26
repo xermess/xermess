@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // UserFields returns every field a user record has, in the order they are

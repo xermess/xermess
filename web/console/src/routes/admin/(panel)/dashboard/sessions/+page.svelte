@@ -6,6 +6,7 @@
 	import { RiCloseLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { messageOf, sessionsApi, type UserSessionRecord } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { keys, sessionsOptions } from '$lib/query';
 	import { Alert, Button, Icon, IconButton, PageHeader, SearchInput } from '$lib/components/ui';
 	import SessionTable from '$lib/components/sessions/SessionTable.svelte';
@@ -96,7 +97,7 @@
 	}));
 </script>
 
-<svelte:head><title>Sessions · xermess admin</title></svelte:head>
+<svelte:head><title>Sessions · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Sessions']}>

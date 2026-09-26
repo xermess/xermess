@@ -13,14 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"xermess/internal/config"
+	"loginer/internal/brand"
+	"loginer/internal/config"
 )
 
-// The tests that need a Redis name it in XERMESS_TEST_REDIS, as host:port,
+// The tests that need a Redis name it in LOGINER_TEST_REDIS, as host:port,
 // and skip without it, the way the database tests do with
-// XERMESS_TEST_DB_DSN. Each runs under a prefix of its own and removes its
+// LOGINER_TEST_DB_DSN. Each runs under a prefix of its own and removes its
 // keys afterwards, so they can share a Redis with a running server.
-const testRedisEnv = "XERMESS_TEST_REDIS"
+const testRedisEnv = "LOGINER_TEST_REDIS"
 
 func liveCache(t *testing.T) *Cache {
 	t.Helper()
@@ -38,7 +39,7 @@ func liveCache(t *testing.T) *Cache {
 
 	suffix := make([]byte, 6)
 	_, _ = rand.Read(suffix)
-	prefix := "xermess_test_" + hex.EncodeToString(suffix) + ":"
+	prefix := brand.Slug + "_test_" + hex.EncodeToString(suffix) + ":"
 
 	c, err := Open(context.Background(), config.Redis{Host: host, Port: port, Prefix: prefix},
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
@@ -100,7 +101,7 @@ func TestLiveCacheForgetsAGroupAtOnce(t *testing.T) {
 	type text struct{ Messages map[string]string }
 
 	c.Set(ctx, Languages, "text:ru:id", text{Messages: map[string]string{"action.sign_in": "Войти"}})
-	c.Set(ctx, Organization, "settings", "xermess")
+	c.Set(ctx, Organization, "settings", brand.Name)
 
 	var got text
 	if !c.Get(ctx, Languages, "text:ru:id", &got) || got.Messages["action.sign_in"] != "Войти" {
@@ -118,7 +119,7 @@ func TestLiveCacheForgetsAGroupAtOnce(t *testing.T) {
 	}
 
 	var name string
-	if !c.Get(ctx, Organization, "settings", &name) || name != "xermess" {
+	if !c.Get(ctx, Organization, "settings", &name) || name != brand.Name {
 		t.Error("forgetting one group forgot another")
 	}
 

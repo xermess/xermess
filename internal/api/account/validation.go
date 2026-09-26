@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"xermess/internal/api/validate"
-	"xermess/internal/oidc"
+	"loginer/internal/api/validate"
+	"loginer/internal/oidc"
 )
 
 func (r *loginRequest) validate() error {

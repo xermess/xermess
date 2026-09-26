@@ -8,10 +8,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // minPasswordLength is the shortest password an administrator may give a

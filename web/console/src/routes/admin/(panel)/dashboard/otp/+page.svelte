@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { RiRefreshLine } from 'svelte-remixicon';
+	import { BRAND } from '$lib/brand';
 	import { IconButton, PageContainer, PageHeader } from '$lib/components/ui';
 	import OtpSettings from '$lib/components/otp/OtpSettings.svelte';
 	import { keys, otpOptions } from '$lib/query';
@@ -13,7 +14,7 @@
 	const settings = createQuery(() => otpOptions(data.otp));
 </script>
 
-<svelte:head><title>One-time codes · xermess admin</title></svelte:head>
+<svelte:head><title>One-time codes · {BRAND.name}</title></svelte:head>
 
 <PageContainer>
 	<div class="page">

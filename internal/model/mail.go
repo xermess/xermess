@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+
+	"loginer/internal/brand"
 )
 
 // MailSettings is how this installation sends email: the server it hands a
 // message to, and the address that message comes from.
 //
 // There is one row, like the organisation's and admin_security's. It starts
-// as the configuration says (XERMESS_SMTP_*) and is a super admin's to change
+// as the configuration says (LOGINER_SMTP_*) and is a super admin's to change
 // afterwards, and it is read when a message is sent rather than held in a
 // field from startup — so correcting a password that was typed wrong takes
 // effect on the next email instead of the next restart.
@@ -96,7 +98,7 @@ func DefaultMailSettings() MailSettings {
 		Port:        587,
 		Encryption:  MailStartTLS,
 		FromAddress: "no-reply@localhost",
-		FromName:    "xermess",
+		FromName:    brand.Name,
 	}
 }
 

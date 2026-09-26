@@ -74,8 +74,8 @@ func (s *Sealer) OpenBytes(sealed []byte) ([]byte, error) {
 }
 
 // ErrWrongSecret is returned when a stored key cannot be decrypted: almost
-// always because XERMESS_SECRET_KEY is not the one it was sealed with.
-var ErrWrongSecret = errors.New("jose: a signing key could not be decrypted; is XERMESS_SECRET_KEY the one it was made with?")
+// always because LOGINER_SECRET_KEY is not the one it was sealed with.
+var ErrWrongSecret = errors.New("jose: a signing key could not be decrypted; is LOGINER_SECRET_KEY the one it was made with?")
 
 // Open decrypts and decodes a key Seal made.
 func (s *Sealer) Open(sealed []byte) (crypto.Signer, error) {

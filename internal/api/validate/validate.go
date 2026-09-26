@@ -29,7 +29,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // instance is shared: building one is expensive, and it is safe to use from

@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // The sessions the panel's Sessions page lists: who is signed in, from where,

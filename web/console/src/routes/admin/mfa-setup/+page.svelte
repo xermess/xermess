@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { RiShieldCheckLine } from 'svelte-remixicon';
 	import { adminApi } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import TotpSetup from '$lib/components/mfa/TotpSetup.svelte';
 	import { Card, Icon, ThemeToggle } from '$lib/components/ui';
 
@@ -24,7 +25,7 @@
 </script>
 
 <svelte:head>
-	<title>Set up two-factor sign-in · xermess admin</title>
+	<title>Set up two-factor sign-in · {BRAND.name}</title>
 </svelte:head>
 
 <main>

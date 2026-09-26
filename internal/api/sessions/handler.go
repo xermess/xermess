@@ -17,11 +17,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"xermess/internal/api/audit"
-	"xermess/internal/api/query"
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/store"
+	"loginer/internal/api/audit"
+	"loginer/internal/api/query"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/store"
 )
 
 // Handler serves the Sessions page.

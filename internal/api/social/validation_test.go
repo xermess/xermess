@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/jose"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/jose"
+	"loginer/internal/model"
 )
 
 func sealer(t *testing.T) *jose.Sealer {
@@ -63,7 +63,7 @@ func TestProviderRequestApplyToCreating(t *testing.T) {
 			name: "a second provider of the same kind, under its own name",
 			request: providerRequest{
 				Kind: "oidc", Slug: "Staff-SSO", Name: ptr("Staff SSO"),
-				ClientID: ptr("xermess"), ClientSecret: ptr("a secret"),
+				ClientID: ptr("staff-portal"), ClientSecret: ptr("a secret"),
 				AuthorizeURL: ptr("https://sso.example.com/authorize"),
 				TokenURL:     ptr("https://sso.example.com/token"),
 				UserInfoURL:  ptr("https://sso.example.com/userinfo"),

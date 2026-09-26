@@ -1,6 +1,6 @@
 package flows
 
-import "xermess/internal/model"
+import "loginer/internal/model"
 
 // targetType is what a flow is called in the activity log.
 const targetType = "login_flow"

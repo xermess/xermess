@@ -3,9 +3,9 @@ package languages
 import (
 	"net/http"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // targetType is what a language is called in the activity log.

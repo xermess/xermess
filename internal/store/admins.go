@@ -10,7 +10,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"xermess/internal/model"
+	"loginer/internal/brand"
+	"loginer/internal/model"
 )
 
 // ErrAdminExists is returned when the first administrator is asked for and
@@ -20,7 +21,7 @@ var ErrAdminExists = errors.New("an administrator already exists")
 
 // firstAdminLock names the advisory lock CreateFirstAdmin holds. Any number
 // will do, as long as nothing else locks the same one.
-const firstAdminLock = 0x7865726d657373 // "xermess"
+const firstAdminLock = brand.AdminLock
 
 // AdminsExist reports whether anyone can sign in to the panel yet.
 func (s *Store) AdminsExist(ctx context.Context) (bool, error) {

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/config"
-	"xermess/internal/model"
+	"loginer/internal/brand"
+	"loginer/internal/config"
+	"loginer/internal/model"
 )
 
 // A message has to leave here as a mail client expects to find it: headers
@@ -82,10 +83,10 @@ func TestSeed(t *testing.T) {
 	}{
 		{
 			name: "nothing configured sends nothing",
-			cfg:  config.Mail{Port: 587, From: "xermess <no-reply@localhost>"},
+			cfg:  config.Mail{Port: 587, From: brand.Name + " <no-reply@localhost>"},
 			want: model.MailSettings{
 				Enabled: false, Port: 587, Encryption: model.MailStartTLS,
-				FromAddress: "no-reply@localhost", FromName: "xermess",
+				FromAddress: "no-reply@localhost", FromName: brand.Name,
 			},
 		},
 		{
@@ -115,7 +116,7 @@ func TestSeed(t *testing.T) {
 				Enabled: true, Host: "smtp.example.com", Port: 25,
 				Encryption: model.MailStartTLS,
 				// The default's, since nothing could be read from the file.
-				FromAddress: "no-reply@localhost", FromName: "xermess",
+				FromAddress: "no-reply@localhost", FromName: brand.Name,
 			},
 		},
 	}

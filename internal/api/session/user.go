@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"loginer/internal/brand"
 )
 
 // UserCookie carries a user's session at this server: what lets the
@@ -12,7 +14,7 @@ import (
 // asking for their password again. It is a different cookie from the
 // administrators' on purpose — signing in to an application must never sign
 // anyone in to the panel.
-const UserCookie = "xermess_user_session"
+const UserCookie = brand.UserSessionCookie
 
 // SetUser stores a user's session token in the browser, until the session
 // expires — which the login flow that made it decides.
@@ -62,7 +64,7 @@ func writeUser(c *gin.Context, value string, maxAge int, secure bool) {
 // and everything the person did next would go into the attacker's account.
 // The cookie is the half that cannot be put in another person's browser, and
 // the callback refuses a state that does not match it.
-const SignInStateCookie = "xermess_sign_in_state"
+const SignInStateCookie = brand.SignInStateCookie
 
 // signInStatePath keeps the cookie to the provider endpoints, which are the
 // only ones that ever read it.

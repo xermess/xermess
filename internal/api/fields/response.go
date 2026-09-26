@@ -1,6 +1,6 @@
 package fields
 
-import "xermess/internal/model"
+import "loginer/internal/model"
 
 // fieldResponse is one field as the panel sees it.
 //

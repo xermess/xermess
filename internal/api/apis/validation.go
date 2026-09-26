@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // applyTo checks the request and copies it onto an API. `creating` says

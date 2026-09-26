@@ -15,11 +15,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"xermess/internal/api/audit"
-	"xermess/internal/api/respond"
-	"xermess/internal/api/session"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/api/audit"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/session"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // Handler holds what these endpoints need.
@@ -32,7 +32,7 @@ type Handler struct {
 	issuer string
 }
 
-// New returns a Handler. `issuer` is XERMESS_ISSUER, which tokens name the
+// New returns a Handler. `issuer` is LOGINER_ISSUER, which tokens name the
 // server by.
 func New(st *store.Store, recorder audit.Recorder, log *slog.Logger, issuer string) *Handler {
 	return &Handler{store: st, audit: recorder, log: log, issuer: issuer}

@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // UserQuery is what a listing asks for: a search box, a filter, and a page.

@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/model"
-	"xermess/internal/oidc"
+	"loginer/internal/model"
+	"loginer/internal/oidc"
 )
 
 // authorizeParams reads an authorization request, from the query string or,

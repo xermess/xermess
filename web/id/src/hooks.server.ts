@@ -1,6 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 
-import { COOKIES } from '$lib/constants';
+import { COOKIES } from '$lib/brand';
 import { BASE } from '$lib/i18n';
 
 export { handleFetch } from '$lib/server/proxy';

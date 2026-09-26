@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // TestUserRequestValidate covers the one column a user record has of its own.

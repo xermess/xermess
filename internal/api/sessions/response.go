@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"xermess/internal/store"
+	"loginer/internal/store"
 )
 
 type sessionUser struct {

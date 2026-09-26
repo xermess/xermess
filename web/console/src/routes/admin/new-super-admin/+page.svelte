@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { RiShieldKeyholeLine } from 'svelte-remixicon';
 	import { adminApi, ApiError, setupApi } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Alert, Button, Card, Icon, Input, PasswordInput, ThemeToggle } from '$lib/components/ui';
 
 	let firstName = $state('');
@@ -46,7 +47,7 @@
 	}
 </script>
 
-<svelte:head><title>Set up xermess</title></svelte:head>
+<svelte:head><title>Set up {BRAND.name}</title></svelte:head>
 
 <main>
 	<div class="corner">
@@ -58,9 +59,9 @@
 			<form onsubmit={create}>
 				<header>
 					<span class="mark">
-						<Icon icon={RiShieldKeyholeLine} size="1.25rem" label="xermess" />
+						<Icon icon={RiShieldKeyholeLine} size="1.25rem" label={BRAND.name} />
 					</span>
-					<h1>Set up xermess</h1>
+					<h1>Set up {BRAND.name}</h1>
 					<p class="muted">
 						This panel has no administrator yet. The account you make here is the super admin: it
 						can do everything, including making the others.

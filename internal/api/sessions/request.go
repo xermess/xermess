@@ -3,7 +3,7 @@ package sessions
 import (
 	"net/http"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // targetType is what the activity log records these actions against: the

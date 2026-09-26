@@ -11,6 +11,7 @@ import {
 } from 'svelte-remixicon';
 import type { ComponentType } from 'svelte';
 import type { LoginStep, LoginStepSpec } from '$lib/api';
+import { BRAND } from '$lib/brand';
 
 /** The mark beside each step, wherever one is listed. The step catalog itself
     is the server's — what a step is called and whether it is run yet comes
@@ -211,15 +212,20 @@ export const TEMPLATES: FlowTemplate[] = [
 
 // ---- JSON -------------------------------------------------------------------
 
+/** What an exported flow says it is, written once so the type and the file
+    agree. The project's name is part of it, which is why it comes from the
+    brand rather than being spelled here. */
+const FLOW_SCHEMA = `${BRAND.slug}.login-flow/1`;
+
 /** What Export writes and Import reads: a flow without anything that belongs
     to one installation — its id, its applications, whether it is the
     default here. */
-export type FlowFile = Omit<FlowDraft, 'is_default'> & { $schema: 'xermess.login-flow/1' };
+export type FlowFile = Omit<FlowDraft, 'is_default'> & { $schema: typeof FLOW_SCHEMA };
 
 export function toFile(draft: FlowDraft): FlowFile {
 	const copy = draftOf(draft);
 	return {
-		$schema: 'xermess.login-flow/1',
+		$schema: FLOW_SCHEMA,
 		name: copy.name,
 		slug: copy.slug,
 		description: copy.description,

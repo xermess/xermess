@@ -3,7 +3,7 @@ package setup
 import (
 	"strings"
 
-	"xermess/internal/api/validate"
+	"loginer/internal/api/validate"
 )
 
 // validate checks the form.

@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/model"
 )
 
 func TestAPIRequestApplyTo(t *testing.T) {

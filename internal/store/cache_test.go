@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // What the store caches goes to Redis as JSON, and a field JSON leaves out

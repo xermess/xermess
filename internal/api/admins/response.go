@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // reference names another row: enough to show it and to send it back.

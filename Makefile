@@ -1,4 +1,4 @@
-# xermess — run `make` for the list of targets.
+# Loginer — run `make` for the list of targets.
 
 SHELL   := bash
 APPS    := console id
@@ -43,10 +43,10 @@ prod: ## Same as make full-start prod
 endif
 
 run: ## Start only the API
-	go run ./cmd/xermess
+	go run ./cmd/loginer
 
-build: ## Build the API into bin/xermess
-	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o bin/xermess ./cmd/xermess
+build: ## Build the API into bin/loginer
+	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o bin/loginer ./cmd/loginer
 
 ## Quality
 
@@ -57,8 +57,8 @@ test: ## Run the Go tests
 	go test $(PKGS)
 
 test-integration: ## Run the tests that need Postgres and Redis (throwaway databases and key prefixes)
-	@. scripts/lib.sh && load_env && XERMESS_TEST_DB_DSN="$${DB_URL:-$$XERMESS_DB_DSN}" \
-		XERMESS_TEST_REDIS="$${XERMESS_TEST_REDIS:-$${XERMESS_REDIS_HOST:+$$XERMESS_REDIS_HOST:$${XERMESS_REDIS_PORT:-6379}}}" \
+	@. scripts/lib.sh && load_env && LOGINER_TEST_DB_DSN="$${DB_URL:-$$LOGINER_DB_DSN}" \
+		LOGINER_TEST_REDIS="$${LOGINER_TEST_REDIS:-$${LOGINER_REDIS_HOST:+$$LOGINER_REDIS_HOST:$${LOGINER_REDIS_PORT:-6379}}}" \
 		go test -count=1 -run Live ./internal/...
 
 web-check: ## Lint and type-check the web apps

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // TestAdminRequestValidate covers the form an administrator is made and

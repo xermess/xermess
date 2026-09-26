@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/mail"
 
-	"xermess/internal/config"
-	"xermess/internal/model"
+	"loginer/internal/config"
+	"loginer/internal/model"
 )
 
 // Store is the part of the store this package uses: the mail settings, read
@@ -68,7 +68,7 @@ func Of(stored model.MailSettings, password string) Settings {
 const implicitTLSPort = 465
 
 // Seed is the row a fresh installation starts with, from the configuration:
-// XERMESS_SMTP_HOST and the rest, which are read once and then belong to the
+// LOGINER_SMTP_HOST and the rest, which are read once and then belong to the
 // panel. A host named there turns sending on, since naming one is what an
 // installation does to mean "send email".
 //
@@ -87,8 +87,8 @@ func Seed(cfg config.Mail) (model.MailSettings, string) {
 		settings.Encryption = model.MailTLS
 	}
 
-	// XERMESS_SMTP_FROM is one string in the form a mail client shows,
-	// "xermess <no-reply@localhost>"; the panel asks for the two parts
+	// LOGINER_SMTP_FROM is one string in the form a mail client shows,
+	// "a name <no-reply@localhost>"; the panel asks for the two parts
 	// apart. Anything that is not an address is left for the Mail page to
 	// correct rather than stopping the server.
 	if parsed, err := mail.ParseAddress(cfg.From); err == nil {

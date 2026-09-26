@@ -3,7 +3,7 @@ package oidc
 import (
 	"context"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // PublicOrganization is what the sign-in pages show about the organisation

@@ -1,4 +1,4 @@
-import { COOKIES } from '$lib/constants';
+import { COOKIES } from '$lib/brand';
 
 /** How wide the dashboard sidebar is: the full column, or icons only.
  *

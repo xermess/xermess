@@ -13,20 +13,21 @@ import (
 	"testing"
 	"time"
 
-	"xermess/internal/config"
-	"xermess/internal/database"
-	"xermess/internal/jose"
-	"xermess/internal/store"
+	"loginer/internal/brand"
+	"loginer/internal/config"
+	"loginer/internal/database"
+	"loginer/internal/jose"
+	"loginer/internal/store"
 )
 
 // testStore makes a throwaway database, migrated, and a store on it. It needs
-// XERMESS_TEST_DB_DSN, like the API's live tests, and is skipped without it.
+// LOGINER_TEST_DB_DSN, like the API's live tests, and is skipped without it.
 func testStore(t *testing.T) *store.Store {
 	t.Helper()
 
-	dsn := os.Getenv("XERMESS_TEST_DB_DSN")
+	dsn := os.Getenv("LOGINER_TEST_DB_DSN")
 	if dsn == "" {
-		t.Skip("XERMESS_TEST_DB_DSN is not set")
+		t.Skip("LOGINER_TEST_DB_DSN is not set")
 	}
 
 	server, err := database.Open(config.DB{Driver: "postgres", DSN: dsn, TimeZone: "UTC"})
@@ -37,7 +38,7 @@ func testStore(t *testing.T) *store.Store {
 
 	var b [6]byte
 	_, _ = rand.Read(b[:])
-	name := "xermess_keys_" + hex.EncodeToString(b[:])
+	name := brand.Slug + "_keys_" + hex.EncodeToString(b[:])
 	if err := server.Exec("CREATE DATABASE " + name).Error; err != nil {
 		t.Fatal(err)
 	}

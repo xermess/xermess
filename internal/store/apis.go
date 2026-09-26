@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // scopesByName orders an API's scopes, so they always come out the same way.

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { RiRefreshLine } from 'svelte-remixicon';
+	import { BRAND } from '$lib/brand';
 	import { IconButton, PageContainer, PageHeader } from '$lib/components/ui';
 	import OrganizationSettings from '$lib/components/organization/OrganizationSettings.svelte';
 	import { can } from '$lib/permissions';
@@ -16,7 +17,7 @@
 	const canWrite = $derived(can(data.admin, 'organization.write'));
 </script>
 
-<svelte:head><title>Organization · xermess admin</title></svelte:head>
+<svelte:head><title>Organization · {BRAND.name}</title></svelte:head>
 
 <PageContainer>
 	<div class="page">

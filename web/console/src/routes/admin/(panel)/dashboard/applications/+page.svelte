@@ -6,6 +6,7 @@
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, applicationsApi, type Application } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { applicationsOptions, keys } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import {
@@ -127,7 +128,7 @@
 	];
 </script>
 
-<svelte:head><title>Applications · xermess admin</title></svelte:head>
+<svelte:head><title>Applications · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'Applications']}>

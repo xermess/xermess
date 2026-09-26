@@ -3,7 +3,7 @@ package sso
 import (
 	"net/http"
 
-	"xermess/internal/api/respond"
+	"loginer/internal/api/respond"
 )
 
 // targetType is what a connection is called in the activity log.

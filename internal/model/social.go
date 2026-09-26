@@ -180,7 +180,7 @@ const (
 	SocialYandex   SocialKind = "yandex"
 	SocialVK       SocialKind = "vk"
 	// SocialOIDC is any other OpenID Connect provider: Keycloak, Okta,
-	// Microsoft Entra, another xermess.
+	// Microsoft Entra, another server of this one's own kind.
 	SocialOIDC SocialKind = "oidc"
 	// SocialOAuth2 is a provider that is not OpenID Connect but hands out
 	// access tokens and has somewhere to read a profile from.

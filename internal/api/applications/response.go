@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // applicationResponse is an application as the panel sees it. The secret's

@@ -20,8 +20,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/cache"
+	"loginer/internal/api/respond"
+	"loginer/internal/cache"
 )
 
 // RateLimited is what an address over the limit is told, with how many
@@ -134,7 +134,7 @@ func (l *Limiter) sweep(now time.Time) {
 }
 
 // Middleware refuses a request over the limit with 429 and Retry-After. The
-// address is Gin's ClientIP, so behind a proxy XERMESS_TRUSTED_PROXIES has to
+// address is Gin's ClientIP, so behind a proxy LOGINER_TRUSTED_PROXIES has to
 // name it — otherwise every client shares the proxy's one budget.
 func (l *Limiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

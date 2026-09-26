@@ -22,27 +22,28 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/i18n"
-	"xermess/internal/cache"
-	"xermess/internal/cache/cachetest"
-	"xermess/internal/config"
-	"xermess/internal/database"
-	"xermess/internal/mail"
-	"xermess/internal/model"
-	"xermess/internal/oidc"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/brand"
+	"loginer/internal/cache"
+	"loginer/internal/cache/cachetest"
+	"loginer/internal/config"
+	"loginer/internal/database"
+	"loginer/internal/mail"
+	"loginer/internal/model"
+	"loginer/internal/oidc"
+	"loginer/internal/store"
 )
 
 // These tests run the whole server — routes, permission checks, store and
 // migrations — against a real Postgres. They need a database server to make
-// throwaway databases on, named by XERMESS_TEST_DB_DSN:
+// throwaway databases on, named by LOGINER_TEST_DB_DSN:
 //
-//	XERMESS_TEST_DB_DSN=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable go test ./internal/api/
+//	LOGINER_TEST_DB_DSN=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable go test ./internal/api/
 //
 // Without it they are skipped, so `go test ./...` still passes anywhere.
 
 // testDSNEnv names the database server the integration tests may use.
-const testDSNEnv = "XERMESS_TEST_DB_DSN"
+const testDSNEnv = "LOGINER_TEST_DB_DSN"
 
 // liveServer is the server running on a database of its own.
 type liveServer struct {
@@ -159,7 +160,7 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	}
 	t.Cleanup(func() { _ = database.Close(admin) })
 
-	name := "xermess_test_" + randomHex(t, 6)
+	name := brand.Slug + "_test_" + randomHex(t, 6)
 	if err := admin.Exec("CREATE DATABASE " + name).Error; err != nil {
 		t.Fatalf("create %s: %v", name, err)
 	}
@@ -204,7 +205,7 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	}
 	change(&serverCfg)
 
-	// With XERMESS_TEST_REDIS the whole server runs with its cache, under a
+	// With LOGINER_TEST_REDIS the whole server runs with its cache, under a
 	// prefix of its own, so every test here also proves that a write is seen
 	// by the next read through the cache.
 	shared := cachetest.Open(t)
@@ -902,7 +903,7 @@ func TestLiveOrganizationSaveIgnoresAStaleCache(t *testing.T) {
 		"terms_url": "https://acme.example.com/terms",
 	}, &answer)
 
-	if answer.Organization.TermsURL != "https://acme.example.com/terms" || answer.Organization.Name != "xermess" {
+	if answer.Organization.TermsURL != "https://acme.example.com/terms" || answer.Organization.Name != brand.Name {
 		t.Errorf("after the save = %+v, want the stored organization with its terms", answer.Organization)
 	}
 
@@ -935,7 +936,7 @@ func TestLiveOrganizationSettings(t *testing.T) {
 	var seeded organizationBody
 	super.must(http.StatusOK, http.MethodGet, "/organization", nil, &seeded)
 
-	if seeded.Organization.Name != "xermess" || seeded.Organization.Slug != "xermess" {
+	if seeded.Organization.Name != brand.Name || seeded.Organization.Slug != brand.Slug {
 		t.Errorf("seeded = %+v, want the default organization", seeded.Organization)
 	}
 

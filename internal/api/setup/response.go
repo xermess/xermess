@@ -1,6 +1,6 @@
 package setup
 
-import "xermess/internal/model"
+import "loginer/internal/model"
 
 // statusResponse says whether the panel still needs an administrator.
 type statusResponse struct {

@@ -53,7 +53,7 @@ func newSocialFixture(t *testing.T, provider map[string]any) *socialFixture {
 		ClientSecret string `json:"client_secret"`
 	}
 	super.must(http.StatusCreated, http.MethodPost, "/applications", map[string]any{
-		"name": "xermess itself", "type": "web",
+		"name": "the server itself", "type": "web",
 		"grant_types":   []string{"authorization_code"},
 		"redirect_uris": []string{s.root + "/oauth2/social/" + socialSlug + "/callback"},
 		"scopes":        []string{"openid", "profile", "email"},
@@ -64,7 +64,7 @@ func newSocialFixture(t *testing.T, provider map[string]any) *socialFixture {
 	}
 
 	body := map[string]any{
-		"kind": "oidc", "slug": socialSlug, "name": "xermess",
+		"kind": "oidc", "slug": socialSlug, "name": "the server",
 		"client_id": app.Application.ClientID, "client_secret": app.ClientSecret,
 		"authorize_url": s.root + "/oauth2/authorize",
 		"token_url":     s.root + "/oauth2/token",
@@ -652,7 +652,7 @@ func (f *fakeProvider) register(t *testing.T, s *liveServer, super *client, extr
 
 	body := map[string]any{
 		"kind": "oidc", "slug": "fake", "name": "Example ID",
-		"client_id": "xermess", "client_secret": "a secret",
+		"client_id": "fake-client", "client_secret": "a secret",
 		"authorize_url": f.server.URL + "/authorize",
 		"token_url":     f.server.URL + "/token",
 		"userinfo_url":  f.server.URL + "/userinfo",

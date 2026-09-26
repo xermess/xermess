@@ -13,6 +13,7 @@
 		RiShieldCheckLine,
 		RiUserStarLine
 	} from 'svelte-remixicon';
+	import { BRAND } from '$lib/brand';
 	import ActivityChart from '$lib/components/activity/ActivityChart.svelte';
 	import ActivityFeed from '$lib/components/activity/ActivityFeed.svelte';
 	import SignInHealth from '$lib/components/activity/SignInHealth.svelte';
@@ -54,10 +55,48 @@
 				}
 			: { events: 0, refused: 0 }
 	);
+
+	const count = (n: number) => n.toLocaleString();
+
+	/** One line from the parts that apply, in a middot-separated list. */
+	function note(...parts: (string | false)[]) {
+		return parts.filter(Boolean).join(' · ');
+	}
+
+	/** What each number is a number of, as the one line its card shows beside
+	    it. A part that does not apply this week is left out rather than shown
+	    as a zero. */
+	const notes = $derived.by(() => {
+		if (!overview) return null;
+
+		const counts = overview.counts;
+
+		return {
+			users: note(
+				`${count(counts.active_users)} active`,
+				counts.new_users > 0 && `+${count(counts.new_users)} this week`
+			),
+			applications: note(
+				`${count(counts.enabled_applications)} enabled`,
+				`${count(counts.user_roles)} roles`
+			),
+			apis: note(`${count(counts.api_scopes)} scopes`),
+			sessions: note(
+				`${count(counts.admins)} ${counts.admins === 1 ? 'admin' : 'admins'}`,
+				counts.locked_admins > 0 && `${counts.locked_admins} locked`
+			)
+		};
+	});
+
+	/** The one note that is not a count: an administrator locked out is the
+	    exception on this page, so their card is the one that changes colour. */
+	const sessionsTone = $derived(
+		overview && overview.counts.locked_admins > 0 ? 'warning' : 'neutral'
+	);
 </script>
 
 <svelte:head>
-	<title>Activity · xermess admin</title>
+	<title>Activity · {BRAND.name}</title>
 </svelte:head>
 
 <div class="page">
@@ -82,53 +121,43 @@
 		{/snippet}
 	</PageHeader>
 
-	{#if overview}
+	{#if overview && notes}
 		{@const counts = overview.counts}
 		<div class="stats">
 			<StatCard
 				label="Users"
 				value={counts.users}
 				icon={RiGroupLine}
+				note={notes.users}
 				href={can(admin, 'users.read') ? resolve('/admin/(panel)/dashboard/users') : undefined}
-			>
-				<Tag small>{counts.active_users.toLocaleString()} active</Tag>
-				{#if counts.new_users > 0}
-					<Tag small tone="success">+{counts.new_users.toLocaleString()} this week</Tag>
-				{/if}
-			</StatCard>
+			/>
 
 			<StatCard
 				label="Applications"
 				value={counts.applications}
 				icon={RiAppsLine}
+				note={notes.applications}
 				href={canAnywhere(admin, 'applications.read')
 					? resolve('/admin/(panel)/dashboard/applications')
 					: undefined}
-			>
-				<Tag small>{counts.enabled_applications.toLocaleString()} enabled</Tag>
-				<Tag small>{counts.user_roles.toLocaleString()} roles</Tag>
-			</StatCard>
+			/>
 
 			<StatCard
 				label="APIs"
 				value={counts.apis}
 				icon={RiCodeBoxLine}
+				note={notes.apis}
 				href={can(admin, 'apis.read') ? resolve('/admin/(panel)/dashboard/apis') : undefined}
-			>
-				<Tag small>{counts.api_scopes.toLocaleString()} scopes</Tag>
-			</StatCard>
+			/>
 
 			<StatCard
 				label="Active sessions"
 				value={counts.active_sessions}
 				icon={RiComputerLine}
+				note={notes.sessions}
+				tone={sessionsTone}
 				href={admin.is_super_admin ? resolve('/admin/(panel)/dashboard/admins') : undefined}
-			>
-				<Tag small>{counts.admins.toLocaleString()} {counts.admins === 1 ? 'admin' : 'admins'}</Tag>
-				{#if counts.locked_admins > 0}
-					<Tag small tone="warning">{counts.locked_admins} locked</Tag>
-				{/if}
-			</StatCard>
+			/>
 		</div>
 
 		<div class="row">
@@ -189,10 +218,13 @@
 		padding-bottom: var(--space-5);
 	}
 
+	/* The metrics are a strip rather than a row of boxes, so the gap between
+	   them is smaller than the gap down to the panels below: they are read
+	   together, and a 5px step says so. */
 	.stats {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: var(--space-4);
+		gap: var(--space-3);
 	}
 
 	.row {
@@ -228,6 +260,14 @@
 		}
 	}
 
+	/* Below this a note beside its number has nowhere to go without being cut
+	   off, so the cards go down the page instead and each is the full width. */
+	@media (max-width: 34rem) {
+		.stats {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
 	@media (max-width: 64rem) {
 		.row {
 			grid-template-columns: minmax(0, 1fr);
@@ -235,7 +275,6 @@
 	}
 
 	@media (max-width: 34rem) {
-		.stats,
 		.row,
 		.side,
 		.page {

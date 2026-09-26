@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // OTPSettings returns how the codes this server emails behave.

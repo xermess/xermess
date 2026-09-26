@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { RiShieldKeyholeLine } from 'svelte-remixicon';
 	import { adminApi, ApiError } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Alert, Button, Card, Icon, Input, PasswordInput, ThemeToggle } from '$lib/components/ui';
 
 	let { data } = $props();
@@ -75,7 +76,7 @@
 </script>
 
 <svelte:head>
-	<title>Sign in · xermess admin</title>
+	<title>Sign in · {BRAND.name}</title>
 </svelte:head>
 
 <main>
@@ -89,7 +90,7 @@
 				<form onsubmit={verify}>
 					<header>
 						<span class="mark">
-							<Icon icon={RiShieldKeyholeLine} size="1.25rem" label="xermess" />
+							<Icon icon={RiShieldKeyholeLine} size="1.25rem" label={BRAND.name} />
 						</span>
 						<h1>Two-factor sign-in</h1>
 						<p class="muted">
@@ -138,9 +139,9 @@
 				<form onsubmit={signIn}>
 					<header>
 						<span class="mark">
-							<Icon icon={RiShieldKeyholeLine} size="1.25rem" label="xermess" />
+							<Icon icon={RiShieldKeyholeLine} size="1.25rem" label={BRAND.name} />
 						</span>
-						<h1>xermess</h1>
+						<h1>{BRAND.name}</h1>
 						<p class="muted">Sign in to the admin panel</p>
 					</header>
 

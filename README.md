@@ -1,4 +1,4 @@
-# xermess
+# Loginer
 
 An authentication server written in Go, with its frontends under `web/`:
 `web/console`, the admin panel, and `web/id`, where users sign in and
@@ -59,7 +59,7 @@ Run `make` for the list:
 ## Layout
 
 ```
-cmd/xermess/main.go            startup, in order, in one function
+cmd/loginer/main.go            startup, in order, in one function
 cmd/migrate/main.go            runs migrations by hand: up, down, status
 
 i18n/                       the sign-in pages' translations, grouped by app, language,
@@ -238,7 +238,7 @@ connection, `model` describes the tables, `store` queries them, `auth` decides
 who may sign in, `api` answers requests. Nothing imports `api` except `main`,
 and `model` imports nothing of ours at all.
 
-Startup is `run` in `cmd/xermess/main.go`, top to bottom: read the
+Startup is `run` in `cmd/loginer/main.go`, top to bottom: read the
 configuration, open the database, apply migrations, build the store and the
 provider, serve.
 
@@ -258,7 +258,7 @@ Whoever already has one shows as such on the Administrators page, where a
 super admin can also reset it.
 
 Whether it is compulsory for everybody is a setting on the Administrators
-page, not a line in a file: `XERMESS_ADMIN_MFA` is only what a fresh
+page, not a line in a file: `LOGINER_ADMIN_MFA` is only what a fresh
 installation starts with, written to `admin_security` on the first start, and
 a super admin owns it from then on. Off is the default there too — the
 alternative decides for people who have not been asked, and would send the
@@ -269,7 +269,7 @@ change, since that includes whoever is making it. A
 session whose password was right but whose code is still to come can do nothing
 but give the code; one that has to set an authenticator up can do nothing but
 that (`internal/auth/mfa.go`, `internal/totp`). Token signing keys rotate every
-`XERMESS_KEY_ROTATION_DAYS`, a new one published a day before it signs.
+`LOGINER_KEY_ROTATION_DAYS`, a new one published a day before it signs.
 
 **Nobody is asked to allow an application.** A user already signed in here is
 sent straight back to the application that asked, with a code, and every
@@ -410,7 +410,7 @@ permission each route needs, is in `registerRoutes` in `internal/api/server.go`.
 
 What a token carries is decided in one place, `model.EvaluateToken`, which the
 panel's token preview runs too. Signing keys are made on first start, one per
-algorithm, and stored encrypted with `XERMESS_SECRET_KEY`. Every code, refresh
+algorithm, and stored encrypted with `LOGINER_SECRET_KEY`. Every code, refresh
 token, session and reset link is stored as a SHA-256 hash. Refresh tokens
 rotate, and a replayed one revokes its whole family.
 
@@ -761,7 +761,7 @@ the only thing that identifies somebody reliably. `social_logins` is a sign-in
 that has gone to a provider and not come back: its `state` hashed, its PKCE
 verifier, and where the person was going, single use and short-lived. The
 other half of the `state` is in the browser rather than the database — the
-`xermess_sign_in_state` cookie — because a state anyone can replay in any
+`loginer_sign_in_state` cookie — because a state anyone can replay in any
 browser would let whoever finished a sign-in of their own leave somebody else
 signed in as them.
 
@@ -1168,13 +1168,13 @@ super admin's: the settings carry the mail server's password, and the words
 are what lands in a user's inbox.
 
 **The mail server** is one record, like the organisation's. It starts as
-`XERMESS_SMTP_*` says on the first start and belongs to the panel afterwards,
+`LOGINER_SMTP_*` says on the first start and belongs to the panel afterwards,
 and it is read when a message is sent rather than held in a field from
 startup — so a corrected password takes effect on the next email instead of
 the next restart. Host, port and one of three encryptions: `starttls` (what
 port 587 expects), `tls` (from the first byte, what 465 expects) and `none`
 (a relay on the same machine). The password is sealed with
-`XERMESS_SECRET_KEY`, like a social provider's client secret, and nothing
+`LOGINER_SECRET_KEY`, like a social provider's client secret, and nothing
 reads it back: the panel is told whether one is stored and no more, so a form
 that leaves the field empty keeps it and an empty string clears it.
 
@@ -1247,7 +1247,7 @@ shows none, as it did before.
 
 Migrations are Go files in `migrations/`, run by
 [goose](https://github.com/pressly/goose). The server applies pending ones on
-start unless `XERMESS_DB_MIGRATE=false`.
+start unless `LOGINER_DB_MIGRATE=false`.
 
 `20260917150000_schema.go` is the first: it builds the whole schema from
 `model.All()`, adds the indexes a struct tag cannot describe, and seeds the
@@ -1354,9 +1354,9 @@ administrators, where a stale answer would be a security question:
 Redis browser shows a tree and one group is one `--scan --pattern`:
 
 ```
-xermess:cache:<group>:generation              the group's current generation
-xermess:cache:<group>:v<generation>:<entry>   one cached value, as JSON
-xermess:ratelimit:<scope>:<address>           one rate-limit bucket (scope: public, admin)
+loginer:cache:<group>:generation              the group's current generation
+loginer:cache:<group>:v<generation>:<entry>   one cached value, as JSON
+loginer:ratelimit:<scope>:<address>           one rate-limit bucket (scope: public, admin)
 ```
 
 The entries are named for what they hold — `languages` has `all`,
@@ -1381,7 +1381,7 @@ own clock.
 
 Redis going away is never an outage. At startup a configured Redis that does
 not answer stops the server, like a database that does not, so a wrong
-address is caught at once; with `XERMESS_REDIS_HOST` empty the server runs
+address is caught at once; with `LOGINER_REDIS_HOST` empty the server runs
 without one. After startup, a Redis that stops answering is logged once and
 then left alone for five seconds at a time: every read goes straight to the
 database and the rate limit counts in each process's memory, so pages stay
@@ -1393,8 +1393,8 @@ Run it without persistence, as the compose file does. It holds nothing that
 is not in Postgres, and a Redis restored from an old snapshot would bring
 back old generations — and the text in them — until they expire.
 
-The settings are `XERMESS_REDIS_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD`,
-`_DB` and `_PREFIX` (default `xermess:`, so one Redis can serve several
+The settings are `LOGINER_REDIS_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD`,
+`_DB` and `_PREFIX` (default `loginer:`, so one Redis can serve several
 installations). `make setup` adds them to a `.env` that predates them. In
 production, `deploy/compose.yaml` runs one alongside Postgres with no
 persistence, a 256 MB cap and `volatile-lru`, which evicts cached values and
@@ -1408,51 +1408,51 @@ and `internal/api/ratelimit` need it too.
 ## Configuration
 
 Every setting is an environment variable, read from `.env` first; real
-environment variables win. `.env.example` lists all of them. `XERMESS_DB_DSN`
+environment variables win. `.env.example` lists all of them. `LOGINER_DB_DSN`
 has no default, so a missing one stops the server.
 
-`XERMESS_SECRET_KEY` has no default either: it encrypts the signing keys, so
+`LOGINER_SECRET_KEY` has no default either: it encrypts the signing keys, so
 `make setup` writes a random one into a new `.env`. Keep it: a different key
 cannot read the stored signing keys, and the server will not start.
-`XERMESS_ISSUER` is the public URL tokens name the server by — the id app's
-origin, which routes the provider paths to the API — and `XERMESS_ACCOUNT_URL`
-defaults to it. `XERMESS_ADMIN_URL` is the console's; only that origin may change
+`LOGINER_ISSUER` is the public URL tokens name the server by — the id app's
+origin, which routes the provider paths to the API — and `LOGINER_ACCOUNT_URL`
+defaults to it. `LOGINER_ADMIN_URL` is the console's; only that origin may change
 anything through the admin API.
 
-`XERMESS_SMTP_*` seeds the mail server on the first start and nothing after
+`LOGINER_SMTP_*` seeds the mail server on the first start and nothing after
 it: from then on it is the Mail page's, so a password typed wrong is
 corrected in the panel rather than in a file, and takes effect on the next
-email rather than the next restart. With no `XERMESS_SMTP_HOST`, sending
+email rather than the next restart. With no `LOGINER_SMTP_HOST`, sending
 starts switched off and every message is written to the log — enough to
 follow a reset link while developing.
 
-Session cookies are Secure when `XERMESS_ACCOUNT_URL` and `XERMESS_ADMIN_URL`
-are https, without a setting to forget. `XERMESS_TRUSTED_PROXIES` lists the
+Session cookies are Secure when `LOGINER_ACCOUNT_URL` and `LOGINER_ADMIN_URL`
+are https, without a setting to forget. `LOGINER_TRUSTED_PROXIES` lists the
 reverse proxies whose `X-Forwarded-For` is believed. With none listed, the
 address recorded for every request is the connection's own, so a caller cannot
 write a made-up one into the activity log — but behind a proxy it has to be
 set, or every request, and the rate limit, count as the proxy's.
-`XERMESS_ADMIN_ADDR` must differ from `XERMESS_ADDR`; never publish it.
+`LOGINER_ADMIN_ADDR` must differ from `LOGINER_ADDR`; never publish it.
 
 **At scale.** Nothing the server keeps grows without end. Every hour each
 process sweeps what has expired — sign-in requests and codes, refresh
 tokens, sessions, reset links, abandoned social and SSO sign-ins — in batches
 of 5,000, by an index on `expires_at`, so the sweep never holds up the
 sign-ins writing the same tables (`store.Sweep`). The activity log keeps
-`XERMESS_AUDIT_RETENTION_DAYS` (365; 0 keeps everything). Addresses are
+`LOGINER_AUDIT_RETENTION_DAYS` (365; 0 keeps everything). Addresses are
 stored lower case, so signing in finds a user by the unique index whatever
 capitals were typed, and `Ada@x` cannot be a second account beside `ada@x`.
-`XERMESS_DB_MAX_CONNS` (25) caps each process's connections: all the API
+`LOGINER_DB_MAX_CONNS` (25) caps each process's connections: all the API
 processes together have to stay under Postgres's `max_connections`.
 
 `make test-integration` runs the tests that need Postgres and Redis. They
 connect to the Postgres in `.env` only to create a database of their own for
 each test, and drop it afterwards, and use the Redis in `.env` under a key
-prefix of their own; without `XERMESS_TEST_DB_DSN` set, `go test` skips them,
-and without `XERMESS_TEST_REDIS` they run with no cache.
+prefix of their own; without `LOGINER_TEST_DB_DSN` set, `go test` skips them,
+and without `LOGINER_TEST_REDIS` they run with no cache.
 
 The migrations are compiled into the binary. Goose still needs the directory in
-`XERMESS_DB_MIGRATE_DIR` to exist; when it holds no `.go` files, as in the
+`LOGINER_DB_MIGRATE_DIR` to exist; when it holds no `.go` files, as in the
 container image, every compiled-in migration is applied.
 
 ## License

@@ -12,10 +12,10 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"xermess/i18n"
-	"xermess/internal/mail"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/mail"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // MinPasswordLength is the shortest password a user may choose, the same as

@@ -1,6 +1,6 @@
 # id
 
-The app xermess **users** see. Nothing in it is for administrators — that is
+The app Loginer **users** see. Nothing in it is for administrators — that is
 `web/console`.
 
 - **Signing in** for an application: `/login`, `/register`, `/forgot-password`,
@@ -17,7 +17,7 @@ bun install
 bun run dev            # http://localhost:5173
 ```
 
-The API must know this app's origin: `XERMESS_ISSUER=http://localhost:5173`.
+The API must know this app's origin: `LOGINER_ISSUER=http://localhost:5173`.
 The browser calls the API on this same origin, so no CORS setting is needed.
 
 ## Layout

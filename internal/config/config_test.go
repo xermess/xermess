@@ -6,16 +6,18 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"loginer/internal/brand"
 )
 
-// clearEnv unsets every XERMESS_ variable for the duration of the test, so a
+// clearEnv unsets every LOGINER_ variable for the duration of the test, so a
 // developer's own environment cannot change the result. Viper treats an empty
 // variable as unset.
 func clearEnv(t *testing.T) {
 	t.Helper()
 
 	for _, entry := range os.Environ() {
-		if name, _, found := strings.Cut(entry, "="); found && strings.HasPrefix(name, "XERMESS_") {
+		if name, _, found := strings.Cut(entry, "="); found && strings.HasPrefix(name, "LOGINER_") {
 			t.Setenv(name, "")
 		}
 	}
@@ -37,15 +39,15 @@ func writeEnv(t *testing.T, contents string) {
 
 func TestLoadReadsEnvFile(t *testing.T) {
 	writeEnv(t, `
-XERMESS_ADDR=:9000
-XERMESS_CORS_ORIGINS=http://a.test, http://b.test
-XERMESS_DB_DSN=postgres://user:pw@localhost:5432/mydb
-XERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef
-XERMESS_ISSUER=https://auth.example.com/
-XERMESS_DB_LOG_QUERIES=true
-XERMESS_DB_MIGRATE=false
-XERMESS_SECURE_COOKIES=true
-XERMESS_TRUSTED_PROXIES=10.0.0.1, 192.168.0.0/16
+LOGINER_ADDR=:9000
+LOGINER_CORS_ORIGINS=http://a.test, http://b.test
+LOGINER_DB_DSN=postgres://user:pw@localhost:5432/mydb
+LOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef
+LOGINER_ISSUER=https://auth.example.com/
+LOGINER_DB_LOG_QUERIES=true
+LOGINER_DB_MIGRATE=false
+LOGINER_SECURE_COOKIES=true
+LOGINER_TRUSTED_PROXIES=10.0.0.1, 192.168.0.0/16
 `)
 
 	cfg, err := Load()
@@ -54,7 +56,7 @@ XERMESS_TRUSTED_PROXIES=10.0.0.1, 192.168.0.0/16
 	}
 
 	if !cfg.SecureUserCookies || !cfg.SecureAdminCookies {
-		t.Error("XERMESS_SECURE_COOKIES=true did not turn both cookies secure")
+		t.Error("LOGINER_SECURE_COOKIES=true did not turn both cookies secure")
 	}
 	if len(cfg.TrustedProxies) != 2 || cfg.TrustedProxies[1] != "192.168.0.0/16" {
 		t.Errorf("TrustedProxies = %v, want both, trimmed", cfg.TrustedProxies)
@@ -89,7 +91,7 @@ XERMESS_TRUSTED_PROXIES=10.0.0.1, 192.168.0.0/16
 }
 
 func TestLoadUsesDefaults(t *testing.T) {
-	writeEnv(t, "XERMESS_DB_DSN=postgres://u:p@localhost:5432/db\nXERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef\n")
+	writeEnv(t, "LOGINER_DB_DSN=postgres://u:p@localhost:5432/db\nLOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef\n")
 
 	cfg, err := Load()
 	if err != nil {
@@ -137,17 +139,17 @@ func TestLoadUsesDefaults(t *testing.T) {
 // What would leave the server unable to reach its database, or sweeping the
 // activity log backwards, stops it at startup.
 func TestLoadRefusesLimitsThatCannotWork(t *testing.T) {
-	const base = "XERMESS_DB_DSN=postgres://localhost/x\nXERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef\n"
+	const base = "LOGINER_DB_DSN=postgres://localhost/x\nLOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef\n"
 
 	tests := []struct {
 		name    string
 		env     string
 		wantErr bool
 	}{
-		{name: "an activity log kept forever", env: base + "XERMESS_AUDIT_RETENTION_DAYS=0\n"},
-		{name: "a retention that is negative", env: base + "XERMESS_AUDIT_RETENTION_DAYS=-1\n", wantErr: true},
-		{name: "one connection", env: base + "XERMESS_DB_MAX_CONNS=1\n"},
-		{name: "no connections at all", env: base + "XERMESS_DB_MAX_CONNS=0\n", wantErr: true},
+		{name: "an activity log kept forever", env: base + "LOGINER_AUDIT_RETENTION_DAYS=0\n"},
+		{name: "a retention that is negative", env: base + "LOGINER_AUDIT_RETENTION_DAYS=-1\n", wantErr: true},
+		{name: "one connection", env: base + "LOGINER_DB_MAX_CONNS=1\n"},
+		{name: "no connections at all", env: base + "LOGINER_DB_MAX_CONNS=0\n", wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -164,8 +166,8 @@ func TestLoadRefusesLimitsThatCannotWork(t *testing.T) {
 // The environment has to win over .env, or a container could not change a
 // single setting without rewriting the file.
 func TestEnvironmentOverridesEnvFile(t *testing.T) {
-	writeEnv(t, "XERMESS_ADDR=:8080\nXERMESS_DB_DSN=postgres://u:p@localhost:5432/from_file\nXERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef\n")
-	t.Setenv("XERMESS_ADDR", ":7777")
+	writeEnv(t, "LOGINER_ADDR=:8080\nLOGINER_DB_DSN=postgres://u:p@localhost:5432/from_file\nLOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef\n")
+	t.Setenv("LOGINER_ADDR", ":7777")
 
 	cfg, err := Load()
 	if err != nil {
@@ -180,14 +182,14 @@ func TestEnvironmentOverridesEnvFile(t *testing.T) {
 // The secret key encrypts the signing keys, so a missing or short one has to
 // stop the server rather than fall back to something guessable.
 func TestLoadFailsWithoutSecretKey(t *testing.T) {
-	writeEnv(t, "XERMESS_DB_DSN=postgres://u:p@localhost:5432/db\n")
+	writeEnv(t, "LOGINER_DB_DSN=postgres://u:p@localhost:5432/db\n")
 	if _, err := Load(); err == nil {
-		t.Fatal("want an error when XERMESS_SECRET_KEY is missing, got none")
+		t.Fatal("want an error when LOGINER_SECRET_KEY is missing, got none")
 	}
 
-	writeEnv(t, "XERMESS_DB_DSN=postgres://u:p@localhost:5432/db\nXERMESS_SECRET_KEY=short\n")
+	writeEnv(t, "LOGINER_DB_DSN=postgres://u:p@localhost:5432/db\nLOGINER_SECRET_KEY=short\n")
 	if _, err := Load(); err == nil {
-		t.Fatal("want an error when XERMESS_SECRET_KEY is too short, got none")
+		t.Fatal("want an error when LOGINER_SECRET_KEY is too short, got none")
 	}
 }
 
@@ -195,10 +197,10 @@ func TestLoadFailsWithoutSecretKey(t *testing.T) {
 // the account app defaults to the issuer's origin.
 func TestLoadDerivesFromPublicURLs(t *testing.T) {
 	writeEnv(t, `
-XERMESS_DB_DSN=postgres://u:p@localhost:5432/db
-XERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef
-XERMESS_ISSUER=https://id.mywebsite.com
-XERMESS_ADMIN_URL=https://admin-id.mywebsite.com
+LOGINER_DB_DSN=postgres://u:p@localhost:5432/db
+LOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef
+LOGINER_ISSUER=https://id.mywebsite.com
+LOGINER_ADMIN_URL=https://admin-id.mywebsite.com
 `)
 
 	cfg, err := Load()
@@ -219,7 +221,7 @@ XERMESS_ADMIN_URL=https://admin-id.mywebsite.com
 
 // The admin API must never share the public listener.
 func TestLoadRefusesOneListenerForBoth(t *testing.T) {
-	writeEnv(t, "XERMESS_DB_DSN=postgres://u:p@localhost:5432/db\nXERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef\nXERMESS_ADDR=:9000\nXERMESS_ADMIN_ADDR=:9000\n")
+	writeEnv(t, "LOGINER_DB_DSN=postgres://u:p@localhost:5432/db\nLOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef\nLOGINER_ADDR=:9000\nLOGINER_ADMIN_ADDR=:9000\n")
 
 	if _, err := Load(); err == nil {
 		t.Fatal("want an error when the admin listener is the public one")
@@ -227,10 +229,10 @@ func TestLoadRefusesOneListenerForBoth(t *testing.T) {
 }
 
 func TestLoadFailsWithoutDSN(t *testing.T) {
-	writeEnv(t, "XERMESS_ADDR=:8080\n")
+	writeEnv(t, "LOGINER_ADDR=:8080\n")
 
 	if _, err := Load(); err == nil {
-		t.Fatal("want an error when XERMESS_DB_DSN is missing, got none")
+		t.Fatal("want an error when LOGINER_DB_DSN is missing, got none")
 	}
 }
 
@@ -239,8 +241,8 @@ func TestLoadFailsWithoutDSN(t *testing.T) {
 func TestLoadWithoutEnvFile(t *testing.T) {
 	clearEnv(t)
 	t.Chdir(t.TempDir())
-	t.Setenv("XERMESS_DB_DSN", "postgres://u:p@localhost:5432/db")
-	t.Setenv("XERMESS_SECRET_KEY", "0123456789abcdef0123456789abcdef")
+	t.Setenv("LOGINER_DB_DSN", "postgres://u:p@localhost:5432/db")
+	t.Setenv("LOGINER_SECRET_KEY", "0123456789abcdef0123456789abcdef")
 
 	cfg, err := Load()
 	if err != nil {
@@ -254,7 +256,7 @@ func TestLoadWithoutEnvFile(t *testing.T) {
 // Redis is optional: without a host every read goes to the database, which
 // is how the integration tests and a bare checkout run.
 func TestLoadRedis(t *testing.T) {
-	const base = "XERMESS_DB_DSN=postgres://localhost/x\nXERMESS_SECRET_KEY=0123456789abcdef0123456789abcdef\n"
+	const base = "LOGINER_DB_DSN=postgres://localhost/x\nLOGINER_SECRET_KEY=0123456789abcdef0123456789abcdef\n"
 
 	tests := []struct {
 		name    string
@@ -265,22 +267,22 @@ func TestLoadRedis(t *testing.T) {
 		{
 			name: "no host is no Redis",
 			env:  base,
-			want: Redis{Port: 6379, Prefix: "xermess:"},
+			want: Redis{Port: 6379, Prefix: brand.RedisPrefix},
 		},
 		{
 			name: "everything named",
-			env: base + "XERMESS_REDIS_HOST=localhost\nXERMESS_REDIS_PORT=6380\nXERMESS_REDIS_USERNAME=app\n" +
-				"XERMESS_REDIS_PASSWORD=pw\nXERMESS_REDIS_DB=3\nXERMESS_REDIS_PREFIX=staging:\n",
+			env: base + "LOGINER_REDIS_HOST=localhost\nLOGINER_REDIS_PORT=6380\nLOGINER_REDIS_USERNAME=app\n" +
+				"LOGINER_REDIS_PASSWORD=pw\nLOGINER_REDIS_DB=3\nLOGINER_REDIS_PREFIX=staging:\n",
 			want: Redis{Host: "localhost", Port: 6380, Username: "app", Password: "pw", DB: 3, Prefix: "staging:"},
 		},
 		{
 			name:    "a port that is not one",
-			env:     base + "XERMESS_REDIS_HOST=localhost\nXERMESS_REDIS_PORT=70000\n",
+			env:     base + "LOGINER_REDIS_HOST=localhost\nLOGINER_REDIS_PORT=70000\n",
 			wantErr: true,
 		},
 		{
 			name:    "a database before the first",
-			env:     base + "XERMESS_REDIS_HOST=localhost\nXERMESS_REDIS_DB=-1\n",
+			env:     base + "LOGINER_REDIS_HOST=localhost\nLOGINER_REDIS_DB=-1\n",
 			wantErr: true,
 		},
 	}

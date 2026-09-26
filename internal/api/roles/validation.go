@@ -1,8 +1,8 @@
 package roles
 
 import (
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // The rule a role's name keeps, registered here so the rule and the thing it

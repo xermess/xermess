@@ -6,6 +6,7 @@
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, apisApi, type API } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { apisOptions, keys } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import {
@@ -120,7 +121,7 @@
 	}));
 </script>
 
-<svelte:head><title>APIs · xermess admin</title></svelte:head>
+<svelte:head><title>APIs · {BRAND.name}</title></svelte:head>
 
 <div class="heading">
 	<PageHeader crumbs={['Dashboard', 'APIs']}>

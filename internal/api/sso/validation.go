@@ -8,11 +8,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/jose"
-	"xermess/internal/model"
-	"xermess/internal/oidc"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/jose"
+	"loginer/internal/model"
+	"loginer/internal/oidc"
 )
 
 // applyTo checks the request and copies it onto a connection.

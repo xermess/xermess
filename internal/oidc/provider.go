@@ -17,11 +17,12 @@ import (
 	"net/url"
 	"time"
 
-	"xermess/internal/config"
-	"xermess/internal/jose"
-	"xermess/internal/mail"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/internal/brand"
+	"loginer/internal/config"
+	"loginer/internal/jose"
+	"loginer/internal/mail"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // The paths the provider serves, relative to the issuer. They are here rather
@@ -244,10 +245,10 @@ type Client struct {
 }
 
 // LanguageCookie is where the sign-in pages keep the language somebody chose
-// (web/id/src/lib/constants.ts). The pages and the provider are one origin,
+// (web/id/src/lib/brand.ts). The pages and the provider are one origin,
 // so every request to the provider carries it — the callback from a social
 // provider included, which has no body to say it in.
-const LanguageCookie = "xermess-account-language"
+const LanguageCookie = brand.LanguageCookie
 
 // withQuery appends parameters to a URL that may already have a query.
 func withQuery(base string, values url.Values) string {

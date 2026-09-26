@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { signIn } from '$lib/api';
+	import { BRAND } from '$lib/brand';
 	import { Brand, Icon, LanguagePicker, ThemeToggle, type IconName } from '$lib/components';
 	import { useTranslator } from '$lib/i18n';
 	import { initials } from '$lib/utils/format';
@@ -77,7 +78,7 @@
 	<footer>
 		<span class="secured">
 			<Icon name="shield" size="0.9375rem" />
-			<span>{t('shell.secured_by')} <strong>xermess</strong></span>
+			<span>{t('shell.secured_by')} <strong>{BRAND.name}</strong></span>
 		</span>
 	</footer>
 </div>

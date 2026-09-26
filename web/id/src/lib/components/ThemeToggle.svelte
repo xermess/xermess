@@ -1,6 +1,6 @@
 <script lang="ts">
+	import { COOKIES } from '$lib/brand';
 	import { useTranslator } from '$lib/i18n';
-	import { COOKIES } from '$lib/constants';
 	import Icon from './Icon.svelte';
 
 	const t = useTranslator();

@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"loginer/internal/brand"
 )
 
 // Organization is who this installation belongs to: what it is called, how
@@ -65,7 +67,7 @@ func (Organization) TableName() string {
 // The migration seeds this, and the store falls back to it, so what a new
 // installation holds is written down once.
 func DefaultOrganization() Organization {
-	return Organization{Name: "xermess", Slug: "xermess"}
+	return Organization{Name: brand.Name, Slug: brand.Slug}
 }
 
 // slugPattern is what a short name may look like: lower case letters, numbers

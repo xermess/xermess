@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"xermess/internal/model"
+	"loginer/internal/model"
 )
 
 // unsignedIDToken is a JWT with these claims and nothing else worth reading:

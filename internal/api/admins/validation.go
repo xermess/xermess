@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"unicode/utf8"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/model"
 )
 
 // minPasswordLength is the shortest password an administrator may be given:

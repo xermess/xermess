@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"xermess/internal/cache"
-	"xermess/internal/model"
+	"loginer/internal/cache"
+	"loginer/internal/model"
 )
 
 // LoginFlows returns every flow, the default first and the rest by name, which

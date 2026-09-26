@@ -1,7 +1,7 @@
 // Package keys answers the endpoints a super admin sees and rotates the keys
 // tokens are signed with.
 //
-// Rotation normally happens on its own (XERMESS_KEY_ROTATION_DAYS): a new key
+// Rotation normally happens on its own (LOGINER_KEY_ROTATION_DAYS): a new key
 // is published a day before it signs, and an old one stays published for two
 // days after. These endpoints are for looking, and for rotating now — at once,
 // and revoking the old keys, when one may have leaked.
@@ -13,9 +13,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"xermess/internal/api/audit"
-	"xermess/internal/api/respond"
-	"xermess/internal/oidc"
+	"loginer/internal/api/audit"
+	"loginer/internal/api/respond"
+	"loginer/internal/oidc"
 )
 
 // Handler holds what these endpoints need.

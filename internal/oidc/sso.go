@@ -13,9 +13,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"xermess/i18n"
-	"xermess/internal/model"
-	"xermess/internal/store"
+	"loginer/i18n"
+	"loginer/internal/model"
+	"loginer/internal/store"
 )
 
 // Enterprise single sign-on: an organisation's own identity provider signing

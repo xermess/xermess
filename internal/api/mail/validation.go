@@ -3,11 +3,11 @@ package mail
 import (
 	"net/http"
 
-	"xermess/internal/api/respond"
-	"xermess/internal/api/validate"
-	"xermess/internal/jose"
-	"xermess/internal/mail"
-	"xermess/internal/model"
+	"loginer/internal/api/respond"
+	"loginer/internal/api/validate"
+	"loginer/internal/jose"
+	"loginer/internal/mail"
+	"loginer/internal/model"
 )
 
 // applyTo copies what a request sent onto the settings and returns what it
