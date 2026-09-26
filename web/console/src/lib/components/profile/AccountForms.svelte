@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
-	import { RiLockPasswordLine, RiUserLine } from 'svelte-remixicon';
+	import { RiImageLine, RiLockPasswordLine, RiUserLine } from 'svelte-remixicon';
 	import { adminApi, messageOf, type Admin } from '$lib/api';
-	import { Alert, Button, FieldGrid, Input, Panel, PasswordInput } from '$lib/components/ui';
+	import { Alert, Button, FieldGrid, Input, Panel, PasswordInput, Thumb } from '$lib/components/ui';
 	import { ADMIN_DEPENDENCY, MIN_ADMIN_PASSWORD } from '$lib/constants';
+	import { initials } from '$lib/utils/format';
 
 	type Props = { admin: Admin };
 
@@ -22,6 +23,8 @@
 	let lastName = $state(admin.last_name);
 	// svelte-ignore state_referenced_locally
 	let email = $state(admin.email);
+	// svelte-ignore state_referenced_locally
+	let avatarUrl = $state(admin.avatar_url);
 	/** Asked for only when the address changes: it is what they sign in
 	    with, so a session left open is not enough to move it. */
 	let emailPassword = $state('');
@@ -31,8 +34,16 @@
 
 	const emailChanged = $derived(email.trim().toLowerCase() !== admin.email.toLowerCase());
 	const profileChanged = $derived(
-		firstName.trim() !== admin.first_name || lastName.trim() !== admin.last_name || emailChanged
+		firstName.trim() !== admin.first_name ||
+			lastName.trim() !== admin.last_name ||
+			avatarUrl.trim() !== admin.avatar_url ||
+			emailChanged
 	);
+
+	/** The picture as it would look, while the address looks like one;
+	    Thumb falls back to the initials if it does not load. */
+	const preview = $derived(/^https?:\/\/\S+$/.test(avatarUrl.trim()) ? avatarUrl.trim() : '');
+	const monogram = $derived(initials(`${firstName} ${lastName}`.trim() || email));
 
 	async function saveProfile(event: SubmitEvent) {
 		event.preventDefault();
@@ -45,6 +56,7 @@
 				first_name: firstName.trim(),
 				last_name: lastName.trim(),
 				email: email.trim(),
+				avatar_url: avatarUrl.trim(),
 				current_password: emailChanged ? emailPassword : undefined
 			});
 			emailPassword = '';
@@ -112,6 +124,20 @@
 				hint="You sign in with it, and anything about this account is sent to it."
 				required
 			/>
+			<!-- The picture beside the field it comes from, so an address that
+			     does not load is seen before it is saved. -->
+			<div class="avatar">
+				<Thumb src={preview} text={monogram} size="md" shape="circle" tone="accent" />
+				<Input
+					label="Avatar URL"
+					icon={RiImageLine}
+					bind:value={avatarUrl}
+					type="url"
+					maxlength={512}
+					placeholder="https://example.com/me.png"
+					hint="A picture of you for the header and menus. Empty, your initials stand in."
+				/>
+			</div>
 			{#if emailChanged}
 				<PasswordInput
 					label="Current password, to change your email"
@@ -199,6 +225,17 @@
 		margin: 0;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
+	}
+
+	.avatar {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-3);
+	}
+
+	.avatar > :global(:last-child) {
+		flex: 1;
+		min-width: 0;
 	}
 
 	.actions {

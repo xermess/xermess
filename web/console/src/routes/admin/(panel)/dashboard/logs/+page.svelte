@@ -1,58 +1,99 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
-	import { RiRefreshLine } from 'svelte-remixicon';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { RiDownload2Line, RiFilterOffLine, RiRefreshLine } from 'svelte-remixicon';
+	import { activityApi } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import ActivityTable from '$lib/components/activity/ActivityTable.svelte';
+	import { actionsIn } from '$lib/components/activity/actions';
+	import { kindLabels, type Kind } from '$lib/components/activity/filters';
 	import {
-		categoryLabels,
-		categoryOf,
-		describe,
-		type Category
-	} from '$lib/components/activity/actions';
-	import { IconButton, PageHeader, SearchInput, Toolbar } from '$lib/components/ui';
+		Button,
+		FilterChip,
+		Icon,
+		IconButton,
+		Input,
+		LinkButton,
+		Note,
+		PageHeader,
+		SearchInput,
+		Select,
+		Toolbar
+	} from '$lib/components/ui';
+	import { keys, logsOptions } from '$lib/query';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	let category = $state<Category | 'all'>('all');
-	let search = $state('');
-	let refreshing = $state(false);
+	const queryClient = useQueryClient();
 
-	/** The categories that have entries, in the order the panel lists them,
-	    each with how many. */
-	const categories = $derived(
-		(Object.keys(categoryLabels) as Category[])
-			.map((key) => ({
-				key,
-				label: categoryLabels[key],
-				count: data.logs.filter((event) => categoryOf(event.action) === key).length
-			}))
-			.filter((it) => it.count > 0)
+	const logs = createInfiniteQuery(() => logsOptions(data.view.filter, data.first));
+
+	const entries = $derived(logs.data?.pages.flatMap((one) => one.logs) ?? []);
+
+	// What is typed in the search box, applied once the typing pauses; the
+	// address is what the list follows.
+	// svelte-ignore state_referenced_locally
+	let search = $state(data.view.q);
+
+	/** The kinds that can be asked for: the catalog's categories that have
+	    actions in them, and the refused sign-ins. "Other" is whatever the
+	    catalog has no sentence for, which the server cannot pick out by name. */
+	const kinds = (Object.keys(kindLabels) as Kind[])
+		.filter((kind) => kind === 'refused' || actionsIn(kind).length > 0)
+		.map((kind) => ({ value: kind, label: kindLabels[kind] }));
+
+	const filtered = $derived(
+		Boolean(data.view.q || data.view.kind || data.view.actor || data.view.from || data.view.to)
 	);
 
-	const shown = $derived.by(() => {
-		const term = search.trim().toLowerCase();
+	async function apply(changes: Partial<Record<'q' | 'kind' | 'actor' | 'from' | 'to', string>>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
 
-		return data.logs.filter((event) => {
-			if (category !== 'all' && categoryOf(event.action) !== category) return false;
-			if (!term) return true;
+		for (const [key, value] of Object.entries(changes)) {
+			if (value) params.set(key, value);
+			else params.delete(key);
+		}
 
-			const said = describe(event);
-			return [said.label, said.actor, said.verb, said.subject, said.detail, event.ip, event.action]
-				.join(' ')
-				.toLowerCase()
-				.includes(term);
-		});
-	});
+		const query = params.toString();
+		const path = resolve('/admin/(panel)/dashboard/logs');
+
+		// resolve() has already applied any base path; the query is only ever
+		// appended to what it returned.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		await goto(query ? `${path}?${query}` : path, { keepFocus: true, noScroll: true });
+	}
+
+	function clear() {
+		search = '';
+		void apply({ q: '', kind: '', actor: '', from: '', to: '' });
+	}
+
+	let timer: ReturnType<typeof setTimeout>;
+
+	function debounced() {
+		clearTimeout(timer);
+		timer = setTimeout(() => apply({ q: search.trim() }), 300);
+	}
+
+	let refreshing = $state(false);
 
 	async function refresh() {
 		refreshing = true;
 		try {
-			await Promise.all([invalidateAll(), new Promise((done) => setTimeout(done, 400))]);
+			await Promise.all([
+				queryClient.resetQueries({ queryKey: keys.logs.all }),
+				new Promise((done) => setTimeout(done, 400))
+			]);
 		} finally {
 			refreshing = false;
 		}
 	}
+
+	const today = new Date().toISOString().slice(0, 10);
 </script>
 
 <svelte:head>
@@ -61,8 +102,7 @@
 
 <PageHeader
 	crumbs={['Dashboard', 'Logs']}
-	count={data.logs.length}
-	description="Every sign-in and every change administrators made, newest first."
+	description="Every sign-in and every change administrators made, newest first. Filters apply to the whole log, not just the page shown."
 >
 	{#snippet secondary()}
 		<IconButton
@@ -73,69 +113,120 @@
 			disabled={refreshing}
 		/>
 	{/snippet}
+
+	{#snippet actions()}
+		<!-- The file the filters describe, up to ten thousand entries, with
+		     the same names hidden that the page hides. -->
+		<LinkButton href={activityApi.exportUrl(data.view.filter)} variant="subtle" download>
+			<Icon icon={RiDownload2Line} />
+			Export CSV
+		</LinkButton>
+	{/snippet}
 </PageHeader>
 
 <Toolbar>
 	<SearchInput
 		label="Search the log"
-		placeholder="Search who, what or where…"
+		placeholder="Search who, what, where or an id…"
 		bind:value={search}
+		onsubmit={() => apply({ q: search.trim() })}
+		oninput={debounced}
 	/>
 
-	<div class="chips" role="group" aria-label="Filter by kind">
-		<button type="button" class:on={category === 'all'} onclick={() => (category = 'all')}>
-			All <span>{data.logs.length}</span>
-		</button>
-		{#each categories as it (it.key)}
-			<button type="button" class:on={category === it.key} onclick={() => (category = it.key)}>
-				{it.label} <span>{it.count}</span>
-			</button>
-		{/each}
+	<div class="kind">
+		<Select
+			compact
+			label="Kind"
+			value={data.view.kind}
+			options={kinds}
+			placeholder="Every kind"
+			clearable
+			onChange={(kind) => apply({ kind })}
+		/>
 	</div>
+
+	<div class="dates">
+		<Input
+			compact
+			label="From"
+			type="date"
+			value={data.view.from}
+			max={data.view.to || today}
+			onchange={(event) => apply({ from: event.currentTarget.value })}
+		/>
+		<Input
+			compact
+			label="To"
+			type="date"
+			value={data.view.to}
+			min={data.view.from || undefined}
+			max={today}
+			onchange={(event) => apply({ to: event.currentTarget.value })}
+		/>
+	</div>
+
+	{#if data.view.actor}
+		<FilterChip title="Show everyone" onclear={() => apply({ actor: '' })}>
+			by <strong>{data.view.actor}</strong>
+		</FilterChip>
+	{/if}
+
+	{#snippet end()}
+		{#if filtered}
+			<Button variant="ghost" onclick={clear}>
+				<Icon icon={RiFilterOffLine} />
+				Clear filters
+			</Button>
+		{/if}
+	{/snippet}
 </Toolbar>
 
 <ActivityTable
-	events={shown}
-	empty={data.logs.length === 0 ? 'Nothing has happened yet.' : 'No entries match.'}
+	events={entries}
+	empty={filtered ? 'No entries match these filters.' : 'Nothing has happened yet.'}
 />
 
+<footer class="more">
+	<Note>
+		{entries.length === 0
+			? ''
+			: `${entries.length.toLocaleString()} ${entries.length === 1 ? 'entry' : 'entries'} shown${logs.hasNextPage ? ', more below' : ''}.`}
+	</Note>
+
+	{#if logs.hasNextPage}
+		<Button variant="subtle" loading={logs.isFetchingNextPage} onclick={() => logs.fetchNextPage()}>
+			Load more
+		</Button>
+	{/if}
+</footer>
+
 <style>
-	.chips {
+	.kind {
+		width: 15rem;
+	}
+
+	.dates {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
+		gap: var(--space-2);
 	}
 
-	.chips button {
-		display: inline-flex;
+	.dates > :global(*) {
+		width: 11rem;
+	}
+
+	.more {
+		display: flex;
 		align-items: center;
-		gap: 6px;
-		height: 32px;
-		padding: 0 12px;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-pill);
-		background: transparent;
-		color: var(--color-text-hint);
-		font: inherit;
-		font-size: var(--text-sm);
-		cursor: pointer;
-		transition:
-			background-color var(--speed-fast),
-			color var(--speed-fast);
+		justify-content: space-between;
+		gap: var(--space-3);
+		min-height: var(--control-height);
 	}
 
-	.chips button:hover {
-		color: var(--color-text);
-	}
-
-	.chips button.on {
-		border-color: var(--color-primary);
-		background: var(--color-primary);
-		color: var(--color-primary-text);
-	}
-
-	.chips span {
-		font-size: var(--text-xs);
-		opacity: 0.7;
+	@media (max-width: 40rem) {
+		.kind,
+		.dates,
+		.dates > :global(*) {
+			width: 100%;
+		}
 	}
 </style>

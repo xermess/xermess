@@ -34,14 +34,14 @@
 		gap: 2px;
 		height: var(--control-height);
 		padding: 3px;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-sm);
 		background: var(--color-secondary);
 	}
 
 	button {
 		padding: 0 var(--space-3);
 		border: none;
-		border-radius: calc(var(--radius-md) - 3px);
+		border-radius: calc(var(--radius-sm) - 2px);
 		background: transparent;
 		color: var(--color-text-hint);
 		font: inherit;

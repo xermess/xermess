@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import {
+		RiArrowDownSLine,
 		RiLogoutBoxRLine,
 		RiMailLine,
 		RiShieldUserLine,
@@ -12,6 +13,7 @@
 	import {
 		Button,
 		DropdownMenu,
+		Icon,
 		MenuGroup,
 		MenuInfo,
 		MenuItem,
@@ -20,7 +22,7 @@
 		Thumb
 	} from '$lib/components/ui';
 	import { initials } from '$lib/utils/format';
-	import ProfileDialog from '$lib/components/profile/ProfileDialog.svelte';
+	import ProfileDrawer from '$lib/components/profile/ProfileDrawer.svelte';
 
 	type Props = { admin: Admin };
 
@@ -69,12 +71,15 @@
      line under it — and holds the four things about an account worth
      reaching from anywhere: its address, what it may do, its settings, and
      leaving. -->
-<DropdownMenu label="Account: {name}" shape="avatar" width="18rem">
+<DropdownMenu label="Account: {name}" shape="labelled" width="18rem">
 	{#snippet trigger()}
-		<Thumb text={monogram} size="xs" shape="circle" tone="accent" />
+		<Thumb src={admin.avatar_url} text={monogram} size="xs" shape="circle" tone="accent" />
+		<span class="name">{name}</span>
+		<span class="chevron" aria-hidden="true"><Icon icon={RiArrowDownSLine} size="1rem" /></span>
 	{/snippet}
 
-	<MenuGroup label="Signed in as {name}">
+	<!-- The name is on the button; the menu says the rest. -->
+	<MenuGroup>
 		<MenuInfo icon={RiMailLine} label={admin.email} description="Email" />
 		<MenuInfo icon={RiShieldUserLine} label={role} description="Role" />
 	</MenuGroup>
@@ -102,7 +107,7 @@
 	/>
 </DropdownMenu>
 
-<ProfileDialog {admin} bind:open={accountOpen} />
+<ProfileDrawer {admin} bind:open={accountOpen} />
 
 <Modal
 	bind:open={confirmingSignOut}
@@ -118,3 +123,39 @@
 		<Button colorPalette="danger" loading={signingOut} onclick={signOut}>Sign out</Button>
 	{/snippet}
 </Modal>
+
+<style>
+	/* A long name is cut rather than pushing the bar about; the menu's
+	   address says who it is in full. */
+	.name {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.chevron {
+		display: inline-flex;
+		flex: none;
+		color: var(--color-text-hint);
+		transition: transform var(--speed);
+	}
+
+	:global(.dropdown-trigger[data-state='open']) .chevron {
+		transform: rotate(180deg);
+	}
+
+	/* Where the bar has no room for a name, the button is the avatar alone. */
+	@media (max-width: 64rem) {
+		.name,
+		.chevron {
+			display: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.chevron {
+			transition: none;
+		}
+	}
+</style>

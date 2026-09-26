@@ -22,6 +22,7 @@ type Profile struct {
 	FirstName string
 	LastName  string
 	Email     string
+	AvatarURL string
 }
 
 // UpdateProfile changes the signed-in administrator's name and address. The
@@ -38,6 +39,7 @@ func (s *Service) UpdateProfile(ctx context.Context, admin *model.AdminUser, pro
 	admin.LastName = profile.LastName
 	admin.Email = profile.Email
 	admin.Username = profile.Email
+	admin.AvatarURL = profile.AvatarURL
 
 	return s.store.SaveOwnAccount(ctx, admin)
 }
@@ -58,7 +60,8 @@ func (s *Service) ChangePassword(ctx context.Context, admin *model.AdminUser, se
 		return err
 	}
 
-	return s.store.RevokeOtherSessionsFor(ctx, admin.ID, session, time.Now())
+	_, err := s.store.RevokeOtherSessionsFor(ctx, admin.ID, session, time.Now())
+	return err
 }
 
 // matches says whether a password is the administrator's own.

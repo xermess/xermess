@@ -34,6 +34,8 @@ type logResponse struct {
 
 // overviewResponse is the dashboard.
 type overviewResponse struct {
+	// Days is the range everything below was counted over.
+	Days      int                `json:"days"`
 	Counts    store.Counts       `json:"counts"`
 	SignIns   store.SignIns      `json:"sign_ins"`
 	Daily     []store.DayCount   `json:"daily"`

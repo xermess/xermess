@@ -6,8 +6,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"loginer/internal/api/audit"
 	"loginer/internal/api/respond"
@@ -23,6 +25,9 @@ var (
 	emailTaken       = respond.Define(http.StatusConflict, "admin_email_taken", respond.Admin)
 	passwordTooShort = respond.Define(http.StatusBadRequest, "admin_password_too_short", respond.Admin)
 	passwordTooLong  = respond.Define(http.StatusBadRequest, "admin_password_too_long", respond.Admin)
+	avatarInvalid    = respond.Define(http.StatusBadRequest, "admin_avatar_invalid", respond.Admin)
+	sessionCurrent   = respond.Define(http.StatusConflict, "admin_session_current", respond.Admin)
+	sessionNotFound  = respond.Define(http.StatusNotFound, "admin_session_not_found", respond.Admin)
 )
 
 // targetType is what an administrator is called in the activity log.
@@ -170,7 +175,12 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	}
 
 	admin := session.Admin(c)
-	profile := authsvc.Profile{FirstName: req.FirstName, LastName: req.LastName, Email: req.Email}
+	profile := authsvc.Profile{
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Email:     req.Email,
+		AvatarURL: req.AvatarURL,
+	}
 
 	err := h.auth.UpdateProfile(c.Request.Context(), admin, profile, req.CurrentPassword)
 	switch {
@@ -232,7 +242,58 @@ func (h *Handler) Sessions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"sessions": newSessionResponses(sessions)})
+	c.JSON(http.StatusOK, gin.H{"sessions": newSessionResponses(sessions, session.ID(c))})
+}
+
+// EndSession signs the administrator out of one of their other browsers.
+// The one the request came from is not ended here — that is signing out,
+// which also clears the cookie — and a session that is not theirs is
+// answered as one that does not exist.
+func (h *Handler) EndSession(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		respond.Fail(c, sessionNotFound)
+		return
+	}
+
+	if id == session.ID(c) {
+		respond.Fail(c, sessionCurrent)
+		return
+	}
+
+	admin := session.Admin(c)
+	ended, err := h.store.RevokeOwnSession(c.Request.Context(), admin.ID, id, time.Now())
+	if err != nil {
+		respond.Failure(c, h.log, err, "ending a session failed")
+		return
+	}
+	if !ended {
+		respond.Fail(c, sessionNotFound)
+		return
+	}
+
+	h.audit.Record(c, "admin.session_ended", targetType, admin.ID.String())
+	c.Status(http.StatusNoContent)
+}
+
+// EndOtherSessions signs the administrator out everywhere but here: what to
+// do after using a shared computer, or losing a laptop.
+func (h *Handler) EndOtherSessions(c *gin.Context) {
+	admin := session.Admin(c)
+
+	ended, err := h.store.RevokeOtherSessionsFor(c.Request.Context(), admin.ID, session.ID(c), time.Now())
+	if err != nil {
+		respond.Failure(c, h.log, err, "ending the other sessions failed")
+		return
+	}
+
+	if ended > 0 {
+		h.audit.RecordWith(c, "admin.sessions_ended", targetType, admin.ID.String(), map[string]any{
+			"count": ended,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ended": ended})
 }
 
 // requestOf describes where the call came from, for the session and the log.

@@ -1,3 +1,4 @@
+import type { LogFilter } from '$lib/api';
 import type { RoleListParams } from './roles';
 
 /**
@@ -109,6 +110,21 @@ export const keys = {
 		/** Every language's text, and one language's text for one app. */
 		translations: ['languages', 'translation'] as const,
 		translation: (code: string, app: string) => ['languages', 'translation', code, app] as const
+	},
+
+	logs: {
+		all: ['logs'] as const,
+		/** One filtered view of the log, however many pages of it are read. */
+		list: (filter: LogFilter) =>
+			[
+				'logs',
+				'list',
+				filter.q ?? '',
+				(filter.actions ?? []).join(','),
+				filter.actor ?? '',
+				filter.from ?? '',
+				filter.to ?? ''
+			] as const
 	},
 
 	sessions: {

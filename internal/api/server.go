@@ -357,6 +357,8 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			signedIn.DELETE("/mfa/totp", h.limit, h.mfa.Disable)
 			signedIn.POST("/mfa/recovery-codes", h.limit, h.mfa.RecoveryCodes)
 			signedIn.GET("/sessions", h.auth.Sessions)
+			signedIn.DELETE("/sessions/:id", h.auth.EndSession)
+			signedIn.DELETE("/sessions", h.auth.EndOtherSessions)
 
 			// The rest is guarded by what the administrator's roles allow.
 			// The panel hides what someone cannot do; these checks are what
@@ -364,6 +366,7 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			activity := signedIn.Group("", session.Can(model.PermActivityRead))
 			activity.GET("/overview", h.activity.Overview)
 			activity.GET("/logs", h.activity.Logs)
+			activity.GET("/logs/export", h.activity.Export)
 
 			// The users an organisation manages and the fields their records
 			// are made of. Users are shared by every application, so these

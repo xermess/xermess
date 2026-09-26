@@ -17,9 +17,20 @@
 		/** `accent` fills it with the brand, for the one mark that stands for
 		    the account or the product; `neutral` is the quiet tint. */
 		tone?: 'neutral' | 'accent';
+		/** Show a picture as it is, with no frame or tint behind it: for a
+		    logo that has its own shape and should be seen whole. */
+		bare?: boolean;
 	};
 
-	let { src, icon, text, size = 'sm', shape = 'square', tone = 'neutral' }: Props = $props();
+	let {
+		src,
+		icon,
+		text,
+		size = 'sm',
+		shape = 'square',
+		tone = 'neutral',
+		bare = false
+	}: Props = $props();
 
 	/** The address that did not load, rather than a flag: a new one gets its
 	    own chance without anything having to reset this. */
@@ -32,7 +43,12 @@
 
 <!-- PocketBase's .thumb: a square on the faint tint, in the hint colour, for
      what leads a row, a card or a bar — a logo, an avatar, an icon. -->
-<span class="thumb {size} {shape} {tone}" class:picture aria-hidden="true">
+<span
+	class="thumb {size} {shape} {tone}"
+	class:picture
+	class:bare={bare && picture}
+	aria-hidden="true"
+>
 	{#if picture}
 		<img src={picture} alt="" onerror={() => (failed = picture)} />
 	{:else if icon}
@@ -88,6 +104,14 @@
 	.picture {
 		border-color: var(--color-border);
 		background: var(--color-surface-alt);
+	}
+
+	/* Bare, the picture is the whole mark: no border, no tint, no padding,
+	   and its own corners. */
+	.picture.bare {
+		border: none;
+		border-radius: 0;
+		background: transparent;
 	}
 
 	img {

@@ -340,8 +340,9 @@ code is defining its problem and adding the sentence to
 | `GET`  | `/api/v1/admin/me`            | yes             | The signed-in administrator    |
 | `PATCH`| `/api/v1/admin/me`            | yes             | Change your own name and email; a new email takes your current password |
 | `POST` | `/api/v1/admin/me/password`   | yes             | Change your own password; signs out your other sessions |
-| `GET`  | `/api/v1/admin/overview`      | yes             | Counts and recent activity     |
-| `GET`  | `/api/v1/admin/logs`          | yes             | The activity log (`?limit=`)   |
+| `GET`  | `/api/v1/admin/overview`      | yes             | Counts and recent activity (`?days=7\|14\|30\|90`) |
+| `GET`  | `/api/v1/admin/logs`          | yes             | The activity log, a page at a time: `?q=`, `action=` (repeated), `actor=`, `from=`, `to=`, `before=` (the previous page's `next`), `limit=` |
+| `GET`  | `/api/v1/admin/logs/export`   | yes             | The same filters, as a CSV file (up to 10,000 entries) |
 | `GET`  | `/api/v1/admin/users`         | yes             | List users (`?search=&verified=&limit=&offset=`) |
 | `POST` | `/api/v1/admin/users`         | yes             | Create a user                  |
 | `GET`  | `/api/v1/admin/users/:id`     | yes             | One user                       |
@@ -383,7 +384,9 @@ code is defining its problem and adding the sentence to
 | `DELETE`| `/api/v1/admin/user-sessions/:id` | yes         | Sign one session out           |
 | `DELETE`| `/api/v1/admin/users/:id/sessions` | yes        | Sign a user out everywhere: every session, every application's tokens |
 | `PATCH`| `/api/v1/admin/organization`  | yes             | Change its settings            |
-| `GET`  | `/api/v1/admin/sessions`      | yes             | The caller's own sessions      |
+| `GET`  | `/api/v1/admin/sessions`      | yes             | The caller's own sessions, the one in use marked `current` |
+| `DELETE` | `/api/v1/admin/sessions/:id` | yes           | Ends one of the caller's other sessions |
+| `DELETE` | `/api/v1/admin/sessions`    | yes             | Ends every session of the caller's but this one |
 
 The table above is the start of the admin API; the full list, with the
 permission each route needs, is in `registerRoutes` in `internal/api/server.go`.

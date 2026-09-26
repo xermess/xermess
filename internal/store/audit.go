@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,13 +15,111 @@ func (s *Store) WriteAudit(ctx context.Context, entry *model.AuditLog) error {
 	return s.db.WithContext(ctx).Create(entry).Error
 }
 
-// AuditLog returns the newest entries, which is what both the dashboard and
-// the logs page show.
+// AuditLog returns the newest entries: the dashboard's latest activity.
 func (s *Store) AuditLog(ctx context.Context, limit int) ([]model.AuditLog, error) {
-	var events []model.AuditLog
-	err := s.db.WithContext(ctx).Order("created_at DESC").Limit(limit).Find(&events).Error
-
+	events, _, err := s.AuditQuery(ctx, AuditFilter{Limit: limit})
 	return events, err
+}
+
+// AuditCursor is where a page of the log ends: the newest entry not yet
+// shown is the one just older than this. Two entries can share a moment,
+// so the id breaks the tie.
+type AuditCursor struct {
+	At time.Time
+	ID uuid.UUID
+}
+
+// AuditFilter narrows the log. Every field left zero matches everything.
+type AuditFilter struct {
+	// Search is matched, case-insensitively and anywhere, against who acted,
+	// what they did, where from, and the id of what it was done to.
+	Search string
+	// Actions are the kinds of entry wanted, by their exact names.
+	Actions []string
+	// Actor is one person's address, exactly.
+	Actor string
+	// From and To bound when it happened: from inclusive, to exclusive.
+	From, To time.Time
+	// Before continues from the end of the previous page.
+	Before *AuditCursor
+	// HideUserActors keeps the searches on who acted away from what users
+	// did at the sign-in pages, for an administrator who may not read users:
+	// that a search for an address matched would say the user exists.
+	HideUserActors bool
+	Limit          int
+}
+
+// AuditQuery returns one page of the log, newest first, and the cursor the
+// next page starts from — nil when this page is the last.
+//
+// It pages by the position of the last entry rather than by an offset, so
+// the hundredth page costs what the first does, and an entry written while
+// someone reads does not shift the pages under them. The indexes on
+// (created_at, id), (action, created_at) and (actor_email, created_at) are
+// what keep each filter a range read.
+func (s *Store) AuditQuery(ctx context.Context, filter AuditFilter) ([]model.AuditLog, *AuditCursor, error) {
+	query := s.db.WithContext(ctx).Model(&model.AuditLog{})
+
+	// What users did at the sign-in pages: no administrator, a user target.
+	const byUser = "(admin_user_id IS NULL AND target_type = 'user')"
+
+	if term := strings.TrimSpace(filter.Search); term != "" {
+		like := "%" + escapeLike(term) + "%"
+		actor := "actor_email ILIKE @like"
+		if filter.HideUserActors {
+			actor = "(actor_email ILIKE @like AND NOT " + byUser + ")"
+		}
+
+		query = query.Where(
+			actor+" OR action ILIKE @like OR ip ILIKE @like OR target_id ILIKE @like",
+			map[string]any{"like": like},
+		)
+	}
+
+	if len(filter.Actions) > 0 {
+		query = query.Where("action IN ?", filter.Actions)
+	}
+
+	if filter.Actor != "" {
+		query = query.Where("actor_email = ?", filter.Actor)
+		if filter.HideUserActors {
+			query = query.Where("NOT " + byUser)
+		}
+	}
+
+	if !filter.From.IsZero() {
+		query = query.Where("created_at >= ?", filter.From)
+	}
+	if !filter.To.IsZero() {
+		query = query.Where("created_at < ?", filter.To)
+	}
+
+	if filter.Before != nil {
+		query = query.Where("(created_at, id) < (?, ?)", filter.Before.At, filter.Before.ID)
+	}
+
+	// One more than asked for, to learn whether there is a next page without
+	// counting the rest.
+	var events []model.AuditLog
+	err := query.Order("created_at DESC, id DESC").Limit(filter.Limit + 1).Find(&events).Error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(events) <= filter.Limit {
+		return events, nil, nil
+	}
+
+	events = events[:filter.Limit]
+	last := events[len(events)-1]
+
+	return events, &AuditCursor{At: last.CreatedAt, ID: last.ID}, nil
+}
+
+// escapeLike makes a search term match itself: % and _ are wildcards in
+// LIKE, and a backslash is the escape Postgres uses by default.
+func escapeLike(term string) string {
+	return strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(term)
 }
 
 // The actions signing in leaves behind, as the admin and account services
@@ -47,12 +146,14 @@ type Counts struct {
 	Admins              int64 `json:"admins"`
 	LockedAdmins        int64 `json:"locked_admins"`
 	ActiveSessions      int64 `json:"active_sessions"`
-	Events              int64 `json:"events"`
-	RecentEvents        int64 `json:"recent_events"`
 }
 
 // Counts totals the tables the dashboard reports on. NewUsers counts the users
-// created since `since`, and RecentEvents the log entries.
+// created since `since`.
+//
+// The activity log is not counted here: it is the one table that grows
+// without end, and counting all of it on every visit to the front page is a
+// read of the whole table. The chart sums the days it shows instead.
 //
 // It is one query, so the numbers are all read at the same moment. A count
 // that fails takes the whole answer with it: a dashboard of partly wrong
@@ -73,9 +174,7 @@ func (s *Store) Counts(ctx context.Context, now, since time.Time) (Counts, error
 			(SELECT COUNT(*) FROM admin_users WHERE deleted_at IS NULL) AS admins,
 			(SELECT COUNT(*) FROM admin_users WHERE deleted_at IS NULL AND locked_until > @now) AS locked_admins,
 			(SELECT COUNT(*) FROM admin_user_sessions
-				WHERE deleted_at IS NULL AND revoked_at IS NULL AND expires_at > @now) AS active_sessions,
-			(SELECT COUNT(*) FROM audit_logs) AS events,
-			(SELECT COUNT(*) FROM audit_logs WHERE created_at >= @since) AS recent_events`,
+				WHERE deleted_at IS NULL AND revoked_at IS NULL AND expires_at > @now) AS active_sessions`,
 		map[string]any{"now": now, "since": since},
 	).Scan(&counts).Error
 

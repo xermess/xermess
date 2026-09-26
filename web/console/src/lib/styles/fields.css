@@ -371,6 +371,64 @@
 	display: none;
 }
 
+/* ---------------------------------------------------------------- compact */
+
+/* A filter in a toolbar sits in a row of buttons and a search box, all a
+   control's height, so its box is that height too. There is no room for a
+   label to float over the value, so the label is a quiet prefix beside it —
+   "Kind  Every kind", "From  12/03/2026" — and the value, or the
+   placeholder, is always shown. */
+.field-box[data-compact] {
+	display: flex;
+	align-items: center;
+	height: var(--control-height);
+}
+
+.field-box[data-compact] > [data-part='label'],
+.field-box[data-compact][data-float] > [data-part='label'],
+.field-box[data-compact]:focus-within > [data-part='label'],
+.field-box[data-compact][data-open] > [data-part='label'] {
+	position: static;
+	flex: none;
+	max-width: 45%;
+	padding-left: 12px;
+	font-size: var(--text-sm);
+	font-weight: 500;
+	line-height: 20px;
+}
+
+.field-box[data-compact] [data-part='input'],
+.field-box[data-compact] [data-scope='select'][data-part='trigger'] {
+	height: 100%;
+	padding: 0 12px 0 10px;
+	font-size: var(--text-sm);
+}
+
+.field-box[data-compact] [data-scope='select'][data-part='control'] {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+}
+
+.field-box[data-compact] [data-scope='select'][data-part='trigger'] {
+	padding-right: 36px;
+}
+
+.field-box[data-compact] [data-part='input'] {
+	flex: 1;
+	min-width: 0;
+}
+
+.field-box[data-compact] [data-part='input']::placeholder {
+	opacity: 1;
+}
+
+.field-box[data-compact]:not([data-float], [data-open], :focus-within)
+	[data-scope='select'][data-part='trigger'][data-placeholder-shown]
+	[data-part='value-text'] {
+	color: var(--color-text-hint);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.field-box,
 	.field-box > [data-part='label'],

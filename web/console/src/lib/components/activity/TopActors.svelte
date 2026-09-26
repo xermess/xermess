@@ -5,9 +5,11 @@
 
 	type Props = {
 		actors: Overview['top_actors'];
+		/** Where one person's entries are listed, making each row a link. */
+		href?: (actor: string) => string;
 	};
 
-	let { actors }: Props = $props();
+	let { actors, href }: Props = $props();
 
 	const most = $derived(Math.max(1, ...actors.map((actor) => actor.events)));
 
@@ -19,11 +21,11 @@
 </script>
 
 {#if actors.length === 0}
-	<p class="empty">No changes made this week.</p>
+	<p class="empty">No changes made in this range.</p>
 {:else}
 	<List label="Most active administrators">
 		{#each actors as actor (actor.actor)}
-			<ListItem>
+			<ListItem href={href?.(actor.actor)}>
 				{#snippet lead()}<Thumb text={actorInitials(actor.actor)} />{/snippet}
 
 				<span class="name" title={actor.actor}>{actor.actor}</span>

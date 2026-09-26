@@ -3,12 +3,14 @@
 package activity
 
 import (
+	"encoding/csv"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 
 	"loginer/internal/api/query"
 	"loginer/internal/api/respond"
@@ -21,17 +23,25 @@ import (
 const (
 	// dashboardEntries is how many of the latest entries the dashboard lists.
 	dashboardEntries = 12
-	// chartDays is how many days the activity chart covers, today included.
-	chartDays = 14
 	// topActors is how many of the busiest administrators are named.
 	topActors = 5
-	// recentWindow is what "recently" means on the dashboard: new users,
-	// sign-ins and the busiest administrators are counted over it.
-	recentWindow = 7 * 24 * time.Hour
+	// defaultDays is the dashboard's range when it asks for none.
+	defaultDays = 14
 
 	defaultLimit = 50
 	maxLimit     = 200
+
+	// exportLimit caps an export, and exportPage is how many entries it
+	// reads at a time: a file of the whole history is a job for the
+	// database's own tools, not a request.
+	exportLimit = 10000
+	exportPage  = 500
 )
+
+// ranges are the spans the dashboard may be looked at over, in days. A
+// short list rather than any number: each is a chart the page knows how to
+// draw, and a year of daily bars is not one.
+var ranges = map[int]bool{7: true, 14: true, 30: true, 90: true}
 
 // Handler holds what these endpoints need.
 type Handler struct {
@@ -44,41 +54,39 @@ func New(st *store.Store, log *slog.Logger) *Handler {
 	return &Handler{store: st, log: log}
 }
 
-// Overview is the admin panel's front page: how much of everything there is,
-// how signing in has gone, what each of the last days looked like, who has
-// been busiest, and the latest entries.
+// Overview is the admin panel's front page over a range of days: how much of
+// everything there is, how signing in has gone, what each day looked like,
+// who has been busiest, and the latest entries.
+//
+// The five reads do not depend on each other, so they run at once: the page
+// waits for the slowest of them rather than for all of them in a row.
 func (h *Handler) Overview(c *gin.Context) {
 	ctx := c.Request.Context()
 	now := time.Now()
-	since := now.Add(-recentWindow)
 
-	counts, err := h.store.Counts(ctx, now, since)
-	if err != nil {
-		respond.Failure(c, h.log, err, "counting for the overview failed")
-		return
+	days := query.Int(c, "days", defaultDays, 90)
+	if !ranges[days] {
+		days = defaultDays
 	}
+	since := now.AddDate(0, 0, -days)
 
-	signIns, err := h.store.SignInsSince(ctx, since)
-	if err != nil {
-		respond.Failure(c, h.log, err, "counting sign-ins failed")
-		return
-	}
+	var (
+		counts  store.Counts
+		signIns store.SignIns
+		daily   []store.DayCount
+		actors  []store.ActorCount
+		events  []model.AuditLog
+	)
 
-	daily, err := h.store.DailyActivity(ctx, now, chartDays)
-	if err != nil {
-		respond.Failure(c, h.log, err, "counting daily activity failed")
-		return
-	}
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.Go(func() (err error) { counts, err = h.store.Counts(groupCtx, now, since); return })
+	group.Go(func() (err error) { signIns, err = h.store.SignInsSince(groupCtx, since); return })
+	group.Go(func() (err error) { daily, err = h.store.DailyActivity(groupCtx, now, days); return })
+	group.Go(func() (err error) { actors, err = h.store.TopActors(groupCtx, since, topActors); return })
+	group.Go(func() (err error) { events, err = h.store.AuditLog(groupCtx, dashboardEntries); return })
 
-	actors, err := h.store.TopActors(ctx, since, topActors)
-	if err != nil {
-		respond.Failure(c, h.log, err, "finding the busiest administrators failed")
-		return
-	}
-
-	events, err := h.store.AuditLog(ctx, dashboardEntries)
-	if err != nil {
-		respond.Failure(c, h.log, err, "reading the activity log failed")
+	if err := group.Wait(); err != nil {
+		respond.Failure(c, h.log, err, "reading the overview failed")
 		return
 	}
 
@@ -89,6 +97,7 @@ func (h *Handler) Overview(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, overviewResponse{
+		Days:      days,
 		Counts:    counts,
 		SignIns:   signIns,
 		Daily:     daily,
@@ -97,10 +106,16 @@ func (h *Handler) Overview(c *gin.Context) {
 	})
 }
 
-// Logs lists the activity log, newest first. The page size is capped so a
-// caller cannot ask for the whole table.
+// Logs lists one page of the activity log, newest first, narrowed by the
+// filters parseFilter reads, with the cursor the next page starts from.
 func (h *Handler) Logs(c *gin.Context) {
-	events, err := h.store.AuditLog(c.Request.Context(), query.Int(c, "limit", defaultLimit, maxLimit))
+	filter, err := parseFilter(c, query.Int(c, "limit", defaultLimit, maxLimit))
+	if err != nil {
+		respond.Failure(c, h.log, err, "reading the log filters failed")
+		return
+	}
+
+	events, next, err := h.store.AuditQuery(c.Request.Context(), filter)
 	if err != nil {
 		respond.Failure(c, h.log, err, "listing logs failed")
 		return
@@ -112,7 +127,69 @@ func (h *Handler) Logs(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"logs": newLogResponses(events, described)})
+	c.JSON(http.StatusOK, gin.H{
+		"logs": newLogResponses(events, described),
+		"next": formatCursor(next),
+	})
+}
+
+// Export writes the entries the filters match as a CSV file, newest first,
+// up to exportLimit of them. Each row says what the logs page would: the
+// same names hidden, the same detail left out, for the same administrator.
+func (h *Handler) Export(c *gin.Context) {
+	filter, err := parseFilter(c, exportPage)
+	if err != nil {
+		respond.Failure(c, h.log, err, "reading the log filters failed")
+		return
+	}
+
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition",
+		`attachment; filename="activity-`+time.Now().Format("2006-01-02")+`.csv"`)
+
+	out := csv.NewWriter(c.Writer)
+	_ = out.Write([]string{"time", "actor", "action", "target_type", "target_id", "target", "detail", "ip", "user_agent"})
+
+	for written := 0; written < exportLimit; {
+		events, next, err := h.store.AuditQuery(c.Request.Context(), filter)
+		if err != nil {
+			// The header is sent; the file ends here, and the log says why.
+			h.log.Error("exporting logs failed", "error", err)
+			break
+		}
+
+		described, err := h.describe(c, events)
+		if err != nil {
+			h.log.Error("naming what the export was about failed", "error", err)
+			break
+		}
+
+		for i, event := range events {
+			if written == exportLimit {
+				break
+			}
+
+			row := described[i]
+			targetType, targetID, target := "", "", ""
+			if row.Target != nil {
+				targetType, targetID, target = row.Target.Type, row.Target.ID, row.Target.Name
+			}
+
+			_ = out.Write([]string{
+				event.CreatedAt.UTC().Format(time.RFC3339), row.Actor, row.Action,
+				targetType, targetID, target, row.Detail, row.IP, event.UserAgent,
+			})
+			written++
+		}
+
+		out.Flush()
+		if next == nil {
+			break
+		}
+		filter.Before = next
+	}
+
+	out.Flush()
 }
 
 // describe turns log entries into what the panel shows: each with its target

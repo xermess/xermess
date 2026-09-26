@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { RiComputerLine, RiShieldKeyholeLine } from 'svelte-remixicon';
-	import { messageOf, mfaApi } from '$lib/api';
+	import { adminApi, messageOf, mfaApi, type AdminSession } from '$lib/api';
 	import RecoveryCodes from '$lib/components/mfa/RecoveryCodes.svelte';
 	import TotpSetup from '$lib/components/mfa/TotpSetup.svelte';
 	import SessionList from '$lib/components/profile/SessionList.svelte';
@@ -49,6 +49,49 @@
 				? messageOf(status.error ?? ownSessions.error, 'Could not read your account')
 				: '')
 	);
+
+	/* ---- Sessions ------------------------------------------------------ */
+
+	/** The one session being ended, so only its button spins. */
+	let ending = $state<string | null>(null);
+	/** Asked before signing out everywhere else, in place, not in a dialog. */
+	let confirmingOthers = $state(false);
+	let endingOthers = $state(false);
+	let notice = $state('');
+
+	const otherSessions = $derived(sessions.filter((session) => session.active && !session.current));
+
+	async function endSession(session: AdminSession) {
+		ending = session.id;
+		failure = '';
+		notice = '';
+
+		try {
+			await adminApi.endSession(session.id);
+			await queryClient.invalidateQueries({ queryKey: keys.profile.sessions });
+		} catch (err) {
+			failure = messageOf(err, 'Could not sign that session out');
+		} finally {
+			ending = null;
+		}
+	}
+
+	async function endOthers() {
+		endingOthers = true;
+		failure = '';
+
+		try {
+			const { ended } = await adminApi.endOtherSessions();
+			notice =
+				ended === 1 ? 'One other session signed out.' : `${ended} other sessions signed out.`;
+			confirmingOthers = false;
+			await queryClient.invalidateQueries({ queryKey: keys.profile.sessions });
+		} catch (err) {
+			failure = messageOf(err, 'Could not sign the other sessions out');
+		} finally {
+			endingOthers = false;
+		}
+	}
 
 	function backToReading() {
 		mode = 'reading';
@@ -233,7 +276,47 @@
 			{#if loading && sessions.length === 0}
 				<p class="quiet padded">Reading your sessions…</p>
 			{:else}
-				<SessionList {sessions} />
+				<SessionList {sessions} onEnd={endSession} {ending} />
+
+				{#if notice}
+					<div class="padded"><Alert tone="success">{notice}</Alert></div>
+				{/if}
+
+				{#if otherSessions.length > 0}
+					<!-- Everywhere else at once: what to do after a shared computer
+					     or a lost laptop. It is asked about first, in place. -->
+					<div class="asking">
+						{#if confirmingOthers}
+							<p class="quiet">
+								{`Sign out of ${otherSessions.length} other ${otherSessions.length === 1 ? 'session' : 'sessions'}? This browser stays signed in.`}
+							</p>
+							<div class="buttons">
+								<Button
+									size="sm"
+									variant="subtle"
+									disabled={endingOthers}
+									onclick={() => (confirmingOthers = false)}
+								>
+									Cancel
+								</Button>
+								<Button size="sm" colorPalette="danger" loading={endingOthers} onclick={endOthers}>
+									Sign out everywhere else
+								</Button>
+							</div>
+						{:else}
+							<div class="buttons">
+								<Button
+									size="sm"
+									variant="subtle"
+									colorPalette="danger"
+									onclick={() => (confirmingOthers = true)}
+								>
+									Sign out other sessions
+								</Button>
+							</div>
+						{/if}
+					</div>
+				{/if}
 			{/if}
 		</Panel>
 	{/if}

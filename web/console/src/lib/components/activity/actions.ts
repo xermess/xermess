@@ -62,6 +62,19 @@ const actions: Record<string, Action> = {
 		category: 'access',
 		icon: RiLogoutBoxRLine
 	},
+	'admin.session_ended': {
+		label: 'Session ended',
+		verb: 'signed out one of their other sessions',
+		category: 'access',
+		icon: RiLogoutBoxRLine
+	},
+	'admin.sessions_ended': {
+		label: 'Signed out elsewhere',
+		verb: 'signed out of every other session',
+		category: 'access',
+		tone: 'warning',
+		icon: RiLogoutBoxRLine
+	},
 	'admin.login_failed': {
 		label: 'Sign-in failed',
 		verb: 'failed to sign in',
@@ -570,6 +583,8 @@ export type Described = {
 const selfTargeted = new Set([
 	'admin.login',
 	'admin.logout',
+	'admin.session_ended',
+	'admin.sessions_ended',
 	'admin.login_failed',
 	'admin.login_blocked',
 	'admin.mfa_failed',
@@ -654,3 +669,23 @@ export const categoryLabels: Record<Category, string> = {
 export function categoryOf(action: string): Category {
 	return actions[action]?.category ?? 'other';
 }
+
+/** Every action the panel has a sentence for in one category: what the logs
+    page sends the server when a category is picked, so the filtering happens
+    there, over the whole log, and not over the page already loaded. */
+export function actionsIn(category: Category): string[] {
+	return Object.entries(actions)
+		.filter(([, action]) => action.category === category)
+		.map(([name]) => name);
+}
+
+/** The sign-ins that were turned away — a wrong password, a code that was
+    not right, an account that may not sign in — for the dashboard's links to
+    them. */
+export const refusedActions = [
+	'admin.login_failed',
+	'admin.login_blocked',
+	'admin.mfa_failed',
+	'user.login_failed',
+	'user.login_blocked'
+];

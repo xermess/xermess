@@ -18,6 +18,7 @@ type adminResponse struct {
 	FullName  string     `json:"full_name"`
 	FirstName string     `json:"first_name"`
 	LastName  string     `json:"last_name"`
+	AvatarURL string     `json:"avatar_url"`
 	Status    string     `json:"status"`
 	LastLogin *time.Time `json:"last_login_at,omitempty"`
 
@@ -51,6 +52,7 @@ func newAdminResponse(a *model.AdminUser) adminResponse {
 		FullName:  a.FullName(),
 		FirstName: a.FirstName,
 		LastName:  a.LastName,
+		AvatarURL: a.AvatarURL,
 		Status:    string(a.Status),
 		Roles:     roles,
 		LastLogin: a.LastLoginAt,
@@ -70,9 +72,12 @@ type sessionResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
 	Active    bool      `json:"active"`
+	// Current is the session this request came from: the browser reading
+	// the list, which is signed out rather than ended from it.
+	Current bool `json:"current"`
 }
 
-func newSessionResponses(sessions []model.AdminUserSession) []sessionResponse {
+func newSessionResponses(sessions []model.AdminUserSession, current uuid.UUID) []sessionResponse {
 	now := time.Now()
 	out := make([]sessionResponse, 0, len(sessions))
 
@@ -84,6 +89,7 @@ func newSessionResponses(sessions []model.AdminUserSession) []sessionResponse {
 			CreatedAt: s.CreatedAt,
 			ExpiresAt: s.ExpiresAt,
 			Active:    s.IsActive(now),
+			Current:   s.ID == current,
 		})
 	}
 

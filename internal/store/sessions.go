@@ -56,9 +56,25 @@ func (s *Store) RevokeSessionsFor(ctx context.Context, adminID uuid.UUID, at tim
 // RevokeOtherSessionsFor ends every open session an administrator has but
 // one: the one they changed their password from, which would otherwise sign
 // them out of the page they were using.
-func (s *Store) RevokeOtherSessionsFor(ctx context.Context, adminID, keep uuid.UUID, at time.Time) error {
-	return s.db.WithContext(ctx).
+//
+// It says how many it ended, for the activity log.
+func (s *Store) RevokeOtherSessionsFor(ctx context.Context, adminID, keep uuid.UUID, at time.Time) (int64, error) {
+	result := s.db.WithContext(ctx).
 		Model(&model.AdminUserSession{}).
 		Where("admin_user_id = ? AND id <> ? AND revoked_at IS NULL", adminID, keep).
-		Update("revoked_at", at).Error
+		Update("revoked_at", at)
+
+	return result.RowsAffected, result.Error
+}
+
+// RevokeOwnSession ends one session, only if it is the administrator's own
+// and still open. It says whether there was such a session: an id that is
+// someone else's is answered exactly as one that does not exist.
+func (s *Store) RevokeOwnSession(ctx context.Context, adminID, id uuid.UUID, at time.Time) (bool, error) {
+	result := s.db.WithContext(ctx).
+		Model(&model.AdminUserSession{}).
+		Where("id = ? AND admin_user_id = ? AND revoked_at IS NULL", id, adminID).
+		Update("revoked_at", at)
+
+	return result.RowsAffected > 0, result.Error
 }

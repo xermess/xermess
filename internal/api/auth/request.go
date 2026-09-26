@@ -17,6 +17,7 @@ type profileRequest struct {
 	FirstName       string `json:"first_name" validate:"required,max=100"`
 	LastName        string `json:"last_name" validate:"max=100"`
 	Email           string `json:"email" validate:"required,email,max=255"`
+	AvatarURL       string `json:"avatar_url"`
 	CurrentPassword string `json:"current_password"`
 }
 

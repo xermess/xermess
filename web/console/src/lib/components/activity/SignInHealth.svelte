@@ -7,9 +7,11 @@
 		signIns: Overview['sign_ins'];
 		/** Administrators locked out right now. */
 		locked: number;
+		/** Where each kind of attempt is listed, making its row a link. */
+		hrefs?: { succeeded?: string; failed?: string; blocked?: string };
 	};
 
-	let { signIns, locked }: Props = $props();
+	let { signIns, locked, hrefs = {} }: Props = $props();
 
 	const attempts = $derived(signIns.succeeded + signIns.failed + signIns.blocked);
 	const rate = $derived(attempts === 0 ? null : Math.round((signIns.succeeded / attempts) * 100));
@@ -21,15 +23,23 @@
 			key: 'success' as const,
 			label: 'Successful',
 			value: signIns.succeeded,
-			icon: RiShieldCheckLine
+			icon: RiShieldCheckLine,
+			href: hrefs.succeeded
 		},
 		{
 			key: 'danger' as const,
 			label: 'Wrong password',
 			value: signIns.failed,
-			icon: RiErrorWarningLine
+			icon: RiErrorWarningLine,
+			href: hrefs.failed
 		},
-		{ key: 'warning' as const, label: 'Blocked account', value: signIns.blocked, icon: RiLockLine }
+		{
+			key: 'warning' as const,
+			label: 'Blocked account',
+			value: signIns.blocked,
+			icon: RiLockLine,
+			href: hrefs.blocked
+		}
 	]);
 </script>
 
@@ -53,7 +63,7 @@
 
 <List bordered label="Sign-in attempts">
 	{#each rows as row (row.key)}
-		<ListItem>
+		<ListItem href={row.value > 0 ? row.href : undefined}>
 			{#snippet lead()}<span class="icon"><Icon icon={row.icon} /></span>{/snippet}
 			<span class="name">{row.label}</span>
 			{#snippet end()}

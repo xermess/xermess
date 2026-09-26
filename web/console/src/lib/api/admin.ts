@@ -1,6 +1,10 @@
 import { api, type Fetch } from './client';
 import type {
 	API,
+	LogFilter,
+	LogPage,
+	Overview,
+	OverviewDays,
 	APIApplication,
 	APILogEntry,
 	APIAccess,
@@ -63,6 +67,40 @@ import type {
 
 /** Setting the panel up: the two calls that work without a session, because
     before the first administrator exists there is nobody to be. */
+/** The query string the logs are read by, for a page, the next page, and
+    the export alike: one place spells the filters, so they cannot drift. */
+export function logQuery(filter: LogFilter, extra: Record<string, string> = {}): string {
+	const params = new URLSearchParams();
+
+	if (filter.q) params.set('q', filter.q);
+	for (const action of filter.actions ?? []) params.append('action', action);
+	if (filter.actor) params.set('actor', filter.actor);
+	if (filter.from) params.set('from', filter.from);
+	if (filter.to) params.set('to', filter.to);
+	for (const [key, value] of Object.entries(extra)) params.set(key, value);
+
+	const text = params.toString();
+	return text ? `?${text}` : '';
+}
+
+/** What has been happening: the dashboard, and the log it summarises. */
+export const activityApi = {
+	overview: (days: OverviewDays, fetcher?: Fetch) =>
+		api.get<Overview>(`/admin/overview?days=${days}`, fetcher),
+
+	/** One page of the log, newest first; `before` is the previous page's
+	    `next`. */
+	logs: (filter: LogFilter, before = '', limit = 50, fetcher?: Fetch) =>
+		api.get<LogPage>(
+			`/admin/logs${logQuery(filter, { limit: String(limit), ...(before ? { before } : {}) })}`,
+			fetcher
+		),
+
+	/** Where the browser downloads the entries the filter matches, as CSV.
+	    A link rather than a call: the browser saves the file itself. */
+	exportUrl: (filter: LogFilter) => `/api/v1/admin/logs/export${logQuery(filter)}`
+};
+
 export const setupApi = {
 	status: (fetcher?: Fetch) => api.get<{ required: boolean }>('/admin/setup', fetcher),
 
@@ -88,12 +126,19 @@ export const adminApi = {
 
 	profileSessions: () => api.get<{ sessions: AdminSession[] }>('/admin/sessions'),
 
+	/** Signs the caller out of one of their other browsers. */
+	endSession: (id: string) => api.delete<void>(`/admin/sessions/${encodeURIComponent(id)}`),
+
+	/** Signs the caller out everywhere but this browser. */
+	endOtherSessions: () => api.delete<{ ended: number }>('/admin/sessions'),
+
 	/** Changes the caller's own name and address. A new address takes their
 	    current password, since it is what they sign in with. */
 	updateProfile: (body: {
 		first_name: string;
 		last_name: string;
 		email: string;
+		avatar_url: string;
 		current_password?: string;
 	}) => api.patch<{ admin: Admin }>('/admin/me', body),
 

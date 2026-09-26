@@ -29,6 +29,9 @@
 		readOnly?: boolean;
 		/** Offers a button that puts the field back to nothing chosen. */
 		clearable?: boolean;
+		/** A toolbar's filter: a control's height, the label beside the
+		    value. See Field. */
+		compact?: boolean;
 		/** Submitted with a surrounding form, through a hidden native select. */
 		name?: string;
 		id?: string;
@@ -47,6 +50,7 @@
 		disabled,
 		readOnly,
 		clearable = false,
+		compact = false,
 		name,
 		id,
 		onChange
@@ -112,7 +116,12 @@
 		onChange?.(value);
 	}}
 >
-	<div class="field-box" data-float={value !== '' || undefined} data-open={open || undefined}>
+	<div
+		class="field-box"
+		data-float={value !== '' || undefined}
+		data-open={open || undefined}
+		data-compact={compact || undefined}
+	>
 		<ArkSelect.Label><FieldText {label} {icon} {required} /></ArkSelect.Label>
 
 		<ArkSelect.Control>

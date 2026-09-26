@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import {
 		RiAppsLine,
@@ -13,7 +13,9 @@
 		RiShieldCheckLine,
 		RiUserStarLine
 	} from 'svelte-remixicon';
+	import type { OverviewDays } from '$lib/api';
 	import { BRAND } from '$lib/brand';
+	import { logsHref } from '$lib/components/activity/filters';
 	import ActivityChart from '$lib/components/activity/ActivityChart.svelte';
 	import ActivityFeed from '$lib/components/activity/ActivityFeed.svelte';
 	import SignInHealth from '$lib/components/activity/SignInHealth.svelte';
@@ -26,6 +28,7 @@
 		Note,
 		PageHeader,
 		Panel,
+		SegmentedControl,
 		StatCard,
 		Tag
 	} from '$lib/components/ui';
@@ -36,6 +39,37 @@
 
 	const admin = $derived(data.admin);
 	const overview = $derived(data.overview);
+
+	/** The ranges the page can be read over. The chart, the sign-ins, the
+	    busiest people and "new" all follow the one chosen. */
+	const ranges: { value: `${OverviewDays}`; label: string }[] = [
+		{ value: '7', label: '7 days' },
+		{ value: '14', label: '14 days' },
+		{ value: '30', label: '30 days' },
+		{ value: '90', label: '90 days' }
+	];
+
+	async function pick(days: string) {
+		const path = resolve('/admin/(panel)/dashboard');
+		// resolve() has already applied any base path; the query is only
+		// appended to what it returned.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		await goto(days === '14' ? path : `${path}?days=${days}`, { noScroll: true, keepFocus: true });
+	}
+
+	/* Every number on the page leads to the entries behind it: the logs,
+	   narrowed to the same range and to what the number counts. */
+	const logsPage = resolve('/admin/(panel)/dashboard/logs');
+
+	/** The first day of the range, as the logs' date filter takes it. */
+	const rangeStart = $derived(overview?.daily[0]?.day ?? '');
+
+	const links = $derived({
+		day: (day: string) => logsHref(logsPage, { from: day, to: day }),
+		actor: (actor: string) => logsHref(logsPage, { actor, from: rangeStart }),
+		refused: logsHref(logsPage, { kind: 'refused', from: rangeStart }),
+		access: logsHref(logsPage, { kind: 'access', from: rangeStart })
+	});
 
 	let refreshing = $state(false);
 
@@ -75,7 +109,7 @@
 		return {
 			users: note(
 				`${count(counts.active_users)} active`,
-				counts.new_users > 0 && `+${count(counts.new_users)} this week`
+				counts.new_users > 0 && `+${count(counts.new_users)} in ${data.days} days`
 			),
 			applications: note(
 				`${count(counts.enabled_applications)} enabled`,
@@ -101,7 +135,12 @@
 </svelte:head>
 
 <div class="page">
-	<PageHeader crumbs={['Dashboard', 'Activity']}>
+	<PageHeader
+		crumbs={['Dashboard', 'Activity']}
+		description={overview
+			? `What has been happening over the last ${data.days} days. Every number opens the entries behind it.`
+			: undefined}
+	>
 		{#snippet secondary()}
 			<IconButton
 				icon={RiRefreshLine}
@@ -114,6 +153,12 @@
 
 		{#snippet actions()}
 			{#if overview}
+				<SegmentedControl
+					label="Range"
+					options={ranges}
+					value={`${data.days}` as `${OverviewDays}`}
+					onChange={pick}
+				/>
 				<LinkButton href={resolve('/admin/(panel)/dashboard/logs')} variant="subtle">
 					<Icon icon={RiFileList3Line} />
 					Logs
@@ -162,18 +207,22 @@
 		</div>
 
 		<div class="row">
-			<Panel title="Activity · last 14 days" icon={RiBarChartBoxLine}>
+			<Panel title="Activity · last {data.days} days" icon={RiBarChartBoxLine}>
 				{#snippet meta()}
 					<Tag>{totals.events.toLocaleString()} events</Tag>
 					{#if totals.refused > 0}
 						<Tag tone="danger" dot>{totals.refused.toLocaleString()} refused</Tag>
 					{/if}
 				{/snippet}
-				<ActivityChart daily={overview.daily} />
+				<ActivityChart daily={overview.daily} href={links.day} />
 			</Panel>
 
-			<Panel title="Sign-ins · last 7 days" icon={RiShieldCheckLine}>
-				<SignInHealth signIns={overview.sign_ins} locked={counts.locked_admins} />
+			<Panel title="Sign-ins · last {data.days} days" icon={RiShieldCheckLine}>
+				<SignInHealth
+					signIns={overview.sign_ins}
+					locked={counts.locked_admins}
+					hrefs={{ succeeded: links.access, failed: links.refused, blocked: links.refused }}
+				/>
 			</Panel>
 		</div>
 
@@ -188,8 +237,8 @@
 			</Panel>
 
 			<div class="side">
-				<Panel title="Most active · last 7 days" icon={RiUserStarLine} flush>
-					<TopActors actors={overview.top_actors} />
+				<Panel title="Most active · last {data.days} days" icon={RiUserStarLine} flush>
+					<TopActors actors={overview.top_actors} href={links.actor} />
 				</Panel>
 
 				<Panel title="Your sessions" icon={RiComputerLine} flush>

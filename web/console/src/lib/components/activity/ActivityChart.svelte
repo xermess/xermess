@@ -1,12 +1,23 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import type { Overview } from '$lib/api';
 	import { formatShortDay } from '$lib/utils/format';
 
 	type Props = {
 		daily: Overview['daily'];
+		/** Where a day leads — its entries in the logs — making each day a
+		    thing to click. Already resolved. */
+		href?: (day: string) => string;
 	};
 
-	let { daily }: Props = $props();
+	let { daily, href }: Props = $props();
+
+	function open() {
+		if (hovered === null || !href) return;
+		// The caller resolved the address.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void goto(href(daily[hovered].day));
+	}
 
 	/** The plot's size in pixels, so the lines stay 2px whatever the width. */
 	let width = $state(0);
@@ -98,8 +109,10 @@
 			{width}
 			{height}
 			role="presentation"
+			class:clickable={href !== undefined}
 			onpointermove={track}
 			onpointerleave={() => (hovered = null)}
+			onclick={open}
 		>
 			{#each ticks as tick (tick)}
 				<line class="grid" x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} />
@@ -163,6 +176,7 @@
 					{formatShortDay(tip.day.day)}{#if tip.day.failures > 0}
 						· {tip.day.failures} refused{/if}
 				</div>
+				{#if href}<div class="secondary">Click to see the entries</div>{/if}
 			</div>
 		{/if}
 	{/if}
@@ -172,7 +186,15 @@
 		<tbody>
 			{#each daily as day (day.day)}
 				<tr>
-					<th scope="row">{formatShortDay(day.day)}</th>
+					<th scope="row">
+						{#if href}
+							<!-- The caller resolved the address. -->
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+							<a href={href(day.day)}>{formatShortDay(day.day)}</a>
+						{:else}
+							{formatShortDay(day.day)}
+						{/if}
+					</th>
 					<td>{day.events} events</td>
 					<td>{day.failures} refused sign-ins</td>
 				</tr>
@@ -182,6 +204,10 @@
 </div>
 
 <style>
+	.clickable {
+		cursor: pointer;
+	}
+
 	.chart {
 		position: relative;
 		display: flex;

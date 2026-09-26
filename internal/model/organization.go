@@ -123,7 +123,7 @@ func (o Organization) Validate() error {
 		{"terms_url", o.TermsURL},
 		{"privacy_url", o.PrivacyURL},
 	} {
-		if err := validLink(link.field, link.value); err != nil {
+		if err := ValidLink(link.field, link.value); err != nil {
 			return err
 		}
 	}
@@ -146,12 +146,12 @@ func validTimezone(zone string) error {
 	return nil
 }
 
-// validLink holds a link to an absolute http(s) address: these are put in an
+// ValidLink holds a link to an absolute http(s) address: these are put in an
 // img tag and in anchors on pages served by this server and by the
 // applications reading the discovery document, where a relative path would
 // point at whichever of them rendered it and a javascript: URL would be a way
 // in. An empty value is no link at all, which is allowed.
-func validLink(field, value string) error {
+func ValidLink(field, value string) error {
 	if value == "" {
 		return nil
 	}

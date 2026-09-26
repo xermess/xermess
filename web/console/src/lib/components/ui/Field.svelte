@@ -21,6 +21,10 @@
 		/** The control holds a value, so the label sits raised in the top of
 		    the box rather than where the value would go. */
 		filled?: boolean;
+		/** A control's height, with the label as a quiet prefix beside the
+		    value rather than floating over it: for a filter in a toolbar,
+		    level with the buttons and the search box around it. */
+		compact?: boolean;
 	};
 
 	let {
@@ -32,7 +36,8 @@
 		required,
 		disabled,
 		readOnly,
-		filled = false
+		filled = false,
+		compact = false
 	}: Props = $props();
 </script>
 
@@ -41,7 +46,7 @@
      The parts are Ark's, styled once in styles/fields.css, so every field
      that uses this looks the same without saying so. -->
 <Field.Root class="field-root" {required} {disabled} {readOnly} invalid={error !== undefined}>
-	<div class="field-box" data-float={filled || undefined}>
+	<div class="field-box" data-float={filled || undefined} data-compact={compact || undefined}>
 		<Field.Label><FieldText {label} {icon} {required} /></Field.Label>
 		{@render children()}
 	</div>

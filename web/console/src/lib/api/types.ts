@@ -9,6 +9,8 @@ export type Admin = {
 	full_name: string;
 	first_name: string;
 	last_name: string;
+	/** A full address of their picture, or empty for their initials. */
+	avatar_url: string;
 	status: string;
 	/** The names of the roles held for the whole panel. */
 	roles: string[];
@@ -285,9 +287,29 @@ export type LogEntry = ActivityEvent & {
 	user_agent: string;
 };
 
-/** The dashboard. Counts are totals now; `new_users`, `recent_events`, the
-    sign-ins and the busiest administrators cover the last seven days. */
+/** One page of the log, and where the next begins — empty on the last. */
+export type LogPage = {
+	logs: LogEntry[];
+	next: string;
+};
+
+/** What the logs can be narrowed by. Dates are YYYY-MM-DD; `to` includes
+    its whole day. */
+export type LogFilter = {
+	q?: string;
+	actions?: string[];
+	actor?: string;
+	from?: string;
+	to?: string;
+};
+
+/** The ranges the dashboard can be looked at over, in days. */
+export type OverviewDays = 7 | 14 | 30 | 90;
+
+/** The dashboard. Counts are totals now; `new_users`, the sign-ins, the
+    chart and the busiest administrators cover the last `days` days. */
 export type Overview = {
+	days: OverviewDays;
 	counts: {
 		users: number;
 		active_users: number;
@@ -300,8 +322,6 @@ export type Overview = {
 		admins: number;
 		locked_admins: number;
 		active_sessions: number;
-		events: number;
-		recent_events: number;
 	};
 	sign_ins: {
 		since: string;
@@ -322,6 +342,8 @@ export type AdminSession = {
 	created_at: string;
 	expires_at: string;
 	active: boolean;
+	/** The session this browser is using. It is signed out, not ended. */
+	current: boolean;
 };
 
 /** The kinds of value a user field can hold. */

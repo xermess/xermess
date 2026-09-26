@@ -11,6 +11,7 @@ function admin(changes: Partial<Admin>): Admin {
 		full_name: 'A',
 		first_name: 'A',
 		last_name: '',
+		avatar_url: '',
 		status: 'active',
 		roles: [],
 		permissions: [],

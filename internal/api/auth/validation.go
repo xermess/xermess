@@ -22,8 +22,19 @@ func (r *profileRequest) validate() error {
 	r.FirstName = strings.TrimSpace(r.FirstName)
 	r.LastName = strings.TrimSpace(r.LastName)
 	r.Email = model.NormalizeEmail(r.Email)
+	r.AvatarURL = strings.TrimSpace(r.AvatarURL)
 
-	return validate.Struct(r)
+	if err := validate.Struct(r); err != nil {
+		return err
+	}
+
+	// The picture is put in an img tag on every page of the panel, so it is
+	// held to the rule every such link is: a full http(s) address, or none.
+	if model.ValidLink("avatar_url", r.AvatarURL) != nil {
+		return avatarInvalid.With()
+	}
+
+	return nil
 }
 
 // validate checks a password change. The new password is taken as it was

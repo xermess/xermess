@@ -13,10 +13,13 @@ import (
 type AdminUser struct {
 	Base
 
-	Username     string `gorm:"uniqueIndex;size:100;not null" json:"username"`
-	Email        string `gorm:"uniqueIndex;size:255;not null" json:"email"`
-	FirstName    string `gorm:"size:100;not null" json:"first_name"`
-	LastName     string `gorm:"size:100;not null" json:"last_name"`
+	Username  string `gorm:"uniqueIndex;size:100;not null" json:"username"`
+	Email     string `gorm:"uniqueIndex;size:255;not null" json:"email"`
+	FirstName string `gorm:"size:100;not null" json:"first_name"`
+	LastName  string `gorm:"size:100;not null" json:"last_name"`
+	// AvatarURL is an absolute http(s) address of a picture of them, shown
+	// in the panel's header and menus; empty, their initials stand in.
+	AvatarURL    string `gorm:"size:512;not null;default:''" json:"avatar_url"`
 	PasswordHash string `gorm:"size:255;not null" json:"-"`
 	IsActive     bool   `gorm:"-" json:"is_active"`
 	Status       Status `gorm:"type:varchar(32);index;not null;default:invited" json:"status"`

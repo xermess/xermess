@@ -19,6 +19,9 @@
 		copyable?: boolean;
 		/** A short unit after the value, such as "minutes". */
 		suffix?: string;
+		/** A toolbar's filter: a control's height, the label beside the
+		    value. See Field. */
+		compact?: boolean;
 	};
 
 	let {
@@ -32,8 +35,13 @@
 		readOnly,
 		copyable = false,
 		suffix,
+		compact = false,
 		...input
 	}: Props = $props();
+
+	/** Kinds of field the browser draws a placeholder into — "dd/mm/yyyy",
+	    "--:--" — so the label must sit above it even while it is empty. */
+	const alwaysFilled = new Set(['date', 'time', 'datetime-local', 'month', 'week']);
 </script>
 
 <Field
@@ -44,7 +52,9 @@
 	{required}
 	{disabled}
 	{readOnly}
-	filled={value !== '' && value !== null && value !== undefined}
+	{compact}
+	filled={(value !== '' && value !== null && value !== undefined) ||
+		alwaysFilled.has(String(input.type))}
 >
 	{#if copyable || suffix}
 		<div class="adorned" class:copyable class:suffixed={suffix !== undefined}>

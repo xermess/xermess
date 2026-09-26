@@ -242,7 +242,7 @@ func (s *Store) SaveAdmin(ctx context.Context, admin *model.AdminUser) error {
 func (s *Store) SaveOwnAccount(ctx context.Context, admin *model.AdminUser) error {
 	return translate(s.db.WithContext(ctx).
 		Model(admin).
-		Select("first_name", "last_name", "email", "username", "password_hash").
+		Select("first_name", "last_name", "email", "username", "avatar_url", "password_hash").
 		Updates(admin).Error)
 }
 
