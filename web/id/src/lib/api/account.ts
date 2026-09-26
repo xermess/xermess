@@ -20,11 +20,12 @@ export type Application = {
 export type Organization = {
 	name: string;
 	logo_url: string;
-	domain: string;
 	support_email: string;
 	support_phone: string;
 	terms_url: string;
 	privacy_url: string;
+	/** The IANA zone dates are said in, "Asia/Bishkek". */
+	timezone: string;
 };
 
 /** One step a login flow is made of. The names mirror the constants in

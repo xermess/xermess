@@ -14,12 +14,12 @@ func stored() model.Organization {
 	return model.Organization{
 		Name:         "Acme",
 		Slug:         "acme",
-		Domain:       "acme.example",
 		LogoURL:      "https://acme.example/logo.svg",
 		SupportEmail: "support@acme.example",
 		SupportPhone: "+996 555 123456",
 		TermsURL:     "https://acme.example/terms",
 		PrivacyURL:   "https://acme.example/privacy",
+		Timezone:     "UTC",
 	}
 }
 
@@ -52,20 +52,25 @@ func TestOrganizationRequestApplyTo(t *testing.T) {
 			},
 		},
 		{
-			name:    "a domain is stored lower case",
-			request: organizationRequest{Domain: ptr("Acme.Example.COM")},
-			changed: []string{"domain"},
+			name:    "a slug is stored lower case",
+			request: organizationRequest{Slug: ptr("Acme-Inc")},
+			changed: []string{"slug"},
 			check: func(o model.Organization) error {
-				if o.Domain != "acme.example.com" {
-					return errors.New("domain = " + o.Domain)
+				if o.Slug != "acme-inc" {
+					return errors.New("slug = " + o.Slug)
 				}
 				return nil
 			},
 		},
 		{
+			name:    "a new timezone",
+			request: organizationRequest{Timezone: ptr("Asia/Bishkek")},
+			changed: []string{"timezone"},
+		},
+		{
 			name:    "an empty string clears a setting that may be empty",
-			request: organizationRequest{Domain: ptr(""), SupportPhone: ptr("")},
-			changed: []string{"domain", "support_phone"},
+			request: organizationRequest{LogoURL: ptr(""), SupportPhone: ptr("")},
+			changed: []string{"logo_url", "support_phone"},
 		},
 		{
 			name:    "the same values again are no change",
@@ -88,9 +93,14 @@ func TestOrganizationRequestApplyTo(t *testing.T) {
 			want:    "slug must be lower case letters, numbers and dashes, such as acme-inc",
 		},
 		{
-			name:    "a domain with a scheme",
-			request: organizationRequest{Domain: ptr("https://acme.example")},
-			want:    "domain must be a host name on its own, such as example.com",
+			name:    "a timezone cleared",
+			request: organizationRequest{Timezone: ptr("")},
+			want:    "timezone is required",
+		},
+		{
+			name:    "a timezone that is an offset",
+			request: organizationRequest{Timezone: ptr("GMT+6")},
+			want:    "timezone must be a zone such as Asia/Bishkek or UTC",
 		},
 		{
 			name:    "an address that is not one",

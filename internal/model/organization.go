@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"loginer/internal/brand"
 )
@@ -35,10 +36,6 @@ type Organization struct {
 	// do — a subdomain, a directory, an export.
 	Slug string `gorm:"size:64;not null;uniqueIndex" json:"slug"`
 
-	// Domain is where the organisation lives on the web, without a scheme:
-	// "example.com". It is what its addresses are under.
-	Domain string `gorm:"size:253" json:"domain"`
-
 	// LogoURL is an absolute http(s) URL to the organisation's logo.
 	LogoURL string `gorm:"size:512" json:"logo_url"`
 
@@ -53,6 +50,10 @@ type Organization struct {
 	// where it has them.
 	TermsURL   string `gorm:"size:512" json:"terms_url"`
 	PrivacyURL string `gorm:"size:512" json:"privacy_url"`
+	// Timezone is the IANA zone the organisation keeps its calendar in,
+	// "Asia/Bishkek". A user's account pages say dates in it, so the page the
+	// server renders and the one the browser redraws name the same day.
+	Timezone string `gorm:"size:64;not null;default:UTC" json:"timezone"`
 }
 
 // TableName pins the table name.
@@ -67,16 +68,12 @@ func (Organization) TableName() string {
 // The migration seeds this, and the store falls back to it, so what a new
 // installation holds is written down once.
 func DefaultOrganization() Organization {
-	return Organization{Name: brand.Name, Slug: brand.Slug}
+	return Organization{Name: brand.Name, Slug: brand.Slug, Timezone: "UTC"}
 }
 
 // slugPattern is what a short name may look like: lower case letters, numbers
 // and dashes, starting and ending with one of the first two.
 var slugPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
-
-// domainPattern is a host name and nothing else: labels joined by dots, with
-// no scheme, no port and no path.
-var domainPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$`)
 
 // phonePattern is a number someone can dial: digits, in any of the ways
 // people write them apart, optionally in international form. It is deliberately
@@ -102,10 +99,8 @@ func (o Organization) Validate() error {
 		return fmt.Errorf("slug must be lower case letters, numbers and dashes, such as acme-inc")
 	}
 
-	if o.Domain != "" {
-		if len(o.Domain) > 253 || !domainPattern.MatchString(o.Domain) {
-			return fmt.Errorf("domain must be a host name on its own, such as example.com")
-		}
+	if err := validTimezone(o.Timezone); err != nil {
+		return err
 	}
 
 	if o.SupportEmail != "" {
@@ -131,6 +126,21 @@ func (o Organization) Validate() error {
 		if err := validLink(link.field, link.value); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// validTimezone holds a zone the IANA database names. "Local" is refused
+// although Go loads it: it is whatever zone the server happens to run in,
+// which is not a setting anybody chose.
+func validTimezone(zone string) error {
+	if zone == "" {
+		return fmt.Errorf("timezone is required")
+	}
+
+	if _, err := time.LoadLocation(zone); err != nil || zone == "Local" || len(zone) > 64 {
+		return fmt.Errorf("timezone must be a zone such as Asia/Bishkek or UTC")
 	}
 
 	return nil

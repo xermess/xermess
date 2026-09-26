@@ -7,12 +7,12 @@ func TestOrganizationValidate(t *testing.T) {
 		return Organization{
 			Name:         "Acme",
 			Slug:         "acme-inc",
-			Domain:       "acme.example.com",
 			LogoURL:      "https://acme.example.com/logo.svg",
 			SupportEmail: "support@acme.example.com",
 			SupportPhone: "+996 555 123456",
 			TermsURL:     "https://acme.example.com/terms",
 			PrivacyURL:   "https://acme.example.com/privacy",
+			Timezone:     "Asia/Bishkek",
 		}
 	}
 
@@ -25,7 +25,7 @@ func TestOrganizationValidate(t *testing.T) {
 		{
 			name: "nothing optional filled in",
 			change: func(o *Organization) {
-				o.Domain, o.LogoURL = "", ""
+				o.LogoURL = ""
 				o.SupportEmail, o.SupportPhone = "", ""
 				o.TermsURL, o.PrivacyURL = "", ""
 			},
@@ -42,14 +42,19 @@ func TestOrganizationValidate(t *testing.T) {
 			want:   "slug must be lower case letters, numbers and dashes, such as acme-inc",
 		},
 		{
-			name:   "a domain with a port",
-			change: func(o *Organization) { o.Domain = "acme.example.com:8080" },
-			want:   "domain must be a host name on its own, such as example.com",
+			name:   "no timezone",
+			change: func(o *Organization) { o.Timezone = "" },
+			want:   "timezone is required",
 		},
 		{
-			name:   "a domain with no dot",
-			change: func(o *Organization) { o.Domain = "localhost" },
-			want:   "domain must be a host name on its own, such as example.com",
+			name:   "a timezone the database does not name",
+			change: func(o *Organization) { o.Timezone = "Mars/Olympus" },
+			want:   "timezone must be a zone such as Asia/Bishkek or UTC",
+		},
+		{
+			name:   "the server's own zone, which nobody chose",
+			change: func(o *Organization) { o.Timezone = "Local" },
+			want:   "timezone must be a zone such as Asia/Bishkek or UTC",
 		},
 		{
 			name:   "a logo over http",

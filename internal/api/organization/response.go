@@ -13,12 +13,12 @@ import (
 type organizationResponse struct {
 	Name         string    `json:"name"`
 	Slug         string    `json:"slug"`
-	Domain       string    `json:"domain"`
 	LogoURL      string    `json:"logo_url"`
 	SupportEmail string    `json:"support_email"`
 	SupportPhone string    `json:"support_phone"`
 	TermsURL     string    `json:"terms_url"`
 	PrivacyURL   string    `json:"privacy_url"`
+	Timezone     string    `json:"timezone"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -32,12 +32,12 @@ func newResponse(organization model.Organization) response {
 		Organization: organizationResponse{
 			Name:         organization.Name,
 			Slug:         organization.Slug,
-			Domain:       organization.Domain,
 			LogoURL:      organization.LogoURL,
 			SupportEmail: organization.SupportEmail,
 			SupportPhone: organization.SupportPhone,
 			TermsURL:     organization.TermsURL,
 			PrivacyURL:   organization.PrivacyURL,
+			Timezone:     organization.Timezone,
 			CreatedAt:    organization.CreatedAt,
 		},
 	}

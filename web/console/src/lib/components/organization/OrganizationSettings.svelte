@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		RiBuildingLine,
 		RiCustomerService2Line,
 		RiFileTextLine,
-		RiGlobalLine,
 		RiImageLine,
 		RiMailLine,
 		RiPhoneLine,
-		RiShieldCheckLine
+		RiShieldCheckLine,
+		RiTimeLine
 	} from 'svelte-remixicon';
 	import {
 		ApiError,
@@ -16,19 +16,34 @@
 		type Organization,
 		type OrganizationSettings
 	} from '$lib/api';
-	import { Alert, Button, Input, List, ListItem, Panel, Tag, Thumb } from '$lib/components/ui';
-	import { keys } from '$lib/query';
+	import {
+		Alert,
+		Button,
+		Input,
+		List,
+		ListItem,
+		Panel,
+		Select,
+		Tag,
+		Thumb
+	} from '$lib/components/ui';
+	import { keys, organizationOptions } from '$lib/query';
 	import { formatDate, initials } from '$lib/utils/format';
 
 	type Props = {
-		organization: Organization;
+		/** What the server rendered, to seed the query with. */
+		initial: Organization;
 		/** Whether the administrator may change any of this. */
 		editable: boolean;
 	};
 
-	let { organization, editable }: Props = $props();
+	let { initial, editable }: Props = $props();
 
 	const queryClient = useQueryClient();
+
+	const settings = createQuery(() => organizationOptions({ organization: initial }));
+
+	const organization = $derived(settings.data.organization);
 
 	/** The stored record, without the bookkeeping the form cannot change.
 	    Taking it as "the rest of the record" means a setting added to the API
@@ -56,17 +71,28 @@
 		form = settingsOf(organization);
 	}
 
-	/** What the form holds, as the API takes it. A host name and a short name
-	    are compared rather than read, so they are sent lower case. */
+	/** What the form holds, as the API takes it. A short name is compared
+	    rather than read, so it is sent lower case. */
 	const input = $derived<OrganizationSettings>({
 		name: form.name.trim(),
 		slug: form.slug.trim().toLowerCase(),
-		domain: form.domain.trim().toLowerCase(),
 		logo_url: form.logo_url.trim(),
 		support_email: form.support_email.trim(),
 		support_phone: form.support_phone.trim(),
 		terms_url: form.terms_url.trim(),
-		privacy_url: form.privacy_url.trim()
+		privacy_url: form.privacy_url.trim(),
+		timezone: form.timezone
+	});
+
+	/** Every zone this browser knows, which is the IANA database. UTC is not
+	    always among them — engines list places, and UTC is not one — and a
+	    stored zone this browser calls by another name is kept, so the select
+	    never shows a saved value as nothing chosen. */
+	const timezones = $derived.by(() => {
+		const zones = ['UTC', organization.timezone, ...Intl.supportedValuesOf('timeZone')];
+		return zones
+			.filter((zone, index) => zone !== '' && zones.indexOf(zone) === index)
+			.map((zone) => ({ value: zone, label: zone.replaceAll('_', ' ') }));
 	});
 
 	const dirty = $derived(
@@ -141,7 +167,7 @@
 	<List bordered label="Organization">
 		<ListItem
 			title={input.name || 'Unnamed organisation'}
-			description={input.domain || input.slug || organization.slug}
+			description={input.slug || organization.slug}
 		>
 			{#snippet lead()}
 				{#if logo}
@@ -188,23 +214,24 @@
 
 				<div class="wide">
 					<Input
-						label="Primary domain"
-						icon={RiGlobalLine}
-						bind:value={form.domain}
-						maxlength={253}
-						placeholder="example.com"
-						hint="The host name on its own, with no https:// in front."
-					/>
-				</div>
-
-				<div class="wide">
-					<Input
 						label="Logo URL"
 						icon={RiImageLine}
 						bind:value={form.logo_url}
 						maxlength={512}
 						placeholder="https://example.com/logo.svg"
 						hint="A full address, shown above. An application with a logo of its own keeps it."
+					/>
+				</div>
+
+				<div class="wide">
+					<Select
+						label="Timezone"
+						icon={RiTimeLine}
+						bind:value={form.timezone}
+						options={timezones}
+						required
+						disabled={!editable}
+						hint="The dates on a user's account pages, such as when the account was made."
 					/>
 				</div>
 			</div>

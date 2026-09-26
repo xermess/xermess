@@ -1,0 +1,29 @@
+import { error } from '@sveltejs/kit';
+import type { LanguageList, Organization } from '$lib/api';
+import { can } from '$lib/permissions';
+import { apiGet } from '$lib/server/api';
+import type { PageServerLoad } from './$types';
+
+/** The installation's settings: the organisation it belongs to, and the
+    languages its sign-in pages are shown in. Each is its own permission, so
+    an administrator sees the tabs their roles allow and the page is only
+    refused to one who may see neither. */
+export const load: PageServerLoad = async ({ fetch, parent }) => {
+	const { admin } = await parent();
+
+	const mayReadOrganization = can(admin, 'organization.read');
+	const mayReadLanguages = can(admin, 'languages.read');
+
+	if (!mayReadOrganization && !mayReadLanguages) {
+		error(403, 'Your roles do not allow you to see this page.');
+	}
+
+	const [organization, languages] = await Promise.all([
+		mayReadOrganization
+			? apiGet<{ organization: Organization }>('/admin/organization', fetch)
+			: null,
+		mayReadLanguages ? apiGet<LanguageList>('/admin/languages', fetch) : null
+	]);
+
+	return { organization: organization?.organization ?? null, languages };
+};

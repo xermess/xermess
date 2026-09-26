@@ -324,7 +324,7 @@ The reset email is written the same way, in the language the page asked in
 
 The public API's errors all have codes, and so do the ones every endpoint
 shares — the validator, sessions, permissions, the CSRF check, the rate
-limit — and the Languages page's. Some admin endpoints still answer with
+limit — and the Languages tab's. Some admin endpoints still answer with
 English alone, as their pages are still English in the markup; giving one a
 code is defining its problem and adding the sentence to
 `i18n/console/en/server.json`.
@@ -685,10 +685,12 @@ twice.
 
 ### The organisation
 
-Settings · Organization is the installation itself, and a super admin's alone:
-what the organisation running it is called, its identifier, its primary
-domain, its logo, where users write or ring for help, and the terms and
-privacy policy they accept by making an account.
+Settings · General opens on the Organization tab, which is the installation
+itself: what the organisation running it is called, its identifier, its
+logo, its timezone, where users write or ring for help, and the terms and
+privacy policy they accept by making an account. The same page's Languages
+tab holds the sign-in languages; an administrator sees the tabs their roles
+let them read.
 
 There is one of it, so it is a record of settings rather than a list. The
 `organizations` table holds a single row, seeded by the migration from
@@ -703,7 +705,8 @@ It is not a page of notes: everything on it is used.
 | Terms, privacy policy  | `op_tos_uri` and `op_policy_uri` in the discovery document; linked under every sign-in card, and agreed to when registering |
 | Name, logo             | The sign-in card, for an application that carries neither             |
 | Support email, number  | The foot of every sign-in page: whom to ask when signing in fails      |
-| Identifier, domain     | The panel, as what the organisation is called where a name will not do |
+| Timezone               | The dates on a user's account pages, so the server's render and the browser's name the same day |
+| Identifier             | The panel, as what the organisation is called where a name will not do |
 
 An application's own links, name and logo come first where it has them
 (`internal/oidc/logout.go`), and each falls back on its own: an application
@@ -715,7 +718,7 @@ see.
 
 `PATCH /api/v1/admin/organization` is a true PATCH: a setting the request
 leaves out keeps the value it has, and an empty string clears one that may be
-empty. What a name, a domain, an address, a number or a link may be is
+empty. What a name, a timezone, an address, a number or a link may be is
 `model.Organization.Validate`, in one place because it is one question; a
 refused change writes nothing. Each change is recorded as
 `organization.updated`, and the log line says which settings moved.
@@ -1138,7 +1141,7 @@ key filled in; a language that is off is a 404 there.
 **The admin panel is not translated.** It is written in English, in its own
 markup, and there is no picker, no cookie and no catalog behind it: a
 language an installation adds is a sign-in language, and that is the only
-kind there is. The Languages page counts and edits one app, and
+kind there is. The Languages tab counts and edits one app, and
 `i18n.Apps` is the list — a second translatable app would be added there
 rather than assumed here.
 
@@ -1156,7 +1159,7 @@ is right in the first byte, which is what a screen reader reads the page's
 words with. They bundle English alone, for when the API cannot be reached.
 
 Two sign-in languages ship, English and Russian; any other is added on the
-Languages page. `TestTranslationsAreComplete` fails the build if a shipped
+Languages tab of Settings · General. `TestTranslationsAreComplete` fails the build if a shipped
 language falls behind the base, so a key added without a translation is
 caught rather than shipped. The Russian was written alongside the machinery
 and would be worth a native speaker's eye before an installation offers it.
@@ -1191,7 +1194,7 @@ outcome are in the activity log.
 
 **The words** are not a record of their own. An email goes out in the
 reader's language, so its subject and body are two keys of the sign-in pages'
-text, in the `languages` table the Languages page holds; the Mail page shows
+text, in the `languages` table the Languages tab holds; the Mail page shows
 those keys as the messages they make, with the shipped English underneath as
 the placeholder. A field left empty stores nothing, so clearing one puts the
 shipped text back. `model.MailMessageSpecs` is the catalog — an email added to

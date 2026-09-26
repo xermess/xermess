@@ -15,11 +15,12 @@ import (
 type PublicOrganization struct {
 	Name         string `json:"name"`
 	LogoURL      string `json:"logo_url"`
-	Domain       string `json:"domain"`
 	SupportEmail string `json:"support_email"`
 	SupportPhone string `json:"support_phone"`
 	TermsURL     string `json:"terms_url"`
 	PrivacyURL   string `json:"privacy_url"`
+	// Timezone is the zone the pages say dates in.
+	Timezone string `json:"timezone"`
 }
 
 // PublicOrg returns those fields of an organisation.
@@ -27,11 +28,11 @@ func PublicOrg(organization *model.Organization) PublicOrganization {
 	return PublicOrganization{
 		Name:         organization.Name,
 		LogoURL:      organization.LogoURL,
-		Domain:       organization.Domain,
 		SupportEmail: organization.SupportEmail,
 		SupportPhone: organization.SupportPhone,
 		TermsURL:     organization.TermsURL,
 		PrivacyURL:   organization.PrivacyURL,
+		Timezone:     organization.Timezone,
 	}
 }
 

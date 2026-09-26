@@ -128,7 +128,7 @@
 							{t('security.session_line', {
 								ip: session.ip || t('security.unknown_address'),
 								when: timeAgo(session.signed_in_at, t),
-								until: formatDate(session.expires_at, t)
+								until: formatDate(session.expires_at, t, data.timezone)
 							})}
 						</span>
 					</div>

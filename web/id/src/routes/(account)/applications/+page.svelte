@@ -85,7 +85,7 @@
 				</div>
 
 				<p class="meta">
-					{t('apps.connected_since', { when: formatDate(app.authorized_at, t) })}
+					{t('apps.connected_since', { when: formatDate(app.authorized_at, t, data.timezone) })}
 					{#if app.client_uri}
 						·
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->

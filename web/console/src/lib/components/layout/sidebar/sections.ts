@@ -18,8 +18,7 @@ import {
 	RiShareLine,
 	RiShieldKeyholeLine,
 	RiShieldUserLine,
-	RiTeamLine,
-	RiTranslate2
+	RiTeamLine
 } from 'svelte-remixicon';
 import type { Admin } from '$lib/api';
 import { can, canAnywhere } from '$lib/permissions';
@@ -177,22 +176,16 @@ export const branches: SidebarBranch[] = [
 		icon: RiSettings3Line,
 		items: [
 			{
-				route: '/admin/(panel)/dashboard/organization',
-				label: 'Organization',
+				route: '/admin/(panel)/dashboard/settings',
+				label: 'General',
 				icon: RiBuildingLine,
-				allowed: (admin) => can(admin, 'organization.read')
+				allowed: (admin) => can(admin, 'organization.read') || can(admin, 'languages.read')
 			},
 			{
 				route: '/admin/(panel)/dashboard/mail',
 				label: 'Mail',
 				icon: RiMailLine,
 				allowed: (admin) => admin.is_super_admin
-			},
-			{
-				route: '/admin/(panel)/dashboard/languages',
-				label: 'Languages',
-				icon: RiTranslate2,
-				allowed: (admin) => can(admin, 'languages.read')
 			}
 		]
 	}

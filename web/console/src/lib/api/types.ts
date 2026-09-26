@@ -620,13 +620,13 @@ export type TokenPreview = {
 export type Organization = {
 	name: string;
 	slug: string;
-	/** A host name on its own, or empty. */
-	domain: string;
 	logo_url: string;
 	support_email: string;
 	support_phone: string;
 	terms_url: string;
 	privacy_url: string;
+	/** An IANA zone, "Asia/Bishkek": what the sign-in pages say dates in. */
+	timezone: string;
 	created_at: string;
 };
 

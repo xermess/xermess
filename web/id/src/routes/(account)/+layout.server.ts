@@ -8,7 +8,11 @@ import type { LayoutServerLoad } from './$types';
     The login options come along because they say what a user may do with
     their own account — change the address they sign in with, today. There is
     no application here, so it is the installation's default flow that
-    decides, which is the flow somebody signing in to their account followed. */
+    decides, which is the flow somebody signing in to their account followed.
+
+    The organisation's timezone comes along so the dates on these pages are
+    the organisation's days, the same on the server's render and in the
+    browser. */
 export const load: LayoutServerLoad = async ({ cookies, fetch, url, setHeaders }) => {
 	setHeaders({ 'cache-control': 'private, no-store' });
 
@@ -16,10 +20,16 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, url, setHeaders }
 
 	// A page that hides a control because one request failed is worse than one
 	// that offers it and is refused, so this answers null rather than throwing.
-	const login: LoginOptions | null = await signIn
-		.loginOptions('', fetch)
-		.then((body) => body.login)
-		.catch(() => null);
+	const [login, timezone] = await Promise.all([
+		signIn
+			.loginOptions('', fetch)
+			.then((body): LoginOptions | null => body.login)
+			.catch(() => null),
+		signIn
+			.organization(fetch)
+			.then((body) => body.organization.timezone)
+			.catch(() => 'UTC')
+	]);
 
-	return { user, login };
+	return { user, login, timezone };
 };

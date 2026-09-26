@@ -924,7 +924,7 @@ func TestLiveOrganizationSettings(t *testing.T) {
 		Organization struct {
 			Name         string `json:"name"`
 			Slug         string `json:"slug"`
-			Domain       string `json:"domain"`
+			Timezone     string `json:"timezone"`
 			SupportEmail string `json:"support_email"`
 			SupportPhone string `json:"support_phone"`
 			TermsURL     string `json:"terms_url"`
@@ -936,33 +936,33 @@ func TestLiveOrganizationSettings(t *testing.T) {
 	var seeded organizationBody
 	super.must(http.StatusOK, http.MethodGet, "/organization", nil, &seeded)
 
-	if seeded.Organization.Name != brand.Name || seeded.Organization.Slug != brand.Slug {
+	if seeded.Organization.Name != brand.Name || seeded.Organization.Slug != brand.Slug || seeded.Organization.Timezone != "UTC" {
 		t.Errorf("seeded = %+v, want the default organization", seeded.Organization)
 	}
 
 	var updated organizationBody
 	super.must(http.StatusOK, http.MethodPatch, "/organization", map[string]any{
 		"name":          "  Acme Inc  ",
-		"slug":          "acme",
-		"domain":        "Acme.Example.COM",
+		"slug":          "Acme",
+		"timezone":      "Asia/Bishkek",
 		"support_email": "support@acme.example.com",
 		"support_phone": "+996 555 123456",
 		"terms_url":     "https://acme.example.com/terms",
 		"privacy_url":   "https://acme.example.com/privacy",
 	}, &updated)
 
-	if got := updated.Organization; got.Name != "Acme Inc" || got.Slug != "acme" || got.Domain != "acme.example.com" {
+	if got := updated.Organization; got.Name != "Acme Inc" || got.Slug != "acme" || got.Timezone != "Asia/Bishkek" {
 		t.Errorf("updated = %+v, want the values trimmed and lower cased", got)
 	}
 
-	// A second update says nothing about the domain, which therefore stays.
+	// A second update says nothing about the timezone, which therefore stays.
 	var kept organizationBody
 	super.must(http.StatusOK, http.MethodPatch, "/organization", map[string]any{
 		"support_phone": "+996 555 999888",
 	}, &kept)
 
-	if kept.Organization.Domain != "acme.example.com" || kept.Organization.SupportPhone != "+996 555 999888" {
-		t.Errorf("kept = %+v, want the domain left alone and the new number", kept.Organization)
+	if kept.Organization.Timezone != "Asia/Bishkek" || kept.Organization.SupportPhone != "+996 555 999888" {
+		t.Errorf("kept = %+v, want the timezone left alone and the new number", kept.Organization)
 	}
 
 	// A refused change writes nothing.

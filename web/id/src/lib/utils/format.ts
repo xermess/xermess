@@ -2,15 +2,22 @@ import type { Translate } from '$lib/i18n';
 
 // Dates and times are said in the page's language by the browser's own Intl,
 // which knows every language's words and grammar for them — the language is
-// the translator's, so the server's first render and the browser agree.
+// the translator's and the zone the organisation's, so the server's first
+// render and the browser agree on both the words and the day.
 
-/** A date as a person reads it: "Sep 15, 2026", "15 сент. 2026 г.". */
-export function formatDate(value: string | null | undefined, t: Translate): string {
+/** A date as a person reads it, on the organisation's calendar: "Sep 15,
+    2026", "15 сент. 2026 г.". */
+export function formatDate(
+	value: string | null | undefined,
+	t: Translate,
+	timeZone: string
+): string {
 	if (!value) return '—';
 	return new Date(value).toLocaleDateString(t.language, {
 		day: 'numeric',
 		month: 'short',
-		year: 'numeric'
+		year: 'numeric',
+		timeZone
 	});
 }
 

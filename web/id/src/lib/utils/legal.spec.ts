@@ -16,11 +16,11 @@ const application = (over: Partial<Application> = {}): Application => ({
 const organization = (over: Partial<Organization> = {}): Organization => ({
 	name: 'Acme',
 	logo_url: '',
-	domain: 'acme.example.com',
 	support_email: '',
 	support_phone: '',
 	terms_url: '',
 	privacy_url: '',
+	timezone: 'UTC',
 	...over
 });
 

@@ -204,11 +204,13 @@
 		<dl>
 			<div>
 				<dt>{t('profile.member_since')}</dt>
-				<dd>{formatDate(user.created_at, t)}</dd>
+				<dd>{formatDate(user.created_at, t, data.timezone)}</dd>
 			</div>
 			<div>
 				<dt>{t('profile.last_sign_in')}</dt>
-				<dd>{user.last_login_at ? formatDate(user.last_login_at, t) : t('time.never')}</dd>
+				<dd>
+					{user.last_login_at ? formatDate(user.last_login_at, t, data.timezone) : t('time.never')}
+				</dd>
 			</div>
 			<div>
 				<dt>{t('profile.account_id')}</dt>

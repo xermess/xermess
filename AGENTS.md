@@ -132,9 +132,9 @@ carries a secret, and add the type to `TestCachedTypesSurviveJSON`. Redis is
 optional: a nil cache is an empty one, so everything has to work without it.
 
 **A language.** A language is the sign-in pages' language: the panel is not
-translated. An installation adds its own on the Languages page — the text
-lives in the database (`languages`, and a `translations` row per app) and the
-pages fetch it while rendering, so nothing is rebuilt. To *ship* one with the
+translated. An installation adds its own on the Languages tab of the Settings
+page — the text lives in the database (`languages`, and a `translations` row
+per app) and the pages fetch it while rendering, so nothing is rebuilt. To *ship* one with the
 server, add a language directory under `i18n/id/`, named after the language
 tag. Keep the same semantic groups as English — `common`, `auth`, `account`,
 `server`, `validation`, and `email` — with the values translated and

@@ -49,8 +49,13 @@ describe('timeAgo', () => {
 
 describe('formatDate', () => {
 	it("says it in the page's language", () => {
-		expect(formatDate('2026-09-15T12:00:00Z', english)).toBe('Sep 15, 2026');
-		expect(formatDate(null, english)).toBe('—');
+		expect(formatDate('2026-09-15T12:00:00Z', english, 'UTC')).toBe('Sep 15, 2026');
+		expect(formatDate(null, english, 'UTC')).toBe('—');
+	});
+
+	it("names the day in the organisation's zone", () => {
+		expect(formatDate('2026-09-15T20:00:00Z', english, 'UTC')).toBe('Sep 15, 2026');
+		expect(formatDate('2026-09-15T20:00:00Z', english, 'Asia/Bishkek')).toBe('Sep 16, 2026');
 	});
 });
 

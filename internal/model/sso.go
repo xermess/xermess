@@ -3,12 +3,17 @@ package model
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// domainPattern is a host name and nothing else: labels joined by dots, with
+// no scheme, no port and no path.
+var domainPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$`)
 
 // SSOConnection is an organisation's own identity provider — Okta, Microsoft
 // Entra ID, Google Workspace, ADFS, Keycloak — that its people sign in
