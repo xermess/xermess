@@ -12,15 +12,15 @@
 	import { kindLabels, type Kind } from '$lib/components/activity/filters';
 	import {
 		Button,
+		DatePicker,
 		FilterChip,
 		Icon,
 		IconButton,
-		Input,
 		LinkButton,
-		Note,
 		PageHeader,
 		SearchInput,
 		Select,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import { keys, logsOptions } from '$lib/query';
@@ -146,22 +146,22 @@
 	</div>
 
 	<div class="dates">
-		<Input
+		<DatePicker
 			compact
+			clearable
 			label="From"
-			type="date"
 			value={data.view.from}
 			max={data.view.to || today}
-			onchange={(event) => apply({ from: event.currentTarget.value })}
+			onChange={(from) => apply({ from })}
 		/>
-		<Input
+		<DatePicker
 			compact
+			clearable
 			label="To"
-			type="date"
 			value={data.view.to}
 			min={data.view.from || undefined}
 			max={today}
-			onchange={(event) => apply({ to: event.currentTarget.value })}
+			onChange={(to) => apply({ to })}
 		/>
 	</div>
 
@@ -186,19 +186,13 @@
 	empty={filtered ? 'No entries match these filters.' : 'Nothing has happened yet.'}
 />
 
-<footer class="more">
-	<Note>
-		{entries.length === 0
-			? ''
-			: `${entries.length.toLocaleString()} ${entries.length === 1 ? 'entry' : 'entries'} shown${logs.hasNextPage ? ', more below' : ''}.`}
-	</Note>
-
-	{#if logs.hasNextPage}
-		<Button variant="subtle" loading={logs.isFetchingNextPage} onclick={() => logs.fetchNextPage()}>
-			Load more
-		</Button>
-	{/if}
-</footer>
+{#if logs.hasNextPage}
+	<ShowMore
+		shown={entries.length}
+		loading={logs.isFetchingNextPage}
+		onclick={() => logs.fetchNextPage()}
+	/>
+{/if}
 
 <style>
 	.kind {
@@ -210,16 +204,9 @@
 		gap: var(--space-2);
 	}
 
+	/* Room for the label, the day, and the clear and calendar buttons. */
 	.dates > :global(*) {
-		width: 11rem;
-	}
-
-	.more {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-3);
-		min-height: var(--control-height);
+		width: 13.5rem;
 	}
 
 	@media (max-width: 40rem) {

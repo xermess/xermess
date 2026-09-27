@@ -93,6 +93,22 @@ that scrolls or a cell that hides its overflow cannot clip it.
 `Input`: a read-only select shows its value and drops the chevron rather than
 disappearing.
 
+## DatePicker
+
+A day, in the same box as every other field, with a calendar button at its
+right end. The value is an ISO date — `"2026-03-12"`, or `''` for none — the
+same string a native date input holds, so a form sends what it always did:
+
+```svelte
+<DatePicker label="Hired on" bind:value={hired} min="2020-01-01" max={today} clearable />
+```
+
+The day is shown and typed as `dd/mm/yyyy` in every locale: the server
+renders the field too, and a date written two ways would be two different
+pages. An ISO date pasted in is understood as well. The calendar's title steps
+out to months and then years, for a day far from this one. `compact` is the
+toolbar's version, as on `Input` and `Select`.
+
 ## Three props, and what they do
 
 Every control takes the same three, and they combine: any size, in any
@@ -129,19 +145,19 @@ typefaces — are in `lib/theme/theme.ts`. `bun run theme` renders it into
 `styles/tokens.css` and `styles/fonts.css`, which are generated and checked
 by `bun run check`; everything below refers to the tokens they declare.
 
-| Looking for                                               | It is in                |
-| --------------------------------------------------------- | ----------------------- |
-| a colour, a size, a radius, a font                        | `lib/theme/theme.ts`    |
-| what `danger` or `success` means                          | `styles/palettes.css`   |
-| buttons, icon buttons, link buttons                       | `styles/controls.css`   |
-| inputs, text areas, passwords, selects                    | `styles/fields.css`     |
-| switches, checkboxes, drawers, tooltips, menus, dropdowns | `styles/ark.css`        |
-| one component's own layout                                | its own `<style>` block |
+| Looking for                                                          | It is in                |
+| -------------------------------------------------------------------- | ----------------------- |
+| a colour, a size, a radius, a font                                   | `lib/theme/theme.ts`    |
+| what `danger` or `success` means                                     | `styles/palettes.css`   |
+| buttons, icon buttons, link buttons                                  | `styles/controls.css`   |
+| inputs, text areas, passwords, selects, dates                        | `styles/fields.css`     |
+| switches, checkboxes, drawers, tooltips, menus, dropdowns, calendars | `styles/ark.css`        |
+| one component's own layout                                           | its own `<style>` block |
 
 `ark.css` styles Ark UI's parts through the `data-scope` / `data-part`
 attributes they render, so a menu or a switch looks the same wherever it is
 used. Fields are the same idea in `fields.css`: every `Input`, `Textarea`,
-`PasswordInput` and `Select` is a `.field-root` holding a `.field-box`, and
+`PasswordInput`, `Select` and `DatePicker` is a `.field-root` holding a `.field-box`, and
 styling those once is what makes them match without any of them saying so.
 Anything else shaped like a field — `SearchInput`, the command palette's
 button — wears `.field-box` too and gets the same border, hover and focus.

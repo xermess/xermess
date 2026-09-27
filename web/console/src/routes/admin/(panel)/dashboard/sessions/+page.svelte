@@ -10,12 +10,12 @@
 	import { keys, sessionsOptions } from '$lib/query';
 	import {
 		Alert,
-		Button,
 		ConfirmDialog,
 		FilterChip,
 		IconButton,
 		PageHeader,
 		SearchInput,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import SessionTable from '$lib/components/sessions/SessionTable.svelte';
@@ -167,15 +167,11 @@
 />
 
 {#if sessions.hasNextPage}
-	<div class="more">
-		<Button
-			variant="subtle"
-			loading={sessions.isFetchingNextPage}
-			onclick={() => sessions.fetchNextPage()}
-		>
-			Show more
-		</Button>
-	</div>
+	<ShowMore
+		shown={rows.length}
+		loading={sessions.isFetchingNextPage}
+		onclick={() => sessions.fetchNextPage()}
+	/>
 {/if}
 
 <ConfirmDialog
@@ -187,11 +183,3 @@
 	busy={signOut.isPending}
 	onConfirm={() => confirming && signOut.mutate(confirming)}
 />
-
-<style>
-	.more {
-		display: flex;
-		justify-content: center;
-		padding-top: var(--space-1);
-	}
-</style>

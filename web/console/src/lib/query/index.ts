@@ -2,6 +2,7 @@
 //   import { keys, usersOptions } from '$lib/query';
 export { createQueryClient } from './client';
 export { keys } from './keys';
+export { firstPage, LIST_PAGE_SIZE, nextOffset, uniqueById } from './paging';
 export { LOGS_PAGE_SIZE, logsOptions } from './logs';
 export { mfaStatusOptions, profileSessionsOptions } from './profile';
 export { usersOptions, userFieldsOptions, type UserListParams } from './users';

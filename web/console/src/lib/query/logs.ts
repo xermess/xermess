@@ -3,12 +3,12 @@ import { infiniteQueryOptions } from '@tanstack/svelte-query';
 import { activityApi, type LogFilter, type LogPage } from '$lib/api';
 import { keys } from './keys';
 
-/** How many entries a page of the log shows before "Load more". */
+/** How many entries a page of the log shows before "Show more". */
 export const LOGS_PAGE_SIZE = 50;
 
 /**
  * The log as pages, as the filter narrows it, seeded with the first page the
- * server rendered. "Load more" continues from the last entry shown — the
+ * server rendered. "Show more" continues from the last entry shown — the
  * server pages by position, not by count, so the hundredth page is as quick
  * as the first and nothing shifts while it is read.
  */

@@ -4,7 +4,12 @@
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
-	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import {
+		createInfiniteQuery,
+		createMutation,
+		createQuery,
+		useQueryClient
+	} from '@tanstack/svelte-query';
 	import { ApiError, adminsApi, type AdminRecord } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import {
@@ -12,7 +17,8 @@
 		adminRolesOptions,
 		adminsOptions,
 		applicationChoicesOptions,
-		keys
+		keys,
+		uniqueById
 	} from '$lib/query';
 	import {
 		Alert,
@@ -25,6 +31,7 @@
 		SearchInput,
 		SegmentedControl,
 		SelectionBar,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import AdminDrawer from '$lib/components/admins/AdminDrawer.svelte';
@@ -36,9 +43,11 @@
 
 	const queryClient = useQueryClient();
 
-	const admins = createQuery(() =>
+	const admins = createInfiniteQuery(() =>
 		adminsOptions({ search: data.search, status: data.status, role: data.role }, data.page)
 	);
+	const rows = $derived(uniqueById(admins.data?.pages.flatMap((one) => one.admins) ?? []));
+	const total = $derived(admins.data?.pages.at(-1)?.total ?? 0);
 	const roles = createQuery(() => adminRolesOptions('', data.roles));
 	const catalog = createQuery(() => adminPermissionsOptions(data.catalog));
 	const applications = createQuery(() => applicationChoicesOptions(data.applications));
@@ -56,7 +65,7 @@
 	/** The ticked rows on screen that can be deleted. Nobody can delete their
 	    own account, so ticking yourself offers nothing. */
 	const deletable = $derived(
-		new Set(admins.data.admins.filter((admin) => admin.id !== data.admin.id).map((it) => it.id))
+		new Set(rows.filter((admin) => admin.id !== data.admin.id).map((it) => it.id))
 	);
 	const chosen = $derived(selected.filter((id) => deletable.has(id)));
 
@@ -141,7 +150,7 @@
 
 <svelte:head><title>Administrators · {BRAND.name}</title></svelte:head>
 
-<PageHeader crumbs={['Dashboard', 'Administrators']} count={admins.data.total}>
+<PageHeader crumbs={['Dashboard', 'Administrators']} count={total}>
 	{#snippet secondary()}
 		<IconButton
 			icon={RiRefreshLine}
@@ -190,12 +199,21 @@
 {/if}
 
 <AdminTable
-	admins={admins.data.admins}
+	admins={rows}
 	self={data.admin.id}
 	onOpen={openAdmin}
 	selected={chosen}
 	onSelect={(ids) => (selected = ids)}
 />
+
+{#if admins.hasNextPage}
+	<ShowMore
+		shown={rows.length}
+		{total}
+		loading={admins.isFetchingNextPage}
+		onclick={() => admins.fetchNextPage()}
+	/>
+{/if}
 
 <SelectionBar count={chosen.length} onReset={reset}>
 	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>

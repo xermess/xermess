@@ -20,6 +20,7 @@ export { default as Input } from './Input.svelte';
 export { default as SearchInput } from './SearchInput.svelte';
 export { default as PasswordInput } from './PasswordInput.svelte';
 export { default as Select } from './Select.svelte';
+export { default as DatePicker } from './DatePicker.svelte';
 export type { SelectOption } from './select';
 export { default as Switch } from './Switch.svelte';
 export { default as SwitchField } from './SwitchField.svelte';
@@ -54,6 +55,7 @@ export { default as Tooltip } from './Tooltip.svelte';
 
 // Data and page furniture
 export { default as DataTable } from './DataTable.svelte';
+export { default as ShowMore } from './ShowMore.svelte';
 export { default as List } from './List.svelte';
 export { default as ListItem } from './ListItem.svelte';
 export type { Column } from './table';

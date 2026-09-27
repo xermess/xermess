@@ -7,7 +7,13 @@
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, adminsApi, type AdminRole } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { adminPermissionsOptions, adminRolesOptions, keys } from '$lib/query';
+	import {
+		adminPermissionsOptions,
+		adminRolesOptions,
+		firstPage,
+		keys,
+		LIST_PAGE_SIZE
+	} from '$lib/query';
 	import {
 		Alert,
 		Button,
@@ -17,6 +23,7 @@
 		PageHeader,
 		SearchInput,
 		SelectionBar,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import AdminRoleDrawer from '$lib/components/admins/AdminRoleDrawer.svelte';
@@ -30,6 +37,12 @@
 	const roles = createQuery(() => adminRolesOptions(data.search, data.roles));
 	const catalog = createQuery(() => adminPermissionsOptions(data.catalog));
 
+	/** How many of them are on screen. The endpoint answers with every one,
+	    so "Show more" reveals the next page of what is already here; a new
+	    search starts again from one page. */
+	let shown = $derived(firstPage(data.search));
+	const rows = $derived(roles.data.slice(0, shown));
+
 	let search = $derived(data.search);
 
 	let editing = $state<AdminRole | null>(null);
@@ -40,7 +53,7 @@
 	/** The ticked rows on screen that can be deleted: super_admin is built in,
 	    so ticking it offers nothing. */
 	const deletable = $derived(
-		new Set(roles.data.filter((role) => !role.is_builtin).map((role) => role.id))
+		new Set(rows.filter((role) => !role.is_builtin).map((role) => role.id))
 	);
 	const chosen = $derived(selected.filter((id) => deletable.has(id)));
 
@@ -163,11 +176,15 @@
 {/if}
 
 <AdminRoleTable
-	roles={roles.data}
+	roles={rows}
 	onOpen={openRole}
 	selected={chosen}
 	onSelect={(ids) => (selected = ids)}
 />
+
+{#if roles.data.length > shown}
+	<ShowMore {shown} total={roles.data.length} onclick={() => (shown += LIST_PAGE_SIZE)} />
+{/if}
 
 <SelectionBar count={chosen.length} onReset={reset}>
 	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>

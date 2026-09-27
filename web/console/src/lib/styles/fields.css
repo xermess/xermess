@@ -371,6 +371,62 @@
 	display: none;
 }
 
+/* ------------------------------------------------------------- date picker */
+
+/* A date is typed into the box like any value; the calendar button sits at
+   its right end where a select has its arrow, and the clear button left of
+   it, as on a select. */
+.field-box [data-scope='date-picker'][data-part='control'] {
+	position: static;
+	display: block;
+}
+
+.field-box [data-scope='date-picker'][data-part='input'] {
+	padding-right: 44px;
+	font-variant-numeric: tabular-nums;
+}
+
+.field-box:has([data-scope='date-picker'][data-part='clear-trigger'])
+	[data-scope='date-picker'][data-part='input'] {
+	padding-right: 68px;
+}
+
+.field-box [data-scope='date-picker'][data-part='trigger'] {
+	position: absolute;
+	top: 50%;
+	right: 8px;
+	z-index: 2;
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-text-hint);
+	cursor: pointer;
+	transform: translateY(-50%);
+	transition:
+		background-color var(--speed-fast),
+		color var(--speed-fast);
+}
+
+.field-box [data-scope='date-picker'][data-part='trigger']:hover,
+.field-box [data-scope='date-picker'][data-part='trigger'][data-state='open'] {
+	background: var(--color-secondary);
+	color: var(--color-text);
+}
+
+.field-box [data-scope='date-picker'][data-part='trigger']:focus-visible {
+	outline: 2px solid var(--color-info);
+	outline-offset: -2px;
+}
+
+.field-box [data-scope='date-picker'][data-part='trigger'][data-readonly],
+.field-box [data-scope='date-picker'][data-part='trigger'][data-disabled] {
+	display: none;
+}
+
 /* ---------------------------------------------------------------- compact */
 
 /* A filter in a toolbar sits in a row of buttons and a search box, all a
@@ -404,10 +460,21 @@
 	font-size: var(--text-sm);
 }
 
-.field-box[data-compact] [data-scope='select'][data-part='control'] {
+.field-box[data-compact] [data-scope='select'][data-part='control'],
+.field-box[data-compact] [data-scope='date-picker'][data-part='control'] {
 	flex: 1;
 	min-width: 0;
 	height: 100%;
+}
+
+.field-box[data-compact] [data-scope='date-picker'][data-part='input'] {
+	width: 100%;
+	padding-right: 40px;
+}
+
+.field-box[data-compact]:has([data-scope='date-picker'][data-part='clear-trigger'])
+	[data-scope='date-picker'][data-part='input'] {
+	padding-right: 64px;
 }
 
 .field-box[data-compact] [data-scope='select'][data-part='trigger'] {

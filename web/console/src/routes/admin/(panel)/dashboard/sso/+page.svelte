@@ -3,11 +3,19 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import type { SSOConnection } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { Button, Icon, IconButton, PageHeader, SearchInput, Toolbar } from '$lib/components/ui';
+	import {
+		Button,
+		Icon,
+		IconButton,
+		PageHeader,
+		SearchInput,
+		ShowMore,
+		Toolbar
+	} from '$lib/components/ui';
 	import SSODrawer from '$lib/components/sso/SSODrawer.svelte';
 	import SSOTable from '$lib/components/sso/SSOTable.svelte';
 	import { can } from '$lib/permissions';
-	import { keys, ssoOptions } from '$lib/query';
+	import { firstPage, keys, LIST_PAGE_SIZE, ssoOptions } from '$lib/query';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -32,6 +40,12 @@
 			)
 		);
 	});
+
+	/** How many of them are on screen. The endpoint answers with every one,
+	    so "Show more" reveals the next page of what is already here; a new
+	    search starts again from one page. */
+	let shown = $derived(firstPage(search));
+	const rows = $derived(visible.slice(0, shown));
 
 	let editing = $state<SSOConnection | null>(null);
 	let drawerOpen = $state(false);
@@ -111,7 +125,11 @@
 		/>
 	</Toolbar>
 
-	<SSOTable connections={visible} onOpen={open} empty="No connections match this." />
+	<SSOTable connections={rows} onOpen={open} empty="No connections match this." />
+
+	{#if visible.length > shown}
+		<ShowMore {shown} total={visible.length} onclick={() => (shown += LIST_PAGE_SIZE)} />
+	{/if}
 {/if}
 
 <SSODrawer

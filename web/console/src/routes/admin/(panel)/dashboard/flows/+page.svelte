@@ -14,12 +14,13 @@
 		IconButton,
 		PageHeader,
 		SearchInput,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import FlowTable from '$lib/components/flows/FlowTable.svelte';
 	import { TEMPLATES, freeSlug, fromFile } from '$lib/components/flows/steps';
 	import { can } from '$lib/permissions';
-	import { keys, loginFlowsOptions } from '$lib/query';
+	import { firstPage, keys, LIST_PAGE_SIZE, loginFlowsOptions } from '$lib/query';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -49,6 +50,12 @@
 			[flow.name, flow.slug, flow.description].some((value) => value.toLowerCase().includes(term))
 		);
 	});
+
+	/** How many of them are on screen. The endpoint answers with every one,
+	    so "Show more" reveals the next page of what is already here; a new
+	    search starts again from one page. */
+	let shown = $derived(firstPage(data.search));
+	const rows = $derived(visible.slice(0, shown));
 
 	let choosing = $state(false);
 	let error = $state('');
@@ -208,11 +215,15 @@
 </Toolbar>
 
 <FlowTable
-	flows={visible}
+	flows={rows}
 	kinds={flows.data.step_kinds}
 	onOpen={open}
 	empty={flows.data.flows.length === 0 ? 'No flows yet.' : 'No flows match this.'}
 />
+
+{#if visible.length > shown}
+	<ShowMore {shown} total={visible.length} onclick={() => (shown += LIST_PAGE_SIZE)} />
+{/if}
 
 <style>
 	.templates h2 {

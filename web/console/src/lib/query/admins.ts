@@ -1,17 +1,22 @@
-import { queryOptions } from '@tanstack/svelte-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/svelte-query';
 
 import { adminsApi, type AdminPage, type AdminPermission, type AdminRole } from '$lib/api';
 import { keys } from './keys';
+import { LIST_PAGE_SIZE, nextOffset } from './paging';
 
 /** What the list of administrators is asked for, all of it from the URL. */
 export type AdminListParams = { search: string; status: string; role: string };
 
-/** The administrators matching a search, seeded with what the server rendered. */
-export function adminsOptions(params: AdminListParams, initial: AdminPage) {
-	return queryOptions({
+/** The administrators matching a search, as pages, seeded with the first
+    one the server rendered. */
+export function adminsOptions(params: AdminListParams, first: AdminPage) {
+	return infiniteQueryOptions({
 		queryKey: keys.admins.list(params),
-		queryFn: () => adminsApi.list(params),
-		initialData: initial
+		queryFn: ({ pageParam }) =>
+			adminsApi.list({ ...params, offset: pageParam, limit: LIST_PAGE_SIZE }),
+		initialPageParam: 0,
+		getNextPageParam: (page: AdminPage) => nextOffset(page, page.admins.length),
+		initialData: { pages: [first], pageParams: [0] }
 	});
 }
 

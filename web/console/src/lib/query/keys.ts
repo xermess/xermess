@@ -19,7 +19,8 @@ export const keys = {
 
 	users: {
 		all: ['users'] as const,
-		/** One page of the list, as the search box and filter describe it. */
+		/** The list, as the search box and filter describe it, however many
+		    pages of it are read. */
 		list: (params: { search: string; verified: string; role: string }) =>
 			['users', 'list', params.search, params.verified, params.role] as const,
 		/** The fields a user record is made of. */
@@ -41,7 +42,8 @@ export const keys = {
 		/** What one application may do with each API. */
 		access: (id: string) => ['applications', 'access', id] as const,
 		all: ['applications'] as const,
-		/** One page of the list, as the search box and filters describe it. */
+		/** The list, as the search box and filters describe it, however many
+		    pages of it are read. */
 		list: (params: { search: string; type: string }) =>
 			['applications', 'list', params.search, params.type] as const,
 		/** Every application the administrator can see, for pickers. */
@@ -59,7 +61,8 @@ export const keys = {
 
 	admins: {
 		all: ['admins'] as const,
-		/** One page of the list, as the search box and filters describe it. */
+		/** The list, as the search box and filters describe it, however many
+		    pages of it are read. */
 		list: (params: { search: string; status: string; role: string }) =>
 			['admins', 'list', params.search, params.status, params.role] as const,
 		/** Every admin role. */

@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { API, Application, ApplicationPage, RolePage } from '$lib/api';
 import { can, canAnywhere } from '$lib/permissions';
-import { APPLICATION_CHOICES_LIMIT, ROLE_CHOICES_LIMIT } from '$lib/query';
+import { APPLICATION_CHOICES_LIMIT, LIST_PAGE_SIZE, ROLE_CHOICES_LIMIT } from '$lib/query';
 import { apiGet } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
@@ -48,7 +48,7 @@ export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const application =
 		tab === 'application' && applications.some((app) => app.id === named) ? named : '';
 
-	const query = new URLSearchParams({ scope: tab });
+	const query = new URLSearchParams({ scope: tab, limit: String(LIST_PAGE_SIZE) });
 	if (application) query.set('application', application);
 	if (search) query.set('search', search);
 	if (isDefault === 'true' || isDefault === 'false') query.set('default', isDefault);

@@ -1,4 +1,5 @@
 import type { ApplicationPage } from '$lib/api';
+import { LIST_PAGE_SIZE } from '$lib/query';
 import { apiGet, requireAnywhere } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
@@ -13,7 +14,7 @@ export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const search = url.searchParams.get('search')?.trim() ?? '';
 	const type = url.searchParams.get('type') ?? '';
 
-	const query = new URLSearchParams();
+	const query = new URLSearchParams({ limit: String(LIST_PAGE_SIZE) });
 	if (search) query.set('search', search);
 	if (type) query.set('type', type);
 

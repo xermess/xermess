@@ -5,7 +5,7 @@ import type {
 	AdminSecurity,
 	ApplicationPage
 } from '$lib/api';
-import { APPLICATION_CHOICES_LIMIT } from '$lib/query';
+import { APPLICATION_CHOICES_LIMIT, LIST_PAGE_SIZE } from '$lib/query';
 import { apiGet, requirePermission } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const status = url.searchParams.get('status') ?? '';
 	const role = url.searchParams.get('role') ?? '';
 
-	const query = new URLSearchParams();
+	const query = new URLSearchParams({ limit: String(LIST_PAGE_SIZE) });
 	if (search) query.set('search', search);
 	if (status) query.set('status', status);
 	if (role) query.set('role', role);

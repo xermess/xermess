@@ -110,9 +110,18 @@
 		outline-offset: -2px;
 	}
 
+	/* A narrow window scrolls the segments sideways, without a scrollbar, as
+	   the tabs do: the control is a fixed height, and a scrollbar taking room
+	   from it pushes the segments over its bottom edge — a second, upright
+	   scrollbar inside it. */
 	@media (max-width: 40rem) {
 		.segmented {
 			overflow-x: auto;
+			scrollbar-width: none;
+		}
+
+		.segmented::-webkit-scrollbar {
+			display: none;
 		}
 	}
 </style>
