@@ -10,13 +10,19 @@
 		RiRefreshLine,
 		RiSettings3Line
 	} from 'svelte-remixicon';
-	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import {
+		createInfiniteQuery,
+		createMutation,
+		createQuery,
+		useQueryClient
+	} from '@tanstack/svelte-query';
 	import { ApiError, usersApi, type UserRecord } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import {
 		applicationChoicesOptions,
 		keys,
 		roleChoicesOptions,
+		uniqueById,
 		userFieldsOptions,
 		usersOptions
 	} from '$lib/query';
@@ -32,6 +38,7 @@
 		SearchInput,
 		SegmentedControl,
 		SelectionBar,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import FieldsDrawer from '$lib/components/users/FieldsDrawer.svelte';
@@ -47,9 +54,11 @@
 	// already rendered: the first paint costs no request, and everything
 	// after — a save, the refresh button, coming back to the tab — is the
 	// cache being refilled rather than the page being reloaded.
-	const users = createQuery(() =>
+	const users = createInfiniteQuery(() =>
 		usersOptions({ search: data.search, verified: data.verified, role: data.role }, data.page)
 	);
+	const rows = $derived(uniqueById(users.data?.pages.flatMap((one) => one.users) ?? []));
+	const total = $derived(users.data?.pages.at(-1)?.total ?? 0);
 	const fields = createQuery(() => userFieldsOptions(data.fields));
 	const roles = createQuery(() => roleChoicesOptions(data.roles));
 	const applications = createQuery(() => applicationChoicesOptions(data.applications));
@@ -83,7 +92,7 @@
 	    what nobody can see is not something a panel should offer. Everything
 	    the bar says and does goes through this rather than through the raw
 	    list, so what is counted is what is shown. */
-	const visible = $derived(new Set(users.data.users.map((user) => user.id)));
+	const visible = $derived(new Set(rows.map((user) => user.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 	let confirmingDelete = $state(false);
 	let error = $state('');
@@ -155,7 +164,7 @@
 
 	/** The records behind the ticked ids, in the order the table shows them. */
 	function chosenRecords(): UserRecord[] {
-		return users.data.users.filter((user) => chosen.includes(user.id));
+		return rows.filter((user) => chosen.includes(user.id));
 	}
 
 	/** Deleting what is ticked, one call each — the API removes one record at
@@ -209,7 +218,7 @@
 
 <PageHeader
 	crumbs={['Dashboard', 'Users']}
-	count={users.data.total}
+	count={total}
 	description="Everyone with an account here, and the fields each of them carries."
 >
 	{#snippet secondary()}
@@ -271,13 +280,22 @@
 {/if}
 
 <UserTable
-	users={users.data.users}
+	users={rows}
 	fields={fields.data}
 	applications={applications.data}
 	onOpen={openUser}
 	selected={canWrite ? chosen : undefined}
 	onSelect={canWrite ? (ids) => (selected = ids) : undefined}
 />
+
+{#if users.hasNextPage}
+	<ShowMore
+		shown={rows.length}
+		{total}
+		loading={users.isFetchingNextPage}
+		onclick={() => users.fetchNextPage()}
+	/>
+{/if}
 
 <SelectionBar count={chosen.length} onReset={reset}>
 	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>

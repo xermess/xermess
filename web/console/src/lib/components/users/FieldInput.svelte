@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { UserField } from '$lib/api';
-	import { Input, Switch } from '$lib/components/ui';
+	import { DatePicker, Input, Switch } from '$lib/components/ui';
 	import { fieldIcons } from './fieldIcons';
 
 	type Props = {
@@ -17,15 +17,22 @@
 
 	let { field, value = $bindable() }: Props = $props();
 
-	/** The input type that suits the field, so dates and numbers get the
-	    browser's own pickers rather than us building them. */
-	const inputType = $derived(
-		field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'
-	);
+	/** The input type that suits the field, so numbers get the browser's
+	    own stepper. Dates have a picker of their own, below. */
+	const inputType = $derived(field.type === 'number' ? 'number' : 'text');
 </script>
 
 {#if field.type === 'bool'}
 	<Switch label={field.label} checked={value === true} onChange={(on) => (value = on)} />
+{:else if field.type === 'date'}
+	<DatePicker
+		label={field.label}
+		icon={fieldIcons.date}
+		value={String(value ?? '')}
+		onChange={(day) => (value = day)}
+		required={field.is_required}
+		clearable={!field.is_required}
+	/>
 {:else}
 	<Input
 		label={field.label}

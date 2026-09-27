@@ -11,10 +11,21 @@
 		RiGlobalLine,
 		RiRefreshLine
 	} from 'svelte-remixicon';
-	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import {
+		createInfiniteQuery,
+		createMutation,
+		createQuery,
+		useQueryClient
+	} from '@tanstack/svelte-query';
 	import { ApiError, rolesApi, type Role } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { applicationChoicesOptions, keys, roleChoicesOptions, rolesOptions } from '$lib/query';
+	import {
+		applicationChoicesOptions,
+		keys,
+		roleChoicesOptions,
+		rolesOptions,
+		uniqueById
+	} from '$lib/query';
 	import { canEditRoles } from '$lib/components/roles/roles';
 	import {
 		Alert,
@@ -26,6 +37,7 @@
 		SearchInput,
 		SegmentedControl,
 		SelectionBar,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import RoleDrawer from '$lib/components/roles/RoleDrawer.svelte';
@@ -39,7 +51,7 @@
 	// The list and every role are queries, seeded with what the server has
 	// already rendered: the first paint costs no request, and everything
 	// after is the cache being refilled.
-	const roles = createQuery(() =>
+	const roles = createInfiniteQuery(() =>
 		rolesOptions(
 			{
 				scope: data.tab,
@@ -50,6 +62,8 @@
 			data.page
 		)
 	);
+	const rows = $derived(uniqueById(roles.data?.pages.flatMap((one) => one.roles) ?? []));
+	const total = $derived(roles.data?.pages.at(-1)?.total ?? 0);
 	const choices = createQuery(() => roleChoicesOptions(data.choices));
 	const applications = createQuery(() => applicationChoicesOptions(data.applications));
 
@@ -80,7 +94,7 @@
 	/** The ticked rows that are actually on screen: a search can take a
 	    ticked row out of view, and deleting what nobody can see is not
 	    something a panel should offer. */
-	const visible = $derived(new Set(roles.data.roles.map((role) => role.id)));
+	const visible = $derived(new Set(rows.map((role) => role.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 	let confirmingDelete = $state(false);
 	let error = $state('');
@@ -91,9 +105,7 @@
 	/** How many users lose a role if the chosen ones are deleted, which is
 	    worth saying before it happens. */
 	const holders = $derived(
-		roles.data.roles
-			.filter((role) => chosen.includes(role.id))
-			.reduce((sum, role) => sum + role.user_count, 0)
+		rows.filter((role) => chosen.includes(role.id)).reduce((sum, role) => sum + role.user_count, 0)
 	);
 
 	/** The search and the filter are the URL, so the server renders the
@@ -159,7 +171,7 @@
 
 	/** The roles behind the ticked ids, in the order the table shows them. */
 	function chosenRoles(): Role[] {
-		return roles.data.roles.filter((role) => chosen.includes(role.id));
+		return rows.filter((role) => chosen.includes(role.id));
 	}
 
 	/** Deleting what is ticked, one call each. Users who held a deleted role
@@ -293,13 +305,22 @@
 {/if}
 
 <RoleTable
-	roles={roles.data.roles}
+	roles={rows}
 	showApplication={data.tab === 'application'}
 	applications={applications.data}
 	onOpen={openRole}
 	selected={canWrite ? chosen : undefined}
 	onSelect={canWrite ? (ids) => (selected = ids) : undefined}
 />
+
+{#if roles.hasNextPage}
+	<ShowMore
+		shown={rows.length}
+		{total}
+		loading={roles.isFetchingNextPage}
+		onclick={() => roles.fetchNextPage()}
+	/>
+{/if}
 
 <SelectionBar count={chosen.length} onReset={reset}>
 	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>
@@ -349,6 +370,10 @@
 		overflow-x: auto;
 		scrollbar-width: none;
 		border-bottom: 1px solid var(--color-border);
+	}
+
+	.tabs::-webkit-scrollbar {
+		display: none;
 	}
 
 	.tabs button {

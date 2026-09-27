@@ -23,12 +23,13 @@
 		SearchInput,
 		SegmentedControl,
 		SelectionBar,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import SocialDrawer from '$lib/components/social/SocialDrawer.svelte';
 	import SocialTable from '$lib/components/social/SocialTable.svelte';
 	import { can } from '$lib/permissions';
-	import { keys, socialProvidersOptions } from '$lib/query';
+	import { firstPage, keys, LIST_PAGE_SIZE, socialProvidersOptions } from '$lib/query';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -72,6 +73,12 @@
 		});
 	});
 
+	/** How many of them are on screen. The endpoint answers with every one,
+	    so "Show more" reveals the next page of what is already here; a new
+	    search starts again from one page. */
+	let shown = $derived(firstPage(data.search, data.status));
+	const rows = $derived(providers.slice(0, shown));
+
 	let editing = $state<SocialProvider | null>(null);
 	let drawerOpen = $state(false);
 
@@ -79,7 +86,7 @@
 	    a search can take a ticked row out of view, and acting on what nobody
 	    can see is not something a panel should offer. */
 	let selected = $state<string[]>([]);
-	const visible = $derived(new Set(providers.map((provider) => provider.id)));
+	const visible = $derived(new Set(rows.map((provider) => provider.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 
 	let confirmingRemove = $state(false);
@@ -265,7 +272,7 @@
 {/if}
 
 <SocialTable
-	{providers}
+	providers={rows}
 	kinds={social.data.kinds}
 	onOpen={open}
 	empty={social.data.providers.length === 0
@@ -274,6 +281,10 @@
 	selected={canWrite ? chosen : undefined}
 	onSelect={canWrite ? (ids) => (selected = ids) : undefined}
 />
+
+{#if providers.length > shown}
+	<ShowMore {shown} total={providers.length} onclick={() => (shown += LIST_PAGE_SIZE)} />
+{/if}
 
 <SelectionBar count={chosen.length} onReset={reset}>
 	<Button size="sm" variant="subtle" onclick={() => run('enable')} disabled={busy}>

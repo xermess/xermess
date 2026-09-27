@@ -4,10 +4,10 @@
 	import { resolve } from '$app/paths';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
-	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, applicationsApi, type Application } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { applicationsOptions, keys } from '$lib/query';
+	import { applicationsOptions, keys, uniqueById } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import {
 		Alert,
@@ -19,6 +19,7 @@
 		SearchInput,
 		SegmentedControl,
 		SelectionBar,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import ApplicationDrawer from '$lib/components/applications/ApplicationDrawer.svelte';
@@ -29,9 +30,13 @@
 
 	const queryClient = useQueryClient();
 
-	const applications = createQuery(() =>
+	const applications = createInfiniteQuery(() =>
 		applicationsOptions({ search: data.search, type: data.type }, data.page)
 	);
+	const rows = $derived(
+		uniqueById(applications.data?.pages.flatMap((one) => one.applications) ?? [])
+	);
+	const total = $derived(applications.data?.pages.at(-1)?.total ?? 0);
 
 	/** Registering and removing applications takes applications.write for the
 	    whole panel; changing one takes it for that application. */
@@ -43,7 +48,7 @@
 	let drawerOpen = $state(false);
 
 	let selected = $state<string[]>([]);
-	const visible = $derived(new Set(applications.data.applications.map((app) => app.id)));
+	const visible = $derived(new Set(rows.map((app) => app.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 
 	let confirmingDelete = $state(false);
@@ -136,7 +141,7 @@
 
 <PageHeader
 	crumbs={['Dashboard', 'Applications']}
-	count={applications.data.total}
+	count={total}
 	description="The apps and services that sign their users in here with OAuth 2.0 and OpenID Connect. Each defines its own roles, and a token for it carries its roles alone."
 >
 	{#snippet secondary()}
@@ -181,11 +186,20 @@
 {/if}
 
 <ApplicationTable
-	applications={applications.data.applications}
+	applications={rows}
 	onOpen={openApplication}
 	selected={canRegister ? chosen : undefined}
 	onSelect={canRegister ? (ids) => (selected = ids) : undefined}
 />
+
+{#if applications.hasNextPage}
+	<ShowMore
+		shown={rows.length}
+		{total}
+		loading={applications.isFetchingNextPage}
+		onclick={() => applications.fetchNextPage()}
+	/>
+{/if}
 
 <SelectionBar count={chosen.length} onReset={reset}>
 	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>

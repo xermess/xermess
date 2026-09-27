@@ -2,8 +2,8 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { RiAddLine } from 'svelte-remixicon';
 	import type { Language, LanguageList, LocaleApp } from '$lib/api';
-	import { Button, Icon, SearchInput, Toolbar } from '$lib/components/ui';
-	import { languagesOptions } from '$lib/query';
+	import { Button, Icon, SearchInput, ShowMore, Toolbar } from '$lib/components/ui';
+	import { firstPage, languagesOptions, LIST_PAGE_SIZE } from '$lib/query';
 	import LanguageDrawer from './LanguageDrawer.svelte';
 	import LanguageTable from './LanguageTable.svelte';
 	import NewLanguageDrawer from './NewLanguageDrawer.svelte';
@@ -33,6 +33,12 @@
 			)
 		);
 	});
+
+	/** How many of them are on screen. The endpoint answers with every one,
+	    so "Show more" reveals the next page of what is already here; a new
+	    search starts again from one page. */
+	let shown = $derived(firstPage(search));
+	const rows = $derived(visible.slice(0, shown));
 
 	let editing = $state<Language | null>(null);
 	let drawerTab = $state<'settings' | LocaleApp>('settings');
@@ -76,11 +82,15 @@
 	</Toolbar>
 
 	<LanguageTable
-		languages={visible}
+		languages={rows}
 		apps={list.data.apps}
 		onOpen={open}
 		empty="No languages match this."
 	/>
+
+	{#if visible.length > shown}
+		<ShowMore {shown} total={visible.length} onclick={() => (shown += LIST_PAGE_SIZE)} />
+	{/if}
 </div>
 
 <LanguageDrawer bind:open={drawerOpen} language={editing} tab={drawerTab} {canWrite} />

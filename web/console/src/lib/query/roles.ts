@@ -1,7 +1,8 @@
-import { queryOptions } from '@tanstack/svelte-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/svelte-query';
 
 import { rolesApi, type Role, type RolePage } from '$lib/api';
 import { keys } from './keys';
+import { LIST_PAGE_SIZE, nextOffset } from './paging';
 
 /** What the list is asked for, all of it from the URL: the tab (global or
     application roles), the application chip, the search box and the default
@@ -17,22 +18,26 @@ export type RoleListParams = {
 export const ROLE_CHOICES_LIMIT = 500;
 
 /**
- * The roles matching a search.
+ * The roles matching a search, as pages.
  *
- * `initial` is what the server already rendered, so opening the page does not
- * fetch the same rows a second time.
+ * `first` is the page the server already rendered, so opening the page does
+ * not fetch the same rows a second time.
  */
-export function rolesOptions(params: RoleListParams, initial: RolePage) {
-	return queryOptions({
+export function rolesOptions(params: RoleListParams, first: RolePage) {
+	return infiniteQueryOptions({
 		queryKey: keys.roles.list(params),
-		queryFn: () =>
+		queryFn: ({ pageParam }) =>
 			rolesApi.list({
 				scope: params.scope,
 				application: params.application || undefined,
 				search: params.search,
-				default: params.isDefault
+				default: params.isDefault,
+				offset: pageParam,
+				limit: LIST_PAGE_SIZE
 			}),
-		initialData: initial
+		initialPageParam: 0,
+		getNextPageParam: (page: RolePage) => nextOffset(page, page.roles.length),
+		initialData: { pages: [first], pageParams: [0] }
 	});
 }
 

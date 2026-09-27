@@ -1,5 +1,5 @@
 import type { Application, ApplicationPage, RolePage, UserField, UserPage } from '$lib/api';
-import { APPLICATION_CHOICES_LIMIT, ROLE_CHOICES_LIMIT } from '$lib/query';
+import { APPLICATION_CHOICES_LIMIT, LIST_PAGE_SIZE, ROLE_CHOICES_LIMIT } from '$lib/query';
 import { canAnywhere } from '$lib/permissions';
 import { apiGet, requirePermission } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const verified = url.searchParams.get('verified') ?? '';
 	const role = url.searchParams.get('role') ?? '';
 
-	const query = new URLSearchParams();
+	const query = new URLSearchParams({ limit: String(LIST_PAGE_SIZE) });
 	if (search) query.set('search', search);
 	if (verified === 'true' || verified === 'false') query.set('verified', verified);
 	if (role) query.set('role', role);

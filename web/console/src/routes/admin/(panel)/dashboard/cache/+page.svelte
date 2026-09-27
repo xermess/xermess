@@ -24,6 +24,7 @@
 		SearchInput,
 		SegmentedControl,
 		Select,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import CacheGroups from '$lib/components/cache/CacheGroups.svelte';
@@ -235,15 +236,11 @@
 	/>
 
 	{#if listing.hasNextPage}
-		<div class="more">
-			<Button
-				variant="subtle"
-				loading={listing.isFetchingNextPage}
-				onclick={() => listing.fetchNextPage()}
-			>
-				Show more
-			</Button>
-		</div>
+		<ShowMore
+			shown={rows.length}
+			loading={listing.isFetchingNextPage}
+			onclick={() => listing.fetchNextPage()}
+		/>
 	{/if}
 
 	<CacheKeyDrawer database={data.database} key={opened} bind:open={drawerOpen} />
@@ -269,11 +266,5 @@
 		max-width: 60rem;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	.more {
-		display: flex;
-		justify-content: center;
-		padding-top: var(--space-1);
 	}
 </style>

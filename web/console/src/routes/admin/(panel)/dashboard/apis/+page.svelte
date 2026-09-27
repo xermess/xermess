@@ -7,7 +7,7 @@
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { ApiError, apisApi, type API } from '$lib/api';
 	import { BRAND } from '$lib/brand';
-	import { apisOptions, keys } from '$lib/query';
+	import { apisOptions, firstPage, keys, LIST_PAGE_SIZE } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import {
 		Alert,
@@ -18,6 +18,7 @@
 		PageHeader,
 		SearchInput,
 		SelectionBar,
+		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
 	import ApiDrawer from '$lib/components/apis/ApiDrawer.svelte';
@@ -30,6 +31,12 @@
 
 	const apis = createQuery(() => apisOptions(data.search, data.apis));
 
+	/** How many of them are on screen. The endpoint answers with every one,
+	    so "Show more" reveals the next page of what is already here; a new
+	    search starts again from one page. */
+	let shown = $derived(firstPage(data.search));
+	const rows = $derived(apis.data.slice(0, shown));
+
 	/** Changing APIs is a whole-panel permission. */
 	const canWrite = $derived(can(data.admin, 'apis.write'));
 
@@ -38,7 +45,7 @@
 	let drawerOpen = $state(false);
 
 	let selected = $state<string[]>([]);
-	const visible = $derived(new Set(apis.data.map((api) => api.id)));
+	const visible = $derived(new Set(rows.map((api) => api.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 
 	/** How many applications lose access if the chosen APIs go. */
@@ -166,11 +173,15 @@
 {/if}
 
 <ApiTable
-	apis={apis.data}
+	apis={rows}
 	onOpen={openApi}
 	selected={canWrite ? chosen : undefined}
 	onSelect={canWrite ? (ids) => (selected = ids) : undefined}
 />
+
+{#if apis.data.length > shown}
+	<ShowMore {shown} total={apis.data.length} onclick={() => (shown += LIST_PAGE_SIZE)} />
+{/if}
 
 <SelectionBar count={chosen.length} onReset={reset}>
 	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>

@@ -158,13 +158,18 @@ export const adminApi = {
 export const usersApi = {
 	/** A page of users. The search and the filter are the same ones the URL
 	    carries, so a link and a query key describe the same list. */
-	list: (params: { search?: string; verified?: string; role?: string }, fetcher?: Fetch) => {
+	list: (
+		params: { search?: string; verified?: string; role?: string; offset?: number; limit?: number },
+		fetcher?: Fetch
+	) => {
 		const query = new URLSearchParams();
 		if (params.search) query.set('search', params.search);
 		if (params.verified === 'true' || params.verified === 'false') {
 			query.set('verified', params.verified);
 		}
 		if (params.role) query.set('role', params.role);
+		if (params.offset) query.set('offset', String(params.offset));
+		if (params.limit) query.set('limit', String(params.limit));
 
 		return api.get<UserPage>(`/admin/users?${query}`, fetcher);
 	},
@@ -369,6 +374,7 @@ export const rolesApi = {
 			application?: string;
 			search?: string;
 			default?: string;
+			offset?: number;
 			limit?: number;
 		},
 		fetcher?: Fetch
@@ -380,6 +386,7 @@ export const rolesApi = {
 		if (params.default === 'true' || params.default === 'false') {
 			query.set('default', params.default);
 		}
+		if (params.offset) query.set('offset', String(params.offset));
 		if (params.limit) query.set('limit', String(params.limit));
 
 		return api.get<RolePage>(`/admin/user-roles?${query}`, fetcher);
@@ -417,11 +424,16 @@ export const mfaApi = {
 /** The panel's administrators, and the roles that say what they may do. Every
     call here is a super admin's alone. */
 export const adminsApi = {
-	list: (params: { search?: string; status?: string; role?: string }, fetcher?: Fetch) => {
+	list: (
+		params: { search?: string; status?: string; role?: string; offset?: number; limit?: number },
+		fetcher?: Fetch
+	) => {
 		const query = new URLSearchParams();
 		if (params.search) query.set('search', params.search);
 		if (params.status) query.set('status', params.status);
 		if (params.role) query.set('role', params.role);
+		if (params.offset) query.set('offset', String(params.offset));
+		if (params.limit) query.set('limit', String(params.limit));
 
 		return api.get<AdminPage>(`/admin/admins?${query}`, fetcher);
 	},
@@ -462,7 +474,7 @@ export const adminsApi = {
 /** The apps and services that sign their users in here. */
 export const applicationsApi = {
 	list: (
-		params: { search?: string; type?: string; enabled?: string; limit?: number },
+		params: { search?: string; type?: string; enabled?: string; offset?: number; limit?: number },
 		fetcher?: Fetch
 	) => {
 		const query = new URLSearchParams();
@@ -470,6 +482,7 @@ export const applicationsApi = {
 		if (params.type) query.set('type', params.type);
 		if (params.enabled === 'true' || params.enabled === 'false')
 			query.set('enabled', params.enabled);
+		if (params.offset) query.set('offset', String(params.offset));
 		if (params.limit) query.set('limit', String(params.limit));
 
 		return api.get<ApplicationPage>(`/admin/applications?${query}`, fetcher);

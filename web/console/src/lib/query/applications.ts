@@ -1,7 +1,8 @@
-import { queryOptions } from '@tanstack/svelte-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/svelte-query';
 
 import { applicationsApi, type Application, type ApplicationPage } from '$lib/api';
 import { keys } from './keys';
+import { LIST_PAGE_SIZE, nextOffset } from './paging';
 
 /** How many applications the pickers ask for: the most the API gives. */
 export const APPLICATION_CHOICES_LIMIT = 500;
@@ -9,12 +10,16 @@ export const APPLICATION_CHOICES_LIMIT = 500;
 /** What the list is asked for, all of it from the URL. */
 export type ApplicationListParams = { search: string; type: string };
 
-/** The applications matching a search, seeded with what the server rendered. */
-export function applicationsOptions(params: ApplicationListParams, initial: ApplicationPage) {
-	return queryOptions({
+/** The applications matching a search, as pages, seeded with the first one
+    the server rendered. */
+export function applicationsOptions(params: ApplicationListParams, first: ApplicationPage) {
+	return infiniteQueryOptions({
 		queryKey: keys.applications.list(params),
-		queryFn: () => applicationsApi.list(params),
-		initialData: initial
+		queryFn: ({ pageParam }) =>
+			applicationsApi.list({ ...params, offset: pageParam, limit: LIST_PAGE_SIZE }),
+		initialPageParam: 0,
+		getNextPageParam: (page: ApplicationPage) => nextOffset(page, page.applications.length),
+		initialData: { pages: [first], pageParams: [0] }
 	});
 }
 
