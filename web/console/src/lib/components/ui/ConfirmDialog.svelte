@@ -88,7 +88,7 @@
 			<Dialog.Content class="confirm-content" data-palette={tone}>
 				<div class="head">
 					<span class="badge" aria-hidden="true">
-						<Icon icon={icon ?? icons[tone]} size="20" />
+						<Icon icon={icon ?? icons[tone]} size="18" />
 					</span>
 
 					<div class="text">
@@ -127,14 +127,15 @@
 	}
 
 	:global(.confirm-content[data-scope='dialog'][data-part='content']) {
-		width: min(28rem, 100%);
+		width: min(26rem, 100%);
 		height: auto;
 		/* In the middle while it fits, and scrolled from its top when it
 		   does not, rather than cut off above the window. */
 		margin: auto;
-		padding: var(--space-5);
+		padding: var(--space-4);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
+		/* The popovers' corners, since it is the popovers' sheet. */
+		border-radius: var(--radius-md);
 		background: var(--color-surface);
 		box-shadow: var(--shadow-md);
 	}
@@ -165,7 +166,7 @@
 	.head {
 		display: flex;
 		align-items: flex-start;
-		gap: var(--space-4);
+		gap: var(--space-3);
 	}
 
 	/* The tone, said once: a circle in the palette the yes button is in,
@@ -175,10 +176,10 @@
 		flex: none;
 		align-items: center;
 		justify-content: center;
-		width: 40px;
-		height: 40px;
+		width: 34px;
+		height: 34px;
 		border: 1px solid var(--palette-border);
-		border-radius: 50%;
+		border-radius: var(--radius-sm);
 		background: var(--palette-subtle);
 		color: var(--palette-fg);
 	}
@@ -186,17 +187,17 @@
 	.text {
 		flex: 1;
 		min-width: 0;
-		padding-top: 2px;
+		padding-top: 6px;
 	}
 
 	.text :global([data-scope='dialog'][data-part='title']) {
-		font-size: var(--text-lg);
-		line-height: 1.35;
+		font-size: var(--text-base);
+		line-height: 1.4;
 		overflow-wrap: anywhere;
 	}
 
 	.text :global([data-scope='dialog'][data-part='description']) {
-		margin-top: var(--space-1);
+		margin-top: 2px;
 		font-size: var(--text-sm);
 		line-height: 1.5;
 	}
@@ -210,12 +211,17 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
-		margin-top: var(--space-5);
+		margin-top: var(--space-4);
 	}
 
-	/* On a phone the two answers take the width between them, so neither is
-	   a small target at the edge of the screen. */
+	/* On a phone the card uses more of the narrow window, and the two
+	   answers take the width between them, so neither is a small target at
+	   the edge of the screen. */
 	@media (max-width: 34rem) {
+		:global(.confirm-positioner[data-scope='dialog'][data-part='positioner']) {
+			padding: var(--space-2);
+		}
+
 		.actions > :global(*) {
 			flex: 1;
 		}

@@ -45,9 +45,10 @@
 <Tabs {tabs} bind:value={tab} label="Settings">
 	{#snippet panel(value)}
 		{#if value === 'organization' && data.organization}
-			<!-- A form is read down one column; the language table below needs
-			     the whole width for its columns. -->
-			<PageContainer>
+			<!-- Each section puts what it is beside its fields, which needs more
+			     than a form's column; the language table below needs the whole
+			     width for its columns. -->
+			<PageContainer size="lg">
 				<OrganizationSettings
 					initial={data.organization}
 					editable={can(data.admin, 'organization.write')}

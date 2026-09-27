@@ -107,11 +107,16 @@
 	}
 
 	/* Bare, the picture is the whole mark: no border, no tint, no padding,
-	   and its own corners. */
+	   and its own corners — unless it was asked to be a circle, which is a
+	   shape to cut it to rather than a frame around it. */
 	.picture.bare {
 		border: none;
 		border-radius: 0;
 		background: transparent;
+	}
+
+	.picture.bare.circle {
+		border-radius: var(--radius-pill);
 	}
 
 	img {

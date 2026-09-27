@@ -5,7 +5,6 @@
 	import {
 		RiArrowDownSLine,
 		RiLogoutBoxRLine,
-		RiMailLine,
 		RiShieldUserLine,
 		RiUserSettingsLine
 	} from 'svelte-remixicon';
@@ -66,30 +65,32 @@
 </script>
 
 <!-- Who is signed in, as the avatar at the end of the header. The menu under
-     it is laid out as the help menu is — rows with an icon, a label and a
-     line under it — and holds the four things about an account worth
-     reaching from anywhere: its address, what it may do, its settings, and
-     leaving. -->
-<DropdownMenu label="Account: {name}" shape="labelled" width="18rem">
+     it is laid out as the help menu is — a heading over rows with an icon, a
+     label and a line under it — and holds what is worth reaching from
+     anywhere: who the account is, what it may do, its settings, and leaving. -->
+<DropdownMenu label="Account: {name}" shape="labelled">
 	{#snippet trigger()}
 		<Thumb src={admin.avatar_url} text={monogram} size="xs" shape="circle" tone="accent" />
 		<span class="name">{name}</span>
 		<span class="chevron" aria-hidden="true"><Icon icon={RiArrowDownSLine} size="1rem" /></span>
 	{/snippet}
 
-	<!-- The name is on the button; the menu says the rest. -->
-	<MenuGroup>
-		<MenuInfo icon={RiMailLine} label={admin.email} description="Email" />
+	<MenuGroup label="Signed in as">
+		<MenuInfo label={name} description={admin.email}>
+			{#snippet lead()}
+				<Thumb src={admin.avatar_url} text={monogram} size="xs" shape="circle" tone="accent" />
+			{/snippet}
+		</MenuInfo>
 		<MenuInfo icon={RiShieldUserLine} label={role} description="Role" />
 	</MenuGroup>
 
 	<MenuSeparator />
 
-	<MenuGroup>
+	<MenuGroup label="Account">
 		<MenuItem
 			value="account"
 			icon={RiUserSettingsLine}
-			label="Account"
+			label="Account settings"
 			description="Profile, security and sessions"
 			onSelect={() => (accountOpen = true)}
 		/>
@@ -101,6 +102,7 @@
 		value="sign-out"
 		icon={RiLogoutBoxRLine}
 		label="Sign out"
+		description="End this session"
 		danger
 		onSelect={() => (confirmingSignOut = true)}
 	/>
@@ -140,7 +142,8 @@
 		transform: rotate(180deg);
 	}
 
-	/* Where the bar has no room for a name, the button is the avatar alone. */
+	/* Where the bar has no room for a name, the button is the avatar alone
+	   (DropdownMenu makes it a circle to match). */
 	@media (max-width: 64rem) {
 		.name,
 		.chevron {

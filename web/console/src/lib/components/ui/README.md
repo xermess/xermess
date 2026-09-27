@@ -38,7 +38,7 @@ built this way, so they read as one family:
 		/>
 	</MenuGroup>
 	<MenuSeparator />
-	<MenuInfo icon={RiMailLine} label={email} description="Email" />
+	<MenuInfo icon={RiMailLine} label={email} />
 	<MenuItem value="sign-out" icon={RiLogoutBoxRLine} label="Sign out" danger onSelect={ask} />
 </DropdownMenu>
 ```

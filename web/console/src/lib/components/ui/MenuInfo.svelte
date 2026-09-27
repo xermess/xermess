@@ -60,7 +60,10 @@
 	}
 
 	small {
+		overflow: hidden;
 		color: var(--color-text-hint);
+		text-overflow: ellipsis;
+		white-space: nowrap;
 		font-size: var(--text-xs);
 	}
 

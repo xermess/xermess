@@ -5,6 +5,7 @@
 		RiBuildingLine,
 		RiCustomerService2Line,
 		RiFileTextLine,
+		RiGlobalLine,
 		RiImageLine,
 		RiMailLine,
 		RiPhoneLine,
@@ -17,21 +18,11 @@
 		type Organization,
 		type OrganizationSettings
 	} from '$lib/api';
-	import {
-		Alert,
-		Button,
-		FieldGrid,
-		Input,
-		List,
-		ListItem,
-		Panel,
-		Select,
-		Tag,
-		Thumb
-	} from '$lib/components/ui';
+	import { Alert, Button, Code, FieldGrid, Input, Select, Tag, Thumb } from '$lib/components/ui';
 	import { ADMIN_DEPENDENCY } from '$lib/constants';
 	import { keys, organizationOptions } from '$lib/query';
 	import { formatDate, initials } from '$lib/utils/format';
+	import SettingsSection from './SettingsSection.svelte';
 
 	type Props = {
 		/** What the server rendered, to seed the query with. */
@@ -116,19 +107,34 @@
 	    to the monogram if it does not load. */
 	const logo = $derived(/^https?:\/\/\S+$/.test(input.logo_url) ? input.logo_url : '');
 
-	/** What the sign-in pages have nothing to show for, so the page says what
-	    is still missing rather than looking finished. */
-	const missing = $derived(
-		[
-			['Logo', input.logo_url],
-			['Support email', input.support_email],
-			['Support number', input.support_phone],
-			['Terms', input.terms_url],
-			['Privacy policy', input.privacy_url]
-		]
-			.filter(([, value]) => value === '')
-			.map(([label]) => label)
-	);
+	/** What the sign-in pages show when it is filled in, so the summary can
+	    say how much of it is still missing rather than the page looking
+	    finished. */
+	const details = $derived([
+		{ label: 'Logo', filled: input.logo_url !== '' },
+		{ label: 'Support email', filled: input.support_email !== '' },
+		{ label: 'Support number', filled: input.support_phone !== '' },
+		{ label: 'Terms', filled: input.terms_url !== '' },
+		{ label: 'Privacy policy', filled: input.privacy_url !== '' }
+	]);
+
+	const filled = $derived(details.filter((detail) => detail.filled).length);
+
+	const missing = $derived(details.filter((detail) => !detail.filled));
+
+	/** The zone's distance from UTC, as "GMT+06:00": the same on the server
+	    and in the browser, which the time of day would not be. */
+	const offset = $derived.by(() => {
+		try {
+			return (
+				new Intl.DateTimeFormat('en-US', { timeZone: input.timezone, timeZoneName: 'longOffset' })
+					.formatToParts(new Date())
+					.find((part) => part.type === 'timeZoneName')?.value ?? ''
+			);
+		} catch {
+			return '';
+		}
+	});
 
 	const save = createMutation(() => ({
 		mutationFn: () => organizationApi.update(input),
@@ -165,23 +171,53 @@
 
 <form onsubmit={submit}>
 	<!-- The organisation as it stands, and as it is being typed: the card
-	     follows the fields, so a logo or a name is seen before it is saved. -->
-	<List bordered label="Organization">
-		<ListItem
-			title={input.name || 'Unnamed organisation'}
-			description={input.slug || organization.slug}
-		>
-			{#snippet lead()}
-				<Thumb src={logo} text={monogram} size="md" />
-			{/snippet}
+	     follows the fields, so a logo or a name is seen before it is saved,
+	     and it says how much of what the sign-in pages can show is there. -->
+	<section class="summary" aria-label="Organization">
+		<div class="identity">
+			<Thumb src={logo} text={monogram} size="md" shape="circle" tone="accent" />
 
-			{#snippet end()}
-				<Tag small title="When this organisation's record was created">
-					Since {formatDate(organization.created_at)}
-				</Tag>
-			{/snippet}
-		</ListItem>
-	</List>
+			<div class="names">
+				<strong title={input.name}>{input.name || 'Unnamed organization'}</strong>
+				<span class="line">
+					<Code tone="quiet" truncate>{input.slug || organization.slug}</Code>
+					<span aria-hidden="true">·</span>
+					<span title="When this organization's record was created">
+						Since {formatDate(organization.created_at)}
+					</span>
+				</span>
+			</div>
+		</div>
+
+		<div class="progress">
+			<div class="count">
+				<span>Public details</span>
+				<strong>{filled} of {details.length}</strong>
+			</div>
+			<div
+				class="meter"
+				role="meter"
+				aria-label="Public details filled in"
+				aria-valuemin={0}
+				aria-valuemax={details.length}
+				aria-valuenow={filled}
+			>
+				<span style:width="{(filled / details.length) * 100}%"></span>
+			</div>
+			{#if missing.length > 0}
+				<div class="missing">
+					{#each missing as detail (detail.label)}<Tag small>{detail.label}</Tag>{/each}
+				</div>
+				<small>The sign-in pages leave these out until they are filled in.</small>
+			{:else}
+				<small>Everything the sign-in pages can show is filled in.</small>
+			{/if}
+		</div>
+	</section>
+
+	{#if !editable}
+		<Alert tone="info">Your roles let you see these settings but not change them.</Alert>
+	{/if}
 
 	{#if error}
 		<Alert>{error}</Alert>
@@ -192,7 +228,11 @@
 	{/if}
 
 	<fieldset disabled={!editable}>
-		<Panel title="Organization" icon={RiBuildingLine}>
+		<SettingsSection
+			title="Identity"
+			description="What the organization is called, and the mark the sign-in pages and this panel's header show."
+			icon={RiBuildingLine}
+		>
 			<FieldGrid spacing="comfortable">
 				<Input
 					label="Name"
@@ -207,7 +247,7 @@
 					bind:value={form.slug}
 					required
 					maxlength={64}
-					hint="The slug: lower case letters, numbers and dashes."
+					hint="Lower case letters, numbers and dashes."
 				/>
 
 				<div class="full">
@@ -217,25 +257,36 @@
 						bind:value={form.logo_url}
 						maxlength={512}
 						placeholder="https://example.com/logo.svg"
-						hint="A full address, shown above. An application with a logo of its own keeps it."
-					/>
-				</div>
-
-				<div class="full">
-					<Select
-						label="Timezone"
-						icon={RiTimeLine}
-						bind:value={form.timezone}
-						options={timezones}
-						required
-						disabled={!editable}
-						hint="The dates on a user's account pages, such as when the account was made."
+						hint="A full address, previewed above. An application with a logo of its own keeps it."
 					/>
 				</div>
 			</FieldGrid>
-		</Panel>
+		</SettingsSection>
 
-		<Panel title="Contact" icon={RiCustomerService2Line}>
+		<SettingsSection
+			title="Region"
+			description="The zone dates are written in on a user's account pages, such as when the account was made."
+			icon={RiGlobalLine}
+		>
+			{#snippet meta()}
+				{#if offset}<Tag small>{offset}</Tag>{/if}
+			{/snippet}
+
+			<Select
+				label="Timezone"
+				icon={RiTimeLine}
+				bind:value={form.timezone}
+				options={timezones}
+				required
+				disabled={!editable}
+			/>
+		</SettingsSection>
+
+		<SettingsSection
+			title="Support"
+			description="Where someone who cannot get in can ask for help."
+			icon={RiCustomerService2Line}
+		>
 			{#snippet meta()}
 				<Tag small>Shown when signing in</Tag>
 			{/snippet}
@@ -248,7 +299,6 @@
 					type="email"
 					maxlength={255}
 					placeholder="support@example.com"
-					hint="Where someone who cannot get in writes."
 				/>
 
 				<Input
@@ -260,49 +310,37 @@
 					hint="In the form you want it dialled."
 				/>
 			</FieldGrid>
-		</Panel>
+		</SettingsSection>
 
-		<Panel title="Agreements" icon={RiFileTextLine}>
+		<SettingsSection
+			title="Agreements"
+			description="What users agree to. An application with links of its own shows those instead."
+			icon={RiFileTextLine}
+		>
 			{#snippet meta()}
-				<Tag small>In the discovery document</Tag>
+				<Tag small>Sign-in pages</Tag>
+				<Tag small>Discovery document</Tag>
 			{/snippet}
 
-			<FieldGrid spacing="comfortable">
-				<div class="full">
-					<Input
-						label="Terms of service"
-						icon={RiFileTextLine}
-						bind:value={form.terms_url}
-						maxlength={512}
-						placeholder="https://example.com/terms"
-						hint="Published as op_tos_uri, and linked under the sign-in card."
-					/>
-				</div>
+			<Input
+				label="Terms of service"
+				icon={RiFileTextLine}
+				bind:value={form.terms_url}
+				maxlength={512}
+				placeholder="https://example.com/terms"
+				hint="Published as op_tos_uri, and linked under the sign-in card."
+			/>
 
-				<div class="full">
-					<Input
-						label="Privacy policy"
-						icon={RiShieldCheckLine}
-						bind:value={form.privacy_url}
-						maxlength={512}
-						placeholder="https://example.com/privacy"
-						hint="Published as op_policy_uri, and agreed to on registration."
-					/>
-				</div>
-			</FieldGrid>
-
-			<p class="note">
-				An application with links of its own shows those instead; these are what users see for every
-				application that has none.
-			</p>
-		</Panel>
+			<Input
+				label="Privacy policy"
+				icon={RiShieldCheckLine}
+				bind:value={form.privacy_url}
+				maxlength={512}
+				placeholder="https://example.com/privacy"
+				hint="Published as op_policy_uri, and agreed to on registration."
+			/>
+		</SettingsSection>
 	</fieldset>
-
-	{#if missing.length > 0}
-		<p class="missing">
-			Not filled in yet: {missing.join(', ')}. The sign-in pages leave out what is empty.
-		</p>
-	{/if}
 
 	{#if editable && dirty}
 		<!-- The bar appears only once something has been typed, and then stays
@@ -316,8 +354,6 @@
 				{saving ? 'Saving…' : 'Save changes'}
 			</Button>
 		</div>
-	{:else if !editable}
-		<p class="note">Your roles let you see these settings but not change them.</p>
 	{/if}
 </form>
 
@@ -325,24 +361,118 @@
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-4);
+		gap: var(--space-5);
 	}
 
 	fieldset {
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
-		gap: var(--space-4);
+		gap: var(--space-5);
 		margin: 0;
 		padding: 0;
 		border: none;
 	}
 
-	/* Two fields to a row, each as wide as the other, and a `wide` one across
-	   both: an address or a URL is read in full rather than in half. */
+	/* The organisation at a glance: who it is on the left, how much of it
+	   the sign-in pages can show on the right. Measured on its own width, so
+	   it stacks wherever it is narrow. */
+	.summary {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-4);
+		padding: var(--space-4);
+		border: 1px solid var(--color-secondary-alt);
+		border-radius: var(--radius-sm);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-panel);
+	}
+
+	.identity {
+		display: flex;
+		flex: 1 1 18rem;
+		align-items: center;
+		gap: var(--space-3);
+		min-width: 0;
+	}
+
+	.names {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+	}
+
+	.names strong {
+		overflow: hidden;
+		font-size: var(--text-xl);
+		font-weight: 600;
+		line-height: 1.25;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.line {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		min-width: 0;
+		color: var(--color-text-hint);
+		font-size: var(--text-sm);
+		white-space: nowrap;
+	}
+
+	.progress {
+		display: flex;
+		flex: 0 1 20rem;
+		flex-direction: column;
+		gap: var(--space-1);
+		min-width: 0;
+	}
+
+	.count {
+		display: flex;
+		justify-content: space-between;
+		color: var(--color-text-hint);
+		font-size: var(--text-sm);
+	}
+
+	.count strong {
+		color: var(--color-text);
+		font-weight: 600;
+	}
+
+	.meter {
+		height: 6px;
+		overflow: hidden;
+		border-radius: var(--radius-pill);
+		background: var(--color-secondary);
+	}
+
+	.meter span {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: var(--color-brand);
+		transition: width var(--speed);
+	}
+
+	.missing {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin-top: 2px;
+	}
+
+	.progress small {
+		color: var(--color-text-hint);
+		font-size: var(--text-xs);
+	}
 
 	/* Opaque, and the width of the column: stuck to the foot of the window it
-	   passes over the panels, which it may not show through. */
+	   passes over the sections, which it may not show through. */
 	.actions {
 		position: sticky;
 		bottom: 0;
@@ -364,11 +494,9 @@
 		font-size: var(--text-sm);
 	}
 
-	.note,
-	.missing {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-		line-height: 1.5;
+	@media (prefers-reduced-motion: reduce) {
+		.meter span {
+			transition: none;
+		}
 	}
 </style>

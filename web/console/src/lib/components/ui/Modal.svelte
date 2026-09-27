@@ -101,7 +101,8 @@
 		margin: auto;
 		max-height: calc(100dvh - 2 * var(--space-4));
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
+		/* The popovers' corners, as ConfirmDialog has. */
+		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-md);
 		overflow: hidden;
 	}
@@ -147,7 +148,7 @@
 	   keeps its padding at the bottom too. */
 	header:last-child,
 	header:has(+ footer) {
-		padding-bottom: var(--space-5);
+		padding-bottom: var(--space-4);
 	}
 
 	header {
@@ -155,7 +156,7 @@
 		align-items: flex-start;
 		justify-content: space-between;
 		gap: var(--space-3);
-		padding: var(--space-4) var(--space-4) var(--space-3) var(--space-5);
+		padding: var(--space-3) var(--space-3) var(--space-2) var(--space-4);
 	}
 
 	header:focus {
@@ -163,7 +164,14 @@
 	}
 
 	header > div {
-		padding-top: 4px;
+		min-width: 0;
+		padding-top: 6px;
+	}
+
+	header :global([data-scope='dialog'][data-part='title']) {
+		font-size: var(--text-lg);
+		line-height: 1.35;
+		overflow-wrap: anywhere;
 	}
 
 	/* The body scrolls on its own, so the title and the buttons stay put
@@ -172,7 +180,7 @@
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
-		padding: 0 var(--space-5) var(--space-5);
+		padding: 0 var(--space-4) var(--space-4);
 		overscroll-behavior: contain;
 	}
 
@@ -180,9 +188,29 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
-		padding: var(--space-3) var(--space-5);
+		padding: var(--space-2) var(--space-4);
 		border-top: 1px solid var(--color-border);
 		background: var(--color-surface-alt);
+	}
+
+	/* On a phone the card takes nearly the whole width, and a large one the
+	   whole height, so a page of settings is not a letterbox. */
+	@media (max-width: 34rem) {
+		:global(.modal-positioner[data-scope='dialog'][data-part='positioner']) {
+			padding: var(--space-2);
+		}
+
+		:global(.modal-content[data-scope='dialog'][data-part='content']) {
+			max-height: calc(100dvh - 2 * var(--space-2));
+		}
+
+		:global(.modal-content[data-scope='dialog'][data-part='content'][data-size='lg']) {
+			height: calc(100dvh - 2 * var(--space-2));
+		}
+
+		footer > :global(*) {
+			flex: 1;
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

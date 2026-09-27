@@ -59,7 +59,14 @@
 <header class:mini={shell.collapsed}>
 	<div class="brand-column" class:ruled={besideSidebar}>
 		<a class="brand" href={resolve('/admin/dashboard')} aria-label="{name} Console">
-			<Thumb src={organization.logo_url} text={initials(name)} size="xs" tone="accent" bare />
+			<Thumb
+				src={organization.logo_url}
+				text={initials(name)}
+				size="xs"
+				shape="circle"
+				tone="accent"
+				bare
+			/>
 
 			<span class="names" aria-hidden={shell.collapsed}>
 				<strong title={name}>{name}</strong>

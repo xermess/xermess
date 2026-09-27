@@ -13,10 +13,10 @@
 		/** The rows: MenuGroup, MenuItem, MenuInfo and MenuSeparator. */
 		children: Snippet;
 		/** `avatar` for a picture of somebody, which fills more of the
-		    button than an icon does. The button is the same either way. */
-		/** `labelled` is a pill with words in it — an avatar and a name — for
-		    the one menu that says whose it is. It needs no tooltip, having
-		    its words on it. */
+		    button than an icon does. The button is the same either way.
+		    `labelled` has words in it — an avatar and a name — for the one
+		    menu that says whose it is. It needs no tooltip, having its words
+		    on it. */
 		shape?: 'icon' | 'avatar' | 'labelled';
 		/** How wide the menu opens, so it keeps one shape whatever is in it. */
 		width?: string;
@@ -30,9 +30,6 @@
 	const id = `${uid}-trigger`;
 </script>
 
-<!-- A button in the header that opens a card of rows under it, against the
-     right edge. The card is portalled, so nothing it opens over can clip it;
-     how a row looks is MenuItem's, and what a card looks like is ark.css's. -->
 <!-- A button in the header that opens a card of rows under it, against the
      right edge. The button is an icon button — the same round control, the
      same size and hover, the same tooltip — so it sits in a row of them as
@@ -103,6 +100,17 @@
 		border-radius: var(--radius-pill);
 		color: var(--color-text);
 		font-weight: 500;
+	}
+
+	/* Where the bar is too narrow for a name, the menu hides its words (see
+	   AccountMenu), and what is left is a circle the size of the icon buttons
+	   beside it — not a stretched pill around one picture. */
+	@media (max-width: 64rem) {
+		:global(.dropdown-trigger.control[data-shape='labelled']) {
+			width: var(--control-height-sm);
+			padding: 0;
+			gap: 0;
+		}
 	}
 
 	:global(.dropdown-menu) {
