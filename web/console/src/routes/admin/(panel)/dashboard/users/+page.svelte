@@ -24,6 +24,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		FilterChip,
 		Icon,
 		IconButton,
@@ -175,6 +176,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
+			confirmingDelete = false;
 			error = err instanceof ApiError ? err.message : 'Could not delete these users';
 		},
 		onSettled: () => {
@@ -278,39 +280,29 @@
 />
 
 <SelectionBar count={chosen.length} onReset={reset}>
-	{#if confirmingDelete}
-		<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)} disabled={busy}>
-			Keep them
-		</Button>
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => {
-				if (busy) return;
-				error = '';
-				busy = true;
-				removeSelected.mutate(chosen);
-			}}
-			disabled={busy}
-		>
-			{busy ? 'Deleting…' : `Delete ${chosen.length}`}
-		</Button>
-	{:else}
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => (confirmingDelete = true)}
-			disabled={busy}
-		>
-			<Icon icon={RiDeleteBinLine} />
-			Delete
-		</Button>
-		<Button size="sm" onclick={download} disabled={busy}>
-			<Icon icon={RiDownloadLine} />
-			JSON
-		</Button>
-	{/if}
+	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>
+		<Icon icon={RiDeleteBinLine} />
+		Delete
+	</Button>
+	<Button size="sm" onclick={download} disabled={busy}>
+		<Icon icon={RiDownloadLine} />
+		JSON
+	</Button>
 </SelectionBar>
+
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Delete ${chosen.length} ${chosen.length === 1 ? 'user' : 'users'}?`}
+	description="They are deleted for good, with the sessions they have open and the roles they hold. This cannot be undone."
+	confirmLabel={`Delete ${chosen.length}`}
+	{busy}
+	onConfirm={() => {
+		if (busy) return;
+		error = '';
+		busy = true;
+		removeSelected.mutate(chosen);
+	}}
+/>
 
 <UserDrawer
 	user={editing}

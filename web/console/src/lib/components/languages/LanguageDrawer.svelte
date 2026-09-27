@@ -5,6 +5,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		Drawer,
 		FieldGrid,
 		FormSection,
@@ -160,6 +161,7 @@
 			await queryClient.invalidateQueries({ queryKey: keys.languages.list });
 		},
 		onError: (err: unknown) => {
+			confirmingDelete = false;
 			error = messageOf(err, 'Could not remove this language');
 		}
 	}));
@@ -299,27 +301,15 @@
 
 	{#snippet footer()}
 		{#if canWrite && language && !language.base && !language.is_default}
-			{#if confirmingDelete}
-				<div class="confirm">
-					<span
-						>Its text goes with it, and anybody who chose it gets the default from their next page.</span
-					>
-					<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}>
-						Keep it
-					</Button>
-					<Button colorPalette="danger" size="sm" onclick={() => remove.mutate()}>Remove</Button>
-				</div>
-			{:else}
-				<Button
-					colorPalette="danger"
-					variant="subtle"
-					size="sm"
-					onclick={() => (confirmingDelete = true)}
-				>
-					<Icon icon={RiDeleteBinLine} />
-					Remove
-				</Button>
-			{/if}
+			<Button
+				colorPalette="danger"
+				variant="subtle"
+				size="sm"
+				onclick={() => (confirmingDelete = true)}
+			>
+				<Icon icon={RiDeleteBinLine} />
+				Remove
+			</Button>
 		{/if}
 
 		<div class="actions">
@@ -341,6 +331,15 @@
 		</div>
 	{/snippet}
 </Drawer>
+
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Remove ${language?.name ?? 'this language'}?`}
+	description="Its text goes with it, and anybody who chose it gets the default from their next page."
+	confirmLabel="Remove language"
+	busy={remove.isPending}
+	onConfirm={() => remove.mutate()}
+/>
 
 <style>
 	.message {
@@ -397,16 +396,6 @@
 
 	.position {
 		max-width: 16rem;
-	}
-
-	.confirm {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		margin-right: auto;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	.actions {

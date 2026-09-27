@@ -17,6 +17,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		FilterChip,
 		Icon,
 		IconButton,
@@ -122,6 +123,7 @@
 			return queryClient.invalidateQueries({ queryKey: keys.admins.all });
 		},
 		onError: (err: unknown) => {
+			confirmingDelete = false;
 			error = err instanceof ApiError ? err.message : 'Could not delete these administrators';
 		},
 		onSettled: () => {
@@ -196,36 +198,25 @@
 />
 
 <SelectionBar count={chosen.length} onReset={reset}>
-	{#if confirmingDelete}
-		<span class="warning">Their sessions end and they can no longer sign in.</span>
-		<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)} disabled={busy}>
-			Keep them
-		</Button>
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => {
-				if (busy) return;
-				error = '';
-				busy = true;
-				removeSelected.mutate(chosen);
-			}}
-			disabled={busy}
-		>
-			{busy ? 'Deleting…' : `Delete ${chosen.length}`}
-		</Button>
-	{:else}
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => (confirmingDelete = true)}
-			disabled={busy}
-		>
-			<Icon icon={RiDeleteBinLine} />
-			Delete
-		</Button>
-	{/if}
+	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>
+		<Icon icon={RiDeleteBinLine} />
+		Delete
+	</Button>
 </SelectionBar>
+
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Delete ${chosen.length} ${chosen.length === 1 ? 'administrator' : 'administrators'}?`}
+	description="Their sessions end and they can no longer sign in. This cannot be undone."
+	confirmLabel={`Delete ${chosen.length}`}
+	{busy}
+	onConfirm={() => {
+		if (busy) return;
+		error = '';
+		busy = true;
+		removeSelected.mutate(chosen);
+	}}
+/>
 
 <AdminDrawer
 	admin={editing}
@@ -235,10 +226,3 @@
 	catalog={catalog.data}
 	bind:open={adminOpen}
 />
-
-<style>
-	.warning {
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-</style>

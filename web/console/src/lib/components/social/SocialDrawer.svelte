@@ -13,6 +13,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		Drawer,
 		FieldGrid,
 		FormSection,
@@ -191,6 +192,7 @@
 			await queryClient.invalidateQueries({ queryKey: keys.social.all });
 		},
 		onError: (err: unknown) => {
+			confirmingDelete = false;
 			error = err instanceof ApiError ? err.message : 'Could not remove this provider';
 			saving = false;
 		}
@@ -338,29 +340,15 @@
 
 	{#snippet footer()}
 		{#if editing}
-			{#if confirmingDelete}
-				<div class="confirm">
-					<span>
-						{provider!.identities > 0
-							? `${provider!.identities} ${provider!.identities === 1 ? 'person signs' : 'people sign'} in with this. Their accounts stay; this way in goes.`
-							: 'Nobody signs in with this yet.'}
-					</span>
-					<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}>
-						Keep it
-					</Button>
-					<Button colorPalette="danger" size="sm" onclick={() => remove.mutate()}>Remove</Button>
-				</div>
-			{:else}
-				<Button
-					colorPalette="danger"
-					variant="subtle"
-					size="sm"
-					onclick={() => (confirmingDelete = true)}
-				>
-					<Icon icon={RiDeleteBinLine} />
-					Remove
-				</Button>
-			{/if}
+			<Button
+				colorPalette="danger"
+				variant="subtle"
+				size="sm"
+				onclick={() => (confirmingDelete = true)}
+			>
+				<Icon icon={RiDeleteBinLine} />
+				Remove
+			</Button>
 		{/if}
 
 		<div class="actions">
@@ -371,6 +359,17 @@
 		</div>
 	{/snippet}
 </Drawer>
+
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Remove ${provider?.name ?? 'this provider'}?`}
+	description={(provider?.identities ?? 0) > 0
+		? `${provider?.identities} ${provider?.identities === 1 ? 'person signs' : 'people sign'} in with this. Their accounts stay; this way in goes.`
+		: 'Nobody signs in with this yet.'}
+	confirmLabel="Remove provider"
+	busy={remove.isPending}
+	onConfirm={() => remove.mutate()}
+/>
 
 <style>
 	.message {
@@ -391,16 +390,6 @@
 
 	.note a:hover {
 		color: var(--color-text);
-	}
-
-	.confirm {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		margin-right: auto;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	.actions {

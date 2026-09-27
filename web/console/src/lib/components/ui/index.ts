@@ -34,6 +34,7 @@ export { default as Badge } from './Badge.svelte';
 export { default as Card } from './Card.svelte';
 export { default as Drawer } from './Drawer.svelte';
 export { default as Modal } from './Modal.svelte';
+export { default as ConfirmDialog } from './ConfirmDialog.svelte';
 export { default as DropdownMenu } from './DropdownMenu.svelte';
 export { default as MenuGroup } from './MenuGroup.svelte';
 export { default as MenuItem } from './MenuItem.svelte';

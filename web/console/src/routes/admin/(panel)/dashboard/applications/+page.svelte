@@ -12,6 +12,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		Icon,
 		IconButton,
 		PageHeader,
@@ -114,6 +115,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
+			confirmingDelete = false;
 			error = err instanceof ApiError ? err.message : 'Could not delete these applications';
 		},
 		onSettled: () => {
@@ -186,36 +188,25 @@
 />
 
 <SelectionBar count={chosen.length} onReset={reset}>
-	{#if confirmingDelete}
-		<span class="warning">Their roles, and everyone's hold on them, go too.</span>
-		<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)} disabled={busy}>
-			Keep them
-		</Button>
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => {
-				if (busy) return;
-				error = '';
-				busy = true;
-				removeSelected.mutate(chosen);
-			}}
-			disabled={busy}
-		>
-			{busy ? 'Deleting…' : `Delete ${chosen.length}`}
-		</Button>
-	{:else}
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => (confirmingDelete = true)}
-			disabled={busy}
-		>
-			<Icon icon={RiDeleteBinLine} />
-			Delete
-		</Button>
-	{/if}
+	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>
+		<Icon icon={RiDeleteBinLine} />
+		Delete
+	</Button>
 </SelectionBar>
+
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Delete ${chosen.length} ${chosen.length === 1 ? 'application' : 'applications'}?`}
+	description="Their roles, and everyone's hold on them, go too. This cannot be undone."
+	confirmLabel={`Delete ${chosen.length}`}
+	{busy}
+	onConfirm={() => {
+		if (busy) return;
+		error = '';
+		busy = true;
+		removeSelected.mutate(chosen);
+	}}
+/>
 
 <ApplicationDrawer
 	application={editing}
@@ -223,10 +214,3 @@
 	admin={data.admin}
 	bind:open={drawerOpen}
 />
-
-<style>
-	.warning {
-		color: var(--color-danger);
-		font-size: var(--text-sm);
-	}
-</style>

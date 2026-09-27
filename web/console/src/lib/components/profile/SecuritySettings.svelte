@@ -5,7 +5,17 @@
 	import RecoveryCodes from '$lib/components/mfa/RecoveryCodes.svelte';
 	import TotpSetup from '$lib/components/mfa/TotpSetup.svelte';
 	import SessionList from '$lib/components/profile/SessionList.svelte';
-	import { Alert, Button, Input, List, ListItem, Panel, Tag, Thumb } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		Input,
+		List,
+		ListItem,
+		Panel,
+		Tag,
+		Thumb,
+		ConfirmDialog
+	} from '$lib/components/ui';
 	import { keys, mfaStatusOptions, profileSessionsOptions } from '$lib/query';
 	import { formatRelative } from '$lib/utils/format';
 
@@ -87,6 +97,7 @@
 			confirmingOthers = false;
 			await queryClient.invalidateQueries({ queryKey: keys.profile.sessions });
 		} catch (err) {
+			confirmingOthers = false;
 			failure = messageOf(err, 'Could not sign the other sessions out');
 		} finally {
 			endingOthers = false;
@@ -284,43 +295,34 @@
 
 				{#if otherSessions.length > 0}
 					<!-- Everywhere else at once: what to do after a shared computer
-					     or a lost laptop. It is asked about first, in place. -->
+					     or a lost laptop. It is asked about first. -->
 					<div class="asking">
-						{#if confirmingOthers}
-							<p class="quiet">
-								{`Sign out of ${otherSessions.length} other ${otherSessions.length === 1 ? 'session' : 'sessions'}? This browser stays signed in.`}
-							</p>
-							<div class="buttons">
-								<Button
-									size="sm"
-									variant="subtle"
-									disabled={endingOthers}
-									onclick={() => (confirmingOthers = false)}
-								>
-									Cancel
-								</Button>
-								<Button size="sm" colorPalette="danger" loading={endingOthers} onclick={endOthers}>
-									Sign out everywhere else
-								</Button>
-							</div>
-						{:else}
-							<div class="buttons">
-								<Button
-									size="sm"
-									variant="subtle"
-									colorPalette="danger"
-									onclick={() => (confirmingOthers = true)}
-								>
-									Sign out other sessions
-								</Button>
-							</div>
-						{/if}
+						<div class="buttons">
+							<Button
+								size="sm"
+								variant="subtle"
+								colorPalette="danger"
+								onclick={() => (confirmingOthers = true)}
+							>
+								Sign out other sessions
+							</Button>
+						</div>
 					</div>
 				{/if}
 			{/if}
 		</Panel>
 	{/if}
 </div>
+
+<ConfirmDialog
+	bind:open={confirmingOthers}
+	title={`Sign out of ${otherSessions.length} other ${otherSessions.length === 1 ? 'session' : 'sessions'}?`}
+	description="Every other browser signed in as you is signed out at once. This one stays signed in."
+	tone="warning"
+	confirmLabel="Sign out everywhere else"
+	busy={endingOthers}
+	onConfirm={endOthers}
+/>
 
 <style>
 	.sections {

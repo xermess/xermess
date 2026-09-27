@@ -81,11 +81,13 @@
 
 <style>
 	/* The dialog's anatomy is styled once in styles/ark.css, for the drawer.
-	   These are one selector more specific, and centre it instead. */
+	   These are one selector more specific, and centre it instead — in both
+	   directions, as ConfirmDialog is, so every dialog that is not a drawer
+	   opens in the same place. */
 	:global(.modal-positioner[data-scope='dialog'][data-part='positioner']) {
 		justify-content: center;
-		align-items: flex-start;
-		padding: 10vh var(--space-4) var(--space-4);
+		align-items: center;
+		padding: var(--space-4);
 		overflow-y: auto;
 	}
 
@@ -94,7 +96,10 @@
 
 		width: min(var(--modal-width), 100%);
 		height: auto;
-		max-height: calc(100dvh - 10vh - var(--space-4));
+		/* In the middle while it fits, and scrolled from its top when it does
+		   not, rather than cut off above the window. */
+		margin: auto;
+		max-height: calc(100dvh - 2 * var(--space-4));
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-md);
@@ -110,7 +115,7 @@
 	:global(.modal-content[data-scope='dialog'][data-part='content'][data-size='lg']) {
 		--modal-width: 48rem;
 
-		height: min(42rem, calc(100dvh - 10vh - var(--space-4)));
+		height: min(42rem, calc(100dvh - 2 * var(--space-4)));
 	}
 
 	/* It arrives a shade small and settles, rather than sliding in from the

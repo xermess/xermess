@@ -8,6 +8,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		FieldGrid,
 		FormSection,
 		Icon,
@@ -111,6 +112,7 @@
 		onError: (err: unknown) => {
 			error = err instanceof ApiError ? err.message : 'Could not delete this API';
 			deleting = false;
+			confirmingDelete = false;
 		}
 	}));
 
@@ -217,44 +219,33 @@
 				</p>
 			</div>
 
-			{#if confirmingDelete}
-				<div class="confirm">
-					<Button
-						variant="subtle"
-						size="sm"
-						onclick={() => (confirmingDelete = false)}
-						disabled={deleting}
-					>
-						Keep it
-					</Button>
-					<Button
-						colorPalette="danger"
-						size="sm"
-						loading={deleting}
-						disabled={deleting}
-						onclick={() => {
-							error = '';
-							deleting = true;
-							remove.mutate();
-						}}
-					>
-						{deleting ? 'Deleting…' : 'Delete API'}
-					</Button>
-				</div>
-			{:else}
-				<Button
-					colorPalette="danger"
-					variant="subtle"
-					size="sm"
-					onclick={() => (confirmingDelete = true)}
-				>
-					<Icon icon={RiDeleteBinLine} />
-					Delete
-				</Button>
-			{/if}
+			<Button
+				colorPalette="danger"
+				variant="subtle"
+				size="sm"
+				onclick={() => (confirmingDelete = true)}
+			>
+				<Icon icon={RiDeleteBinLine} />
+				Delete
+			</Button>
 		</section>
 	{/if}
 </form>
+
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Delete ${api.name}?`}
+	description={api.application_count > 0
+		? `${api.application_count} ${api.application_count === 1 ? 'application loses' : 'applications lose'} access, and roles lose its scopes. This cannot be undone.`
+		: 'Its scopes are removed from every role. This cannot be undone.'}
+	confirmLabel="Delete API"
+	busy={deleting}
+	onConfirm={() => {
+		error = '';
+		deleting = true;
+		remove.mutate();
+	}}
+/>
 
 <style>
 	form {
@@ -302,10 +293,5 @@
 		margin: 2px 0 0;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	.confirm {
-		display: flex;
-		gap: var(--space-2);
 	}
 </style>

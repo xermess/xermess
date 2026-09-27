@@ -2,7 +2,7 @@
 	import { createMutation } from '@tanstack/svelte-query';
 	import { RiShieldKeyholeLine } from 'svelte-remixicon';
 	import { ApiError, adminsApi, type AdminSecurity } from '$lib/api';
-	import { Alert, Button, Panel, SwitchField, Tag } from '$lib/components/ui';
+	import { Alert, Panel, SwitchField, Tag, ConfirmDialog } from '$lib/components/ui';
 
 	type Props = {
 		/** How administrators are made to sign in, as the page loaded it. */
@@ -33,6 +33,7 @@
 			confirming = false;
 		},
 		onError: (err: unknown) => {
+			confirming = false;
 			error = err instanceof ApiError ? err.message : 'Could not change this setting';
 		},
 		onSettled: () => {
@@ -56,14 +57,14 @@
 
 <Panel title="Two-factor sign-in" icon={RiShieldKeyholeLine}>
 	{#snippet meta()}
-		<Tag tone={current.with_mfa === current.administrators ? 'success' : 'neutral'} small>
+		<Tag tone={without === 0 ? 'info' : 'danger'} small>
 			{current.with_mfa} of {current.administrators}
 			{current.administrators === 1 ? 'administrator has one' : 'administrators have one'}
 		</Tag>
 	{/snippet}
 
 	{#if error}
-		<div class="message"><Alert>{error}</Alert></div>
+		<div class="message"><Alert tone="danger">{error}</Alert></div>
 	{/if}
 
 	<SwitchField
@@ -73,42 +74,30 @@
 		disabled={saving}
 		onChange={(on) => set(on)}
 	/>
+</Panel>
 
-	{#if confirming}
-		<Alert tone="warning">
-			{#if without > 0}
-				{without}
-				{without === 1 ? 'administrator has' : 'administrators have'} no authenticator yet. They will
-				be able to do nothing but set one up — including you, if that is you.
-			{:else}
-				Every administrator already has one, so nothing changes for them today. New ones will be
-				asked to set one up before anything else.
-			{/if}
-
-			{#if !selfHasMFA}
-				<strong>You have none yet:</strong> the next page you load will ask you to set one up, and you
-				will not be able to turn this off again until you have.
-			{/if}
-
-			<span class="confirm">
-				<Button size="sm" variant="subtle" onclick={() => (confirming = false)} disabled={saving}>
-					Cancel
-				</Button>
-				<Button size="sm" loading={saving} onclick={() => set(true)}>Require it</Button>
-			</span>
+<ConfirmDialog
+	bind:open={confirming}
+	title="Require two-factor sign-in?"
+	description={without > 0
+		? `${without} ${without === 1 ? 'administrator has' : 'administrators have'} no authenticator yet. They will be able to do nothing but set one up — including you, if that is you.`
+		: 'Every administrator already has one, so nothing changes for them today. New ones will be asked to set one up before anything else.'}
+	tone="danger"
+	icon={RiShieldKeyholeLine}
+	confirmLabel="Require it"
+	busy={saving}
+	onConfirm={() => set(true)}
+>
+	{#if !selfHasMFA}
+		<Alert tone="danger">
+			<strong>You have none yet:</strong> the next page you load will ask you to set one up, and you will
+			not be able to turn this off again until you have.
 		</Alert>
 	{/if}
-</Panel>
+</ConfirmDialog>
 
 <style>
 	.message {
 		margin-bottom: var(--space-3);
-	}
-
-	.confirm {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		margin-top: var(--space-3);
 	}
 </style>

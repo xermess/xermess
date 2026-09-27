@@ -11,14 +11,13 @@
 	} from 'svelte-remixicon';
 	import { adminApi, type Admin } from '$lib/api';
 	import {
-		Button,
+		ConfirmDialog,
 		DropdownMenu,
 		Icon,
 		MenuGroup,
 		MenuInfo,
 		MenuItem,
 		MenuSeparator,
-		Modal,
 		Thumb
 	} from '$lib/components/ui';
 	import { initials } from '$lib/utils/format';
@@ -109,20 +108,16 @@
 
 <ProfileDrawer {admin} bind:open={accountOpen} />
 
-<Modal
+<ConfirmDialog
 	bind:open={confirmingSignOut}
 	title="Sign out?"
 	description="You will need to sign in again to manage the console."
-	size="sm"
-	closable={!signingOut}
->
-	{#snippet footer()}
-		<Button variant="subtle" disabled={signingOut} onclick={() => (confirmingSignOut = false)}>
-			Cancel
-		</Button>
-		<Button colorPalette="danger" loading={signingOut} onclick={signOut}>Sign out</Button>
-	{/snippet}
-</Modal>
+	tone="danger"
+	icon={RiLogoutBoxRLine}
+	confirmLabel="Sign out"
+	busy={signingOut}
+	onConfirm={signOut}
+/>
 
 <style>
 	/* A long name is cut rather than pushing the bar about; the menu's

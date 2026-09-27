@@ -16,10 +16,10 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		FilterChip,
 		Icon,
 		IconButton,
-		Modal,
 		PageHeader,
 		SearchInput,
 		SegmentedControl,
@@ -248,31 +248,19 @@
 
 	<CacheKeyDrawer database={data.database} key={opened} bind:open={drawerOpen} />
 
-	<Modal
+	<ConfirmDialog
 		bind:open={flushing}
-		size="sm"
 		title={`Flush the ${label.toLowerCase()} database?`}
 		description={data.database === 'sessions'
 			? 'Every session, administrator and client kept here is removed and read from the database again on the next request — nobody is signed out. Every rate limit starts counting again from nothing.'
 			: 'Everything cached is removed, and each page reads the database again the first time it is asked for. Nobody notices but the next few pages, which are slower.'}
-		closable={!flush.isPending}
-	>
-		{#snippet footer()}
-			<Button variant="subtle" onclick={() => (flushing = false)} disabled={flush.isPending}>
-				Keep it
-			</Button>
-			<Button
-				colorPalette="danger"
-				loading={flush.isPending}
-				onclick={() => {
-					error = '';
-					flush.mutate();
-				}}
-			>
-				Flush {label.toLowerCase()}
-			</Button>
-		{/snippet}
-	</Modal>
+		confirmLabel={`Flush ${label.toLowerCase()}`}
+		busy={flush.isPending}
+		onConfirm={() => {
+			error = '';
+			flush.mutate();
+		}}
+	/>
 {/if}
 
 <style>

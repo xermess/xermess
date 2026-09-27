@@ -17,7 +17,15 @@
 		type LoginStep,
 		type LoginStepSpec
 	} from '$lib/api';
-	import { Alert, Button, Icon, IconButton, PageHeader, Tag } from '$lib/components/ui';
+	import {
+		Alert,
+		Button,
+		ConfirmDialog,
+		Icon,
+		IconButton,
+		PageHeader,
+		Tag
+	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { draftOf, download, freeSlug, problemsOf, toFile, type FlowDraft } from '../steps';
 	import FlowCanvas from './FlowCanvas.svelte';
@@ -64,16 +72,32 @@
 	/** Set on the way out after a save or a delete, which leave nothing to lose. */
 	let leaving = false;
 
-	beforeNavigate(({ cancel }) => {
-		if (
-			!leaving &&
-			editable &&
-			dirty &&
-			!creating &&
-			!confirm('This flow has changes that are not saved. Leave anyway?')
-		)
-			cancel();
+	/** Where the reader was going when they were asked whether to leave
+	    their changes behind. */
+	let leavingFor = $state<URL | null>(null);
+	let confirmingLeave = $state(false);
+
+	beforeNavigate(({ cancel, to, type }) => {
+		if (leaving || !editable || !dirty || creating) return;
+
+		cancel();
+
+		// Closing the tab or reloading it can only be asked about by the
+		// browser, in its own words: cancelling is what makes it ask.
+		if (type === 'leave' || !to) return;
+
+		leavingFor = to.url;
+		confirmingLeave = true;
 	});
+
+	async function leaveAnyway() {
+		if (!leavingFor) return;
+
+		leaving = true;
+		confirmingLeave = false;
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		await goto(leavingFor);
+	}
 
 	// ---- Changing the steps ----------------------------------------------------
 
@@ -212,24 +236,10 @@
 		{#snippet actions()}
 			{#if editable}
 				{#if !creating && !flow?.is_default}
-					{#if confirmingDelete}
-						<span class="confirm"
-							>{`Delete this flow? ${flow?.applications ?? 0} applications fall back to the default.`}</span
-						>
-						<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)}>
-							Keep
-						</Button>
-						<Button colorPalette="danger" size="sm" loading={busy} onclick={remove_}>Delete</Button>
-					{:else}
-						<Button
-							variant="subtle"
-							colorPalette="danger"
-							onclick={() => (confirmingDelete = true)}
-						>
-							<Icon icon={RiDeleteBinLine} />
-							Delete
-						</Button>
-					{/if}
+					<Button variant="subtle" colorPalette="danger" onclick={() => (confirmingDelete = true)}>
+						<Icon icon={RiDeleteBinLine} />
+						Delete
+					</Button>
 				{/if}
 				{#if dirty && !creating}
 					<Button variant="subtle" onclick={discard} disabled={busy}>
@@ -295,6 +305,28 @@
 	</div>
 </SvelteFlowProvider>
 
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Delete ${draft.name || 'this flow'}?`}
+	description={`${flow?.applications ?? 0} ${(flow?.applications ?? 0) === 1 ? 'application falls' : 'applications fall'} back to the default flow. This cannot be undone.`}
+	confirmLabel="Delete flow"
+	{busy}
+	onConfirm={async () => {
+		await remove_();
+		confirmingDelete = false;
+	}}
+/>
+
+<ConfirmDialog
+	bind:open={confirmingLeave}
+	title="Leave without saving?"
+	description="This flow has changes that are not saved. Leaving throws them away."
+	tone="warning"
+	confirmLabel="Leave anyway"
+	cancelLabel="Keep editing"
+	onConfirm={leaveAnyway}
+/>
+
 <style>
 	.messages {
 		display: flex;
@@ -306,11 +338,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-	}
-
-	.confirm {
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	/* The editor takes the rest of the screen: the canvas is the page, and a

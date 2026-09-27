@@ -23,6 +23,7 @@
 		Alert,
 		Badge,
 		Button,
+		ConfirmDialog,
 		Drawer,
 		FieldGrid,
 		FormSection,
@@ -226,6 +227,7 @@
 			await saved(result);
 		},
 		onError: (err: unknown) => {
+			confirmingRotate = false;
 			error = err instanceof ApiError ? err.message : 'Could not rotate the secret';
 		},
 		onSettled: () => {
@@ -353,27 +355,15 @@
 
 						{#if editable}
 							<div class="rotate">
-								{#if confirmingRotate}
-									<p>The current secret stops working at once.</p>
-									<div class="rotate-actions">
-										<Button variant="subtle" size="sm" onclick={() => (confirmingRotate = false)}>
-											Keep it
-										</Button>
-										<Button colorPalette="danger" size="sm" onclick={rotateNow} disabled={saving}>
-											Rotate now
-										</Button>
-									</div>
-								{:else}
-									<Button
-										size="sm"
-										variant="subtle"
-										onclick={() => (confirmingRotate = true)}
-										disabled={saving}
-									>
-										<Icon icon={RiRefreshLine} />
-										Rotate secret
-									</Button>
-								{/if}
+								<Button
+									size="sm"
+									variant="subtle"
+									onclick={() => (confirmingRotate = true)}
+									disabled={saving}
+								>
+									<Icon icon={RiRefreshLine} />
+									Rotate secret
+								</Button>
 							</div>
 						{/if}
 					</div>
@@ -624,6 +614,17 @@
 	{/snippet}
 </Drawer>
 
+<ConfirmDialog
+	bind:open={confirmingRotate}
+	title="Rotate the client secret?"
+	description="A new secret is made and shown once. The current one stops working at once, so anything still using it can no longer ask for tokens until it is given the new one."
+	tone="warning"
+	icon={RiRefreshLine}
+	confirmLabel="Rotate now"
+	busy={saving}
+	onConfirm={rotateNow}
+/>
+
 <style>
 	fieldset {
 		min-width: 0;
@@ -701,18 +702,6 @@
 		align-items: flex-end;
 		gap: var(--space-2);
 		padding-top: 14px;
-	}
-
-	.rotate p {
-		margin: 0;
-		color: var(--color-danger);
-		font-size: var(--text-sm);
-		white-space: nowrap;
-	}
-
-	.rotate-actions {
-		display: flex;
-		gap: var(--space-2);
 	}
 
 	.options {

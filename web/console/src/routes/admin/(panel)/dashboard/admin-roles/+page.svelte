@@ -11,6 +11,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		Icon,
 		IconButton,
 		PageHeader,
@@ -113,6 +114,7 @@
 			return queryClient.invalidateQueries({ queryKey: keys.admins.all });
 		},
 		onError: (err: unknown) => {
+			confirmingDelete = false;
 			error = err instanceof ApiError ? err.message : 'Could not delete these roles';
 		},
 		onSettled: () => {
@@ -168,47 +170,26 @@
 />
 
 <SelectionBar count={chosen.length} onReset={reset}>
-	{#if confirmingDelete}
-		{#if holders > 0}
-			<span class="warning">
-				{holders}
-				{holders === 1 ? 'administrator' : 'administrators'} will lose a role
-			</span>
-		{/if}
-		<Button variant="subtle" size="sm" onclick={() => (confirmingDelete = false)} disabled={busy}>
-			Keep them
-		</Button>
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => {
-				if (busy) return;
-				error = '';
-				busy = true;
-				removeSelected.mutate(chosen);
-			}}
-			disabled={busy}
-		>
-			{busy ? 'Deleting…' : `Delete ${chosen.length}`}
-		</Button>
-	{:else}
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => (confirmingDelete = true)}
-			disabled={busy}
-		>
-			<Icon icon={RiDeleteBinLine} />
-			Delete
-		</Button>
-	{/if}
+	<Button colorPalette="danger" size="sm" onclick={() => (confirmingDelete = true)} disabled={busy}>
+		<Icon icon={RiDeleteBinLine} />
+		Delete
+	</Button>
 </SelectionBar>
 
-<AdminRoleDrawer role={editing} catalog={catalog.data} bind:open={roleOpen} />
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title={`Delete ${chosen.length} ${chosen.length === 1 ? 'admin role' : 'admin roles'}?`}
+	description={holders > 0
+		? `${holders} ${holders === 1 ? 'administrator' : 'administrators'} will lose a role. This cannot be undone.`
+		: 'Nobody holds them. This cannot be undone.'}
+	confirmLabel={`Delete ${chosen.length}`}
+	{busy}
+	onConfirm={() => {
+		if (busy) return;
+		error = '';
+		busy = true;
+		removeSelected.mutate(chosen);
+	}}
+/>
 
-<style>
-	.warning {
-		color: var(--color-danger);
-		font-size: var(--text-sm);
-	}
-</style>
+<AdminRoleDrawer role={editing} catalog={catalog.data} bind:open={roleOpen} />

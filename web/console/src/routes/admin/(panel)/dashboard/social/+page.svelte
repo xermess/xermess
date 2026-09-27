@@ -16,6 +16,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		Icon,
 		IconButton,
 		PageHeader,
@@ -167,6 +168,7 @@
 			return queryClient.invalidateQueries({ queryKey: keys.social.all });
 		},
 		onError: (err: unknown) => {
+			confirmingRemove = false;
 			error = err instanceof ApiError ? err.message : 'Could not change these providers';
 		},
 		onSettled: () => {
@@ -189,6 +191,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
+			confirmingRemove = false;
 			error = err instanceof ApiError ? err.message : 'Could not remove these providers';
 		},
 		onSettled: () => {
@@ -273,45 +276,29 @@
 />
 
 <SelectionBar count={chosen.length} onReset={reset}>
-	{#if confirmingRemove}
-		<span class="warning">
-			{chosenAccounts > 0
-				? `${chosenAccounts} ${chosenAccounts === 1 ? 'person signs' : 'people sign'} in with these. Their accounts stay; this way in goes.`
-				: 'Nobody signs in with these yet.'}
-		</span>
-		<Button variant="subtle" size="sm" onclick={() => (confirmingRemove = false)} disabled={busy}>
-			Keep them
-		</Button>
-		<Button colorPalette="danger" size="sm" onclick={() => run('remove')} disabled={busy}>
-			{busy ? 'Removing…' : `Remove ${chosen.length}`}
-		</Button>
-	{:else}
-		<Button size="sm" variant="subtle" onclick={() => run('enable')} disabled={busy}>
-			<Icon icon={RiEyeLine} />
-			Offer
-		</Button>
-		<Button size="sm" variant="subtle" onclick={() => run('disable')} disabled={busy}>
-			<Icon icon={RiEyeOffLine} />
-			Turn off
-		</Button>
-		<Button
-			colorPalette="danger"
-			size="sm"
-			onclick={() => (confirmingRemove = true)}
-			disabled={busy}
-		>
-			<Icon icon={RiDeleteBinLine} />
-			Remove
-		</Button>
-	{/if}
+	<Button size="sm" variant="subtle" onclick={() => run('enable')} disabled={busy}>
+		<Icon icon={RiEyeLine} />
+		Offer
+	</Button>
+	<Button size="sm" variant="subtle" onclick={() => run('disable')} disabled={busy}>
+		<Icon icon={RiEyeOffLine} />
+		Turn off
+	</Button>
+	<Button colorPalette="danger" size="sm" onclick={() => (confirmingRemove = true)} disabled={busy}>
+		<Icon icon={RiDeleteBinLine} />
+		Remove
+	</Button>
 </SelectionBar>
 
-<SocialDrawer bind:open={drawerOpen} provider={editing} kinds={social.data.kinds} />
+<ConfirmDialog
+	bind:open={confirmingRemove}
+	title={`Remove ${chosen.length} ${chosen.length === 1 ? 'provider' : 'providers'}?`}
+	description={chosenAccounts > 0
+		? `${chosenAccounts} ${chosenAccounts === 1 ? 'person signs' : 'people sign'} in with these. Their accounts stay; this way in goes.`
+		: 'Nobody signs in with these yet.'}
+	confirmLabel={`Remove ${chosen.length}`}
+	{busy}
+	onConfirm={() => run('remove')}
+/>
 
-<style>
-	.warning {
-		margin-right: var(--space-2);
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-</style>
+<SocialDrawer bind:open={drawerOpen} provider={editing} kinds={social.data.kinds} />

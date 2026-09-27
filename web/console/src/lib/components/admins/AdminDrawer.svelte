@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { MIN_ADMIN_PASSWORD } from '$lib/constants';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { RiAddLine, RiCloseLine, RiMailLine } from 'svelte-remixicon';
+	import { RiAddLine, RiCloseLine, RiMailLine, RiShieldKeyholeLine } from 'svelte-remixicon';
 	import {
 		ApiError,
 		adminsApi,
@@ -15,6 +15,7 @@
 		Alert,
 		Badge,
 		Button,
+		ConfirmDialog,
 		Drawer,
 		FormSection,
 		Icon,
@@ -399,19 +400,9 @@
 			<div class="mfa">
 				<Badge>{admin.mfa_enabled ? 'On' : 'Off'}</Badge>
 				{#if admin.mfa_enabled}
-					{#if confirmingReset}
-						<span class="hint">Remove it and sign them out everywhere?</span>
-						<Button size="sm" variant="subtle" onclick={() => (confirmingReset = false)}
-							>Keep</Button
-						>
-						<Button size="sm" colorPalette="danger" loading={resetting} onclick={resetMfa}
-							>Reset</Button
-						>
-					{:else}
-						<Button size="sm" variant="subtle" onclick={() => (confirmingReset = true)}>
-							Reset two-factor
-						</Button>
-					{/if}
+					<Button size="sm" variant="subtle" onclick={() => (confirmingReset = true)}>
+						Reset two-factor
+					</Button>
 				{/if}
 			</div>
 			<p class="hint">
@@ -431,6 +422,17 @@
 		</Button>
 	{/snippet}
 </Drawer>
+
+<ConfirmDialog
+	bind:open={confirmingReset}
+	title="Reset two-factor sign-in?"
+	description={`${admin?.email ?? 'This administrator'} loses their authenticator and recovery codes, and is signed out everywhere. They set it up again at their next sign-in where it is required.`}
+	tone="warning"
+	icon={RiShieldKeyholeLine}
+	confirmLabel="Reset two-factor"
+	busy={resetting}
+	onConfirm={resetMfa}
+/>
 
 <style>
 	.error {

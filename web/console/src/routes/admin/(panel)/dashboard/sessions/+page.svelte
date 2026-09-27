@@ -11,6 +11,7 @@
 	import {
 		Alert,
 		Button,
+		ConfirmDialog,
 		FilterChip,
 		IconButton,
 		PageHeader,
@@ -37,7 +38,10 @@
 	let notice = $state('');
 
 	/** The user about to be signed out everywhere, waiting on a yes. */
+	/** The user a sign-out everywhere is asked about. It outlives the question
+	    closing, so the dialog keeps its name while it leaves. */
 	let confirming = $state<UserSessionRecord['user'] | null>(null);
+	let asking = $state(false);
 
 	async function apply(changes: { search?: string; user?: string; email?: string }) {
 		const params = new SvelteURLSearchParams(page.url.searchParams);
@@ -95,11 +99,12 @@
 			notice = '';
 		},
 		onSuccess: (result, user) => {
-			confirming = null;
+			asking = false;
 			notice = `${user.email} was signed out of ${result.sessions} sessions, and ${result.tokens} application tokens were revoked.`;
 			return queryClient.invalidateQueries({ queryKey: keys.sessions.all });
 		},
 		onError: (err: unknown) => {
+			asking = false;
 			error = messageOf(err);
 		}
 	}));
@@ -139,25 +144,6 @@
 	{/if}
 </Toolbar>
 
-{#if confirming}
-	<Alert tone="warning">
-		<span class="confirm">
-			{`Sign ${confirming.email} out of every browser and every application?`}
-			<span class="buttons">
-				<Button variant="subtle" size="sm" onclick={() => (confirming = null)}>Keep</Button>
-				<Button
-					colorPalette="danger"
-					size="sm"
-					loading={signOut.isPending}
-					onclick={() => confirming && signOut.mutate(confirming)}
-				>
-					Sign out
-				</Button>
-			</span>
-		</span>
-	</Alert>
-{/if}
-
 {#if error}
 	<Alert>{error}</Alert>
 {:else if notice}
@@ -170,7 +156,12 @@
 		? 'No session belongs to an address starting like that.'
 		: 'Nobody is signed in.'}
 	onEnd={canWrite ? (session) => end.mutate(session) : undefined}
-	onSignOutUser={canWrite ? (session) => (confirming = session.user) : undefined}
+	onSignOutUser={canWrite
+		? (session) => {
+				confirming = session.user;
+				asking = true;
+			}
+		: undefined}
 	onUser={(session) => apply({ user: session.user.id, email: session.user.email, search: '' })}
 	ending={end.isPending ? end.variables?.id : undefined}
 />
@@ -187,21 +178,17 @@
 	</div>
 {/if}
 
+<ConfirmDialog
+	bind:open={asking}
+	title={`Sign ${confirming?.email ?? 'this user'} out everywhere?`}
+	description="Every browser they are signed in on is signed out, and every token their applications hold is revoked. They can sign in again."
+	tone="warning"
+	confirmLabel="Sign out everywhere"
+	busy={signOut.isPending}
+	onConfirm={() => confirming && signOut.mutate(confirming)}
+/>
+
 <style>
-	.confirm {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-2);
-		width: 100%;
-	}
-
-	.buttons {
-		display: flex;
-		gap: var(--space-1);
-	}
-
 	.more {
 		display: flex;
 		justify-content: center;
