@@ -226,7 +226,7 @@ func (h *Handler) describe(c *gin.Context, events []model.AuditLog) ([]eventResp
 
 		// What a user did at the sign-in pages is recorded under their own
 		// address, which is only for administrators who may read users.
-		if event.AdminUserID == nil && event.TargetType == "user" && !maySeeName(c, "user", store.TargetName{}) {
+		if event.AdminID == nil && event.TargetType == "user" && !maySeeName(c, "user", store.TargetName{}) {
 			response.Actor = "A user"
 		}
 

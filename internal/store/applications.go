@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -16,7 +17,7 @@ type ApplicationQuery struct {
 	Search string
 	// Type filters on the application type. Empty means every type.
 	Type model.ApplicationType
-	// Enabled filters on the enabled flag. Nil means both.
+	// Enabled filters on the is_enabled flag. Nil means both.
 	Enabled *bool
 	// Only keeps these applications, for an administrator whose roles reach
 	// just some of them. Nil means every application.
@@ -43,7 +44,7 @@ func (s *Store) Applications(ctx context.Context, q ApplicationQuery) ([]model.A
 	}
 
 	if q.Enabled != nil {
-		query = query.Where("enabled = ?", *q.Enabled)
+		query = query.Where("is_enabled = ?", *q.Enabled)
 	}
 
 	if q.Only != nil {
@@ -86,7 +87,7 @@ func (s *Store) CreateApplication(ctx context.Context, app *model.Application) e
 
 // SaveApplication writes an application back.
 func (s *Store) SaveApplication(ctx context.Context, app *model.Application) error {
-	return translate(s.db.WithContext(ctx).Save(app).Error)
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Save(app).Error), cache.Clients, cache.Admins)
 }
 
 // DeleteApplication removes an application for good, with every role it
@@ -94,7 +95,9 @@ func (s *Store) SaveApplication(ctx context.Context, app *model.Application) err
 // every administrator's role scoped to it, and its access to APIs. The joins are removed by hand rather than left to the foreign
 // keys, so this does not depend on how those constraints were created.
 func (s *Store) DeleteApplication(ctx context.Context, app *model.Application) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	// Administrators with a role scoped to it lose that role, so every one of
+	// them is read again.
+	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		roles := "SELECT id FROM user_roles WHERE application_id = @id"
 
 		statements := []string{
@@ -114,5 +117,5 @@ func (s *Store) DeleteApplication(ctx context.Context, app *model.Application) e
 		}
 
 		return tx.Unscoped().Delete(app).Error
-	})
+	}), cache.Clients, cache.Admins)
 }

@@ -62,7 +62,7 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 		return s.redirectError(p.RedirectURI, p.State, code, description), nil
 	}
 
-	if !app.Enabled {
+	if !app.IsEnabled {
 		return back(ErrUnauthorizedClient, "the application is disabled")
 	}
 	if p.ResponseType != "code" {
@@ -115,7 +115,7 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 	// A session counts only when it is recent enough for max_age and the
 	// application did not ask for the password again.
 	if session != nil {
-		tooOld := maxAge >= 0 && now.Sub(session.Record.AuthTime) > time.Duration(maxAge)*time.Second
+		tooOld := maxAge >= 0 && now.Sub(session.Record.AuthenticatedAt) > time.Duration(maxAge)*time.Second
 		if tooOld || slices.Contains(prompts, "login") {
 			session = nil
 		}
@@ -245,7 +245,7 @@ func (s *Service) finish(ctx context.Context, req *model.AuthorizationRequest, u
 		CodeChallenge:       req.CodeChallenge,
 		CodeChallengeMethod: req.CodeChallengeMethod,
 		Audience:            req.Audience,
-		AuthTime:            session.AuthTime,
+		AuthenticatedAt:     session.AuthenticatedAt,
 		ExpiresAt:           now.Add(model.AuthorizationCodeLifetime),
 	})
 	if err != nil {

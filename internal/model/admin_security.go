@@ -10,9 +10,9 @@ package model
 type AdminSecurity struct {
 	Base
 
-	// MFARequired makes every administrator set up an authenticator before
+	// RequireMFA makes every administrator set up an authenticator before
 	// they can do anything else, and stops any of them turning it off again.
-	MFARequired bool `gorm:"not null" json:"mfa_required"`
+	RequireMFA bool `gorm:"not null" json:"require_mfa"`
 }
 
 // TableName pins the table name.
@@ -30,5 +30,5 @@ func (AdminSecurity) TableName() string {
 // page — which is the deliberate act it should be — and each administrator is
 // then taken to /admin/mfa-setup to enrol before they may do anything else.
 func DefaultAdminSecurity() AdminSecurity {
-	return AdminSecurity{MFARequired: false}
+	return AdminSecurity{RequireMFA: false}
 }

@@ -92,7 +92,7 @@ func (f *socialFixture) user(t *testing.T, verified bool) {
 	f.super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
 		"email": f.email, "password": f.password, "confirm_password": f.password,
 		"first_name": "Sam", "last_name": "Rivers",
-		"email_verified": verified, "is_active": true,
+		"is_email_verified": verified, "is_active": true,
 	}, &created)
 
 	f.userID = created.User.ID
@@ -301,7 +301,7 @@ func TestLiveSocialSignInHonoursLinkingBeingOff(t *testing.T) {
 // A provider that is turned off is not a way in, and neither is a slug
 // nobody registered.
 func TestLiveSocialDisabledProviderIsNotAWayIn(t *testing.T) {
-	f := newSocialFixture(t, map[string]any{"enabled": false})
+	f := newSocialFixture(t, map[string]any{"is_enabled": false})
 
 	b := f.s.browser()
 	landed := b.visit(f.s.root + "/oauth2/social/" + f.slug + "/start")
@@ -385,7 +385,7 @@ func TestLiveSocialProvidersAreManaged(t *testing.T) {
 			Scopes          []string `json:"scopes"`
 			HasClientSecret bool     `json:"has_client_secret"`
 			CallbackURL     string   `json:"callback_url"`
-			Enabled         bool     `json:"enabled"`
+			Enabled         bool     `json:"is_enabled"`
 		} `json:"provider"`
 	}
 
@@ -419,7 +419,7 @@ func TestLiveSocialProvidersAreManaged(t *testing.T) {
 	// An update that says nothing about the secret keeps it.
 	var updated providerBody
 	super.must(http.StatusOK, http.MethodPatch, "/social-providers/"+created.Provider.ID, map[string]any{
-		"name": "Google Workspace", "client_id": "1234.apps.googleusercontent.com", "enabled": false,
+		"name": "Google Workspace", "client_id": "1234.apps.googleusercontent.com", "is_enabled": false,
 	}, &updated)
 
 	if !updated.Provider.HasClientSecret || updated.Provider.Name != "Google Workspace" || updated.Provider.Enabled {
@@ -705,7 +705,7 @@ func TestLiveSocialSignInCreatesAnAccount(t *testing.T) {
 			Email         string `json:"email"`
 			FirstName     string `json:"first_name"`
 			LastName      string `json:"last_name"`
-			EmailVerified bool   `json:"email_verified"`
+			EmailVerified bool   `json:"is_email_verified"`
 		} `json:"users"`
 	}
 	super.must(http.StatusOK, http.MethodGet, "/users?search=new@example.com", nil, &users)

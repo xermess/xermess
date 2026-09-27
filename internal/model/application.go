@@ -35,16 +35,16 @@ type Application struct {
 	Description string          `gorm:"size:255" json:"description"`
 	Type        ApplicationType `gorm:"type:varchar(16);not null;index" json:"type"`
 
-	// LogoURI and ClientURI are shown on the sign-in pages. There is no
+	// LogoURL and ClientURI are shown on the sign-in pages. There is no
 	// consent page: see the note on asking in README.md.
-	LogoURI   string `gorm:"size:512" json:"logo_uri"`
-	ClientURI string `gorm:"size:512" json:"client_uri"`
+	LogoURL    string `gorm:"size:512" json:"logo_url"`
+	WebsiteURL string `gorm:"size:512" json:"website_url"`
 
-	// PolicyURI and TosURI are the application's privacy policy and terms
+	// PrivacyURL and TosURI are the application's privacy policy and terms
 	// of service, linked from its sign-in pages and agreed to on
 	// registration. The names are RFC 7591's.
-	PolicyURI string `gorm:"size:512" json:"policy_uri"`
-	TosURI    string `gorm:"size:512" json:"tos_uri"`
+	PrivacyURL string `gorm:"size:512" json:"privacy_url"`
+	TermsURL   string `gorm:"size:512" json:"terms_url"`
 
 	// AllowRegistration offers "Create an account" on the application's
 	// sign-in page. Users made that way get the default roles, as users an
@@ -63,7 +63,7 @@ type Application struct {
 	SecretHint       string     `gorm:"size:8" json:"secret_hint"`
 	SecretCreatedAt  *time.Time `json:"secret_created_at"`
 
-	TokenEndpointAuthMethod AuthMethod `gorm:"type:varchar(32);not null" json:"token_endpoint_auth_method"`
+	TokenAuthMethod AuthMethod `gorm:"type:varchar(32);not null" json:"token_auth_method"`
 
 	GrantTypes             []string `gorm:"type:text;serializer:json" json:"grant_types"`
 	RedirectURIs           []string `gorm:"type:text;serializer:json" json:"redirect_uris"`
@@ -92,8 +92,8 @@ type Application struct {
 	// withdrawn without taking the applications using it down with it.
 	LoginFlowID *uuid.UUID `gorm:"type:uuid;index" json:"login_flow_id"`
 
-	// Enabled is false for an application that may not sign anyone in.
-	Enabled bool `gorm:"not null;index" json:"enabled"`
+	// IsEnabled is false for an application that may not sign anyone in.
+	IsEnabled bool `gorm:"not null;index" json:"is_enabled"`
 }
 
 // TableName pins the table name.
@@ -190,7 +190,7 @@ func (a Application) ResponseTypes() []string {
 
 // HasSecret reports whether the application authenticates with a secret.
 func (a Application) HasSecret() bool {
-	return a.TokenEndpointAuthMethod != AuthNone
+	return a.TokenAuthMethod != AuthNone
 }
 
 // Normalise fills in what a type implies and tidies the lists, before
@@ -200,10 +200,10 @@ func (a Application) HasSecret() bool {
 func (a *Application) Normalise() {
 	switch {
 	case a.Type.Public():
-		a.TokenEndpointAuthMethod = AuthNone
+		a.TokenAuthMethod = AuthNone
 		a.RequirePKCE = true
-	case a.TokenEndpointAuthMethod == "" || a.TokenEndpointAuthMethod == AuthNone:
-		a.TokenEndpointAuthMethod = AuthClientSecretBasic
+	case a.TokenAuthMethod == "" || a.TokenAuthMethod == AuthNone:
+		a.TokenAuthMethod = AuthClientSecretBasic
 	}
 
 	if a.Type == AppM2M {
@@ -229,10 +229,10 @@ func (a Application) Validate() error {
 		return fmt.Errorf("type must be one of: web, spa, native, m2m")
 	}
 
-	switch a.TokenEndpointAuthMethod {
+	switch a.TokenAuthMethod {
 	case AuthClientSecretBasic, AuthClientSecretPost, AuthNone:
 	default:
-		return fmt.Errorf("token_endpoint_auth_method must be one of: client_secret_basic, client_secret_post, none")
+		return fmt.Errorf("token_auth_method must be one of: client_secret_basic, client_secret_post, none")
 	}
 
 	for _, grant := range a.GrantTypes {
@@ -281,14 +281,14 @@ func (a Application) Validate() error {
 		}
 	}
 
-	// client_uri, policy_uri and tos_uri are only links, so plain http is
-	// fine, as it is for an app running on a developer's machine. logo_uri
+	// website_url, privacy_url and terms_url are only links, so plain http is
+	// fine, as it is for an app running on a developer's machine. logo_url
 	// is loaded as an image on the sign-in page, which is served over https,
 	// and a browser blocks an http image there.
 	links := []struct{ name, value string }{
-		{"client_uri", a.ClientURI},
-		{"policy_uri", a.PolicyURI},
-		{"tos_uri", a.TosURI},
+		{"website_url", a.WebsiteURL},
+		{"privacy_url", a.PrivacyURL},
+		{"terms_url", a.TermsURL},
 	}
 	for _, link := range links {
 		if link.value == "" {
@@ -299,9 +299,9 @@ func (a Application) Validate() error {
 		}
 	}
 
-	if a.LogoURI != "" {
-		if parsed, err := url.Parse(a.LogoURI); err != nil || parsed.Scheme != "https" || parsed.Host == "" {
-			return fmt.Errorf("logo_uri must be an https URL")
+	if a.LogoURL != "" {
+		if parsed, err := url.Parse(a.LogoURL); err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+			return fmt.Errorf("logo_url must be an https URL")
 		}
 	}
 

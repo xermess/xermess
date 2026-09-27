@@ -18,6 +18,24 @@ func TestCachedTypesSurviveJSON(t *testing.T) {
 	allowed := map[string]string{
 		"Base.DeletedAt":        "a cached row is a live one, so it is always empty",
 		"Language.Translations": "a relation the cached reads never load",
+
+		// An administrator is kept as a principal, which spells the roles and
+		// factors out and puts them back; the rest is what a request never
+		// needs, and what AdminPrincipal says not to use it for.
+		"Admin.Assignments":            "kept beside it in principal, and put back",
+		"Admin.MFA":                    "kept beside it in principal, and put back",
+		"Admin.PasswordHash":           "never kept: a password is checked against AdminByID",
+		"Admin.FailedLoginCount":       "counted in the database; only locked_until decides a sign-in",
+		"Admin.Sessions":               "a relation AdminByID never loads",
+		"AdminRoleAssignment.Admin":    "the administrator it belongs to, who is the principal",
+		"MFA.Admin":                    "the administrator it belongs to, who is the principal",
+		"MFA.Secret":                   "never kept: a code is checked against the factor in the database",
+		"MFA.RecoveryCodes":            "never kept: a recovery code is spent in the database",
+		"AdminSession.Admin":           "a relation the session read never loads",
+		"AdminSession.TokenHash":       "the key it is kept under, put back when it is read",
+		"Application.ClientSecretHash": "kept beside it in client, and put back",
+		"SSOConnection.ClientSecret":   "never kept: only the sign-in buttons are cached, which read the name",
+		"SSOConnection.SPKey":          "never kept: only the sign-in buttons are cached, which read the name",
 	}
 
 	cachedTypes := []any{
@@ -25,6 +43,17 @@ func TestCachedTypesSurviveJSON(t *testing.T) {
 		model.Organization{},
 		model.LoginFlow{},
 		SocialButton{},
+		model.SSOConnection{},
+		model.OTPSettings{},
+		model.AdminSecurity{},
+		model.AdminSession{},
+		userSession{},
+		principal{},
+		model.Admin{},
+		model.AdminRoleAssignment{},
+		model.MFA{},
+		client{},
+		model.Application{},
 	}
 
 	for _, value := range cachedTypes {

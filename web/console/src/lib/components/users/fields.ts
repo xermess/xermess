@@ -11,7 +11,7 @@ import type { UserField, UserRecord } from '$lib/api';
 
 /** What this record holds for that field. */
 export function valueOf(user: UserRecord, field: UserField): unknown {
-	if (field.builtin) {
+	if (field.is_builtin) {
 		return (user as unknown as Record<string, unknown>)[field.name];
 	}
 
@@ -20,10 +20,10 @@ export function valueOf(user: UserRecord, field: UserField): unknown {
 
 /** The built-in fields, in the order the API gave them. */
 export function builtins(fields: UserField[]): UserField[] {
-	return fields.filter((field) => field.builtin);
+	return fields.filter((field) => field.is_builtin);
 }
 
 /** The fields this organisation added. */
 export function additional(fields: UserField[]): UserField[] {
-	return fields.filter((field) => !field.builtin);
+	return fields.filter((field) => !field.is_builtin);
 }

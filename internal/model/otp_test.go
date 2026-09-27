@@ -22,13 +22,13 @@ func TestOTPSettingsValidate(t *testing.T) {
 		},
 		{
 			name:   "a code too short to be worth guessing at",
-			change: func(o *OTPSettings) { o.Length = 3 },
-			want:   "length must be between 4 and 10",
+			change: func(o *OTPSettings) { o.CodeLength = 3 },
+			want:   "code_length must be between 4 and 10",
 		},
 		{
 			name:   "a code nobody would read",
-			change: func(o *OTPSettings) { o.Length = 11 },
-			want:   "length must be between 4 and 10",
+			change: func(o *OTPSettings) { o.CodeLength = 11 },
+			want:   "code_length must be between 4 and 10",
 		},
 		{
 			name:   "a code that never expires",
@@ -155,7 +155,7 @@ func TestLoginCodeUsable(t *testing.T) {
 		},
 		{
 			name: "already used",
-			code: LoginCode{ExpiresAt: now.Add(10 * time.Minute), ConsumedAt: &used},
+			code: LoginCode{ExpiresAt: now.Add(10 * time.Minute), UsedAt: &used},
 		},
 		{
 			name: "guessed at too often",

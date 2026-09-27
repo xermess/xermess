@@ -11,16 +11,16 @@ import (
 // updated or deleted, so it does not embed Base.
 type AuditLog struct {
 	ID        uuid.UUID `gorm:"type:uuid;primarykey" json:"id"`
-	CreatedAt time.Time `gorm:"index;not null" json:"created_at"`
+	CreatedAt time.Time `gorm:"not null" json:"created_at"`
 
-	// AdminUserID is the admin who acted, and is null for actions the system
+	// AdminID is the admin who acted, and is null for actions the system
 	// took on its own. It is not a foreign key: the log outlives the account.
-	AdminUserID *uuid.UUID `gorm:"type:uuid;index" json:"admin_user_id,omitempty"`
-	ActorEmail  string     `gorm:"size:255" json:"actor_email,omitempty"`
+	AdminID    *uuid.UUID `gorm:"type:uuid;index" json:"admin_id,omitempty"`
+	ActorEmail string     `gorm:"size:255" json:"actor_email,omitempty"`
 
 	// Action is what happened, named "<resource>.<action>", matching the
 	// permission names.
-	Action string `gorm:"index;size:128;not null" json:"action"`
+	Action string `gorm:"size:128;not null" json:"action"`
 
 	// TargetType and TargetID are what it happened to.
 	TargetType string `gorm:"index;size:64" json:"target_type,omitempty"`

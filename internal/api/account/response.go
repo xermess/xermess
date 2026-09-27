@@ -103,7 +103,7 @@ func newUserResponse(user *model.User) userResponse {
 	return userResponse{
 		ID:            user.ID,
 		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
+		EmailVerified: user.IsEmailVerified,
 		FirstName:     user.FirstName,
 		LastName:      user.LastName,
 		CreatedAt:     user.CreatedAt,

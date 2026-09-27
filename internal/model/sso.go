@@ -49,9 +49,9 @@ type SSOConnection struct {
 	Slug string `gorm:"size:64;not null;uniqueIndex" json:"slug"`
 
 	// Name is what the sign-in page calls it: "Continue with <name>".
-	Name     string      `gorm:"size:100;not null" json:"name"`
-	Protocol SSOProtocol `gorm:"type:varchar(8);not null" json:"protocol"`
-	Enabled  bool        `gorm:"not null" json:"enabled"`
+	Name      string      `gorm:"size:100;not null" json:"name"`
+	Protocol  SSOProtocol `gorm:"type:varchar(8);not null" json:"protocol"`
+	IsEnabled bool        `gorm:"not null" json:"is_enabled"`
 
 	// Domains are the email domains the connection signs people in for, lower
 	// case. A domain belongs to one connection at most. None is every address,
@@ -389,9 +389,9 @@ type SSOLogin struct {
 	StateHash    string    `gorm:"size:64;not null;uniqueIndex" json:"-"`
 	ConnectionID uuid.UUID `gorm:"type:uuid;not null;index" json:"connection_id"`
 
-	Verifier  string `gorm:"size:128" json:"-"`
-	Nonce     string `gorm:"size:128" json:"-"`
-	RequestID string `gorm:"size:128" json:"-"`
+	Verifier      string `gorm:"size:128" json:"-"`
+	Nonce         string `gorm:"size:128" json:"-"`
+	SAMLRequestID string `gorm:"size:128" json:"-"`
 
 	// Request is the sign-in under way to continue, and Next where to go when
 	// there is none.

@@ -78,7 +78,7 @@
 	// The built-in fields are the record's own columns, so they are named
 	// here; the additional ones are whatever this organisation added.
 	let email = $state('');
-	let emailVerified = $state(false);
+	let isEmailVerified = $state(false);
 	let firstName = $state('');
 	let lastName = $state('');
 	let isActive = $state(true);
@@ -87,7 +87,7 @@
 	// an edit, leaving them empty keeps the password the user has.
 	let password = $state('');
 	let confirmPassword = $state('');
-	let isTemporaryPassword = $state(false);
+	let isPasswordTemporary = $state(false);
 
 	let values = $state<Record<string, string | boolean>>({});
 	let error = $state('');
@@ -174,7 +174,7 @@
 
 	function fill(record: UserRecord | null) {
 		email = record?.email ?? '';
-		emailVerified = record?.email_verified ?? false;
+		isEmailVerified = record?.is_email_verified ?? false;
 		firstName = record?.first_name ?? '';
 		lastName = record?.last_name ?? '';
 		isActive = record?.is_active ?? true;
@@ -182,7 +182,7 @@
 		confirmPassword = '';
 		// A password an administrator makes up for someone is one they should
 		// replace, so a new user's starts out temporary.
-		isTemporaryPassword = record ? record.is_temporary_password : true;
+		isPasswordTemporary = record ? record.is_password_temporary : true;
 		error = '';
 
 		values = Object.fromEntries(
@@ -213,11 +213,11 @@
 
 		return {
 			email: email.trim(),
-			email_verified: emailVerified,
+			is_email_verified: isEmailVerified,
 			first_name: firstName.trim(),
 			last_name: lastName.trim(),
 			is_active: isActive,
-			is_temporary_password: isTemporaryPassword && hasPassword,
+			is_password_temporary: isPasswordTemporary && hasPassword,
 			...(password !== '' ? { password, confirm_password: confirmPassword } : {}),
 			data
 		};
@@ -357,9 +357,9 @@
 						{/if}
 
 						<SwitchField
-							label="Temporary password"
+							label="Is Temporary"
 							description="The user has to choose a new password the next time they sign in."
-							bind:checked={isTemporaryPassword}
+							bind:checked={isPasswordTemporary}
 							disabled={!hasPassword}
 						/>
 					</FormSection>
@@ -406,14 +406,14 @@
 					<FormSection title="Status">
 						<div class="switches">
 							<SwitchField
-								label="Active"
+								label="Is Active"
 								description="An inactive user cannot sign in to any application."
 								bind:checked={isActive}
 							/>
 							<SwitchField
-								label="Email verified"
+								label="Is Email Verified"
 								description="Whether the user has confirmed they own this address."
-								bind:checked={emailVerified}
+								bind:checked={isEmailVerified}
 							/>
 						</div>
 					</FormSection>

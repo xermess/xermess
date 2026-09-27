@@ -20,7 +20,7 @@ func TestLiveAddressesAreOneAccountInAnyCase(t *testing.T) {
 		} `json:"user"`
 	}
 	super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
-		"email": " Ada.Lovelace@Example.COM ", "first_name": "Ada", "email_verified": true,
+		"email": " Ada.Lovelace@Example.COM ", "first_name": "Ada", "is_email_verified": true,
 		"password": "ada-password-1", "confirm_password": "ada-password-1",
 	}, &created)
 
@@ -54,7 +54,7 @@ func TestLiveSweepRemovesOnlyWhatExpired(t *testing.T) {
 	ctx := context.Background()
 
 	super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
-		"email": "grace@example.com", "email_verified": true,
+		"email": "grace@example.com", "is_email_verified": true,
 		"password": "grace-password-1", "confirm_password": "grace-password-1",
 	}, nil)
 

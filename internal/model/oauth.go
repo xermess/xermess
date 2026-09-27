@@ -42,10 +42,10 @@ const (
 // encrypted with the server's secret; see jose.Sealer.
 type SigningKey struct {
 	// KID is what a token's header names the key by, and what the JWKS lists.
-	KID       string    `gorm:"primaryKey;size:64"`
-	Algorithm string    `gorm:"size:16;not null;index"`
-	Sealed    []byte    `gorm:"not null"`
-	CreatedAt time.Time `gorm:"not null"`
+	KID        string    `gorm:"column:kid;primaryKey;size:64"`
+	Algorithm  string    `gorm:"size:16;not null;index"`
+	PrivateKey []byte    `gorm:"not null"`
+	CreatedAt  time.Time `gorm:"not null"`
 	// RetiredAt is set when a newer key replaces this one. A retired key
 	// still verifies, and is still published, so tokens it signed stay valid
 	// until they expire.
@@ -110,7 +110,7 @@ type AuthorizationCode struct {
 	CodeChallenge       string    `gorm:"size:128"`
 	CodeChallengeMethod string    `gorm:"size:8"`
 	Audience            string    `gorm:"size:255"`
-	AuthTime            time.Time `gorm:"not null"`
+	AuthenticatedAt     time.Time `gorm:"not null"`
 
 	ExpiresAt time.Time `gorm:"not null;index"`
 	// UsedAt is set when the code is exchanged. A code presented a second
@@ -140,9 +140,9 @@ type RefreshToken struct {
 	// revoke what it was exchanged for.
 	CodeID *uuid.UUID `gorm:"type:uuid;index"`
 
-	Scope    string    `gorm:"type:text;not null"`
-	Audience string    `gorm:"size:255"`
-	AuthTime time.Time `gorm:"not null"`
+	Scope           string    `gorm:"type:text;not null"`
+	Audience        string    `gorm:"size:255"`
+	AuthenticatedAt time.Time `gorm:"not null"`
 
 	// ExpiresAt is the family's: a rotated token keeps its predecessor's, so
 	// rotating cannot keep a session alive for ever.
@@ -166,14 +166,14 @@ func (t RefreshToken) Usable(now time.Time) bool {
 type UserSession struct {
 	Base
 
-	TokenHash string    `gorm:"size:64;uniqueIndex;not null"`
-	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
-	User      *User     `gorm:"constraint:OnDelete:CASCADE"`
-	AuthTime  time.Time `gorm:"not null"`
-	ExpiresAt time.Time `gorm:"not null;index"`
-	RevokedAt *time.Time
-	IP        string `gorm:"size:45"`
-	UserAgent string `gorm:"size:255"`
+	TokenHash       string    `gorm:"size:64;uniqueIndex;not null"`
+	UserID          uuid.UUID `gorm:"type:uuid;not null;index"`
+	User            *User     `gorm:"constraint:OnDelete:CASCADE"`
+	AuthenticatedAt time.Time `gorm:"not null"`
+	ExpiresAt       time.Time `gorm:"not null;index"`
+	RevokedAt       *time.Time
+	IP              string `gorm:"size:45"`
+	UserAgent       string `gorm:"size:255"`
 }
 
 // TableName pins the table name.

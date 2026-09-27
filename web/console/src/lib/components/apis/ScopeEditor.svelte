@@ -55,8 +55,8 @@
 					/>
 					<span class="center">
 						<Checkbox
-							checked={row.default}
-							onChange={(on) => (row.default = on)}
+							checked={row.is_default}
+							onChange={(on) => (row.is_default = on)}
 							disabled={!editable}
 							title="Default scope: {row.name || 'new scope'}"
 						/>

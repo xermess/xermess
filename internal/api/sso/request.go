@@ -31,10 +31,10 @@ var (
 // The client secret is never sent back, so an update without one keeps the
 // one there is.
 type connectionRequest struct {
-	Name     *string `json:"name" validate:"omitnil,min=1,max=100"`
-	Slug     *string `json:"slug" validate:"omitnil,max=64"`
-	Protocol *string `json:"protocol" validate:"omitnil,oneof=oidc saml"`
-	Enabled  *bool   `json:"enabled"`
+	Name      *string `json:"name" validate:"omitnil,min=1,max=100"`
+	Slug      *string `json:"slug" validate:"omitnil,max=64"`
+	Protocol  *string `json:"protocol" validate:"omitnil,oneof=oidc saml"`
+	IsEnabled *bool   `json:"is_enabled"`
 
 	Domains        *[]string `json:"domains" validate:"omitnil,max=50"`
 	EnforceDomains *bool     `json:"enforce_domains"`

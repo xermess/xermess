@@ -134,10 +134,10 @@ func (ks *keySet) add(ctx context.Context, alg string, now time.Time) error {
 	}
 
 	key := &model.SigningKey{
-		KID:       strings.ToLower(alg) + "-" + hex.EncodeToString(suffix[:]),
-		Algorithm: alg,
-		Sealed:    sealed,
-		CreatedAt: now,
+		KID:        strings.ToLower(alg) + "-" + hex.EncodeToString(suffix[:]),
+		Algorithm:  alg,
+		PrivateKey: sealed,
+		CreatedAt:  now,
 	}
 
 	// "Due" means no unretired key made in the last rotation period — or,
@@ -189,10 +189,10 @@ func (ks *keySet) Rotate(ctx context.Context, immediate, revoke bool) error {
 		}
 
 		key := &model.SigningKey{
-			KID:       strings.ToLower(alg) + "-" + hex.EncodeToString(suffix[:]),
-			Algorithm: alg,
-			Sealed:    sealed,
-			CreatedAt: created,
+			KID:        strings.ToLower(alg) + "-" + hex.EncodeToString(suffix[:]),
+			Algorithm:  alg,
+			PrivateKey: sealed,
+			CreatedAt:  created,
 		}
 		if err := ks.store.CreateSigningKey(ctx, key); err != nil {
 			return err
@@ -225,7 +225,7 @@ func (ks *keySet) reload(ctx context.Context) error {
 	byID := make(map[string]jose.Key, len(stored))
 
 	for _, row := range stored {
-		private, err := ks.sealer.Open(row.Sealed)
+		private, err := ks.sealer.Open(row.PrivateKey)
 		if err != nil {
 			return err
 		}

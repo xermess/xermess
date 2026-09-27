@@ -3,12 +3,12 @@ import { request, type Fetch } from './client';
 /** What an application's sign-in pages show about it. */
 export type Application = {
 	name: string;
-	logo_uri: string;
-	client_uri: string;
+	logo_url: string;
+	website_url: string;
 	/** The privacy policy, linked under the card and agreed to on registration. */
-	policy_uri: string;
+	privacy_url: string;
 	/** The terms of service, the same. */
-	tos_uri: string;
+	terms_url: string;
 	allow_registration: boolean;
 };
 
@@ -60,7 +60,7 @@ export type PublicLanguage = {
 	code: string;
 	/** The language in English, and in itself. */
 	name: string;
-	native: string;
+	native_name: string;
 };
 
 /** An account elsewhere that can be signed in with, as its button. */
@@ -134,8 +134,8 @@ export type Session = {
 export type ConnectedApplication = {
 	client_id: string;
 	name: string;
-	logo_uri: string;
-	client_uri: string;
+	logo_url: string;
+	website_url: string;
 	scopes: string[];
 	authorized_at: string;
 	last_used_at: string;

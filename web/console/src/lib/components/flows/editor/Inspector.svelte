@@ -136,7 +136,7 @@
 			<SwitchField
 				label="On"
 				description="Off, the applications that name it use the default flow instead."
-				bind:checked={draft.enabled}
+				bind:checked={draft.is_enabled}
 				disabled={!editable || draft.is_default}
 			/>
 			<SwitchField

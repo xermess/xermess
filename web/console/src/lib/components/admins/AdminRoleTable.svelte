@@ -54,7 +54,7 @@
 
 		<td>
 			<span class="name">{role.name}</span>
-			{#if role.builtin}
+			{#if role.is_builtin}
 				<Badge tone="success">built in</Badge>
 			{/if}
 		</td>
@@ -69,7 +69,7 @@
 
 		<td>
 			<span class="badges">
-				{#if role.builtin}
+				{#if role.is_builtin}
 					<Badge tone="success">everything</Badge>
 				{:else}
 					{#each role.permissions.slice(0, SHOWN) as permission (permission)}

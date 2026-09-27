@@ -48,6 +48,12 @@ import type {
 	OrganizationInput,
 	OTPResponse,
 	OTPSettingsInput,
+	CacheDatabaseName,
+	CacheKeyInput,
+	CacheKeyPage,
+	CacheKeyQuery,
+	CacheKeyValue,
+	CacheOverview,
 	SocialProvider,
 	SocialProviderInput,
 	SocialSpec,
@@ -431,7 +437,7 @@ export const adminsApi = {
 	/** How administrators are made to sign in, for the whole panel. */
 	security: (fetcher?: Fetch) => api.get<AdminSecurity>('/admin/security', fetcher),
 
-	updateSecurity: (input: { mfa_required: boolean }) =>
+	updateSecurity: (input: { require_mfa: boolean }) =>
 		api.patch<AdminSecurity>('/admin/security', input),
 
 	resetMfa: (id: string) => api.delete<{ admin: AdminRecord }>(`/admin/admins/${id}/mfa`),
@@ -520,3 +526,43 @@ export const apisApi = {
 
 	remove: (id: string) => api.delete<void>(`/admin/apis/${id}`)
 };
+
+/** Redis, for a super admin: what its two databases hold, a key at a time,
+    and the ways to clear some or all of it. */
+export const cacheApi = {
+	overview: (fetcher?: Fetch) => api.get<CacheOverview>('/admin/cache', fetcher),
+
+	keys: (database: CacheDatabaseName, query: CacheKeyQuery = {}, fetcher?: Fetch) =>
+		api.get<CacheKeyPage>(`/admin/cache/${database}/keys${cacheQuery(query)}`, fetcher),
+
+	key: (database: CacheDatabaseName, name: string, fetcher?: Fetch) =>
+		api.get<{ key: CacheKeyValue }>(
+			`/admin/cache/${database}/key?name=${encodeURIComponent(name)}`,
+			fetcher
+		),
+
+	update: (database: CacheDatabaseName, name: string, input: CacheKeyInput) =>
+		api.put<{ key: CacheKeyValue }>(
+			`/admin/cache/${database}/key?name=${encodeURIComponent(name)}`,
+			input
+		),
+
+	remove: (database: CacheDatabaseName, name: string) =>
+		api.delete<void>(`/admin/cache/${database}/key?name=${encodeURIComponent(name)}`),
+
+	clearGroup: (database: CacheDatabaseName, group: string) =>
+		api.post<void>(`/admin/cache/${database}/groups/${encodeURIComponent(group)}/clear`),
+
+	flush: (database: CacheDatabaseName) => api.delete<void>(`/admin/cache/${database}`)
+};
+
+/** The query string of a key listing, with the filters that are set. */
+function cacheQuery(query: CacheKeyQuery): string {
+	const params = new URLSearchParams();
+	for (const [name, value] of Object.entries(query)) {
+		if (value !== undefined && value !== '') params.set(name, String(value));
+	}
+
+	const text = params.toString();
+	return text ? `?${text}` : '';
+}

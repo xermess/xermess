@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -52,7 +53,7 @@ func (s *Store) SSOConnectionForEmail(ctx context.Context, email string) (*model
 
 	var connection model.SSOConnection
 	err := s.db.WithContext(ctx).
-		Where("enabled = ? AND jsonb_exists(domains, ?)", true, domain).
+		Where("is_enabled = ? AND jsonb_exists(domains, ?)", true, domain).
 		First(&connection).Error
 	if err != nil {
 		return nil, translate(err)
@@ -64,25 +65,29 @@ func (s *Store) SSOConnectionForEmail(ctx context.Context, email string) (*model
 // SSOButtons are the enabled connections that put a button on the sign-in
 // page, by name.
 func (s *Store) SSOButtons(ctx context.Context) ([]model.SSOConnection, error) {
-	var connections []model.SSOConnection
-	err := s.db.WithContext(ctx).
-		Where("enabled = ? AND show_on_login = ?", true, true).
-		Order("name").
-		Find(&connections).Error
+	return cached(ctx, s, cache.SSOButtons, "buttons", func() ([]model.SSOConnection, error) {
+		var connections []model.SSOConnection
+		err := s.db.WithContext(ctx).
+			Where("is_enabled = ? AND show_on_login = ?", true, true).
+			Order("name").
+			Find(&connections).Error
 
-	return connections, err
+		return connections, err
+	})
 }
 
 // AnySSOConnectionEnabled reports whether an address can lead to a
 // connection — an enabled one with domains — so the sign-in page offers "Sign
 // in with SSO" only where it leads somewhere.
 func (s *Store) AnySSOConnectionEnabled(ctx context.Context) (bool, error) {
-	var count int64
-	err := s.db.WithContext(ctx).Model(&model.SSOConnection{}).
-		Where("enabled = ? AND jsonb_array_length(domains) > 0", true).
-		Limit(1).Count(&count).Error
+	return cached(ctx, s, cache.SSOButtons, "available", func() (bool, error) {
+		var count int64
+		err := s.db.WithContext(ctx).Model(&model.SSOConnection{}).
+			Where("is_enabled = ? AND jsonb_array_length(domains) > 0", true).
+			Limit(1).Count(&count).Error
 
-	return count > 0, err
+		return count > 0, err
+	})
 }
 
 // SSODomainsTaken is which of these domains another connection already has.
@@ -109,7 +114,7 @@ func (s *Store) SSODomainsTaken(ctx context.Context, domains []string, except uu
 
 // CreateSSOConnection adds a connection.
 func (s *Store) CreateSSOConnection(ctx context.Context, connection *model.SSOConnection) error {
-	return translate(s.db.WithContext(ctx).Create(connection).Error)
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Create(connection).Error), cache.SSOButtons)
 }
 
 // SaveSSOConnection writes a connection back. `newProvider` drops the
@@ -118,7 +123,7 @@ func (s *Store) CreateSSOConnection(ctx context.Context, connection *model.SSOCo
 // connection has been pointed away from could name somebody else at the new
 // one. Their accounts stay, and link again by address on the next sign-in.
 func (s *Store) SaveSSOConnection(ctx context.Context, connection *model.SSOConnection, newProvider bool) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if newProvider {
 			err := tx.Unscoped().Where("connection_id = ?", connection.ID).Delete(&model.SSOIdentity{}).Error
 			if err != nil {
@@ -127,14 +132,14 @@ func (s *Store) SaveSSOConnection(ctx context.Context, connection *model.SSOConn
 		}
 
 		return translate(tx.Save(connection).Error)
-	})
+	}), cache.SSOButtons)
 }
 
 // DeleteSSOConnection removes a connection, the identities held at it and any
 // sign-in to it under way. The accounts themselves stay: they can still sign
 // in however else they can, or be given a password.
 func (s *Store) DeleteSSOConnection(ctx context.Context, connection *model.SSOConnection) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, child := range []any{&model.SSOIdentity{}, &model.SSOLogin{}} {
 			if err := tx.Unscoped().Where("connection_id = ?", connection.ID).Delete(child).Error; err != nil {
 				return translate(err)
@@ -142,7 +147,7 @@ func (s *Store) DeleteSSOConnection(ctx context.Context, connection *model.SSOCo
 		}
 
 		return translate(tx.Unscoped().Delete(connection).Error)
-	})
+	}), cache.SSOButtons)
 }
 
 // SSOIdentityCounts is how many people have signed in through each

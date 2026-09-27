@@ -39,7 +39,7 @@ func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jos
 	}
 
 	connection.Name = validate.Text(r.Name, connection.Name)
-	connection.Enabled = validate.Flag(r.Enabled, connection.Enabled)
+	connection.IsEnabled = validate.Flag(r.IsEnabled, connection.IsEnabled)
 	connection.EnforceDomains = validate.Flag(r.EnforceDomains, connection.EnforceDomains)
 	connection.ShowOnLogin = validate.Flag(r.ShowOnLogin, connection.ShowOnLogin)
 

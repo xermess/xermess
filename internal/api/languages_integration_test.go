@@ -13,10 +13,10 @@ import (
 type languageBody struct {
 	Code      string         `json:"code"`
 	Name      string         `json:"name"`
-	Native    string         `json:"native"`
+	Native    string         `json:"native_name"`
 	Coverage  map[string]int `json:"coverage"`
 	Missing   map[string]int `json:"missing"`
-	Enabled   bool           `json:"enabled"`
+	Enabled   bool           `json:"is_enabled"`
 	IsDefault bool           `json:"is_default"`
 }
 
@@ -96,7 +96,7 @@ func TestLiveLanguages(t *testing.T) {
 	// A language that did not ship, added from nothing and translated.
 	var created struct{ Language languageBody }
 	super.must(http.StatusCreated, http.MethodPost, "/languages", map[string]any{
-		"code": "de", "name": "German", "native": "Deutsch",
+		"code": "de", "name": "German", "native_name": "Deutsch",
 	}, &created)
 
 	if created.Language.Coverage["id"] != 0 {
@@ -114,7 +114,7 @@ func TestLiveLanguages(t *testing.T) {
 	}, nil)
 
 	super.must(http.StatusConflict, http.MethodPost, "/languages", map[string]any{
-		"code": "DE", "name": "German", "native": "Deutsch",
+		"code": "DE", "name": "German", "native_name": "Deutsch",
 	}, nil)
 
 	var saved struct {
@@ -139,7 +139,7 @@ func TestLiveLanguages(t *testing.T) {
 
 	// Offered, the sign-in pages list it and get every key: its own where it
 	// has one, English where it does not.
-	super.must(http.StatusOK, http.MethodPatch, "/languages/de", map[string]any{"enabled": true}, nil)
+	super.must(http.StatusOK, http.MethodPatch, "/languages/de", map[string]any{"is_enabled": true}, nil)
 
 	var offered struct {
 		Languages []struct{ Code string } `json:"languages"`
@@ -189,7 +189,7 @@ func TestLiveLanguages(t *testing.T) {
 	super.must(http.StatusBadRequest, http.MethodDelete, "/languages/en", nil, nil)
 	super.must(http.StatusOK, http.MethodPatch, "/languages/de", map[string]any{"is_default": true}, nil)
 	super.must(http.StatusBadRequest, http.MethodDelete, "/languages/de", nil, nil)
-	super.must(http.StatusBadRequest, http.MethodPatch, "/languages/de", map[string]any{"enabled": false, "is_default": false}, nil)
+	super.must(http.StatusBadRequest, http.MethodPatch, "/languages/de", map[string]any{"is_enabled": false, "is_default": false}, nil)
 
 	super.must(http.StatusOK, http.MethodGet, "/languages", nil, &list)
 	if list.find("en").IsDefault || !list.find("de").IsDefault {

@@ -154,7 +154,7 @@ func (s *Service) startSAML(connection *model.SSOConnection, login *model.SSOLog
 		return "", err
 	}
 
-	login.RequestID = request.ID
+	login.SAMLRequestID = request.ID
 
 	return location.String(), nil
 }
@@ -165,7 +165,7 @@ func (s *Service) completeSAML(connection *model.SSOConnection, login *model.SSO
 		return nil, upstream("metadata", err)
 	}
 
-	assertion, err := provider.ParseResponse(r, []string{login.RequestID})
+	assertion, err := provider.ParseResponse(r, []string{login.SAMLRequestID})
 	if err != nil {
 		var invalid *saml.InvalidResponseError
 		if errors.As(err, &invalid) {

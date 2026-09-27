@@ -19,11 +19,11 @@ type AdminRoleAssignment struct {
 	ID        uuid.UUID `gorm:"type:uuid;primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 
-	AdminUserID uuid.UUID  `gorm:"type:uuid;not null;index" json:"admin_user_id"`
-	AdminUser   *AdminUser `gorm:"constraint:OnDelete:CASCADE" json:"-"`
+	AdminID uuid.UUID `gorm:"type:uuid;not null;index" json:"admin_id"`
+	Admin   *Admin    `gorm:"constraint:OnDelete:CASCADE" json:"-"`
 
 	RoleID uuid.UUID `gorm:"type:uuid;not null;index" json:"role_id"`
-	Role   Role      `gorm:"constraint:OnDelete:CASCADE" json:"role"`
+	Role   AdminRole `gorm:"constraint:OnDelete:CASCADE" json:"role"`
 
 	// ApplicationID is the application the role is held for, or nil for the
 	// whole panel.

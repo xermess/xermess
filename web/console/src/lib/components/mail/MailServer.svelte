@@ -69,7 +69,7 @@
 	    the stored record's, which is what lets `dirty` below compare the two
 	    without naming a field. */
 	const input = $derived({
-		enabled: form.enabled,
+		is_enabled: form.is_enabled,
 		host: form.host.trim().toLowerCase(),
 		port: Number(form.port),
 		encryption: form.encryption,
@@ -96,7 +96,7 @@
 		Number.isInteger(input.port) &&
 			input.port >= 1 &&
 			input.port <= 65535 &&
-			(!input.enabled || (input.host !== '' && input.from_address !== ''))
+			(!input.is_enabled || (input.host !== '' && input.from_address !== ''))
 	);
 
 	const encryptions = $derived(
@@ -187,7 +187,7 @@
 
 	<Panel title="Sending" icon={RiMailSendLine}>
 		{#snippet meta()}
-			{#if form.enabled}
+			{#if form.is_enabled}
 				<Tag tone="success" dot small>Sending</Tag>
 			{:else}
 				<Tag tone="warning" dot small>Logged, not sent</Tag>
@@ -197,7 +197,7 @@
 		<SwitchField
 			label="Send email through an SMTP server"
 			description="Off, every message is written to the server's log instead — enough to follow a reset link while developing, and nothing anybody receives."
-			bind:checked={form.enabled}
+			bind:checked={form.is_enabled}
 		/>
 	</Panel>
 

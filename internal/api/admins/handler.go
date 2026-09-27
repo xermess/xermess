@@ -130,7 +130,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 // answer writes an administrator as stored, read back so each assignment
 // carries its role's and application's names.
-func (h *Handler) answer(c *gin.Context, status int, admin *model.AdminUser) {
+func (h *Handler) answer(c *gin.Context, status int, admin *model.Admin) {
 	stored, err := h.store.AdminByID(c.Request.Context(), admin.ID)
 	if err != nil {
 		respond.Failure(c, h.log, err, "reading the administrator back failed")
@@ -163,17 +163,17 @@ func (h *Handler) UpdateSecurity(c *gin.Context) {
 		return
 	}
 
-	was := security.MFARequired
-	security.MFARequired = validate.Flag(req.MFARequired, security.MFARequired)
+	was := security.RequireMFA
+	security.RequireMFA = validate.Flag(req.RequireMFA, security.RequireMFA)
 
 	if err := h.store.SaveAdminSecurity(c.Request.Context(), security); err != nil {
 		respond.Failure(c, h.log, err, "saving the admin security settings failed")
 		return
 	}
 
-	if was != security.MFARequired {
+	if was != security.RequireMFA {
 		h.audit.RecordWith(c, "admin_security.updated", "admin_security", "", map[string]any{
-			"mfa_required": security.MFARequired,
+			"require_mfa": security.RequireMFA,
 		})
 	}
 
@@ -254,7 +254,7 @@ func (h *Handler) Delete(c *gin.Context) {
 // A super admin may not suspend themselves or take away their own whole-panel
 // super_admin role: the request that did it would be the last one they could
 // make, and this endpoint is the only way back.
-func (h *Handler) build(c *gin.Context, req *adminRequest, into *model.AdminUser) (*model.AdminUser, error) {
+func (h *Handler) build(c *gin.Context, req *adminRequest, into *model.Admin) (*model.Admin, error) {
 	if err := req.validate(into == nil); err != nil {
 		return nil, err
 	}
@@ -281,7 +281,7 @@ func (h *Handler) build(c *gin.Context, req *adminRequest, into *model.AdminUser
 
 	admin := into
 	if admin == nil {
-		admin = &model.AdminUser{}
+		admin = &model.Admin{}
 	}
 
 	if req.Password != "" {
@@ -330,7 +330,7 @@ func (h *Handler) assignments(c *gin.Context, requested []assignmentRequest) ([]
 		return nil, err
 	}
 
-	byID := make(map[uuid.UUID]model.Role, len(roles))
+	byID := make(map[uuid.UUID]model.AdminRole, len(roles))
 	for _, role := range roles {
 		byID[role.ID] = role
 	}
@@ -373,7 +373,7 @@ func (h *Handler) assignments(c *gin.Context, requested []assignmentRequest) ([]
 
 // find loads the administrator named in the path, answering the request
 // itself if the id is not a uuid or there is no such administrator.
-func (h *Handler) find(c *gin.Context) (*model.AdminUser, bool) {
+func (h *Handler) find(c *gin.Context) (*model.Admin, bool) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		respond.BadRequest(c, "that is not an administrator id")

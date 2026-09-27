@@ -18,8 +18,8 @@ export function legalLinks(
 	application: Application | null | undefined,
 	organization: Organization | null | undefined
 ): LegalLink[] {
-	const terms = application?.tos_uri || organization?.terms_url || '';
-	const privacy = application?.policy_uri || organization?.privacy_url || '';
+	const terms = application?.terms_url || organization?.terms_url || '';
+	const privacy = application?.privacy_url || organization?.privacy_url || '';
 
 	return [
 		terms ? { key: 'legal.terms', href: terms } : null,

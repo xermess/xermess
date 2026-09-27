@@ -18,7 +18,7 @@ func TestLiveEmailedCodeFinishesASignIn(t *testing.T) {
 	// Six digits is the default; four makes the codes in this test shorter to
 	// read, and proves the setting is the one the server actually uses.
 	super.must(http.StatusOK, http.MethodPatch, "/otp", map[string]any{
-		"length": 4, "max_attempts": 2, "resend_seconds": 0,
+		"code_length": 4, "max_attempts": 2, "resend_seconds": 0,
 	}, nil)
 
 	flow := defaultFlow(t, super)
@@ -111,7 +111,7 @@ func TestLiveEmailedCodeRunsOutOfGuesses(t *testing.T) {
 	super := s.superAdmin()
 
 	super.must(http.StatusOK, http.MethodPatch, "/otp", map[string]any{
-		"length": 4, "max_attempts": 1,
+		"code_length": 4, "max_attempts": 1,
 	}, nil)
 
 	flow := defaultFlow(t, super)

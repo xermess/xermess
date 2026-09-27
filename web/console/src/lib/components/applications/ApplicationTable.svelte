@@ -28,7 +28,7 @@
 		{ key: 'client_id', label: 'Client ID', icon: RiKey2Line, min: '17rem' },
 		{ key: 'redirect_uris', label: 'Redirect URIs', icon: RiLinksLine, min: '14rem' },
 		{ key: 'roles', label: 'Roles', icon: RiShieldUserLine, min: '6rem' },
-		{ key: 'enabled', label: 'Enabled', icon: RiToggleLine, min: '7rem' }
+		{ key: 'is_enabled', label: 'Is Enabled', icon: RiToggleLine, min: '7rem' }
 	];
 
 	/** The roles page, showing this application's roles. */
@@ -82,8 +82,8 @@
 		</td>
 
 		<td>
-			<Badge tone={application.enabled ? 'success' : 'neutral'}>
-				{application.enabled ? 'True' : 'False'}
+			<Badge tone={application.is_enabled ? 'success' : 'neutral'}>
+				{application.is_enabled ? 'True' : 'False'}
 			</Badge>
 		</td>
 	{/snippet}

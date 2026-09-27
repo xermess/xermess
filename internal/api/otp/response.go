@@ -7,7 +7,7 @@ import (
 // settingsResponse is the settings as the panel sees them, built by hand so
 // the row's own bookkeeping stays out of a record of settings.
 type settingsResponse struct {
-	Length          int `json:"length"`
+	CodeLength      int `json:"code_length"`
 	LifetimeMinutes int `json:"lifetime_minutes"`
 	MaxAttempts     int `json:"max_attempts"`
 	ResendSeconds   int `json:"resend_seconds"`
@@ -20,7 +20,7 @@ type usingFlow struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Slug      string `json:"slug"`
-	Enabled   bool   `json:"enabled"`
+	IsEnabled bool   `json:"is_enabled"`
 	IsDefault bool   `json:"is_default"`
 }
 
@@ -52,14 +52,14 @@ func newResponse(settings model.OTPSettings, flows []model.LoginFlow) response {
 			ID:        flow.ID.String(),
 			Name:      flow.Name,
 			Slug:      flow.Slug,
-			Enabled:   flow.Enabled,
+			IsEnabled: flow.IsEnabled,
 			IsDefault: flow.IsDefault,
 		})
 	}
 
 	return response{
 		OTP: settingsResponse{
-			Length:          settings.Length,
+			CodeLength:      settings.CodeLength,
 			LifetimeMinutes: settings.LifetimeMinutes,
 			MaxAttempts:     settings.MaxAttempts,
 			ResendSeconds:   settings.ResendSeconds,

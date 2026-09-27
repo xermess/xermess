@@ -26,7 +26,7 @@ var (
 // out of a record of settings — and so the password cannot leave by accident:
 // what is said about it is whether there is one.
 type settingsResponse struct {
-	Enabled     bool   `json:"enabled"`
+	IsEnabled   bool   `json:"is_enabled"`
 	Host        string `json:"host"`
 	Port        int    `json:"port"`
 	Encryption  string `json:"encryption"`
@@ -50,7 +50,7 @@ type response struct {
 func newResponse(settings model.MailSettings) response {
 	return response{
 		Mail: settingsResponse{
-			Enabled:     settings.Enabled,
+			IsEnabled:   settings.IsEnabled,
 			Host:        settings.Host,
 			Port:        settings.Port,
 			Encryption:  string(settings.Encryption),
@@ -66,9 +66,9 @@ func newResponse(settings model.MailSettings) response {
 // languageContent is one language's words for the emails: what it says, and
 // what English says, key by key.
 type languageContent struct {
-	Code   string `json:"code"`
-	Name   string `json:"name"`
-	Native string `json:"native"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	NativeName string `json:"native_name"`
 
 	// Offered is whether the sign-in pages are shown in this language. One
 	// that is not still has its text, and the panel marks it.
@@ -95,12 +95,12 @@ func newLanguageContent(language model.Language, messages, english map[string]st
 	}
 
 	return languageContent{
-		Code:     language.Code,
-		Name:     language.Name,
-		Native:   language.Native,
-		Offered:  language.Enabled,
-		Messages: own,
-		Base:     base,
+		Code:       language.Code,
+		Name:       language.Name,
+		NativeName: language.NativeName,
+		Offered:    language.IsEnabled,
+		Messages:   own,
+		Base:       base,
 	}
 }
 

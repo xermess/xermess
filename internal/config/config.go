@@ -147,17 +147,26 @@ type DB struct {
 	MaxConns int
 }
 
-// Redis is the cache in front of the database, and where the rate limit
-// keeps its counts so every server process shares them. With no host there
-// is no Redis: every read goes to the database and each process counts on
-// its own, which is how the server ran before it had one.
+// Redis is two databases on one server. The cache database holds what every
+// page reads and anyone may see — the languages and their text, the
+// organisation, the login flows, the sign-in buttons. The session database
+// holds what decides who is signed in and what they may do — sessions, the
+// administrators behind them, the applications' client credentials, the
+// sign-in security settings — and the rate limit's counts. Keeping them apart
+// lets the session database be given its own persistence, eviction policy and
+// access, and lets the cache be flushed without signing anybody out.
+//
+// With no host there is no Redis: every read goes to the database and each
+// process counts on its own, which is how the server ran before it had one.
 type Redis struct {
 	Host     string
 	Port     int
 	Username string
 	Password string
-	// DB is the Redis database number, 0 to 15 on a default server.
-	DB int
+	// CacheDB and SessionDB are the two database numbers, 0 to 15 on a
+	// default server. They have to differ.
+	CacheDB   int
+	SessionDB int
 	// Prefix starts every key this server writes, so one Redis can serve
 	// several installations without their keys meeting.
 	Prefix string
@@ -225,7 +234,8 @@ func Load() (Config, error) {
 	v.SetDefault(env("DB_MIGRATE_DIR"), "./migrations")
 	v.SetDefault(env("DB_MAX_CONNS"), 25)
 	v.SetDefault(env("REDIS_PORT"), 6379)
-	v.SetDefault(env("REDIS_DB"), 0)
+	v.SetDefault(env("REDIS_CACHE_DB"), 0)
+	v.SetDefault(env("REDIS_SESSION_DB"), 1)
 	v.SetDefault(env("REDIS_PREFIX"), brand.RedisPrefix)
 
 	issuer := strings.TrimRight(v.GetString(env("ISSUER")), "/")
@@ -267,12 +277,13 @@ func Load() (Config, error) {
 			MaxConns:   v.GetInt(env("DB_MAX_CONNS")),
 		},
 		Redis: Redis{
-			Host:     strings.TrimSpace(v.GetString(env("REDIS_HOST"))),
-			Port:     v.GetInt(env("REDIS_PORT")),
-			Username: v.GetString(env("REDIS_USERNAME")),
-			Password: v.GetString(env("REDIS_PASSWORD")),
-			DB:       v.GetInt(env("REDIS_DB")),
-			Prefix:   v.GetString(env("REDIS_PREFIX")),
+			Host:      strings.TrimSpace(v.GetString(env("REDIS_HOST"))),
+			Port:      v.GetInt(env("REDIS_PORT")),
+			Username:  v.GetString(env("REDIS_USERNAME")),
+			Password:  v.GetString(env("REDIS_PASSWORD")),
+			CacheDB:   v.GetInt(env("REDIS_CACHE_DB")),
+			SessionDB: v.GetInt(env("REDIS_SESSION_DB")),
+			Prefix:    v.GetString(env("REDIS_PREFIX")),
 		},
 	}
 
@@ -334,8 +345,14 @@ func Load() (Config, error) {
 		if cfg.Redis.Port < 1 || cfg.Redis.Port > 65535 {
 			return Config{}, fmt.Errorf("%s must be a port number, got %d", env("REDIS_PORT"), cfg.Redis.Port)
 		}
-		if cfg.Redis.DB < 0 {
-			return Config{}, errors.New(env("REDIS_DB") + " must be zero or more")
+		if cfg.Redis.CacheDB < 0 || cfg.Redis.SessionDB < 0 {
+			return Config{}, fmt.Errorf("%s and %s must be zero or more", env("REDIS_CACHE_DB"), env("REDIS_SESSION_DB"))
+		}
+		// One database for both would let flushing the cache sign everybody
+		// out, which is what keeping them apart is for.
+		if cfg.Redis.CacheDB == cfg.Redis.SessionDB {
+			return Config{}, fmt.Errorf("%s and %s must be different databases, both are %d",
+				env("REDIS_CACHE_DB"), env("REDIS_SESSION_DB"), cfg.Redis.CacheDB)
 		}
 	}
 

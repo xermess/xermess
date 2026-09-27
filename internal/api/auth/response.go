@@ -37,7 +37,7 @@ type adminResponse struct {
 	MFAEnabled bool `json:"mfa_enabled"`
 }
 
-func newAdminResponse(a *model.AdminUser) adminResponse {
+func newAdminResponse(a *model.Admin) adminResponse {
 	roles := []string{}
 	for _, assignment := range a.Assignments {
 		if assignment.Global() {
@@ -77,7 +77,7 @@ type sessionResponse struct {
 	Current bool `json:"current"`
 }
 
-func newSessionResponses(sessions []model.AdminUserSession, current uuid.UUID) []sessionResponse {
+func newSessionResponses(sessions []model.AdminSession, current uuid.UUID) []sessionResponse {
 	now := time.Now()
 	out := make([]sessionResponse, 0, len(sessions))
 

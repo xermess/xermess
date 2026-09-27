@@ -42,14 +42,14 @@ func (r Recorder) RecordWith(c *gin.Context, action, targetType, targetID string
 
 	id := actor.ID
 	entry := model.AuditLog{
-		AdminUserID: &id,
-		ActorEmail:  actor.Username,
-		Action:      action,
-		TargetType:  targetType,
-		TargetID:    targetID,
-		Metadata:    metadata,
-		IP:          c.ClientIP(),
-		UserAgent:   c.Request.UserAgent(),
+		AdminID:    &id,
+		ActorEmail: actor.Username,
+		Action:     action,
+		TargetType: targetType,
+		TargetID:   targetID,
+		Metadata:   metadata,
+		IP:         c.ClientIP(),
+		UserAgent:  c.Request.UserAgent(),
 	}
 
 	if err := r.store.WriteAudit(c.Request.Context(), &entry); err != nil {

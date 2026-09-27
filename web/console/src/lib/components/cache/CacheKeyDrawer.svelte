@@ -1,0 +1,264 @@
+<script lang="ts">
+	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+	import { RiDeleteBinLine, RiTimerLine } from 'svelte-remixicon';
+	import { cacheApi, messageOf, type CacheDatabaseName, type CacheKey } from '$lib/api';
+	import {
+		Alert,
+		Button,
+		Drawer,
+		FieldGrid,
+		FormSection,
+		Icon,
+		Input,
+		Note,
+		Tag,
+		Textarea
+	} from '$lib/components/ui';
+	import { keys } from '$lib/query';
+	import { formatBytes, formatTTL, kinds } from './cache';
+
+	type Props = {
+		database: CacheDatabaseName;
+		/** The key opened, as the listing described it. */
+		key: CacheKey | null;
+		open: boolean;
+	};
+
+	let { database, key, open = $bindable(false) }: Props = $props();
+
+	const queryClient = useQueryClient();
+
+	/** What the key holds is read when it is opened, not with the listing: a
+	    page of keys would otherwise carry every value in it. */
+	const value = createQuery(() => ({
+		queryKey: keys.cache.key(database, key?.name ?? ''),
+		queryFn: () => cacheApi.key(database, key?.name ?? ''),
+		enabled: open && key !== null,
+		staleTime: 0
+	}));
+
+	const current = $derived(value.data?.key);
+	const editable = $derived(current?.editable ?? false);
+
+	let ttl = $state('');
+	let error = $state('');
+	let confirmingDelete = $state(false);
+
+	$effect(() => {
+		if (!open) return;
+		error = '';
+		confirmingDelete = false;
+		ttl = '';
+	});
+
+	// The value as it was read, laid out to be read and edited: typing changes
+	// it, and reading the key again puts back what Redis holds.
+	let text = $derived(current ? JSON.stringify(current.value, null, 2) : '');
+
+	/** Whether the text is JSON the server will take: any but null. */
+	const parsed = $derived.by(() => {
+		try {
+			const value: unknown = JSON.parse(text);
+			return value === null ? undefined : { value };
+		} catch {
+			return undefined;
+		}
+	});
+
+	const ttlSeconds = $derived(ttl.trim() === '' ? undefined : Number(ttl));
+	const ttlValid = $derived(
+		ttlSeconds === undefined ||
+			(Number.isInteger(ttlSeconds) && ttlSeconds > 0 && ttlSeconds <= 86400)
+	);
+
+	function refill() {
+		return queryClient.invalidateQueries({ queryKey: keys.cache.all });
+	}
+
+	const save = createMutation(() => ({
+		mutationFn: () =>
+			cacheApi.update(database, key?.name ?? '', {
+				value: parsed?.value,
+				ttl_seconds: ttlSeconds
+			}),
+		onSuccess: async () => {
+			await refill();
+			open = false;
+		},
+		onError: (err: unknown) => {
+			error = messageOf(err, 'Could not save this value');
+		}
+	}));
+
+	const remove = createMutation(() => ({
+		mutationFn: () => cacheApi.remove(database, key?.name ?? ''),
+		onSuccess: async () => {
+			await refill();
+			open = false;
+		},
+		onError: (err: unknown) => {
+			error = messageOf(err, 'Could not remove this key');
+		}
+	}));
+
+	const busy = $derived(save.isPending || remove.isPending);
+
+	function submit(event: SubmitEvent) {
+		event.preventDefault();
+		if (!editable || !parsed || !ttlValid || busy) return;
+		error = '';
+		save.mutate();
+	}
+
+	/** What removing the key does, said before it is done. */
+	const consequence = $derived.by(() => {
+		switch (current?.kind) {
+			case 'session':
+				return 'The next request with this session reads it from the database again. Nobody is signed out.';
+			case 'ratelimit':
+				return 'This address starts counting again from nothing.';
+			case 'stale':
+				return 'Nothing reads it any more; it would expire on its own.';
+			default:
+				return 'The next request that wants it reads the database again.';
+		}
+	});
+</script>
+
+<Drawer
+	bind:open
+	title={editable ? 'Edit cached value' : 'Cached key'}
+	meta={key ? kinds[key.kind].label : undefined}
+	onsubmit={submit}
+>
+	{#if error}
+		<div class="error"><Alert>{error}</Alert></div>
+	{/if}
+
+	{#if value.isError}
+		<Alert>{messageOf(value.error, 'Could not read this key')}</Alert>
+	{:else if current}
+		<FormSection title="Key" description="Where Redis keeps it, without this server’s prefix.">
+			<Input label="Name" value={current.name} readOnly copyable />
+			<FieldGrid>
+				<Input label="Group" value={current.group || 'N/A'} readOnly />
+				<Input label="Entry" value={current.entry || 'N/A'} readOnly />
+				<Input label="Expires in" value={formatTTL(current.ttl_seconds)} readOnly />
+				<Input
+					label="Size"
+					value={current.size_bytes > 0 ? formatBytes(current.size_bytes) : 'unknown'}
+					readOnly
+				/>
+			</FieldGrid>
+			<span class="tags">
+				<Tag small tone={kinds[current.kind].tone}>{kinds[current.kind].label}</Tag>
+				<Tag small>{current.type}</Tag>
+				{#if !editable}<Tag small>read only</Tag>{/if}
+			</span>
+		</FormSection>
+
+		<FormSection
+			title="Value"
+			description={editable
+				? 'What the next reader decodes. A value that no longer fits what the server expects is read as missing, and the database is read instead.'
+				: 'Shown as it is. What decides who is signed in, and a generation counter, are never edited by hand.'}
+		>
+			<Textarea
+				label="JSON"
+				bind:value={text}
+				rows={16}
+				readonly={!editable}
+				spellcheck={false}
+				error={editable && !parsed ? 'This is not JSON, or it is null.' : undefined}
+			/>
+			{#if editable}
+				<Input
+					label="Keep for"
+					icon={RiTimerLine}
+					bind:value={ttl}
+					inputmode="numeric"
+					suffix="seconds"
+					placeholder="as long as it had left"
+					hint="Up to a day. Left empty, the value keeps the time it had left."
+					error={ttlValid ? undefined : 'A whole number of seconds, up to 86400.'}
+				/>
+			{/if}
+		</FormSection>
+
+		{#if current.kind !== 'generation'}
+			<FormSection title="Remove" description={consequence}>
+				{#if confirmingDelete}
+					<span class="confirm">
+						<Button
+							variant="subtle"
+							size="sm"
+							onclick={() => (confirmingDelete = false)}
+							disabled={busy}
+						>
+							Keep it
+						</Button>
+						<Button
+							colorPalette="danger"
+							size="sm"
+							loading={remove.isPending}
+							disabled={busy}
+							onclick={() => {
+								error = '';
+								remove.mutate();
+							}}
+						>
+							Remove this key
+						</Button>
+					</span>
+				{:else}
+					<span>
+						<Button
+							colorPalette="danger"
+							variant="subtle"
+							size="sm"
+							onclick={() => (confirmingDelete = true)}
+							disabled={busy}
+						>
+							<Icon icon={RiDeleteBinLine} />
+							Remove
+						</Button>
+					</span>
+				{/if}
+			</FormSection>
+		{:else}
+			<Note>A generation counter is not removed: clear its group instead.</Note>
+		{/if}
+	{:else}
+		<Note>Reading…</Note>
+	{/if}
+
+	{#snippet footer()}
+		<span class="spacer"></span>
+		<Button variant="subtle" onclick={() => (open = false)} disabled={busy}>
+			{editable ? 'Cancel' : 'Close'}
+		</Button>
+		{#if editable}
+			<Button type="submit" loading={save.isPending} disabled={busy || !parsed || !ttlValid}>
+				Save value
+			</Button>
+		{/if}
+	{/snippet}
+</Drawer>
+
+<style>
+	.error {
+		margin-bottom: var(--space-3);
+	}
+
+	.tags,
+	.confirm {
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-1);
+	}
+
+	.spacer {
+		flex: 1;
+	}
+</style>

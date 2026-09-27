@@ -23,7 +23,7 @@ import (
 // keys afterwards, so they can share a Redis with a running server.
 const testRedisEnv = "LOGINER_TEST_REDIS"
 
-func liveCache(t *testing.T) *Cache {
+func liveRedis(t *testing.T) *Redis {
 	t.Helper()
 
 	addr := os.Getenv(testRedisEnv)
@@ -41,7 +41,7 @@ func liveCache(t *testing.T) *Cache {
 	_, _ = rand.Read(suffix)
 	prefix := brand.Slug + "_test_" + hex.EncodeToString(suffix) + ":"
 
-	c, err := Open(context.Background(), config.Redis{Host: host, Port: port, Prefix: prefix},
+	r, err := Open(context.Background(), config.Redis{Host: host, Port: port, CacheDB: 14, SessionDB: 15, Prefix: prefix},
 		slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
@@ -49,26 +49,35 @@ func liveCache(t *testing.T) *Cache {
 
 	t.Cleanup(func() {
 		ctx := context.Background()
-		if err := c.Flush(ctx); err != nil {
-			t.Error(err)
+		for _, c := range r.Databases() {
+			if err := c.Flush(ctx); err != nil {
+				t.Error(err)
+			}
+			if left, _ := c.client.Keys(ctx, prefix+"*").Result(); len(left) > 0 {
+				t.Errorf("Flush left %v in the %s database", left, c.name)
+			}
 		}
-		if left, _ := c.client.Keys(ctx, prefix+"*").Result(); len(left) > 0 {
-			t.Errorf("Flush left %v", left)
-		}
-		_ = c.Close()
+		_ = r.Close()
 	})
 
-	return c
+	return r
+}
+
+// liveCache is the cache database of a live Redis.
+func liveCache(t *testing.T) *Cache {
+	t.Helper()
+	return liveRedis(t).Cache
 }
 
 // No Redis configured is a cache that never holds anything, and every method
 // is safe to call on it — which is what lets the store use one without
 // asking whether there is one.
 func TestNoRedisIsAnEmptyCache(t *testing.T) {
-	c, err := Open(context.Background(), config.Redis{}, slog.Default())
-	if err != nil || c != nil {
-		t.Fatalf("Open(no host) = %v, %v; want nil, nil", c, err)
+	r, err := Open(context.Background(), config.Redis{}, slog.Default())
+	if err != nil || r != nil {
+		t.Fatalf("Open(no host) = %v, %v; want nil, nil", r, err)
 	}
+	c := r.CacheDB()
 
 	ctx := context.Background()
 	c.Set(ctx, Languages, "all", []string{"en"})
@@ -78,7 +87,10 @@ func TestNoRedisIsAnEmptyCache(t *testing.T) {
 	if c.Get(ctx, Languages, "all", &out) {
 		t.Error("a nil cache had something in it")
 	}
-	if err := c.Close(); err != nil {
+	if r.SessionDB() != nil || r.Databases() != nil {
+		t.Error("no Redis had a session database")
+	}
+	if err := r.Close(); err != nil {
 		t.Error(err)
 	}
 }
@@ -140,7 +152,7 @@ func TestLiveCacheForgetsAGroupAtOnce(t *testing.T) {
 }
 
 func TestLiveTakeSharesOneBucket(t *testing.T) {
-	c := liveCache(t)
+	c := liveRedis(t).Sessions
 	ctx := context.Background()
 
 	const perMinute = 3

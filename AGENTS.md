@@ -34,7 +34,7 @@ internal/brand          what the project calls itself, and every name built from
 internal/config         reads .env
 internal/model          one file per table, all listed in model.All
 internal/store          every query in the project, one file per subject
-internal/cache          Redis: the cache in front of the store, the rate limit's counts
+internal/cache          Redis: the cache and session databases, the rate limit's counts
 internal/auth           signing administrators in, and what they may do
 internal/oidc           the provider: authorize, tokens, userinfo, logout
 internal/api/server.go  the engine, and the table of every route
@@ -63,12 +63,13 @@ and the permission it needs. Add it to the API table in `README.md`.
 `model.All()` — and bump the count in `TestAllListsEveryModel`, which exists to
 catch a model that never got a table.
 
-The schema migration builds a fresh database from `model.All()`, so a new
-model's table follows on one — but databases that already exist are stepped
-forward, not rebuilt, so every change also gets a migration of its own
-(`make migrate-new name=x`): `AutoMigrate` on the new models, or the index or
-column added, in `up`, the undo in `down`. `20260920120000_scale.go` is the
-first, and the example. No migration that has run anywhere is ever edited.
+The schema migration, `migrations/20260927000000_schema.go`, builds a fresh
+database from `model.All()` in one step, so a new model's table follows on one
+— but databases that already exist are stepped forward, not rebuilt, so every
+change after it gets a migration of its own (`make migrate-new name=x`):
+`AutoMigrate` on the new models, or the index or column added, in `up`, the
+undo in `down`, using `gormTx` from the schema file. No migration that has run
+anywhere is ever edited.
 
 **A permission.** A constant and a catalog entry in
 `internal/model/admin_permission.go`, guarding the routes with `session.Can` or
@@ -124,12 +125,18 @@ group files, and the apps show the key in the reader's language with
 `TestErrorCodesMatchTheCatalogs` fails until both sides agree.
 
 **A cached read.** Only in the store, with `cached(ctx, s, group, field, load)`,
-and only for something every page asks for and almost nothing changes — never
-users, sessions, tokens or administrators. Every store method that writes it
-calls `s.forget(ctx, group)` after the write commits; a new group is a
-constant in `internal/cache`. Cache a projection rather than a model that
-carries a secret, and add the type to `TestCachedTypesSurviveJSON`. Redis is
-optional: a nil cache is an empty one, so everything has to work without it.
+and only for something every request asks for and almost nothing changes. A
+new group is a constant in `internal/cache`, listed in `cache.Groups` under the
+database it belongs in: `cache` for what anybody may see, `sessions` for what
+decides who is signed in and what they may do. `cached` and `s.forget` pick
+the database from that list. Every store method that writes it calls
+`s.forget(ctx, group)` — or returns `s.forgetting(ctx, err, group)` — after
+the write commits. Cache a projection rather than a model that carries a
+secret, and add the type to `TestCachedTypesSurviveJSON`. Sessions are not in
+groups: every write to one puts the rows it changed (`RETURNING`) with
+`putAdminSessions` / `putUserSessions`, and readers only fill an empty key —
+see `internal/cache/sessions.go`. Never users, codes or refresh tokens. Redis
+is optional: a nil cache is an empty one, so everything has to work without it.
 
 **A language.** A language is the sign-in pages' language: the panel is not
 translated. An installation adds its own on the Languages tab of the Settings

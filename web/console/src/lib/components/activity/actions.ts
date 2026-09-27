@@ -3,6 +3,7 @@ import {
 	RiAdminLine,
 	RiAppsLine,
 	RiCodeBoxLine,
+	RiDatabase2Line,
 	RiErrorWarningLine,
 	RiFileList3Line,
 	RiGitBranchLine,
@@ -420,6 +421,32 @@ const actions: Record<string, Action> = {
 		category: 'admins',
 		tone: 'danger',
 		icon: RiShieldKeyholeLine
+	},
+	'cache.entry_updated': {
+		label: 'Cached value edited',
+		verb: 'edited a cached value in the Redis database',
+		category: 'other',
+		tone: 'warning',
+		icon: RiDatabase2Line
+	},
+	'cache.entry_deleted': {
+		label: 'Cached key removed',
+		verb: 'removed a cached key from the Redis database',
+		category: 'other',
+		icon: RiDatabase2Line
+	},
+	'cache.group_cleared': {
+		label: 'Cache group cleared',
+		verb: 'cleared a cache group in the Redis database',
+		category: 'other',
+		icon: RiDatabase2Line
+	},
+	'cache.flushed': {
+		label: 'Redis database flushed',
+		verb: 'flushed the Redis database',
+		category: 'other',
+		tone: 'danger',
+		icon: RiDatabase2Line
 	},
 	'login_flow.created': {
 		label: 'Login flow created',

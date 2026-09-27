@@ -13,7 +13,7 @@ func TestLiveSessions(t *testing.T) {
 
 	for _, email := range []string{"grace@example.com", "alan@example.com"} {
 		super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
-			"email": email, "email_verified": true, "password": "a-password-1", "confirm_password": "a-password-1",
+			"email": email, "is_email_verified": true, "password": "a-password-1", "confirm_password": "a-password-1",
 		}, nil)
 	}
 

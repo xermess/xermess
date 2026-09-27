@@ -8,7 +8,7 @@ import (
 )
 
 func TestFullName(t *testing.T) {
-	admin := AdminUser{FirstName: "Ada", LastName: "Lovelace"}
+	admin := Admin{FirstName: "Ada", LastName: "Lovelace"}
 
 	if got, want := admin.FullName(), "Ada Lovelace"; got != want {
 		t.Errorf("FullName() = %q, want %q", got, want)
@@ -22,33 +22,33 @@ func TestCanSignIn(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		admin AdminUser
+		admin Admin
 		want  bool
 	}{
 		{
 			name:  "active account",
-			admin: AdminUser{Status: StatusActive},
+			admin: Admin{Status: StatusActive},
 			want:  true,
 		},
 		{
 			name:  "invited account has not set a password yet",
-			admin: AdminUser{Status: StatusInvited},
+			admin: Admin{Status: StatusInvited},
 		},
 		{
 			name:  "suspended account",
-			admin: AdminUser{Status: StatusSuspended},
+			admin: Admin{Status: StatusSuspended},
 		},
 		{
 			name:  "disabled account",
-			admin: AdminUser{Status: StatusDisabled},
+			admin: Admin{Status: StatusDisabled},
 		},
 		{
 			name:  "active but locked out after failed attempts",
-			admin: AdminUser{Status: StatusActive, LockedUntil: &future},
+			admin: Admin{Status: StatusActive, LockedUntil: &future},
 		},
 		{
 			name:  "active and the lockout has expired",
-			admin: AdminUser{Status: StatusActive, LockedUntil: &past},
+			admin: Admin{Status: StatusActive, LockedUntil: &past},
 			want:  true,
 		},
 	}
@@ -64,17 +64,17 @@ func TestCanSignIn(t *testing.T) {
 
 // global assigns a role for the whole panel.
 func global(name string, permissions ...string) AdminRoleAssignment {
-	return AdminRoleAssignment{Role: Role{Name: name, Permissions: permissions}}
+	return AdminRoleAssignment{Role: AdminRole{Name: name, Permissions: permissions}}
 }
 
 // scoped assigns a role for one application.
 func scoped(app uuid.UUID, name string, permissions ...string) AdminRoleAssignment {
-	return AdminRoleAssignment{Role: Role{Name: name, Permissions: permissions}, ApplicationID: &app}
+	return AdminRoleAssignment{Role: AdminRole{Name: name, Permissions: permissions}, ApplicationID: &app}
 }
 
 func TestHasRole(t *testing.T) {
 	shop := uuid.New()
-	admin := AdminUser{Assignments: []AdminRoleAssignment{
+	admin := Admin{Assignments: []AdminRoleAssignment{
 		global("support"),
 		scoped(shop, RoleSuperAdmin),
 	}}
@@ -92,7 +92,7 @@ func TestHasRole(t *testing.T) {
 		t.Error("IsSuperAdmin() = true for a super_admin scoped to one app, want false")
 	}
 
-	if (AdminUser{}).HasRole("moderator") {
+	if (Admin{}).HasRole("moderator") {
 		t.Error("an admin with no assignments loaded reported having a role")
 	}
 }
@@ -102,25 +102,25 @@ func TestHasPermission(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		admin      AdminUser
+		admin      Admin
 		permission string
 		app        *uuid.UUID // nil asks about the whole panel
 		want       bool
 	}{
 		{
 			name:       "a global role grants it",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{global("support", PermUsersRead)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{global("support", PermUsersRead)}},
 			permission: PermUsersRead,
 			want:       true,
 		},
 		{
 			name:       "a global role does not grant it",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{global("support", PermUsersRead)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{global("support", PermUsersRead)}},
 			permission: PermUsersWrite,
 		},
 		{
 			name: "the second of two roles grants it",
-			admin: AdminUser{Assignments: []AdminRoleAssignment{
+			admin: Admin{Assignments: []AdminRoleAssignment{
 				global("auditor", PermActivityRead),
 				global("support", PermUsersWrite),
 			}},
@@ -129,44 +129,44 @@ func TestHasPermission(t *testing.T) {
 		},
 		{
 			name:       "a global role grants it for any one application",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{global("admin", PermUserRolesWrite)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{global("admin", PermUserRolesWrite)}},
 			permission: PermUserRolesWrite,
 			app:        &shop,
 			want:       true,
 		},
 		{
 			name:       "a role scoped to the application grants it there",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUserRolesWrite)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUserRolesWrite)}},
 			permission: PermUserRolesWrite,
 			app:        &shop,
 			want:       true,
 		},
 		{
 			name:       "a role scoped to another application does not",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUserRolesWrite)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUserRolesWrite)}},
 			permission: PermUserRolesWrite,
 			app:        &blog,
 		},
 		{
 			name:       "a scoped role does not grant it for the whole panel",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUserRolesWrite)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUserRolesWrite)}},
 			permission: PermUserRolesWrite,
 		},
 		{
 			name:       "a scoped role never grants a permission that cannot be scoped",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUsersWrite)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{scoped(shop, "owner", PermUsersWrite)}},
 			permission: PermUsersWrite,
 			app:        &shop,
 		},
 		{
 			name:       "super admin may do anything, with no permissions listed",
-			admin:      AdminUser{Assignments: []AdminRoleAssignment{global(RoleSuperAdmin)}},
+			admin:      Admin{Assignments: []AdminRoleAssignment{global(RoleSuperAdmin)}},
 			permission: "anything.at.all",
 			want:       true,
 		},
 		{
 			name:       "no roles at all",
-			admin:      AdminUser{},
+			admin:      Admin{},
 			permission: PermUsersRead,
 		},
 	}
@@ -185,7 +185,7 @@ func TestHasPermission(t *testing.T) {
 func TestApplicationsWith(t *testing.T) {
 	shop, blog := uuid.New(), uuid.New()
 
-	owner := AdminUser{Assignments: []AdminRoleAssignment{
+	owner := Admin{Assignments: []AdminRoleAssignment{
 		scoped(shop, "owner", PermApplicationsRead),
 		scoped(blog, "support", PermUsersRead),
 	}}
@@ -203,7 +203,7 @@ func TestApplicationsWith(t *testing.T) {
 		t.Errorf("ScopedPermissions() = %v, want applications.read for shop only", scopedPerms)
 	}
 
-	super := AdminUser{Assignments: []AdminRoleAssignment{global(RoleSuperAdmin)}}
+	super := Admin{Assignments: []AdminRoleAssignment{global(RoleSuperAdmin)}}
 	if all, _ := super.ApplicationsWith(PermApplicationsRead); !all {
 		t.Error("a super admin should reach every application")
 	}
@@ -212,7 +212,7 @@ func TestApplicationsWith(t *testing.T) {
 // Permissions is what the panel is drawn from, so it lists catalog names
 // only, in catalog order, and a super admin gets every one of them.
 func TestPermissions(t *testing.T) {
-	moderator := AdminUser{Assignments: []AdminRoleAssignment{
+	moderator := Admin{Assignments: []AdminRoleAssignment{
 		global("moderator", PermUsersWrite, "retired.permission", PermActivityRead),
 		scoped(uuid.New(), "owner", PermUserRolesWrite),
 	}}
@@ -223,7 +223,7 @@ func TestPermissions(t *testing.T) {
 		t.Errorf("Permissions() = %v, want %v", got, want)
 	}
 
-	super := AdminUser{Assignments: []AdminRoleAssignment{global(RoleSuperAdmin)}}
+	super := Admin{Assignments: []AdminRoleAssignment{global(RoleSuperAdmin)}}
 	if got := super.Permissions(); len(got) != len(AdminPermissions) {
 		t.Errorf("super admin Permissions() = %v, want the whole catalog", got)
 	}
@@ -263,25 +263,25 @@ func TestSessionIsActive(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		session AdminUserSession
+		session AdminSession
 		want    bool
 	}{
 		{
 			name:    "current session that cleared MFA",
-			session: AdminUserSession{ExpiresAt: future, MFAPassed: true},
+			session: AdminSession{ExpiresAt: future, IsMFAPassed: true},
 			want:    true,
 		},
 		{
 			name:    "expired",
-			session: AdminUserSession{ExpiresAt: past, MFAPassed: true},
+			session: AdminSession{ExpiresAt: past, IsMFAPassed: true},
 		},
 		{
 			name:    "revoked",
-			session: AdminUserSession{ExpiresAt: future, MFAPassed: true, RevokedAt: &past},
+			session: AdminSession{ExpiresAt: future, IsMFAPassed: true, RevokedAt: &past},
 		},
 		{
 			name:    "half-finished login that never cleared MFA",
-			session: AdminUserSession{ExpiresAt: future},
+			session: AdminSession{ExpiresAt: future},
 		},
 	}
 

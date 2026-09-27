@@ -17,7 +17,7 @@ import (
 func (s *Store) SocialProviders(ctx context.Context, enabledOnly bool) ([]model.SocialProvider, error) {
 	query := s.db.WithContext(ctx).Order("position, created_at")
 	if enabledOnly {
-		query = query.Where("enabled = ?", true)
+		query = query.Where("is_enabled = ?", true)
 	}
 
 	var providers []model.SocialProvider
@@ -100,7 +100,7 @@ func (s *Store) SaveSocialProvider(ctx context.Context, provider *model.SocialPr
 // and the accounts themselves stay.
 func (s *Store) DeleteSocialProvider(ctx context.Context, provider *model.SocialProvider) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Unscoped().Where("provider_id = ?", provider.ID).Delete(&model.UserIdentity{}).Error
+		err := tx.Unscoped().Where("provider_id = ?", provider.ID).Delete(&model.SocialIdentity{}).Error
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (s *Store) SocialIdentityCounts(ctx context.Context) (map[uuid.UUID]int64, 
 	}
 
 	err := s.db.WithContext(ctx).
-		Model(&model.UserIdentity{}).
+		Model(&model.SocialIdentity{}).
 		Select("provider_id, count(*) AS count").
 		Group("provider_id").
 		Scan(&rows).Error
@@ -151,9 +151,9 @@ func (s *Store) SocialIdentityCounts(ctx context.Context) (map[uuid.UUID]int64, 
 	return counts, nil
 }
 
-// UserIdentity returns the identity a provider's subject belongs to.
-func (s *Store) UserIdentity(ctx context.Context, providerID uuid.UUID, subject string) (*model.UserIdentity, error) {
-	var identity model.UserIdentity
+// SocialIdentity returns the identity a provider's subject belongs to.
+func (s *Store) SocialIdentity(ctx context.Context, providerID uuid.UUID, subject string) (*model.SocialIdentity, error) {
+	var identity model.SocialIdentity
 	err := s.db.WithContext(ctx).
 		First(&identity, "provider_id = ? AND subject = ?", providerID, subject).Error
 	if err != nil {
@@ -163,9 +163,9 @@ func (s *Store) UserIdentity(ctx context.Context, providerID uuid.UUID, subject 
 	return &identity, nil
 }
 
-// UserIdentities returns every provider one user can sign in with.
-func (s *Store) UserIdentities(ctx context.Context, userID uuid.UUID) ([]model.UserIdentity, error) {
-	var identities []model.UserIdentity
+// SocialIdentities returns every provider one user can sign in with.
+func (s *Store) SocialIdentities(ctx context.Context, userID uuid.UUID) ([]model.SocialIdentity, error) {
+	var identities []model.SocialIdentity
 	err := s.db.WithContext(ctx).
 		Preload("Provider").
 		Where("user_id = ?", userID).
@@ -175,14 +175,14 @@ func (s *Store) UserIdentities(ctx context.Context, userID uuid.UUID) ([]model.U
 	return identities, err
 }
 
-// CreateUserIdentity connects an account at a provider to a user.
-func (s *Store) CreateUserIdentity(ctx context.Context, identity *model.UserIdentity) error {
+// CreateSocialIdentity connects an account at a provider to a user.
+func (s *Store) CreateSocialIdentity(ctx context.Context, identity *model.SocialIdentity) error {
 	return translate(s.db.WithContext(ctx).Create(identity).Error)
 }
 
 // MarkIdentityUsed notes that a user signed in with an identity, and keeps
 // the address the provider gave this time.
-func (s *Store) MarkIdentityUsed(ctx context.Context, identity *model.UserIdentity, email string, at time.Time) error {
+func (s *Store) MarkIdentityUsed(ctx context.Context, identity *model.SocialIdentity, email string, at time.Time) error {
 	identity.LastLoginAt = &at
 	identity.Email = email
 
@@ -191,8 +191,8 @@ func (s *Store) MarkIdentityUsed(ctx context.Context, identity *model.UserIdenti
 		Updates(map[string]any{"last_login_at": at, "email": email}).Error)
 }
 
-// DeleteUserIdentity disconnects a provider from a user's account.
-func (s *Store) DeleteUserIdentity(ctx context.Context, identity *model.UserIdentity) error {
+// DeleteSocialIdentity disconnects a provider from a user's account.
+func (s *Store) DeleteSocialIdentity(ctx context.Context, identity *model.SocialIdentity) error {
 	return s.db.WithContext(ctx).Unscoped().Delete(identity).Error
 }
 
@@ -242,7 +242,7 @@ func (s *Store) SocialAccountsFor(ctx context.Context, userIDs []uuid.UUID) (map
 	}
 
 	err := s.db.WithContext(ctx).
-		Table("user_identities AS i").
+		Table("social_identities AS i").
 		Select(`i.id, i.user_id, p.name AS provider, p.slug, p.kind,
 			i.email, i.created_at AS connected_at, i.last_login_at`).
 		Joins("JOIN social_providers p ON p.id = i.provider_id AND p.deleted_at IS NULL").
@@ -268,9 +268,9 @@ func (s *Store) SocialAccountsFor(ctx context.Context, userIDs []uuid.UUID) (map
 	return accounts, nil
 }
 
-// UserIdentityByID returns one identity, for disconnecting it.
-func (s *Store) UserIdentityByID(ctx context.Context, id uuid.UUID) (*model.UserIdentity, error) {
-	var identity model.UserIdentity
+// SocialIdentityByID returns one identity, for disconnecting it.
+func (s *Store) SocialIdentityByID(ctx context.Context, id uuid.UUID) (*model.SocialIdentity, error) {
+	var identity model.SocialIdentity
 	if err := s.db.WithContext(ctx).First(&identity, "id = ?", id).Error; err != nil {
 		return nil, translate(err)
 	}

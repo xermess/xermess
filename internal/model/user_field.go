@@ -46,16 +46,16 @@ func (t FieldType) Valid() bool {
 type UserField struct {
 	Base
 
-	Name     string    `gorm:"uniqueIndex;size:64;not null" json:"name"`
-	Label    string    `gorm:"size:100;not null" json:"label"`
-	Type     FieldType `gorm:"type:varchar(16);not null" json:"type"`
-	Required bool      `gorm:"not null;default:false" json:"required"`
+	Name       string    `gorm:"uniqueIndex;size:64;not null" json:"name"`
+	Label      string    `gorm:"size:100;not null" json:"label"`
+	Type       FieldType `gorm:"type:varchar(16);not null" json:"type"`
+	IsRequired bool      `gorm:"not null;default:false" json:"is_required"`
 
-	// Unique means no two users may hold the same value. It is checked when a
+	// IsUnique means no two users may hold the same value. It is checked when a
 	// user is written, since the values live in a JSON column rather than in
 	// a column the database could index. The column is is_unique because
 	// UNIQUE is a word of SQL's own.
-	Unique bool `gorm:"column:is_unique;not null;default:false" json:"unique"`
+	IsUnique bool `gorm:"not null;default:false" json:"is_unique"`
 
 	// Min and Max bound a number's value, or the length of text. Nil means
 	// the field is not bounded that way.
@@ -71,11 +71,11 @@ type UserField struct {
 	// Built-in fields come first, in the order BuiltinFields lists them.
 	Position int `gorm:"not null;default:0" json:"position"`
 
-	// Builtin marks a field that is a column of the record rather than a row
+	// IsBuiltin marks a field that is a column of the record rather than a row
 	// of this table. It is never stored — nothing in user_fields is built in
 	// — and is here so the panel can be given one list of fields and still
 	// know which of them it may edit.
-	Builtin bool `gorm:"-" json:"builtin"`
+	IsBuiltin bool `gorm:"-" json:"is_builtin"`
 }
 
 // Bounded reports whether this type of field can carry a Min and a Max.
@@ -266,7 +266,7 @@ func number(value float64) string {
 // requiredError is nil for an optional field, so an empty value is simply not
 // stored.
 func (f UserField) requiredError() error {
-	if f.Required {
+	if f.IsRequired {
 		return ErrFieldValue{f.Name, "is required"}
 	}
 	return nil
@@ -280,14 +280,14 @@ func (f UserField) requiredError() error {
 // users table — nothing here is ever inserted anywhere — so these names are
 // reserved: an additional field may not take one.
 const (
-	FieldEmailName         = "email"
-	FieldEmailVerifiedName = "email_verified"
-	FieldFirstNameName     = "first_name"
-	FieldLastNameName      = "last_name"
-	FieldIsActiveName      = "is_active"
-	// FieldIsTemporaryPasswordName is shown and filtered like the others, but
+	FieldEmailName           = "email"
+	FieldIsEmailVerifiedName = "is_email_verified"
+	FieldFirstNameName       = "first_name"
+	FieldLastNameName        = "last_name"
+	FieldIsActiveName        = "is_active"
+	// FieldIsPasswordTemporaryName is shown and filtered like the others, but
 	// it is set together with the password rather than on its own.
-	FieldIsTemporaryPasswordName = "is_temporary_password"
+	FieldIsPasswordTemporaryName = "is_password_temporary"
 )
 
 // BuiltinFields describes the columns every user record has.
@@ -302,51 +302,51 @@ func BuiltinFields() []UserField {
 
 	return []UserField{
 		{
-			Name:     FieldEmailName,
-			Label:    "Email",
-			Type:     FieldEmail,
-			Required: true,
-			Unique:   true,
-			Max:      max(255),
-			Builtin:  true,
-			Position: 1,
+			Name:       FieldEmailName,
+			Label:      "Email",
+			Type:       FieldEmail,
+			IsRequired: true,
+			IsUnique:   true,
+			Max:        max(255),
+			IsBuiltin:  true,
+			Position:   1,
 		},
 		{
-			Name:     FieldEmailVerifiedName,
-			Label:    "Email verified",
-			Type:     FieldBool,
-			Builtin:  true,
-			Position: 2,
+			Name:      FieldIsEmailVerifiedName,
+			Label:     "Is Email Verified",
+			Type:      FieldBool,
+			IsBuiltin: true,
+			Position:  2,
 		},
 		{
-			Name:     FieldFirstNameName,
-			Label:    "First name",
-			Type:     FieldText,
-			Max:      max(100),
-			Builtin:  true,
-			Position: 3,
+			Name:      FieldFirstNameName,
+			Label:     "First name",
+			Type:      FieldText,
+			Max:       max(100),
+			IsBuiltin: true,
+			Position:  3,
 		},
 		{
-			Name:     FieldLastNameName,
-			Label:    "Last name",
-			Type:     FieldText,
-			Max:      max(100),
-			Builtin:  true,
-			Position: 4,
+			Name:      FieldLastNameName,
+			Label:     "Last name",
+			Type:      FieldText,
+			Max:       max(100),
+			IsBuiltin: true,
+			Position:  4,
 		},
 		{
-			Name:     FieldIsActiveName,
-			Label:    "Active",
-			Type:     FieldBool,
-			Builtin:  true,
-			Position: 5,
+			Name:      FieldIsActiveName,
+			Label:     "Is Active",
+			Type:      FieldBool,
+			IsBuiltin: true,
+			Position:  5,
 		},
 		{
-			Name:     FieldIsTemporaryPasswordName,
-			Label:    "Temporary password",
-			Type:     FieldBool,
-			Builtin:  true,
-			Position: 6,
+			Name:      FieldIsPasswordTemporaryName,
+			Label:     "Is Temporary",
+			Type:      FieldBool,
+			IsBuiltin: true,
+			Position:  6,
 		},
 	}
 }

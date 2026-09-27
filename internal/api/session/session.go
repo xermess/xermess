@@ -194,9 +194,9 @@ func ID(c *gin.Context) uuid.UUID {
 
 // Admin returns the administrator making the request. It is only valid behind
 // Require, which is the only thing that sets it.
-func Admin(c *gin.Context) *model.AdminUser {
+func Admin(c *gin.Context) *model.Admin {
 	user, _ := c.Get(key)
-	admin, _ := user.(*model.AdminUser)
+	admin, _ := user.(*model.Admin)
 
 	return admin
 }

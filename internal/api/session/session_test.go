@@ -13,7 +13,7 @@ import (
 
 // serve runs one request through a guard, as the administrator given (or
 // nobody), and returns the status it was answered with.
-func serve(guard gin.HandlerFunc, admin *model.AdminUser) int {
+func serve(guard gin.HandlerFunc, admin *model.Admin) int {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
@@ -33,8 +33,8 @@ func serve(guard gin.HandlerFunc, admin *model.AdminUser) int {
 }
 
 // assigned is an administrator holding these roles for the whole panel.
-func assigned(roles ...model.Role) *model.AdminUser {
-	admin := &model.AdminUser{}
+func assigned(roles ...model.AdminRole) *model.Admin {
+	admin := &model.Admin{}
 	for _, role := range roles {
 		admin.Assignments = append(admin.Assignments, model.AdminRoleAssignment{Role: role})
 	}
@@ -42,12 +42,12 @@ func assigned(roles ...model.Role) *model.AdminUser {
 }
 
 func TestCan(t *testing.T) {
-	support := assigned(model.Role{Name: "support", Permissions: []string{model.PermUsersRead}})
-	super := assigned(model.Role{Name: model.RoleSuperAdmin})
+	support := assigned(model.AdminRole{Name: "support", Permissions: []string{model.PermUsersRead}})
+	super := assigned(model.AdminRole{Name: model.RoleSuperAdmin})
 
 	tests := []struct {
 		name       string
-		admin      *model.AdminUser
+		admin      *model.Admin
 		permission string
 		want       int
 	}{
@@ -69,8 +69,8 @@ func TestCan(t *testing.T) {
 // Every permission in the catalog is not enough to manage administrators:
 // that takes the super_admin role itself.
 func TestRequireSuperAdmin(t *testing.T) {
-	everything := assigned(model.Role{Name: "admin", Permissions: model.AdminPermissionNames()})
-	super := assigned(model.Role{Name: model.RoleSuperAdmin})
+	everything := assigned(model.AdminRole{Name: "admin", Permissions: model.AdminPermissionNames()})
+	super := assigned(model.AdminRole{Name: model.RoleSuperAdmin})
 
 	if got := serve(RequireSuperAdmin(), everything); got != http.StatusForbidden {
 		t.Errorf("admin with every permission: status = %d, want 403", got)
@@ -84,12 +84,12 @@ func TestRequireSuperAdmin(t *testing.T) {
 }
 
 // scopedTo is an administrator holding a role for one application only.
-func scopedTo(app uuid.UUID, role model.Role) *model.AdminUser {
-	return &model.AdminUser{Assignments: []model.AdminRoleAssignment{{Role: role, ApplicationID: &app}}}
+func scopedTo(app uuid.UUID, role model.AdminRole) *model.Admin {
+	return &model.Admin{Assignments: []model.AdminRoleAssignment{{Role: role, ApplicationID: &app}}}
 }
 
 // as is a request context carrying the administrator, as Require leaves it.
-func as(admin *model.AdminUser) *gin.Context {
+func as(admin *model.Admin) *gin.Context {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	if admin != nil {
 		c.Set(key, admin)
@@ -100,7 +100,7 @@ func as(admin *model.AdminUser) *gin.Context {
 
 func TestCanAnywhere(t *testing.T) {
 	shop := uuid.New()
-	manager := scopedTo(shop, model.Role{Name: "app_manager", Permissions: []string{model.PermApplicationsRead}})
+	manager := scopedTo(shop, model.AdminRole{Name: "app_manager", Permissions: []string{model.PermApplicationsRead}})
 
 	if got := serve(CanAnywhere(model.PermUsersRead, model.PermApplicationsRead), manager); got != http.StatusNoContent {
 		t.Errorf("one of the permissions for one application: status = %d, want 204", got)
@@ -111,7 +111,7 @@ func TestCanAnywhere(t *testing.T) {
 
 	// A permission that cannot be scoped grants nothing when held for one
 	// application.
-	usersForShop := scopedTo(shop, model.Role{Name: "support", Permissions: []string{model.PermUsersRead}})
+	usersForShop := scopedTo(shop, model.AdminRole{Name: "support", Permissions: []string{model.PermUsersRead}})
 	if got := serve(CanAnywhere(model.PermUsersRead), usersForShop); got != http.StatusForbidden {
 		t.Errorf("an unscopable permission held for one application: status = %d, want 403", got)
 	}
@@ -119,7 +119,7 @@ func TestCanAnywhere(t *testing.T) {
 
 func TestScopedChecks(t *testing.T) {
 	shop, blog := uuid.New(), uuid.New()
-	manager := as(scopedTo(shop, model.Role{
+	manager := as(scopedTo(shop, model.AdminRole{
 		Name:        "app_manager",
 		Permissions: []string{model.PermApplicationsRead, model.PermUserRolesWrite},
 	}))
@@ -141,7 +141,7 @@ func TestScopedChecks(t *testing.T) {
 	if reach := Reach(manager, model.PermApplicationsRead); len(reach) != 1 || reach[0] != shop {
 		t.Errorf("Reach = %v, want only their application", reach)
 	}
-	if reach := Reach(as(assigned(model.Role{Name: model.RoleSuperAdmin})), model.PermApplicationsRead); reach != nil {
+	if reach := Reach(as(assigned(model.AdminRole{Name: model.RoleSuperAdmin})), model.PermApplicationsRead); reach != nil {
 		t.Errorf("Reach for a super admin = %v, want nil for every application", reach)
 	}
 	if reach := Reach(as(nil), model.PermApplicationsRead); reach == nil || len(reach) != 0 {

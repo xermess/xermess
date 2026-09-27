@@ -5,11 +5,11 @@ package model
 // renamed or removed.
 const RoleSuperAdmin = "super_admin"
 
-// Role is a named set of permissions that administrators hold.
+// AdminRole is a named set of permissions that administrators hold.
 //
 // Other than super_admin, roles are made by a super admin in the panel —
 // "moderator", "support" — and grant names from AdminPermissions.
-type Role struct {
+type AdminRole struct {
 	Base
 
 	Name        string `gorm:"type:varchar(64);uniqueIndex;not null" json:"name"`
@@ -21,17 +21,17 @@ type Role struct {
 }
 
 // TableName pins the table name.
-func (Role) TableName() string {
-	return "roles"
+func (AdminRole) TableName() string {
+	return "admin_roles"
 }
 
 // IsSuperAdmin reports whether this is the built-in super_admin role.
-func (r Role) IsSuperAdmin() bool {
+func (r AdminRole) IsSuperAdmin() bool {
 	return r.Name == RoleSuperAdmin
 }
 
 // Grants reports whether holding this role allows a permission.
-func (r Role) Grants(permission string) bool {
+func (r AdminRole) Grants(permission string) bool {
 	if r.IsSuperAdmin() {
 		return true
 	}

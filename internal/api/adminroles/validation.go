@@ -16,7 +16,7 @@ func init() {
 // applyTo checks the request and copies it onto a role. The permissions are
 // stored once each, in catalog order, and a name the catalog does not have is
 // refused rather than stored to grant nothing.
-func (r *roleRequest) applyTo(role *model.Role) error {
+func (r *roleRequest) applyTo(role *model.AdminRole) error {
 	r.clean()
 
 	if err := validate.Struct(r); err != nil {

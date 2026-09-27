@@ -84,7 +84,7 @@ func (s *Store) OfferedLanguages(ctx context.Context) ([]model.Language, error) 
 
 	return cached(ctx, s, cache.Languages, "offered", func() ([]model.Language, error) {
 		var languages []model.Language
-		err := s.db.WithContext(ctx).Where("enabled = ?", true).Order("position, code").Find(&languages).Error
+		err := s.db.WithContext(ctx).Where("is_enabled = ?", true).Order("position, code").Find(&languages).Error
 
 		return languages, err
 	})
@@ -388,9 +388,9 @@ func (s *Store) EnsureLanguages(ctx context.Context, shipped []i18n.File) error 
 				continue
 			case errors.Is(err, ErrNotFound):
 				language = model.Language{
-					Code: file.Code, Name: file.Name, Native: file.Native,
-					Enabled:  file.Code == model.BaseLanguage,
-					Position: nextPosition(tx),
+					Code: file.Code, Name: file.Name, NativeName: file.Native,
+					IsEnabled: file.Code == model.BaseLanguage,
+					Position:  nextPosition(tx),
 				}
 				if err := tx.Create(&language).Error; err != nil {
 					return translate(err)
@@ -401,8 +401,8 @@ func (s *Store) EnsureLanguages(ctx context.Context, shipped []i18n.File) error 
 
 			// A row written before languages had names — the migration's
 			// seed, on an older build — takes them from the file.
-			if language.Name == "" || language.Native == "" {
-				err := tx.Model(&language).Updates(map[string]any{"name": file.Name, "native": file.Native}).Error
+			if language.Name == "" || language.NativeName == "" {
+				err := tx.Model(&language).Updates(map[string]any{"name": file.Name, "native_name": file.Native}).Error
 				if err != nil {
 					return translate(err)
 				}

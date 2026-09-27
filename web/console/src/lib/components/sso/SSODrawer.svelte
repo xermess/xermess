@@ -115,7 +115,7 @@
 		protocol = from?.protocol ?? 'oidc';
 		name = from?.name ?? '';
 		slug = from?.slug ?? '';
-		enabled = from?.enabled ?? false;
+		enabled = from?.is_enabled ?? false;
 		issuer = from?.issuer ?? '';
 		clientId = from?.client_id ?? '';
 		clientSecret = '';
@@ -170,7 +170,7 @@
 	function input(): SSOConnectionInput {
 		const body: SSOConnectionInput = {
 			name: name.trim(),
-			enabled,
+			is_enabled: enabled,
 			domains,
 			enforce_domains: enforced,
 			show_on_login: showOnLogin,

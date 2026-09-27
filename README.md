@@ -70,7 +70,7 @@ i18n/                       the sign-in pages' translations, grouped by app, lan
 internal/config/config.go      reads .env
 internal/database/database.go  opens the connection
 internal/database/migrate.go   applies migrations
-internal/cache/                Redis: the cache in front of the store, and the rate limit's counts
+internal/cache/                Redis: the cache and session databases in front of the store, and the rate limit's counts
 internal/store/                every query in the project, one file per subject
 internal/auth/auth.go          signs administrators in and out, records what they do
 internal/oidc/                 the OAuth 2.0 / OpenID Connect provider: authorize, tokens,
@@ -380,6 +380,13 @@ code is defining its problem and adding the sentence to
 | `PUT`  | `/api/v1/admin/mail/content/:code` | yes        | Write one language's words for them |
 | `GET`  | `/api/v1/admin/otp`           | yes             | The emailed one-time codes, and the flows that ask for one |
 | `PATCH`| `/api/v1/admin/otp`           | yes             | Change how long a code is, lasts and may be guessed at |
+| `GET`  | `/api/v1/admin/cache`         | yes             | Both Redis databases summed up (a super admin's) |
+| `GET`  | `/api/v1/admin/cache/:database/keys` | yes      | A page of keys (`?kind=&group=&search=&cursor=&limit=`) |
+| `GET`  | `/api/v1/admin/cache/:database/key` | yes       | One key and what it holds (`?name=`) |
+| `PUT`  | `/api/v1/admin/cache/:database/key` | yes       | Replace a cached value in the cache database (`?name=`) |
+| `DELETE`| `/api/v1/admin/cache/:database/key` | yes      | Remove one key (`?name=`) |
+| `POST` | `/api/v1/admin/cache/:database/groups/:group/clear` | yes | Forget a group, for every server process |
+| `DELETE`| `/api/v1/admin/cache/:database` | yes          | Flush this server's keys in one database |
 | `GET`  | `/api/v1/admin/user-sessions` | yes             | Active sessions, newest first (`?search=&user=&after=&limit=`) |
 | `DELETE`| `/api/v1/admin/user-sessions/:id` | yes         | Sign one session out           |
 | `DELETE`| `/api/v1/admin/users/:id/sessions` | yes        | Sign a user out everywhere: every session, every application's tokens |
@@ -530,8 +537,8 @@ Every page talks to the API.
 A user record is made of two kinds of field, and the difference is where the
 value lives.
 
-**Built-in fields are columns of `users`**: `email`, `email_verified`,
-`first_name`, `last_name`, `is_active`. Every installation has them, the
+**Built-in fields are columns of `users`**: `email`, `is_email_verified`,
+`first_name`, `last_name`, `is_active`, `is_password_temporary`. Every installation has them, the
 database enforces them, and they can be indexed and searched properly. There
 is no table of them — `BuiltinFields` in `internal/model/user_field.go` only
 *describes* those columns so the panel can draw them, and a test pins that
@@ -549,7 +556,7 @@ keeps (required, unique, a smallest and largest value, a prefix), and
 `Normalise`, which checks a submitted value and returns what should be stored.
 
 The API returns both kinds in one list, built-ins first, each marked
-`builtin`. The panel draws its table and its form from that list, so a field
+`is_builtin`. The panel draws its table and its form from that list, so a field
 someone adds appears as a column and an input without any code changing.
 
 Searching matches the email or any stored value, because `data` is searched as
@@ -764,7 +771,7 @@ internal/api/social/           the panel's endpoints
 **What is stored.** `social_providers` is one row per provider, with the
 client secret — or, for Apple, the .p8 signing key — encrypted with the
 server's secret key, as the token signing keys are. Neither ever leaves the
-server: the panel is told only whether one is stored. `user_identities` is one
+server: the panel is told only whether one is stored. `social_identities` is one
 row per account at a provider, keyed by the provider's own subject, which is
 the only thing that identifies somebody reliably. `social_logins` is a sign-in
 that has gone to a provider and not come back: its `state` hashed, its PKCE
@@ -806,7 +813,7 @@ reach this server.
 `PATCH /api/v1/admin/social-providers/:id` is a true PATCH, as the
 organisation's is: a request that does not mention a setting leaves it as it
 is. That is what lets the panel's list turn a provider off with
-`{"enabled": false}` and nothing else, without emptying the endpoints and keys
+`{"is_enabled": false}` and nothing else, without emptying the endpoints and keys
 around it. The kind and the identifier are read when a provider is registered
 and never again — both are in the address registered with the provider.
 
@@ -1258,14 +1265,13 @@ Migrations are Go files in `migrations/`, run by
 [goose](https://github.com/pressly/goose). The server applies pending ones on
 start unless `LOGINER_DB_MIGRATE=false`.
 
-`20260917150000_schema.go` is the first: it builds the whole schema from
-`model.All()`, adds the indexes a struct tag cannot describe, and seeds the
-admin roles, the organisation, the default login flow and the base language.
-A fresh database gets its tables from the models, so one file cannot disagree
-with them; a database that already exists is stepped forward instead, which
-is what every migration after it does — the newest,
-`20260923180000_login_management.go`, adds the switches a login flow carries
-and the address a verification link may be a change to.
+`20260927000000_schema.go` is the whole schema in one step: it builds every
+table from `model.All()`, adds the indexes a struct tag cannot describe
+(partial, ordered, or with an operator class), and seeds the admin roles, the
+organisation, the default login flow and the base language. A fresh database
+gets its tables from the models, so the file cannot disagree with them; a
+database that already exists is stepped forward by the migrations added after
+it, one change each.
 
 ```sh
 make migrate-new name=add_admin_phone   # create an empty migration
@@ -1288,7 +1294,7 @@ func upAddAdminPhone(_ context.Context, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	return db.Migrator().AddColumn(&model.AdminUser{}, "Phone")
+	return db.Migrator().AddColumn(&model.Admin{}, "Phone")
 }
 
 func downAddAdminPhone(_ context.Context, tx *sql.Tx) error {
@@ -1296,7 +1302,7 @@ func downAddAdminPhone(_ context.Context, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	return db.Migrator().DropColumn(&model.AdminUser{}, "Phone")
+	return db.Migrator().DropColumn(&model.Admin{}, "Phone")
 }
 ```
 
@@ -1338,19 +1344,25 @@ signs in with, so setup asks for one thing rather than two.
 
 ## Redis
 
-Redis does two jobs, and neither is ever the only copy of anything.
+Redis is two databases on one server, and neither is ever the only copy of
+anything: everything in either is a copy the store can read from Postgres
+again.
 
-**It caches the reads every page makes.** Each sign-in page renders with the
-organisation, the sign-in buttons, the login flow, the offered languages and
-the whole text of one language; each panel page with the panel's languages
-and text. None of that changes more than a few times a week, so the store
-reads it through Redis (`internal/cache`) and the database is asked once per
-change rather than once per page. The largest value is a language's resolved
-text — every key of an app, gaps filled from English — kept as one JSON value
-per language and app.
+| Database   | Setting                    | Holds                                                                 |
+| ---------- | -------------------------- | --------------------------------------------------------------------- |
+| `cache`    | `LOGINER_REDIS_CACHE_DB` (0) | what every page reads and anybody may see                            |
+| `sessions` | `LOGINER_REDIS_SESSION_DB` (1) | who is signed in and what they may do, and the rate limit's counts |
 
-Only these are cached — nothing about users, sessions, tokens or
-administrators, where a stale answer would be a security question:
+Keeping them apart means flushing the cache never signs anybody out, and the
+session database can be given its own access and eviction policy. The two
+numbers have to differ; the server refuses to start otherwise.
+
+**The cache database holds the reads every page makes.** Each sign-in page
+renders with the organisation, the sign-in buttons, the login flow, the
+offered languages and the whole text of one language; each panel page with
+the panel's languages and text. None of that changes more than a few times a
+week, so the store reads it through Redis (`internal/cache`) and the database
+is asked once per change rather than once per page.
 
 | Group            | What                                                      |
 | ---------------- | --------------------------------------------------------- |
@@ -1358,6 +1370,30 @@ administrators, where a stale answer would be a security question:
 | `organization`   | the organisation's settings                               |
 | `login_flows`    | the default flow, and each flow by id                     |
 | `social_buttons` | the enabled providers as buttons — never the providers themselves, which carry sealed secrets |
+| `sso_buttons`    | the SSO connections with a button, and whether any is on  |
+| `otp_settings`   | how the emailed codes behave                              |
+
+**The session database holds what every signed-in request reads.** Before
+it, each request the panel made asked Postgres for the session, the
+administrator with their roles, the applications those roles are scoped to,
+their second factors and the sign-in security setting — six queries before
+the handler began. Each sign-in and account page asked for the user's
+session, and each authorization and token request for the application by its
+client id. Now those are read from Redis:
+
+| Kept as                         | What                                                            |
+| ------------------------------- | --------------------------------------------------------------- |
+| `session:admin:<token hash>`    | an administrator's session                                      |
+| `session:user:<token hash>`     | a user's session — the ids and times, never the token           |
+| group `admins`                  | each administrator with their roles and confirmed factors, without the password hash or the factors' secrets |
+| group `clients`                 | each application by client id, with the SHA-256 of its secret, which the token endpoint checks against |
+| group `admin_security`          | whether administrators need a second factor                     |
+| `ratelimit:<scope>:<address>`   | one rate-limit bucket (scope: public, token, admin)             |
+
+What is still never cached: users (a user record is one primary-key read, and
+the account pages write it), authorization codes and refresh tokens (each is
+spent once, and spending has to happen in the database), and anything with a
+password or a secret in it.
 
 **Every key says what it is**, under the prefix and then what it is for, so a
 Redis browser shows a tree and one group is one `--scan --pattern`:
@@ -1365,28 +1401,55 @@ Redis browser shows a tree and one group is one `--scan --pattern`:
 ```
 loginer:cache:<group>:generation              the group's current generation
 loginer:cache:<group>:v<generation>:<entry>   one cached value, as JSON
-loginer:ratelimit:<scope>:<address>           one rate-limit bucket (scope: public, admin)
+loginer:session:<admin|user>:<token hash>     one session, as JSON
+loginer:ratelimit:<scope>:<address>           one rate-limit bucket
 ```
 
-The entries are named for what they hold — `languages` has `all`,
-`offered`, `default`, `code:<tag>` and `text:<tag>:<app>`; `organization`
-has `settings`; `login_flows` has `default` and `id:<uuid>`;
-`social_buttons` has `enabled`.
+**A group is forgotten as one.** A write forgets its whole group once it has
+committed, by moving the group on to its next *generation*: forgetting is one
+`INCR` of the group's `generation` key. That is why a change is on the next
+page every server process renders, and why a reader that loaded a row just
+before a write cannot put it back after — it stores it under the generation
+that was forgotten, which nobody reads again. Old generations expire within
+the hour. Anything about an administrator — their account, a role's
+permissions, an assignment, a factor, a failed password that locks them out,
+an application a role is scoped to — forgets `admins`, so a change of
+permissions is on their next request.
 
-A write forgets its whole group once it has committed, by moving the group on
-to its next *generation*: forgetting is one `INCR` of the group's
-`generation` key. That is why a
-change is on the next page every server process renders, and why a reader
-that loaded a row just before a write cannot put it back after — it stores it
-under the generation that was forgotten, which nobody reads again. Old
-generations expire within the hour. A forget that could not reach Redis is
-remembered, and that process reads nothing from the cache until it has made
-it. `TestCachedTypesSurviveJSON` fails if a cached model gains a field JSON
-would leave out.
+**A session is overwritten, never forgotten.** A session is found by its
+token, which no write knows in advance, so it cannot live in a generation. The
+rule instead is who may overwrite whom: a reader that missed fills the key
+only if it is still empty (`SET NX`), and every write — signing in, passing a
+second factor, signing out, revoking one session or every session a person
+has — puts the rows it changed, as Postgres returned them, over whatever is
+there. A revoked session stays in Redis as revoked. So a reader that loaded a
+session a moment before it was revoked cannot bring it back: either its fill
+lands first and the revocation overwrites it, or the revocation lands first
+and the fill finds the key taken. A session is kept ten minutes at most, and
+never past its own expiry; the hourly sweep removes from Redis the sessions it
+deletes.
+
+A forget or a put that could not reach Redis is remembered, and that process
+reads nothing from Redis until it has made it. `TestCachedTypesSurviveJSON`
+fails if a cached model gains a field JSON would leave out without saying
+why that is fine.
 
 **It holds the rate limit's counts** — a token bucket per address in a Lua
 script, so two processes cannot both spend the last attempt, timed by Redis's
 own clock.
+
+**The panel's Cache page** (Settings → Cache, super admins only) shows both
+databases: how many keys of each kind, each group's generation and what it
+holds, the sessions by kind, and the memory the server uses. From there a
+super admin can read any key, edit a cached value in the cache database (any
+JSON but `null`, with a new time to live up to a day), remove a key — a
+rate-limit bucket, to let a locked-out address try again, say — clear a group,
+or flush a whole database. Two things are refused whatever the caller: a
+generation counter is never removed, since a group whose counter restarts at
+zero would read its oldest values again; and nothing in the session database
+is written by hand, since an edited session or administrator would sign
+somebody in, or give them roles, the database never did. Every change is in
+the activity log.
 
 Redis going away is never an outage. At startup a configured Redis that does
 not answer stops the server, like a database that does not, so a wrong
@@ -1403,16 +1466,17 @@ is not in Postgres, and a Redis restored from an old snapshot would bring
 back old generations — and the text in them — until they expire.
 
 The settings are `LOGINER_REDIS_HOST`, `_PORT`, `_USERNAME`, `_PASSWORD`,
-`_DB` and `_PREFIX` (default `loginer:`, so one Redis can serve several
-installations). `make setup` adds them to a `.env` that predates them. In
-production, `deploy/compose.yaml` runs one alongside Postgres with no
-persistence, a 256 MB cap and `volatile-lru`, which evicts cached values and
-never the generation counters that say which are current.
+`_CACHE_DB`, `_SESSION_DB` and `_PREFIX` (default `loginer:`, so one Redis can
+serve several installations). `make setup` adds them to a `.env` that
+predates them. In production, `deploy/compose.yaml` runs one alongside
+Postgres with no persistence, a 256 MB cap and `volatile-lru`, which evicts
+cached values and sessions — every one has a time to live — and never the
+generation counters that say which values are current.
 
 `make test-integration` runs the whole API suite with the Redis in `.env`
-under a throwaway prefix per test, so every end-to-end test also proves a
-write is seen through the cache; the `TestLive…` tests in `internal/cache`
-and `internal/api/ratelimit` need it too.
+under a throwaway prefix per test, in databases 14 and 15, so every
+end-to-end test also proves a write is seen through the cache; the `TestLive…`
+tests in `internal/cache` and `internal/api/ratelimit` need it too.
 
 ## Configuration
 

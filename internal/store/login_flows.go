@@ -71,7 +71,7 @@ func (s *Store) EffectiveLoginFlow(ctx context.Context, app *model.Application) 
 	if app != nil && app.LoginFlowID != nil {
 		flow, err := s.LoginFlow(ctx, *app.LoginFlowID)
 		switch {
-		case err == nil && flow.Enabled:
+		case err == nil && flow.IsEnabled:
 			return flow, nil
 		case err != nil && !errors.Is(err, ErrNotFound):
 			return nil, err
@@ -161,7 +161,7 @@ func (s *Store) DeleteLoginFlow(ctx context.Context, flow *model.LoginFlow) erro
 		return err
 	}
 
-	s.forget(ctx, cache.LoginFlows)
+	s.forget(ctx, cache.LoginFlows, cache.Clients)
 
 	return nil
 }

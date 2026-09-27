@@ -48,7 +48,7 @@ type SocialProvider struct {
 	// when it is empty.
 	Scopes StringList `gorm:"serializer:json" json:"scopes"`
 
-	Enabled bool `gorm:"not null" json:"enabled"`
+	IsEnabled bool `gorm:"not null" json:"is_enabled"`
 
 	// Position is where the button sits among the others.
 	Position int `gorm:"not null" json:"position"`
@@ -67,7 +67,7 @@ type SocialProvider struct {
 	// ignores them.
 	AuthorizeURL string `gorm:"size:512" json:"authorize_url"`
 	TokenURL     string `gorm:"size:512" json:"token_url"`
-	UserInfoURL  string `gorm:"size:512" json:"userinfo_url"`
+	UserinfoURL  string `gorm:"size:512" json:"userinfo_url"`
 
 	// TokenAuth is how the secret is presented at the token endpoint, for the
 	// kinds whose provider is not known in advance: RFC 6749 says a server
@@ -92,17 +92,17 @@ func (SocialProvider) TableName() string {
 // empty list is stored as [] rather than null.
 type StringList []string
 
-// UserIdentity is one account at a provider, and the user it signs in.
+// SocialIdentity is one account at a provider, and the user it signs in.
 //
 // The subject is the provider's own id for the person, which is the only
 // thing that identifies them reliably: an address can change hands, and some
 // providers do not give one at all.
-type UserIdentity struct {
+type SocialIdentity struct {
 	Base
 
 	UserID     uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
-	ProviderID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_user_identities_subject,priority:1" json:"provider_id"`
-	Subject    string    `gorm:"size:255;not null;uniqueIndex:idx_user_identities_subject,priority:2" json:"subject"`
+	ProviderID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_social_identities_subject,priority:1" json:"provider_id"`
+	Subject    string    `gorm:"size:255;not null;uniqueIndex:idx_social_identities_subject,priority:2" json:"subject"`
 
 	// Email is what the provider said the address was when the account was
 	// connected, kept so the panel and the user's own page can show which
@@ -115,8 +115,8 @@ type UserIdentity struct {
 }
 
 // TableName pins the table name.
-func (UserIdentity) TableName() string {
-	return "user_identities"
+func (SocialIdentity) TableName() string {
+	return "social_identities"
 }
 
 // SocialAccount is one provider a user signs in with, as their record shows
@@ -467,7 +467,7 @@ func (p SocialProvider) Spec() SocialSpec {
 func (p SocialProvider) Endpoints() (authorize, token, userInfo string) {
 	spec := p.Spec()
 	if spec.Custom {
-		return p.AuthorizeURL, p.TokenURL, p.UserInfoURL
+		return p.AuthorizeURL, p.TokenURL, p.UserinfoURL
 	}
 
 	return spec.AuthorizeURL, spec.TokenURL, spec.UserInfoURL
@@ -573,7 +573,7 @@ func (p SocialProvider) Validate() error {
 
 		// OpenID Connect can answer with an id_token instead; plain OAuth 2.0
 		// has nowhere else to read a profile from.
-		if err := socialEndpoint("userinfo_url", p.UserInfoURL, p.Kind == SocialOAuth2); err != nil {
+		if err := socialEndpoint("userinfo_url", p.UserinfoURL, p.Kind == SocialOAuth2); err != nil {
 			return err
 		}
 	}
@@ -634,7 +634,7 @@ func DefaultSocialProvider(kind SocialKind) SocialProvider {
 		Slug:               string(kind),
 		Name:               spec.Label,
 		Scopes:             slices.Clone(spec.Scopes),
-		Enabled:            true,
+		IsEnabled:          true,
 		LinkVerifiedEmails: true,
 		AllowRegistration:  true,
 	}

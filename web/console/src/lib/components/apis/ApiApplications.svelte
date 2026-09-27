@@ -141,7 +141,7 @@
 					<div class="identity">
 						<span class="name">
 							<strong>{app.name}</strong>
-							{#if !app.enabled}<Badge tone="danger">Disabled</Badge>{/if}
+							{#if !app.is_enabled}<Badge tone="danger">Disabled</Badge>{/if}
 						</span>
 						<code>{app.client_id}</code>
 					</div>
@@ -169,7 +169,7 @@
 										title={scope.name}
 									/>
 									<code>{scope.name}</code>
-									{#if scope.default}<Badge>default</Badge>{/if}
+									{#if scope.is_default}<Badge>default</Badge>{/if}
 								</li>
 							{/each}
 						</ul>

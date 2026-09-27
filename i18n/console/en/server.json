@@ -42,6 +42,17 @@
 		"logs_filter_invalid": "These filters cannot be applied. Check the dates and try again.",
 		"admin_email_taken": "An administrator with this email already exists.",
 		"admin_password_too_short": "The password must be at least {min} characters.",
-		"admin_password_too_long": "The password is too long."
+		"admin_password_too_long": "The password is too long.",
+		"redis_not_configured": "This server runs without Redis, so there is no cache to look after.",
+		"cache_database_not_found": "There is no such Redis database.",
+		"cache_group_not_found": "There is no such cache group.",
+		"cache_key_not_found": "That key is not in Redis any more.",
+		"cache_key_not_editable": "Only a cached value in the cache database can be edited.",
+		"cache_generation_key": "A generation counter cannot be removed. Clear its group instead.",
+		"cache_key_invalid": "That is not a key name.",
+		"cache_kind_invalid": "There is no such kind of key.",
+		"cache_cursor_invalid": "The listing could not be continued. Start it again.",
+		"cache_value_invalid": "The value has to be valid JSON.",
+		"cache_ttl_invalid": "The time to live has to be between 0 and {max} seconds."
 	}
 }

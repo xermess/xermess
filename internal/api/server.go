@@ -37,6 +37,7 @@ import (
 	"loginer/internal/api/applications"
 	"loginer/internal/api/audit"
 	apiauth "loginer/internal/api/auth"
+	"loginer/internal/api/caching"
 	"loginer/internal/api/cors"
 	"loginer/internal/api/csrf"
 	"loginer/internal/api/fields"
@@ -84,7 +85,7 @@ const tokenLimitMultiple = 10
 // health check. `provider` is built by the caller because building it reads
 // the signing keys from the database. `shared` is the Redis the rate limit
 // counts in, or nil to count in memory.
-func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shared *cache.Cache) (*gin.Engine, error) {
+func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shared *cache.Redis) (*gin.Engine, error) {
 	r, err := engine(cfg, log)
 	if err != nil {
 		return nil, err
@@ -93,8 +94,8 @@ func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shar
 	registerPublicRoutes(r, publicHandlers{
 		oauth:   oauth.New(provider, log, cfg.SecureUserCookies),
 		account: account.New(provider, log, cfg.SecureUserCookies),
-		limit:   ratelimit.New(cfg.RateLimit).Shared(shared, "public").Middleware(),
-		tokens:  ratelimit.New(cfg.RateLimit*tokenLimitMultiple).Shared(shared, "token").Middleware(),
+		limit:   ratelimit.New(cfg.RateLimit).Shared(shared.SessionDB(), "public").Middleware(),
+		tokens:  ratelimit.New(cfg.RateLimit*tokenLimitMultiple).Shared(shared.SessionDB(), "token").Middleware(),
 		csrf:    csrf.New(allowed(cfg.AccountURL, cfg.CORSOrigins)),
 	})
 
@@ -104,7 +105,7 @@ func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shar
 // NewAdmin builds the admin server: the admin API, and a health check.
 // `provider` is the same provider the public server answers with, so rotating
 // its signing keys here takes effect there at once.
-func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oidc.Service, shared *cache.Cache) (*gin.Engine, error) {
+func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oidc.Service, shared *cache.Redis) (*gin.Engine, error) {
 	r, err := engine(cfg, log)
 	if err != nil {
 		return nil, err
@@ -139,7 +140,8 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 		apis:         apis.New(st, recorder, log, cfg.Issuer),
 		activity:     activity.New(st, log),
 		keys:         keys.New(provider, recorder, log),
-		limit:        ratelimit.New(cfg.RateLimit).Shared(shared, "admin").Middleware(),
+		caching:      caching.New(shared, recorder, log),
+		limit:        ratelimit.New(cfg.RateLimit).Shared(shared.SessionDB(), "admin").Middleware(),
 		csrf:         csrf.New(allowed(cfg.AdminURL, cfg.CORSOrigins)),
 	})
 
@@ -216,6 +218,7 @@ type adminHandlers struct {
 	otp          *otp.Handler
 	activity     *activity.Handler
 	keys         *keys.Handler
+	caching      *caching.Handler
 	limit        gin.HandlerFunc
 	csrf         gin.HandlerFunc
 }
@@ -551,6 +554,18 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, h adminHandlers) 
 			// tokens every API trusts, so it is a super admin's alone.
 			super.GET("/signing-keys", h.keys.List)
 			super.POST("/signing-keys/rotate", h.limit, h.keys.Rotate)
+
+			// Redis: what its two databases hold, and clearing some or all of
+			// it. Everything there is a copy the store can read again, but a
+			// value written by hand is what the pages then show, so it is a
+			// super admin's alone.
+			super.GET("/cache", h.caching.Overview)
+			super.GET("/cache/:database/keys", h.caching.Keys)
+			super.GET("/cache/:database/key", h.caching.Key)
+			super.PUT("/cache/:database/key", h.caching.UpdateKey)
+			super.DELETE("/cache/:database/key", h.caching.DeleteKey)
+			super.POST("/cache/:database/groups/:group/clear", h.caching.ClearGroup)
+			super.DELETE("/cache/:database", h.caching.Flush)
 
 			super.GET("/admin-permissions", h.adminRoles.Permissions)
 			super.GET("/admin-roles", h.adminRoles.List)

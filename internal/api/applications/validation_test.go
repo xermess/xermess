@@ -114,8 +114,8 @@ func TestApplyToDropsASecretWithNoMethod(t *testing.T) {
 		t.Fatalf("applyTo() = %v", err)
 	}
 
-	if app.ClientSecretHash != "" || app.SecretHint != "" || app.TokenEndpointAuthMethod != model.AuthNone {
-		t.Errorf("hash = %q, hint = %q, method = %s; want no secret", app.ClientSecretHash, app.SecretHint, app.TokenEndpointAuthMethod)
+	if app.ClientSecretHash != "" || app.SecretHint != "" || app.TokenAuthMethod != model.AuthNone {
+		t.Errorf("hash = %q, hint = %q, method = %s; want no secret", app.ClientSecretHash, app.SecretHint, app.TokenAuthMethod)
 	}
 }
 
@@ -128,15 +128,15 @@ func TestApplyToFlags(t *testing.T) {
 		Type:         "web",
 		GrantTypes:   []string{"authorization_code"},
 		RedirectURIs: []string{"https://shop.example.com/cb"},
-		Enabled:      &off,
+		IsEnabled:    &off,
 	}
 
-	app := &model.Application{Type: model.AppWeb, Enabled: true, AssertRoles: true, RequirePKCE: true}
+	app := &model.Application{Type: model.AppWeb, IsEnabled: true, AssertRoles: true, RequirePKCE: true}
 	if err := request.applyTo(app, true); err != nil {
 		t.Fatalf("applyTo() = %v", err)
 	}
 
-	if app.Enabled || !app.AssertRoles || !app.RequirePKCE {
-		t.Errorf("enabled = %v, assert roles = %v, pkce = %v; want sent false, the rest kept", app.Enabled, app.AssertRoles, app.RequirePKCE)
+	if app.IsEnabled || !app.AssertRoles || !app.RequirePKCE {
+		t.Errorf("enabled = %v, assert roles = %v, pkce = %v; want sent false, the rest kept", app.IsEnabled, app.AssertRoles, app.RequirePKCE)
 	}
 }

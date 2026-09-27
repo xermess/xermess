@@ -38,7 +38,7 @@
 	<header>
 		<AppMark
 			name={application?.name ?? organization?.name}
-			logo={application?.logo_uri || organization?.logo_url}
+			logo={application?.logo_url || organization?.logo_url}
 		/>
 		<h1 id="auth-title">{title}</h1>
 		{#if subtitle}<p class="subtitle">{subtitle}</p>{/if}

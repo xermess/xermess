@@ -313,7 +313,7 @@
 						<Icon icon={decision.granted ? RiCheckLine : RiCloseLine} size="0.9375rem" />
 						<code>{decision.scope}</code>
 						<span class="kind">
-							{decision.default ? 'Default' : decision.kind === 'api' ? 'API' : 'OpenID'}
+							{decision.is_default ? 'Default' : decision.kind === 'api' ? 'API' : 'OpenID'}
 						</span>
 						<span class="reason">{decision.reason}</span>
 					</li>

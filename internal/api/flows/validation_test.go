@@ -31,7 +31,7 @@ func TestFlowRequestApplyToCreating(t *testing.T) {
 					return errors.New("slug = " + f.Slug + ", want one made from the name")
 				case f.IsDefault:
 					return errors.New("a new flow made itself the default")
-				case f.Enabled:
+				case f.IsEnabled:
 					return errors.New("a new flow offered itself before anyone turned it on")
 				}
 				return nil
@@ -63,9 +63,9 @@ func TestFlowRequestApplyToCreating(t *testing.T) {
 		},
 		{
 			name:    "making it the default also turns it on",
-			request: flowRequest{Name: ptr("Staff"), IsDefault: ptr(true), Enabled: ptr(false)},
+			request: flowRequest{Name: ptr("Staff"), IsDefault: ptr(true), IsEnabled: ptr(false)},
 			check: func(f model.LoginFlow) error {
-				if !f.Enabled {
+				if !f.IsEnabled {
 					return errors.New("the default flow was left turned off")
 				}
 				return nil
@@ -93,7 +93,7 @@ func TestFlowRequestApplyToCreating(t *testing.T) {
 			request := tt.request
 
 			flow := model.DefaultLoginFlow()
-			flow.IsDefault, flow.Enabled = false, false
+			flow.IsDefault, flow.IsEnabled = false, false
 			flow.Name, flow.Slug, flow.Description = "", "", ""
 
 			err := request.applyTo(&flow, true)
@@ -128,14 +128,14 @@ func TestFlowRequestUpdatesOnlyWhatItMentions(t *testing.T) {
 	flow.IsDefault = false
 	was := flow
 
-	request := flowRequest{Enabled: ptr(false)}
+	request := flowRequest{IsEnabled: ptr(false)}
 
 	if err := request.applyTo(&flow, false); err != nil {
 		t.Fatalf("applyTo() = %v, want nothing", err)
 	}
 
 	switch {
-	case flow.Enabled:
+	case flow.IsEnabled:
 		t.Error("the flow was not turned off")
 	case flow.Name != was.Name || flow.Description != was.Description:
 		t.Errorf("the name or the description was emptied: %+v", flow)

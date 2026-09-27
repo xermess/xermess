@@ -238,7 +238,7 @@ func TestLiveAdminMFAOptional(t *testing.T) {
 	}
 
 	var policy struct {
-		MFARequired bool `json:"mfa_required"`
+		MFARequired bool `json:"require_mfa"`
 	}
 	root.must(http.StatusOK, http.MethodGet, "/security", nil, &policy)
 	if policy.MFARequired {
@@ -284,7 +284,7 @@ func TestLiveAdminMFAPolicyIsManaged(t *testing.T) {
 	super := s.superAdmin()
 
 	type securityBody struct {
-		MFARequired    bool  `json:"mfa_required"`
+		MFARequired    bool  `json:"require_mfa"`
 		Administrators int64 `json:"administrators"`
 		WithMFA        int64 `json:"with_mfa"`
 	}
@@ -303,7 +303,7 @@ func TestLiveAdminMFAPolicyIsManaged(t *testing.T) {
 	// Turned on, the administrator who has none is let no further than
 	// setting one up — on the session they already hold.
 	var updated securityBody
-	super.must(http.StatusOK, http.MethodPatch, "/security", map[string]any{"mfa_required": true}, &updated)
+	super.must(http.StatusOK, http.MethodPatch, "/security", map[string]any{"require_mfa": true}, &updated)
 	if !updated.MFARequired {
 		t.Fatal("the setting did not change")
 	}
@@ -334,7 +334,7 @@ func TestLiveAdminMFAPolicyIsManaged(t *testing.T) {
 	// Not even to undo it: a session that has to set an authenticator up can
 	// do nothing else, the setting that made it so included. The way out is
 	// to set one up, which is what the panel warns about before turning it on.
-	super.must(http.StatusUnauthorized, http.MethodPatch, "/security", map[string]any{"mfa_required": false}, nil)
+	super.must(http.StatusUnauthorized, http.MethodPatch, "/security", map[string]any{"require_mfa": false}, nil)
 
 	// So: set one up, and then it can be turned off again.
 	var begun struct {
@@ -348,7 +348,7 @@ func TestLiveAdminMFAPolicyIsManaged(t *testing.T) {
 	}, nil)
 
 	var off securityBody
-	super.must(http.StatusOK, http.MethodPatch, "/security", map[string]any{"mfa_required": false}, &off)
+	super.must(http.StatusOK, http.MethodPatch, "/security", map[string]any{"require_mfa": false}, &off)
 
 	if off.MFARequired || off.WithMFA != 1 {
 		t.Errorf("settings = %+v, want it off and the one authenticator counted", off)

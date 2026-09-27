@@ -60,8 +60,8 @@
 		const term = data.search.trim().toLowerCase();
 
 		return social.data.providers.filter((provider) => {
-			if (data.status === 'enabled' && !provider.enabled) return false;
-			if (data.status === 'off' && provider.enabled) return false;
+			if (data.status === 'enabled' && !provider.is_enabled) return false;
+			if (data.status === 'off' && provider.is_enabled) return false;
 
 			if (term === '') return true;
 
@@ -157,9 +157,9 @@
 		mutationFn: async (enabled: boolean) => {
 			for (const id of chosen) {
 				const provider = social.data.providers.find((one) => one.id === id);
-				if (!provider || provider.enabled === enabled) continue;
+				if (!provider || provider.is_enabled === enabled) continue;
 
-				await socialApi.update(id, { enabled });
+				await socialApi.update(id, { is_enabled: enabled });
 			}
 		},
 		onSuccess: () => {

@@ -267,13 +267,13 @@ func TestLoadRedis(t *testing.T) {
 		{
 			name: "no host is no Redis",
 			env:  base,
-			want: Redis{Port: 6379, Prefix: brand.RedisPrefix},
+			want: Redis{Port: 6379, SessionDB: 1, Prefix: brand.RedisPrefix},
 		},
 		{
 			name: "everything named",
 			env: base + "LOGINER_REDIS_HOST=localhost\nLOGINER_REDIS_PORT=6380\nLOGINER_REDIS_USERNAME=app\n" +
-				"LOGINER_REDIS_PASSWORD=pw\nLOGINER_REDIS_DB=3\nLOGINER_REDIS_PREFIX=staging:\n",
-			want: Redis{Host: "localhost", Port: 6380, Username: "app", Password: "pw", DB: 3, Prefix: "staging:"},
+				"LOGINER_REDIS_PASSWORD=pw\nLOGINER_REDIS_CACHE_DB=3\nLOGINER_REDIS_SESSION_DB=4\nLOGINER_REDIS_PREFIX=staging:\n",
+			want: Redis{Host: "localhost", Port: 6380, Username: "app", Password: "pw", CacheDB: 3, SessionDB: 4, Prefix: "staging:"},
 		},
 		{
 			name:    "a port that is not one",
@@ -282,7 +282,12 @@ func TestLoadRedis(t *testing.T) {
 		},
 		{
 			name:    "a database before the first",
-			env:     base + "LOGINER_REDIS_HOST=localhost\nLOGINER_REDIS_DB=-1\n",
+			env:     base + "LOGINER_REDIS_HOST=localhost\nLOGINER_REDIS_CACHE_DB=-1\n",
+			wantErr: true,
+		},
+		{
+			name:    "one database for the cache and the sessions",
+			env:     base + "LOGINER_REDIS_HOST=localhost\nLOGINER_REDIS_CACHE_DB=2\nLOGINER_REDIS_SESSION_DB=2\n",
 			wantErr: true,
 		},
 	}

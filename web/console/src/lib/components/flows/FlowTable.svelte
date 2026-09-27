@@ -67,7 +67,7 @@
 			<span class="status">
 				{#if flow.is_default}
 					<Tag tone="info" strong>default</Tag>
-				{:else if flow.enabled}
+				{:else if flow.is_enabled}
 					<Badge tone="success">on</Badge>
 				{:else}
 					<Badge>off</Badge>

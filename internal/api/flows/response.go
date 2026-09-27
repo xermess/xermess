@@ -19,7 +19,7 @@ type flowResponse struct {
 	Description string    `json:"description"`
 
 	IsDefault bool `json:"is_default"`
-	Enabled   bool `json:"enabled"`
+	IsEnabled bool `json:"is_enabled"`
 
 	Steps []model.LoginStep `json:"steps"`
 
@@ -76,7 +76,7 @@ func newFlowResponse(flow model.LoginFlow, applications int) flowResponse {
 		Slug:                  flow.Slug,
 		Description:           flow.Description,
 		IsDefault:             flow.IsDefault,
-		Enabled:               flow.Enabled,
+		IsEnabled:             flow.IsEnabled,
 		Steps:                 append([]model.LoginStep(nil), flow.Steps...),
 		AllowSignIn:           flow.AllowSignIn,
 		AllowRegistration:     flow.AllowRegistration,

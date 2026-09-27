@@ -38,10 +38,10 @@ type LoginFlow struct {
 	// it, and the default flow cannot be turned off or removed.
 	IsDefault bool `gorm:"not null" json:"is_default"`
 
-	// Enabled says whether an application may be pointed at this flow. A
+	// IsEnabled says whether an application may be pointed at this flow. A
 	// flow that is off stays as it is, and the applications holding it fall
 	// back to the default.
-	Enabled bool `gorm:"not null" json:"enabled"`
+	IsEnabled bool `gorm:"not null" json:"is_enabled"`
 
 	// Steps are the steps in the order they are taken.
 	Steps StepList `gorm:"type:text;serializer:json;not null" json:"steps"`
@@ -228,7 +228,7 @@ func DefaultLoginFlow() LoginFlow {
 		Slug:                 "default",
 		Description:          "An email address and a password, with the registered providers beside them.",
 		IsDefault:            true,
-		Enabled:              true,
+		IsEnabled:            true,
 		Steps:                StepList{StepIdentifier, StepPassword, StepSocial},
 		AllowSignIn:          true,
 		AllowRegistration:    true,
@@ -271,7 +271,7 @@ func (f LoginFlow) Validate() error {
 
 	// The default is what every application without a flow of its own falls
 	// back to, so there has to be something there to fall back to.
-	if f.IsDefault && !f.Enabled {
+	if f.IsDefault && !f.IsEnabled {
 		return fmt.Errorf("the default flow cannot be turned off")
 	}
 

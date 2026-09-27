@@ -28,7 +28,11 @@ type Profile struct {
 // UpdateProfile changes the signed-in administrator's name and address. The
 // address is also what they sign in with, so a new one needs their current
 // password; a name alone does not. A taken address is store.ErrDuplicate.
-func (s *Service) UpdateProfile(ctx context.Context, admin *model.AdminUser, profile Profile, currentPassword string) error {
+func (s *Service) UpdateProfile(ctx context.Context, admin *model.Admin, profile Profile, currentPassword string) error {
+	if err := s.withPassword(ctx, admin); err != nil {
+		return err
+	}
+
 	if profile.Email != admin.Email {
 		if err := matches(admin, currentPassword); err != nil {
 			return err
@@ -48,7 +52,11 @@ func (s *Service) UpdateProfile(ctx context.Context, admin *model.AdminUser, pro
 // the one they have, and ends every session they have open except the one
 // the change came from — the one that proved it knew the old password. A
 // password bcrypt cannot hash is model.ErrPasswordTooLong.
-func (s *Service) ChangePassword(ctx context.Context, admin *model.AdminUser, session uuid.UUID, current, next string) error {
+func (s *Service) ChangePassword(ctx context.Context, admin *model.Admin, session uuid.UUID, current, next string) error {
+	if err := s.withPassword(ctx, admin); err != nil {
+		return err
+	}
+
 	if err := matches(admin, current); err != nil {
 		return err
 	}
@@ -64,8 +72,23 @@ func (s *Service) ChangePassword(ctx context.Context, admin *model.AdminUser, se
 	return err
 }
 
+// withPassword fills in the password hash of an administrator a request was
+// signed in as. The session database keeps administrators without it, and
+// both checking a password and SaveOwnAccount, which writes the hash back,
+// need the one in the database.
+func (s *Service) withPassword(ctx context.Context, admin *model.Admin) error {
+	stored, err := s.store.AdminByID(ctx, admin.ID)
+	if err != nil {
+		return err
+	}
+
+	admin.PasswordHash = stored.PasswordHash
+
+	return nil
+}
+
 // matches says whether a password is the administrator's own.
-func matches(admin *model.AdminUser, password string) error {
+func matches(admin *model.Admin, password string) error {
 	if password == "" || bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password)) != nil {
 		return ErrWrongPassword
 	}

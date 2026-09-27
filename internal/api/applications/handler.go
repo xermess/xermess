@@ -82,7 +82,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 	app := &model.Application{
 		Type:              model.ApplicationType(req.Type),
-		Enabled:           true,
+		IsEnabled:         true,
 		AssertRoles:       true,
 		RequirePKCE:       true,
 		AllowRegistration: true,

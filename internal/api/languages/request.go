@@ -26,7 +26,7 @@ func init() {
 	// The code is a language tag, as the model holds it to — said as a rule
 	// here so a wrong one is refused with a sentence the panel can translate.
 	validate.Register("languagetag", func(value string) bool {
-		return (model.Language{Code: value, Name: "-", Native: "-"}).Validate() == nil
+		return (model.Language{Code: value, Name: "-", NativeName: "-"}).Validate() == nil
 	})
 }
 
@@ -38,12 +38,12 @@ func init() {
 // text back. Empty is a language with nothing translated yet, whose pages
 // show the base language's text until somebody writes its own.
 type createRequest struct {
-	Code      string `json:"code" validate:"required,max=16,languagetag"`
-	Name      string `json:"name" validate:"required,max=64"`
-	Native    string `json:"native" validate:"required,max=64"`
-	Enabled   *bool  `json:"enabled"`
-	IsDefault *bool  `json:"is_default"`
-	CopyFrom  string `json:"copy_from"`
+	Code       string `json:"code" validate:"required,max=16,languagetag"`
+	Name       string `json:"name" validate:"required,max=64"`
+	NativeName string `json:"native_name" validate:"required,max=64"`
+	IsEnabled  *bool  `json:"is_enabled"`
+	IsDefault  *bool  `json:"is_default"`
+	CopyFrom   string `json:"copy_from"`
 }
 
 // languageRequest is what an update sends.
@@ -52,11 +52,11 @@ type createRequest struct {
 // the stored value stands. The code is not among them — it is in the path,
 // and it is what every reader's saved choice names.
 type languageRequest struct {
-	Name      *string `json:"name" validate:"omitnil,min=1,max=64"`
-	Native    *string `json:"native" validate:"omitnil,min=1,max=64"`
-	Enabled   *bool   `json:"enabled"`
-	IsDefault *bool   `json:"is_default"`
-	Position  *int    `json:"position" validate:"omitnil,min=0"`
+	Name       *string `json:"name" validate:"omitnil,min=1,max=64"`
+	NativeName *string `json:"native_name" validate:"omitnil,min=1,max=64"`
+	IsEnabled  *bool   `json:"is_enabled"`
+	IsDefault  *bool   `json:"is_default"`
+	Position   *int    `json:"position" validate:"omitnil,min=0"`
 }
 
 // translationRequest is one language's whole text for one app, replacing

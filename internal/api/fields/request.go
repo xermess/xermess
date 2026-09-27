@@ -8,8 +8,8 @@ const targetType = "user_field"
 // hold values under them.
 type rulesRequest struct {
 	Label      string   `json:"label" validate:"max=100"`
-	Required   bool     `json:"required"`
-	Unique     bool     `json:"unique"`
+	IsRequired bool     `json:"is_required"`
+	IsUnique   bool     `json:"is_unique"`
 	Min        *float64 `json:"min"`
 	Max        *float64 `json:"max"`
 	StartsWith string   `json:"starts_with" validate:"max=64"`

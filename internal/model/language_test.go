@@ -14,11 +14,11 @@ func TestLanguageValidate(t *testing.T) {
 		{name: "the language a new installation starts with", change: func(*Language) {}},
 		{
 			name:   "a language with a region",
-			change: func(l *Language) { l.Code = "pt-BR"; l.Name = "Portuguese (Brazil)"; l.Native = "Português" },
+			change: func(l *Language) { l.Code = "pt-BR"; l.Name = "Portuguese (Brazil)"; l.NativeName = "Português" },
 		},
 		{
 			name:   "a language nobody has turned on",
-			change: func(l *Language) { l.Code = "ky"; l.IsDefault = false; l.Enabled = false },
+			change: func(l *Language) { l.Code = "ky"; l.IsDefault = false; l.IsEnabled = false },
 		},
 		{
 			name:   "no code",
@@ -42,12 +42,12 @@ func TestLanguageValidate(t *testing.T) {
 		},
 		{
 			name:   "no native name",
-			change: func(l *Language) { l.Native = "" },
+			change: func(l *Language) { l.NativeName = "" },
 			want:   "native name is required",
 		},
 		{
 			name:   "a name counted in letters, not bytes",
-			change: func(l *Language) { l.Native = strings.Repeat("ы", 64) },
+			change: func(l *Language) { l.NativeName = strings.Repeat("ы", 64) },
 		},
 		{
 			name:   "a name that is too long",
@@ -61,7 +61,7 @@ func TestLanguageValidate(t *testing.T) {
 		},
 		{
 			name:   "turning off the language somebody sees before choosing",
-			change: func(l *Language) { l.Enabled = false },
+			change: func(l *Language) { l.IsEnabled = false },
 			want:   "the default language cannot be turned off",
 		},
 	}

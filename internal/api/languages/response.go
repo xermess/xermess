@@ -15,8 +15,8 @@ type languageResponse struct {
 	Code string `json:"code"`
 	// Name is what the language is called in English, Native what it calls
 	// itself.
-	Name   string `json:"name"`
-	Native string `json:"native"`
+	Name       string `json:"name"`
+	NativeName string `json:"native_name"`
 
 	// Apps are the apps this language is translated for, which today is the
 	// sign-in pages and nothing else.
@@ -28,7 +28,7 @@ type languageResponse struct {
 	Coverage map[i18n.App]int `json:"coverage"`
 	Missing  map[i18n.App]int `json:"missing"`
 
-	Enabled   bool `json:"enabled"`
+	IsEnabled bool `json:"is_enabled"`
 	IsDefault bool `json:"is_default"`
 	Position  int  `json:"position"`
 
@@ -47,9 +47,9 @@ type languageResponse struct {
 // does not have — one somebody removed, or one that shipped after it started
 // — which the panel offers to add back.
 type shippedResponse struct {
-	Code   string `json:"code"`
-	Name   string `json:"name"`
-	Native string `json:"native"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	NativeName string `json:"native_name"`
 }
 
 // listResponse is what the list endpoint answers with.
@@ -88,18 +88,18 @@ type savedResponse struct {
 
 func newLanguageResponse(language model.Language, text map[string]map[string]string, shipped map[string]bool) languageResponse {
 	out := languageResponse{
-		Code:      language.Code,
-		Name:      language.Name,
-		Native:    language.Native,
-		Apps:      i18n.AppsFor(language.Code),
-		Coverage:  map[i18n.App]int{},
-		Missing:   map[i18n.App]int{},
-		Enabled:   language.Enabled,
-		IsDefault: language.IsDefault,
-		Position:  language.Position,
-		Base:      language.Code == model.BaseLanguage,
-		Shipped:   shipped[language.Code],
-		UpdatedAt: language.UpdatedAt,
+		Code:       language.Code,
+		Name:       language.Name,
+		NativeName: language.NativeName,
+		Apps:       i18n.AppsFor(language.Code),
+		Coverage:   map[i18n.App]int{},
+		Missing:    map[i18n.App]int{},
+		IsEnabled:  language.IsEnabled,
+		IsDefault:  language.IsDefault,
+		Position:   language.Position,
+		Base:       language.Code == model.BaseLanguage,
+		Shipped:    shipped[language.Code],
+		UpdatedAt:  language.UpdatedAt,
 	}
 
 	for _, app := range out.Apps {
@@ -129,7 +129,7 @@ func newListResponse(languages []model.Language, text map[uuid.UUID]map[string]m
 
 	for _, file := range files {
 		if !have[file.Code] {
-			out.Shipped = append(out.Shipped, shippedResponse{Code: file.Code, Name: file.Name, Native: file.Native})
+			out.Shipped = append(out.Shipped, shippedResponse{Code: file.Code, Name: file.Name, NativeName: file.Native})
 		}
 	}
 

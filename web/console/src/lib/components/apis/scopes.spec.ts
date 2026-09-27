@@ -31,12 +31,12 @@ describe('scopeProblem', () => {
 describe('scopeInput', () => {
 	it('tidies the rows and leaves the empty ones out', () => {
 		const rows = [
-			scopeRow({ id: 's1', name: ' Orders:Read ', description: ' Read orders ', default: true }),
+			scopeRow({ id: 's1', name: ' Orders:Read ', description: ' Read orders ', is_default: true }),
 			scopeRow()
 		];
 
 		expect(scopeInput(rows)).toEqual([
-			{ id: 's1', name: 'orders:read', description: 'Read orders', default: true }
+			{ id: 's1', name: 'orders:read', description: 'Read orders', is_default: true }
 		]);
 	});
 });

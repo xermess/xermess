@@ -43,7 +43,7 @@ func (s *Service) authenticate(ctx context.Context, auth ClientAuth) (*model.App
 		return nil, err
 	}
 
-	registered := app.TokenEndpointAuthMethod
+	registered := app.TokenAuthMethod
 	switch {
 	case registered == model.AuthNone && auth.Method != model.AuthNone:
 		return nil, oauthError(ErrInvalidClient, "this is a public client: send client_id alone, with no secret")
@@ -53,7 +53,7 @@ func (s *Service) authenticate(ctx context.Context, auth ClientAuth) (*model.App
 		return nil, oauthError(ErrInvalidClient, "client authentication failed")
 	}
 
-	if !app.Enabled {
+	if !app.IsEnabled {
 		return nil, oauthError(ErrUnauthorizedClient, "the application is disabled")
 	}
 
@@ -161,7 +161,7 @@ func (s *Service) exchangeCode(ctx context.Context, app *model.Application, p To
 		scopes:   strings.Fields(code.Scope),
 		audience: code.Audience,
 		nonce:    code.Nonce,
-		authTime: code.AuthTime,
+		authTime: code.AuthenticatedAt,
 		session:  code.SessionID,
 		codeID:   &code.ID,
 		refusal:  ErrInvalidGrant,
@@ -226,14 +226,14 @@ func (s *Service) refresh(ctx context.Context, app *model.Application, p TokenPa
 		user:     user,
 		scopes:   scopes,
 		audience: old.Audience,
-		authTime: old.AuthTime,
+		authTime: old.AuthenticatedAt,
 		replaces: old,
 		refusal:  ErrInvalidGrant,
 	})
 }
 
 func (s *Service) clientCredentials(ctx context.Context, app *model.Application, p TokenParams) (*TokenResponse, error) {
-	if app.TokenEndpointAuthMethod == model.AuthNone {
+	if app.TokenAuthMethod == model.AuthNone {
 		return nil, oauthError(ErrUnauthorizedClient, "a public client cannot use client_credentials")
 	}
 
@@ -360,14 +360,14 @@ func (s *Service) newRefreshToken(ctx context.Context, g grant, scope string) (s
 	}
 
 	next := &model.RefreshToken{
-		TokenHash:     hash,
-		ApplicationID: g.app.ID,
-		UserID:        g.user.ID,
-		CodeID:        g.codeID,
-		Scope:         scope,
-		Audience:      g.audience,
-		AuthTime:      g.authTime,
-		ExpiresAt:     now.Add(time.Duration(g.app.RefreshTokenLifetime) * time.Second),
+		TokenHash:       hash,
+		ApplicationID:   g.app.ID,
+		UserID:          g.user.ID,
+		CodeID:          g.codeID,
+		Scope:           scope,
+		Audience:        g.audience,
+		AuthenticatedAt: g.authTime,
+		ExpiresAt:       now.Add(time.Duration(g.app.RefreshTokenLifetime) * time.Second),
 	}
 
 	if g.replaces == nil {
@@ -530,7 +530,7 @@ func (s *Service) Introspect(ctx context.Context, client ClientAuth, token strin
 	if err != nil {
 		return nil, err
 	}
-	if app.TokenEndpointAuthMethod == model.AuthNone {
+	if app.TokenAuthMethod == model.AuthNone {
 		return nil, oauthError(ErrInvalidClient, "introspection needs a confidential client")
 	}
 

@@ -17,7 +17,7 @@ type flowRequest struct {
 	Description *string `json:"description"`
 
 	IsDefault *bool `json:"is_default"`
-	Enabled   *bool `json:"enabled"`
+	IsEnabled *bool `json:"is_enabled"`
 
 	Steps *[]model.LoginStep `json:"steps"`
 

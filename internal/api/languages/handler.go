@@ -100,7 +100,7 @@ func (h *Handler) Create(c *gin.Context) {
 	// has them.
 	if file != nil && normalizeCode(req.Code) == file.Code {
 		req.Name = firstOf(req.Name, file.Name)
-		req.Native = firstOf(req.Native, file.Native)
+		req.NativeName = firstOf(req.NativeName, file.Native)
 	}
 
 	language, err := req.newLanguage()
@@ -208,7 +208,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	h.audit.RecordWith(c, "language.updated", targetType, language.ID.String(), map[string]any{
-		"language": language.Code, "enabled": language.Enabled, "is_default": language.IsDefault,
+		"language": language.Code, "is_enabled": language.IsEnabled, "is_default": language.IsDefault,
 	})
 
 	h.answer(c, http.StatusOK, language)

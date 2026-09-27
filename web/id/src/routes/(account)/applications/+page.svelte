@@ -69,7 +69,7 @@
 				description={t('apps.last_used', { when: timeAgo(app.last_used_at, t) })}
 			>
 				{#snippet aside()}
-					<AppMark name={app.name} logo={app.logo_uri} size={44} />
+					<AppMark name={app.name} logo={app.logo_url} size={44} />
 				{/snippet}
 
 				<div class="access">
@@ -86,10 +86,10 @@
 
 				<p class="meta">
 					{t('apps.connected_since', { when: formatDate(app.authorized_at, t, data.timezone) })}
-					{#if app.client_uri}
+					{#if app.website_url}
 						·
 						<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-						<a href={app.client_uri} target="_blank" rel="noopener noreferrer">
+						<a href={app.website_url} target="_blank" rel="noopener noreferrer">
 							{t('apps.visit')}
 							<Icon name="external" size="0.8rem" />
 						</a>

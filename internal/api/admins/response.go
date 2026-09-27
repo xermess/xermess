@@ -52,7 +52,7 @@ type adminResponse struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
-func newAdminResponse(admin model.AdminUser) adminResponse {
+func newAdminResponse(admin model.Admin) adminResponse {
 	assignments := make([]assignmentResponse, 0, len(admin.Assignments))
 	for _, a := range admin.Assignments {
 		out := assignmentResponse{ID: a.ID, Role: reference{ID: a.Role.ID, Name: a.Role.Name}}
@@ -93,7 +93,7 @@ type pageResponse struct {
 	Offset int             `json:"offset"`
 }
 
-func newPageResponse(admins []model.AdminUser, total int64, query store.AdminQuery) pageResponse {
+func newPageResponse(admins []model.Admin, total int64, query store.AdminQuery) pageResponse {
 	out := make([]adminResponse, 0, len(admins))
 	for _, admin := range admins {
 		out = append(out, newAdminResponse(admin))
@@ -106,7 +106,7 @@ func newPageResponse(admins []model.AdminUser, total int64, query store.AdminQue
 // means for the ones there are: the panel says how many would be asked to set
 // an authenticator up before it turns the requirement on.
 type securityResponse struct {
-	MFARequired bool `json:"mfa_required"`
+	RequireMFA bool `json:"require_mfa"`
 	// Administrators is how many there are, and WithMFA how many of those
 	// already sign in with a second factor.
 	Administrators int64 `json:"administrators"`
@@ -115,7 +115,7 @@ type securityResponse struct {
 
 func newSecurityResponse(security model.AdminSecurity, total, withMFA int64) securityResponse {
 	return securityResponse{
-		MFARequired:    security.MFARequired,
+		RequireMFA:     security.RequireMFA,
 		Administrators: total,
 		WithMFA:        withMFA,
 	}

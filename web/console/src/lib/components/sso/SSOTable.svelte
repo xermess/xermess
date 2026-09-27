@@ -61,7 +61,7 @@
 
 		<td>
 			<span class="status">
-				{#if connection.enabled}
+				{#if connection.is_enabled}
 					<Badge tone="success">on</Badge>
 				{:else}
 					<Badge>off</Badge>

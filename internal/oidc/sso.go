@@ -157,7 +157,7 @@ func (s *Service) ssoConnection(ctx context.Context, slug string) (*model.SSOCon
 		return nil, ErrSSOUnknown
 	case err != nil:
 		return nil, err
-	case !connection.Enabled:
+	case !connection.IsEnabled:
 		return nil, ErrSSOUnknown
 	}
 
@@ -497,7 +497,7 @@ func (s *Service) ssoAccountFor(
 		// Somebody can register an address they do not own and wait for its
 		// owner to arrive through the provider, keeping the password they
 		// set; an account that never proved its address is not linked.
-		if !user.EmailVerified {
+		if !user.IsEmailVerified {
 			return nil, refused(ErrSSOLinkRefused, "the account for %s never verified its address, so it is not linked", email)
 		}
 
@@ -516,12 +516,12 @@ func (s *Service) ssoAccountFor(
 
 	// The provider owns the domain, so the address is as verified as it gets.
 	user = &model.User{
-		Email:         email,
-		EmailVerified: true,
-		FirstName:     truncate(person.FirstName, 100),
-		LastName:      truncate(person.LastName, 100),
-		IsActive:      true,
-		Data:          map[string]any{},
+		Email:           email,
+		IsEmailVerified: true,
+		FirstName:       truncate(person.FirstName, 100),
+		LastName:        truncate(person.LastName, 100),
+		IsActive:        true,
+		Data:            map[string]any{},
 	}
 
 	roles, err := s.store.DefaultUserRoles(ctx)

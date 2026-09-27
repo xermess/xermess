@@ -12,26 +12,26 @@ import (
 type User struct {
 	Base
 
-	Email         string `gorm:"uniqueIndex;size:255;not null" json:"email"`
-	EmailVerified bool   `gorm:"not null;default:false" json:"email_verified"`
-	FirstName     string `gorm:"size:100" json:"first_name"`
-	LastName      string `gorm:"size:100" json:"last_name"`
-	IsActive      bool   `gorm:"not null" json:"is_active"`
+	Email           string `gorm:"uniqueIndex;size:255;not null" json:"email"`
+	IsEmailVerified bool   `gorm:"not null;default:false" json:"is_email_verified"`
+	FirstName       string `gorm:"size:100" json:"first_name"`
+	LastName        string `gorm:"size:100" json:"last_name"`
+	IsActive        bool   `gorm:"not null" json:"is_active"`
 
 	// PasswordHash is empty for a user who has never been given a password.
 	// The password itself is never stored, and the hash never leaves the
 	// server.
 	PasswordHash string `gorm:"size:255;not null;default:''" json:"-"`
-	// IsTemporaryPassword marks a password an administrator chose for the
+	// IsPasswordTemporary marks a password an administrator chose for the
 	// user, which the user is expected to replace the next time they sign in.
-	IsTemporaryPassword bool `gorm:"not null;default:false" json:"is_temporary_password"`
+	IsPasswordTemporary bool `gorm:"not null;default:false" json:"is_password_temporary"`
 	// HasPassword tells the panel whether a password is set, without telling
 	// it anything about the password.
 	HasPassword bool `gorm:"-" json:"has_password"`
 
 	// SocialAccounts are the providers this user signs in with. Like
 	// HasPassword it is no column: the panel is told what a record amounts
-	// to, and the rows themselves are user_identities.
+	// to, and the rows themselves are social_identities.
 	SocialAccounts []SocialAccount `gorm:"-" json:"social_accounts"`
 
 	// LastLoginAt is when the user last signed in to an application.

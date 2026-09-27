@@ -12,13 +12,13 @@ import (
 // picker lists it: the code the pages ask for its text by, and the two names
 // — the language in English, and in itself.
 type PublicLanguage struct {
-	Code   string `json:"code"`
-	Name   string `json:"name"`
-	Native string `json:"native"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	NativeName string `json:"native_name"`
 }
 
 func publicLanguage(language model.Language) PublicLanguage {
-	return PublicLanguage{Code: language.Code, Name: language.Name, Native: language.Native}
+	return PublicLanguage{Code: language.Code, Name: language.Name, NativeName: language.NativeName}
 }
 
 // Languages is what the sign-in pages ask for when they draw their language
@@ -49,7 +49,7 @@ func (s *Service) Languages(ctx context.Context) ([]PublicLanguage, string, erro
 // English, so an email always goes out in something.
 func (s *Service) textIn(ctx context.Context, code string) map[string]string {
 	language, err := s.store.Language(ctx, code)
-	if err != nil || !language.Enabled {
+	if err != nil || !language.IsEnabled {
 		language, err = s.store.DefaultLanguage(ctx)
 	}
 
@@ -74,7 +74,7 @@ func (s *Service) LanguageText(ctx context.Context, code string) (PublicLanguage
 		return PublicLanguage{}, nil, err
 	}
 
-	if !language.Enabled {
+	if !language.IsEnabled {
 		return PublicLanguage{}, nil, store.ErrNotFound
 	}
 

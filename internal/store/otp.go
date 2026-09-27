@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -16,17 +17,22 @@ import (
 // the default for a database that holds none — so the pages that ask for a
 // code go on working on an installation whose row was removed by hand.
 func (s *Store) OTPSettings(ctx context.Context) (*model.OTPSettings, error) {
-	var settings model.OTPSettings
+	settings, err := cached(ctx, s, cache.OTPSettings, "settings", func() (model.OTPSettings, error) {
+		var settings model.OTPSettings
 
-	err := translate(s.db.WithContext(ctx).Order("created_at").First(&settings).Error)
-	switch {
-	case err == nil:
-		return &settings, nil
-	case !errors.Is(err, ErrNotFound):
+		err := translate(s.db.WithContext(ctx).Order("created_at").First(&settings).Error)
+		switch {
+		case err == nil:
+			return settings, nil
+		case !errors.Is(err, ErrNotFound):
+			return settings, err
+		}
+
+		return model.DefaultOTPSettings(), nil
+	})
+	if err != nil {
 		return nil, err
 	}
-
-	settings = model.DefaultOTPSettings()
 
 	return &settings, nil
 }
@@ -44,12 +50,12 @@ func (s *Store) EnsureOTPSettings(ctx context.Context) error {
 
 	settings := model.DefaultOTPSettings()
 
-	return translate(s.db.WithContext(ctx).Create(&settings).Error)
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Create(&settings).Error), cache.OTPSettings)
 }
 
 // SaveOTPSettings writes the settings back.
 func (s *Store) SaveOTPSettings(ctx context.Context, settings *model.OTPSettings) error {
-	return translate(s.db.WithContext(ctx).Save(settings).Error)
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Save(settings).Error), cache.OTPSettings)
 }
 
 // CreateLoginCode stores a sign-in waiting for an emailed code, and forgets
@@ -58,7 +64,7 @@ func (s *Store) SaveOTPSettings(ctx context.Context, settings *model.OTPSettings
 func (s *Store) CreateLoginCode(ctx context.Context, code *model.LoginCode) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Unscoped().
-			Where("user_id = ? AND consumed_at IS NULL", code.UserID).
+			Where("user_id = ? AND used_at IS NULL", code.UserID).
 			Delete(&model.LoginCode{}).Error
 		if err != nil {
 			return translate(err)
@@ -104,8 +110,8 @@ func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCod
 func (s *Store) ConsumeLoginCode(ctx context.Context, code *model.LoginCode, now time.Time) (bool, error) {
 	result := s.db.WithContext(ctx).
 		Model(&model.LoginCode{}).
-		Where("id = ? AND consumed_at IS NULL", code.ID).
-		Update("consumed_at", now)
+		Where("id = ? AND used_at IS NULL", code.ID).
+		Update("used_at", now)
 	if result.Error != nil {
 		return false, translate(result.Error)
 	}
@@ -114,7 +120,7 @@ func (s *Store) ConsumeLoginCode(ctx context.Context, code *model.LoginCode, now
 		return false, nil
 	}
 
-	code.ConsumedAt = &now
+	code.UsedAt = &now
 
 	return true, nil
 }

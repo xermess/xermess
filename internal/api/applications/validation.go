@@ -36,11 +36,11 @@ func (r *applicationRequest) applyTo(app *model.Application, creating bool) erro
 
 	app.Name = r.Name
 	app.Description = r.Description
-	app.LogoURI = r.LogoURI
-	app.ClientURI = r.ClientURI
-	app.PolicyURI = r.PolicyURI
-	app.TosURI = r.TosURI
-	app.TokenEndpointAuthMethod = model.AuthMethod(r.TokenEndpointAuthMethod)
+	app.LogoURL = r.LogoURL
+	app.WebsiteURL = r.WebsiteURL
+	app.PrivacyURL = r.PrivacyURL
+	app.TermsURL = r.TermsURL
+	app.TokenAuthMethod = model.AuthMethod(r.TokenAuthMethod)
 	app.GrantTypes = r.GrantTypes
 	app.RedirectURIs = r.RedirectURIs
 	app.PostLogoutRedirectURIs = r.PostLogoutRedirectURIs
@@ -51,7 +51,7 @@ func (r *applicationRequest) applyTo(app *model.Application, creating bool) erro
 	app.RefreshTokenLifetime = r.RefreshTokenLifetime
 	app.AssertRoles = validate.Flag(r.AssertRoles, app.AssertRoles)
 	app.RequireRoleAssignment = validate.Flag(r.RequireRoleAssignment, app.RequireRoleAssignment)
-	app.Enabled = validate.Flag(r.Enabled, app.Enabled)
+	app.IsEnabled = validate.Flag(r.IsEnabled, app.IsEnabled)
 	app.AllowRegistration = validate.Flag(r.AllowRegistration, app.AllowRegistration)
 
 	// The flow is set by id, cleared by an empty string, and left alone when

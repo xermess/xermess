@@ -10,7 +10,7 @@ import (
 
 // Every row gets its id from the BeforeCreate hook, not from the database.
 func TestBeforeCreateSetsID(t *testing.T) {
-	admin := &AdminUser{Email: "a@b.test"}
+	admin := &Admin{Email: "a@b.test"}
 
 	if err := admin.BeforeCreate(nil); err != nil {
 		t.Fatal(err)
@@ -28,7 +28,7 @@ func TestBeforeCreateSetsID(t *testing.T) {
 // id.
 func TestBeforeCreateKeepsExistingID(t *testing.T) {
 	want := uuid.MustParse("11111111-2222-3333-4444-555555555555")
-	admin := &AdminUser{Base: Base{ID: want}}
+	admin := &Admin{Base: Base{ID: want}}
 
 	if err := admin.BeforeCreate(nil); err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestIDsSortByCreationOrder(t *testing.T) {
 	var previous string
 
 	for i := range 50 {
-		row := &AdminUser{}
+		row := &Admin{}
 		if err := row.BeforeCreate(nil); err != nil {
 			t.Fatal(err)
 		}

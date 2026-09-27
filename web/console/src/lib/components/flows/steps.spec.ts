@@ -44,7 +44,7 @@ describe('problemsOf', () => {
 		],
 		[
 			'the default turned off',
-			{ is_default: true, enabled: false },
+			{ is_default: true, is_enabled: false },
 			['The default flow cannot be turned off.']
 		],
 		[

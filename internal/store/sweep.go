@@ -5,6 +5,9 @@ import (
 	"log/slog"
 	"time"
 
+	"gorm.io/gorm"
+
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -37,7 +40,7 @@ var expiring = []any{
 	&model.PasswordReset{},
 	&model.EmailVerification{},
 	&model.LoginCode{},
-	&model.AdminUserSession{},
+	&model.AdminSession{},
 	&model.SocialLogin{},
 	&model.SSOLogin{},
 }
@@ -49,7 +52,7 @@ func (s *Store) Sweep(ctx context.Context, now, auditBefore time.Time) (int64, e
 	var removed int64
 
 	for _, table := range expiring {
-		n, err := s.deleteInBatches(ctx, table, "expires_at < ?", now)
+		n, err := s.deleteInBatches(ctx, table, sessionKinds[tableName(s.db, table)], "expires_at < ?", now)
 		removed += n
 		if err != nil {
 			return removed, err
@@ -57,7 +60,7 @@ func (s *Store) Sweep(ctx context.Context, now, auditBefore time.Time) (int64, e
 	}
 
 	if !auditBefore.IsZero() {
-		n, err := s.deleteInBatches(ctx, &model.AuditLog{}, "created_at < ?", auditBefore)
+		n, err := s.deleteInBatches(ctx, &model.AuditLog{}, "", "created_at < ?", auditBefore)
 		removed += n
 		if err != nil {
 			return removed, err
@@ -67,21 +70,53 @@ func (s *Store) Sweep(ctx context.Context, now, auditBefore time.Time) (int64, e
 	return removed, nil
 }
 
+// sessionKinds names the tables whose rows are also kept in the session
+// database, by the kind they are kept under there.
+var sessionKinds = map[string]string{
+	"user_sessions":  cache.UserSession,
+	"admin_sessions": cache.AdminSession,
+}
+
+// tableName is the table a model is stored in.
+func tableName(db *gorm.DB, model any) string {
+	statement := &gorm.Statement{DB: db}
+	if err := statement.Parse(model); err != nil {
+		return ""
+	}
+	return statement.Schema.Table
+}
+
 // deleteInBatches deletes the rows of a table matching `where`, sweepBatch at
-// a time, until there are none left.
-func (s *Store) deleteInBatches(ctx context.Context, table any, where string, arg any) (int64, error) {
+// a time, until there are none left. For a table of sessions (`kind` is not
+// empty), the sessions deleted are removed from the session database too.
+func (s *Store) deleteInBatches(ctx context.Context, table any, kind, where string, arg any) (int64, error) {
 	var removed int64
 
 	for {
 		batch := s.db.Model(table).Unscoped().Select("id").Where(where, arg).Limit(sweepBatch)
 
-		result := s.db.WithContext(ctx).Unscoped().Where("id IN (?)", batch).Delete(table)
-		if result.Error != nil {
-			return removed, translate(result.Error)
+		var (
+			deleted int64
+			err     error
+		)
+		if kind == "" {
+			result := s.db.WithContext(ctx).Unscoped().Where("id IN (?)", batch).Delete(table)
+			deleted, err = result.RowsAffected, result.Error
+		} else {
+			// The table name is the model's, never anything a request said.
+			var hashes []string
+			err = s.db.WithContext(ctx).
+				Raw("DELETE FROM "+tableName(s.db, table)+" WHERE id IN (?) RETURNING token_hash", batch).
+				Scan(&hashes).Error
+			deleted = int64(len(hashes))
+			s.sessions.DropSessions(ctx, kind, hashes...)
+		}
+		if err != nil {
+			return removed, translate(err)
 		}
 
-		removed += result.RowsAffected
-		if result.RowsAffected < sweepBatch {
+		removed += deleted
+		if deleted < sweepBatch {
 			return removed, nil
 		}
 	}

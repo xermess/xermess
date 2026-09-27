@@ -27,7 +27,7 @@
 	const without = $derived(Math.max(current.administrators - current.with_mfa, 0));
 
 	const save = createMutation(() => ({
-		mutationFn: (required: boolean) => adminsApi.updateSecurity({ mfa_required: required }),
+		mutationFn: (required: boolean) => adminsApi.updateSecurity({ require_mfa: required }),
 		onSuccess: (result) => {
 			current = result;
 			confirming = false;
@@ -69,7 +69,7 @@
 	<SwitchField
 		label="Require an authenticator"
 		description="Every administrator sets one up before they can do anything else, and none of them can turn it off again."
-		checked={current.mfa_required}
+		checked={current.require_mfa}
 		disabled={saving}
 		onChange={(on) => set(on)}
 	/>

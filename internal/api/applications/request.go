@@ -32,17 +32,17 @@ type applicationRequest struct {
 	Description string `json:"description" validate:"max=255"`
 	Type        string `json:"type"`
 
-	LogoURI   string `json:"logo_uri" validate:"max=512"`
-	ClientURI string `json:"client_uri" validate:"max=512"`
-	PolicyURI string `json:"policy_uri" validate:"max=512"`
-	TosURI    string `json:"tos_uri" validate:"max=512"`
+	LogoURL    string `json:"logo_url" validate:"max=512"`
+	WebsiteURL string `json:"website_url" validate:"max=512"`
+	PrivacyURL string `json:"privacy_url" validate:"max=512"`
+	TermsURL   string `json:"terms_url" validate:"max=512"`
 
-	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method"`
-	GrantTypes              []string `json:"grant_types"`
-	RedirectURIs            []string `json:"redirect_uris" validate:"dive,max=512"`
-	PostLogoutRedirectURIs  []string `json:"post_logout_redirect_uris" validate:"dive,max=512"`
-	Scopes                  []string `json:"scopes"`
-	RequirePKCE             *bool    `json:"require_pkce"`
+	TokenAuthMethod        string   `json:"token_auth_method"`
+	GrantTypes             []string `json:"grant_types"`
+	RedirectURIs           []string `json:"redirect_uris" validate:"dive,max=512"`
+	PostLogoutRedirectURIs []string `json:"post_logout_redirect_uris" validate:"dive,max=512"`
+	Scopes                 []string `json:"scopes"`
+	RequirePKCE            *bool    `json:"require_pkce"`
 
 	AccessTokenLifetime  int `json:"access_token_lifetime"`
 	IDTokenLifetime      int `json:"id_token_lifetime"`
@@ -52,7 +52,7 @@ type applicationRequest struct {
 	// PKCE and puts roles in its tokens; an existing one keeps its settings.
 	AssertRoles           *bool `json:"assert_roles"`
 	RequireRoleAssignment *bool `json:"require_role_assignment"`
-	Enabled               *bool `json:"enabled"`
+	IsEnabled             *bool `json:"is_enabled"`
 	// AllowRegistration may be left out too: a new application then offers
 	// registration on its sign-in page.
 	AllowRegistration *bool `json:"allow_registration"`
@@ -69,11 +69,11 @@ func (r *applicationRequest) clean() {
 	r.Name = strings.TrimSpace(r.Name)
 	r.Description = strings.TrimSpace(r.Description)
 	r.Type = strings.TrimSpace(r.Type)
-	r.LogoURI = strings.TrimSpace(r.LogoURI)
-	r.ClientURI = strings.TrimSpace(r.ClientURI)
-	r.PolicyURI = strings.TrimSpace(r.PolicyURI)
-	r.TosURI = strings.TrimSpace(r.TosURI)
-	r.TokenEndpointAuthMethod = strings.TrimSpace(r.TokenEndpointAuthMethod)
+	r.LogoURL = strings.TrimSpace(r.LogoURL)
+	r.WebsiteURL = strings.TrimSpace(r.WebsiteURL)
+	r.PrivacyURL = strings.TrimSpace(r.PrivacyURL)
+	r.TermsURL = strings.TrimSpace(r.TermsURL)
+	r.TokenAuthMethod = strings.TrimSpace(r.TokenAuthMethod)
 
 	if r.AccessTokenLifetime == 0 {
 		r.AccessTokenLifetime = model.DefaultAccessTokenLifetime

@@ -34,7 +34,7 @@ func (r *apiRequest) applyTo(api *model.API, creating bool) error {
 
 	scopes := make([]model.APIScope, 0, len(r.Scopes))
 	for _, sent := range r.Scopes {
-		scope := model.APIScope{Name: sent.Name, Description: sent.Description, Default: sent.Default}
+		scope := model.APIScope{Name: sent.Name, Description: sent.Description, IsDefault: sent.IsDefault}
 
 		if sent.ID != uuid.Nil {
 			if creating || !own[sent.ID.String()] {

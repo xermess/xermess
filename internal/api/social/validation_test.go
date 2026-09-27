@@ -109,7 +109,7 @@ func TestProviderRequestApplyToCreating(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := tt.request
-			provider := model.SocialProvider{Enabled: true, LinkVerifiedEmails: true, AllowRegistration: true}
+			provider := model.SocialProvider{IsEnabled: true, LinkVerifiedEmails: true, AllowRegistration: true}
 
 			err := request.applyTo(&provider, sealer(t), true)
 
@@ -152,20 +152,20 @@ func TestProviderRequestUpdatesOnlyWhatItMentions(t *testing.T) {
 		ClientID: "com.example.service",
 		TeamID:   "TEAM123456", KeyID: "KEY1234567", PrivateKey: stored,
 		Scopes:             model.StringList{"name", "email"},
-		Enabled:            false,
+		IsEnabled:          false,
 		LinkVerifiedEmails: true,
 		AllowRegistration:  true,
 	}
 
 	was := apple
-	request := providerRequest{Enabled: ptr(true)}
+	request := providerRequest{IsEnabled: ptr(true)}
 
 	if err := request.applyTo(&apple, seal, false); err != nil {
 		t.Fatalf("applyTo() = %v, want nothing: turning a provider on says nothing about its keys", err)
 	}
 
 	switch {
-	case !apple.Enabled:
+	case !apple.IsEnabled:
 		t.Error("the provider was not turned on")
 	case apple.Name != was.Name || apple.ClientID != was.ClientID:
 		t.Errorf("the name or the client id was emptied: %+v", apple)
@@ -187,7 +187,7 @@ func TestProviderRequestKeepsKindAndSlug(t *testing.T) {
 
 	provider := model.SocialProvider{
 		Kind: model.SocialGoogle, Slug: "google", Name: "Google",
-		ClientID: "id", ClientSecret: []byte("sealed"), Enabled: true,
+		ClientID: "id", ClientSecret: []byte("sealed"), IsEnabled: true,
 	}
 
 	request := providerRequest{Kind: "facebook", Slug: "facebook", Name: ptr("Google")}

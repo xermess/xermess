@@ -80,7 +80,7 @@ func (h *Handler) Create(c *gin.Context) {
 	provider := &model.SocialProvider{
 		// What a new provider is like before anything is typed in: enabled,
 		// linking addresses the provider has checked, and taking new accounts.
-		Enabled:            true,
+		IsEnabled:          true,
 		LinkVerifiedEmails: true,
 		AllowRegistration:  true,
 	}
@@ -138,7 +138,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	h.audit.RecordWith(c, "social_provider.updated", targetType, provider.ID.String(), map[string]any{
-		"provider": provider.Name, "enabled": provider.Enabled,
+		"provider": provider.Name, "is_enabled": provider.IsEnabled,
 	})
 
 	h.answer(c, http.StatusOK, provider)

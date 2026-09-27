@@ -71,14 +71,14 @@ func TestLoginFlowValidate(t *testing.T) {
 		},
 		{
 			name:   "turning off the flow everything falls back to",
-			change: func(f *LoginFlow) { f.Enabled = false },
+			change: func(f *LoginFlow) { f.IsEnabled = false },
 			want:   "the default flow cannot be turned off",
 		},
 		{
 			name: "turning off a flow that is not the default",
 			change: func(f *LoginFlow) {
 				f.IsDefault = false
-				f.Enabled = false
+				f.IsEnabled = false
 			},
 		},
 	}
@@ -134,7 +134,7 @@ func TestDefaultLoginFlowIsValid(t *testing.T) {
 	if err := flow.Validate(); err != nil {
 		t.Fatalf("DefaultLoginFlow() = %v", err)
 	}
-	if !flow.IsDefault || !flow.Enabled {
+	if !flow.IsDefault || !flow.IsEnabled {
 		t.Error("the default flow has to be the default, and on")
 	}
 	if !flow.Offers(StepPassword) {

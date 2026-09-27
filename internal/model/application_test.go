@@ -117,30 +117,30 @@ func TestApplicationValidate(t *testing.T) {
 		{
 			name:   "a logo over http",
 			kind:   AppWeb,
-			change: func(a *Application) { a.LogoURI = "http://shop.example.com/logo.png" },
-			want:   "logo_uri must be an https URL",
+			change: func(a *Application) { a.LogoURL = "http://shop.example.com/logo.png" },
+			want:   "logo_url must be an https URL",
 		},
 		{
 			name:   "a home page on localhost over http",
 			kind:   AppWeb,
-			change: func(a *Application) { a.ClientURI = "http://localhost:3000" },
+			change: func(a *Application) { a.WebsiteURL = "http://localhost:3000" },
 		},
 		{
 			name:   "a home page over http anywhere",
 			kind:   AppWeb,
-			change: func(a *Application) { a.ClientURI = "http://shop.example.com" },
+			change: func(a *Application) { a.WebsiteURL = "http://shop.example.com" },
 		},
 		{
 			name:   "a home page that is not a web address",
 			kind:   AppWeb,
-			change: func(a *Application) { a.ClientURI = "javascript:alert(1)" },
-			want:   "client_uri must be an http or https URL",
+			change: func(a *Application) { a.WebsiteURL = "javascript:alert(1)" },
+			want:   "website_url must be an http or https URL",
 		},
 		{
 			name:   "a home page with no host",
 			kind:   AppWeb,
-			change: func(a *Application) { a.ClientURI = "http://" },
-			want:   "client_uri must be an http or https URL",
+			change: func(a *Application) { a.WebsiteURL = "http://" },
+			want:   "website_url must be an http or https URL",
 		},
 		{
 			name:   "an access token that outlives a day",
@@ -177,22 +177,22 @@ func TestApplicationValidate(t *testing.T) {
 // nothing to redirect to.
 func TestApplicationNormalise(t *testing.T) {
 	spa := app(AppSPA)
-	spa.TokenEndpointAuthMethod = AuthClientSecretPost
+	spa.TokenAuthMethod = AuthClientSecretPost
 	spa.RequirePKCE = false
 	spa.Normalise()
 
-	if spa.TokenEndpointAuthMethod != AuthNone || !spa.RequirePKCE || spa.HasSecret() {
-		t.Errorf("spa: auth = %s, pkce = %v, want none and true", spa.TokenEndpointAuthMethod, spa.RequirePKCE)
+	if spa.TokenAuthMethod != AuthNone || !spa.RequirePKCE || spa.HasSecret() {
+		t.Errorf("spa: auth = %s, pkce = %v, want none and true", spa.TokenAuthMethod, spa.RequirePKCE)
 	}
 
 	web := app(AppWeb)
-	web.TokenEndpointAuthMethod = AuthNone
+	web.TokenAuthMethod = AuthNone
 	web.GrantTypes = []string{GrantRefreshToken, GrantAuthorizationCode, GrantRefreshToken}
 	web.RedirectURIs = []string{" https://a.example.com/cb ", "", "https://a.example.com/cb"}
 	web.Normalise()
 
-	if web.TokenEndpointAuthMethod != AuthClientSecretBasic {
-		t.Errorf("web: auth = %s, want client_secret_basic", web.TokenEndpointAuthMethod)
+	if web.TokenAuthMethod != AuthClientSecretBasic {
+		t.Errorf("web: auth = %s, want client_secret_basic", web.TokenAuthMethod)
 	}
 	if got := strings.Join(web.GrantTypes, ","); got != "authorization_code,refresh_token" {
 		t.Errorf("web: grant types = %s, want them once each in catalog order", got)

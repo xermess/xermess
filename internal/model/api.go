@@ -63,10 +63,10 @@ type APIScope struct {
 	Name        string    `gorm:"size:128;not null;uniqueIndex:idx_api_scopes_api_name,priority:2" json:"name"`
 	Description string    `gorm:"size:255" json:"description"`
 
-	// Default adds the scope to every access token for the API, whether or
+	// IsDefault adds the scope to every access token for the API, whether or
 	// not it was asked for — still only when the application is allowed it
 	// and, if the API enforces roles, the user's roles grant it.
-	Default bool `gorm:"not null" json:"default"`
+	IsDefault bool `gorm:"not null" json:"is_default"`
 }
 
 // The algorithms access tokens can be signed with. All are asymmetric: HS256

@@ -59,7 +59,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	admin := model.AdminUser{
+	admin := model.Admin{
 		// The address is the account: it is what this person signs in with,
 		// and one less thing to invent during setup.
 		Username:  req.Email,

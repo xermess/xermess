@@ -64,8 +64,8 @@
 		error = '';
 		confirmingDelete = false;
 		name = language.name;
-		native = language.native;
-		enabled = language.enabled;
+		native = language.native_name;
+		enabled = language.is_enabled;
 		isDefault = language.is_default;
 		position = String(language.position);
 		drafts = Object.fromEntries(apps.map((app) => [app, null]));
@@ -80,8 +80,8 @@
 	const settingsChanged = $derived(
 		language !== null &&
 			(name.trim() !== language.name ||
-				native.trim() !== language.native ||
-				enabled !== language.enabled ||
+				native.trim() !== language.native_name ||
+				enabled !== language.is_enabled ||
 				isDefault !== language.is_default ||
 				Number(position) !== language.position)
 	);
@@ -119,8 +119,8 @@
 			if (settingsChanged) {
 				await languagesApi.update(code, {
 					name: name.trim(),
-					native: native.trim(),
-					enabled,
+					native_name: native.trim(),
+					is_enabled: enabled,
 					is_default: isDefault,
 					position: Number(position)
 				});
@@ -182,7 +182,7 @@
 
 <Drawer
 	bind:open
-	title={language?.native ?? ''}
+	title={language?.native_name ?? ''}
 	description="Its names, where it is offered, and its text."
 	meta={language?.code}
 	onsubmit={submit}
@@ -285,7 +285,7 @@
 						<TranslationEditor
 							code={language.code}
 							name={name || language.name}
-							native={native || language.native}
+							native={native || language.native_name}
 							{app}
 							readOnly={!canWrite}
 							bind:draft={drafts[app]}

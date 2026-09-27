@@ -39,7 +39,7 @@
 	/** The ticked rows on screen that can be deleted: super_admin is built in,
 	    so ticking it offers nothing. */
 	const deletable = $derived(
-		new Set(roles.data.filter((role) => !role.builtin).map((role) => role.id))
+		new Set(roles.data.filter((role) => !role.is_builtin).map((role) => role.id))
 	);
 	const chosen = $derived(selected.filter((id) => deletable.has(id)));
 

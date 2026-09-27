@@ -55,7 +55,7 @@ type MFAStatus struct {
 }
 
 // Status describes an administrator's second factor.
-func (s *Service) Status(ctx context.Context, admin *model.AdminUser) (MFAStatus, error) {
+func (s *Service) Status(ctx context.Context, admin *model.Admin) (MFAStatus, error) {
 	status := MFAStatus{Required: s.MFARequired(ctx)}
 
 	factor, err := s.confirmedFactor(ctx, admin)
@@ -77,7 +77,7 @@ func (s *Service) Status(ctx context.Context, admin *model.AdminUser) (MFAStatus
 // VerifySignIn finishes a sign-in waiting for a code: a code from the
 // authenticator, or a recovery code. A wrong one counts toward the lockout,
 // the same as a wrong password.
-func (s *Service) VerifySignIn(ctx context.Context, token, code string, req Request) (*model.AdminUser, error) {
+func (s *Service) VerifySignIn(ctx context.Context, token, code string, req Request) (*model.Admin, error) {
 	admin, session, state, err := s.Session(ctx, token)
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (s *Service) VerifySignIn(ctx context.Context, token, code string, req Requ
 // already on takes a code from it — or a recovery code — so a session that
 // has the password but not the phone cannot swap in an authenticator of its
 // own.
-func (s *Service) BeginTOTP(ctx context.Context, admin *model.AdminUser, currentCode string, req Request) (*Enrolment, error) {
+func (s *Service) BeginTOTP(ctx context.Context, admin *model.Admin, currentCode string, req Request) (*Enrolment, error) {
 	if current, err := s.confirmedFactor(ctx, admin); err == nil {
 		if strings.TrimSpace(currentCode) == "" {
 			return nil, ErrMFAEnabled
@@ -134,10 +134,10 @@ func (s *Service) BeginTOTP(ctx context.Context, admin *model.AdminUser, current
 	}
 
 	factor := model.MFA{
-		AdminUserID: admin.ID,
-		Method:      model.MFAMethodTOTP,
-		Label:       "Authenticator app",
-		Secret:      base64.StdEncoding.EncodeToString(sealed),
+		AdminID: admin.ID,
+		Method:  model.MFAMethodTOTP,
+		Label:   "Authenticator app",
+		Secret:  base64.StdEncoding.EncodeToString(sealed),
 	}
 	if err := s.store.StartMFA(ctx, &factor); err != nil {
 		return nil, err
@@ -150,7 +150,7 @@ func (s *Service) BeginTOTP(ctx context.Context, admin *model.AdminUser, current
 // returns the recovery codes: the only time they exist in the clear. An
 // administrator who was only half signed in, waiting to set a factor up, is
 // signed in by it.
-func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.AdminUser, token, code string, req Request) ([]string, error) {
+func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.Admin, token, code string, req Request) ([]string, error) {
 	factors, err := s.store.MFAFactors(ctx, admin.ID, model.MFAMethodTOTP)
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.AdminUser, token
 	// has to be read before the factor is saved: afterwards the same session
 	// looks like one waiting for a code.
 	_, waiting, state, err := s.Session(ctx, token)
-	enrolling := err == nil && state == StateEnroll && waiting.AdminUserID == admin.ID
+	enrolling := err == nil && state == StateEnroll && waiting.AdminID == admin.ID
 
 	pending.ConfirmedAt = &now
 	pending.LastUsedAt = &usedAt
@@ -206,7 +206,7 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.AdminUser, token
 	s.record(ctx, &admin.ID, admin.Username, action, req, "")
 
 	// A session that was waiting for this is signed in by it.
-	if enrolling && !waiting.MFAPassed {
+	if enrolling && !waiting.IsMFAPassed {
 		if err := s.store.PassSessionMFA(ctx, waiting.ID, now.Add(SessionLifetime)); err != nil {
 			return nil, err
 		}
@@ -221,7 +221,7 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.AdminUser, token
 // DisableTOTP turns two-factor sign-in off, with a code to prove it is the
 // administrator asking. Every other session they have ends. Where a second
 // factor is required it cannot be turned off.
-func (s *Service) DisableTOTP(ctx context.Context, admin *model.AdminUser, token, code string, req Request) error {
+func (s *Service) DisableTOTP(ctx context.Context, admin *model.Admin, token, code string, req Request) error {
 	if s.MFARequired(ctx) {
 		return ErrMFARequired
 	}
@@ -251,7 +251,7 @@ func (s *Service) DisableTOTP(ctx context.Context, admin *model.AdminUser, token
 
 // RegenerateRecoveryCodes replaces an administrator's recovery codes, with a
 // code to prove it is them. The old codes stop working.
-func (s *Service) RegenerateRecoveryCodes(ctx context.Context, admin *model.AdminUser, code string, req Request) ([]string, error) {
+func (s *Service) RegenerateRecoveryCodes(ctx context.Context, admin *model.Admin, code string, req Request) ([]string, error) {
 	factor, err := s.confirmedFactor(ctx, admin)
 	if err != nil {
 		return nil, err
@@ -279,13 +279,13 @@ func (s *Service) RegenerateRecoveryCodes(ctx context.Context, admin *model.Admi
 // ResetMFA removes another administrator's second factor and signs them out
 // everywhere: a super admin's answer to a lost phone and lost recovery codes.
 // Where a factor is required, they set up a new one at their next sign-in.
-func (s *Service) ResetMFA(ctx context.Context, target *model.AdminUser) error {
+func (s *Service) ResetMFA(ctx context.Context, target *model.Admin) error {
 	return s.store.RemoveMFA(ctx, target.ID, nil, time.Now())
 }
 
 // check accepts a code from the authenticator or a recovery code, once, and
 // says which it was. A wrong code counts toward the lockout and is logged.
-func (s *Service) check(ctx context.Context, admin *model.AdminUser, factor *model.MFA, code string, req Request) (string, error) {
+func (s *Service) check(ctx context.Context, admin *model.Admin, factor *model.MFA, code string, req Request) (string, error) {
 	now := time.Now()
 
 	if isRecoveryCode(code) {
@@ -321,7 +321,7 @@ func (s *Service) check(ctx context.Context, admin *model.AdminUser, factor *mod
 }
 
 // failed counts a wrong code against the administrator and logs it.
-func (s *Service) failed(ctx context.Context, admin *model.AdminUser, req Request, reason string) error {
+func (s *Service) failed(ctx context.Context, admin *model.Admin, req Request, reason string) error {
 	locked, err := s.store.RecordFailedLogin(ctx, admin, time.Now(), MaxFailedLogins, LockoutDuration)
 	if err != nil {
 		return err
@@ -335,7 +335,7 @@ func (s *Service) failed(ctx context.Context, admin *model.AdminUser, req Reques
 	return ErrInvalidCode
 }
 
-func (s *Service) confirmedFactor(ctx context.Context, admin *model.AdminUser) (*model.MFA, error) {
+func (s *Service) confirmedFactor(ctx context.Context, admin *model.Admin) (*model.MFA, error) {
 	factors, err := s.store.MFAFactors(ctx, admin.ID, model.MFAMethodTOTP)
 	if err != nil {
 		return nil, err

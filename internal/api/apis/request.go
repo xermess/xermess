@@ -42,7 +42,7 @@ type scopeRequest struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Default     bool      `json:"default"`
+	IsDefault   bool      `json:"is_default"`
 }
 
 // clean tidies what can be tidied, so the rules see the values that would

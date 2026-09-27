@@ -60,7 +60,7 @@ func TestLimiterForgetsIdleAddresses(t *testing.T) {
 // Two server processes with a Redis between them share one budget per
 // address: what one spent, the other cannot spend again.
 func TestLiveLimitIsSharedBetweenProcesses(t *testing.T) {
-	c := cachetest.Require(t)
+	c := cachetest.Require(t).Sessions
 
 	first := New(2).Shared(c, "public")
 	second := New(2).Shared(c, "public")
@@ -80,7 +80,7 @@ func TestLiveLimitIsSharedBetweenProcesses(t *testing.T) {
 // A Redis that stops answering leaves each process counting on its own —
 // a weaker limit, never none.
 func TestLiveLimitFallsBackWithoutRedis(t *testing.T) {
-	c := cachetest.Require(t)
+	c := cachetest.Require(t).Sessions
 	l := New(1).Shared(c, "public")
 	ctx := context.Background()
 

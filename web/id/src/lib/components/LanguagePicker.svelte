@@ -85,11 +85,11 @@
 {#if languages.length > 1}
 	<details class="picker" bind:this={menu}>
 		<summary
-			aria-label="{t('shell.language')}: {shown?.native ?? current}"
+			aria-label="{t('shell.language')}: {shown?.native_name ?? current}"
 			aria-busy={switching || undefined}
 		>
 			<Icon name="globe" size="1.0625rem" />
-			<span class="current" lang={current}>{shown?.native ?? current}</span>
+			<span class="current" lang={current}>{shown?.native_name ?? current}</span>
 			<span class="chevron"><Icon name="chevron" size="1rem" /></span>
 		</summary>
 
@@ -108,8 +108,8 @@
 						onclick={(event) => choose(event, language.code)}
 					>
 						<span class="names">
-							<span class="native" lang={language.code}>{language.native}</span>
-							{#if language.name !== language.native}
+							<span class="native" lang={language.code}>{language.native_name}</span>
+							{#if language.name !== language.native_name}
 								<span class="english" lang="en">{language.name}</span>
 							{/if}
 						</span>

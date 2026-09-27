@@ -160,7 +160,7 @@ func (s *Service) SignIn(ctx context.Context, email, password, request string, r
 		return nil, ErrInvalidCredentials
 	}
 
-	if user.IsTemporaryPassword {
+	if user.IsPasswordTemporary {
 		token, err := s.newReset(ctx, user)
 		if err != nil {
 			return nil, err
@@ -194,7 +194,7 @@ func (s *Service) finishSignIn(
 
 	// A flow that requires a verified address still requires it first: there
 	// is no point emailing a code to an address the flow will not take.
-	if flow.RequireVerifiedEmail && !user.EmailVerified {
+	if flow.RequireVerifiedEmail && !user.IsEmailVerified {
 		return s.startSession(ctx, user, flow, request, remember, client, action)
 	}
 
@@ -226,7 +226,7 @@ func (s *Service) startSession(
 		return nil, ErrSignInClosed
 	}
 
-	if flow.RequireVerifiedEmail && !user.EmailVerified {
+	if flow.RequireVerifiedEmail && !user.IsEmailVerified {
 		if err := s.sendVerification(ctx, user, request, client); err != nil {
 			return nil, err
 		}
@@ -241,12 +241,12 @@ func (s *Service) startSession(
 	}
 
 	record := model.UserSession{
-		TokenHash: hash,
-		UserID:    user.ID,
-		AuthTime:  now,
-		ExpiresAt: now.Add(time.Duration(flow.SessionLifetimeHours) * time.Hour),
-		IP:        client.IP,
-		UserAgent: truncate(client.UserAgent, 255),
+		TokenHash:       hash,
+		UserID:          user.ID,
+		AuthenticatedAt: now,
+		ExpiresAt:       now.Add(time.Duration(flow.SessionLifetimeHours) * time.Hour),
+		IP:              client.IP,
+		UserAgent:       truncate(client.UserAgent, 255),
 	}
 	if err := s.store.CreateUserSession(ctx, &record); err != nil {
 		return nil, err
@@ -312,7 +312,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 	}
 
 	app := req.Application
-	if !app.AllowRegistration || !app.Enabled {
+	if !app.AllowRegistration || !app.IsEnabled {
 		return nil, ErrRegistrationClosed
 	}
 
@@ -330,7 +330,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 		return nil, ErrRegistrationClosed
 	}
 
-	if (app.TosURI != "" || app.PolicyURI != "") && !r.AcceptedTerms {
+	if (app.TermsURL != "" || app.PrivacyURL != "") && !r.AcceptedTerms {
 		return nil, ErrTermsRequired
 	}
 
@@ -379,7 +379,7 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 	// startSession below applies it — so a failure to send is logged rather
 	// than refused: the account exists either way, and the link can be sent
 	// again from the sign-in page.
-	if flow.VerifyEmailOnRegister && !user.EmailVerified {
+	if flow.VerifyEmailOnRegister && !user.IsEmailVerified {
 		if err := s.sendVerification(ctx, user, r.Request, client); err != nil {
 			s.log.Error("sending a verification email failed", "error", err, "user", user.ID)
 		}

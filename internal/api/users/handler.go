@@ -135,7 +135,7 @@ func (h *Handler) Disconnect(c *gin.Context) {
 		return
 	}
 
-	identity, err := h.store.UserIdentityByID(c.Request.Context(), id)
+	identity, err := h.store.SocialIdentityByID(c.Request.Context(), id)
 	switch {
 	case errors.Is(err, store.ErrNotFound) || err == nil && identity.UserID != user.ID:
 		respond.NotFound(c, "this user does not sign in with that")
@@ -145,7 +145,7 @@ func (h *Handler) Disconnect(c *gin.Context) {
 		return
 	}
 
-	if err := h.store.DeleteUserIdentity(c.Request.Context(), identity); err != nil {
+	if err := h.store.DeleteSocialIdentity(c.Request.Context(), identity); err != nil {
 		respond.Failure(c, h.log, err, "disconnecting a provider failed")
 		return
 	}
@@ -437,7 +437,7 @@ func (h *Handler) build(c *gin.Context, req *userRequest, into *model.User) (*mo
 	}
 
 	user.Email = req.Email
-	user.EmailVerified = validate.Flag(req.EmailVerified, user.EmailVerified)
+	user.IsEmailVerified = validate.Flag(req.IsEmailVerified, user.IsEmailVerified)
 	user.FirstName = req.FirstName
 	user.LastName = req.LastName
 	user.IsActive = validate.Flag(req.IsActive, user.IsActive)
@@ -477,16 +477,16 @@ func setPassword(user *model.User, req *userRequest) error {
 		}
 	}
 
-	temporary := validate.Flag(req.IsTemporaryPassword, user.IsTemporaryPassword)
+	temporary := validate.Flag(req.IsPasswordTemporary, user.IsPasswordTemporary)
 
 	if temporary && !user.HasPassword {
 		return respond.Fault{
 			Status:  http.StatusBadRequest,
-			Message: "is_temporary_password needs a password to be set",
+			Message: "is_password_temporary needs a password to be set",
 		}
 	}
 
-	user.IsTemporaryPassword = temporary
+	user.IsPasswordTemporary = temporary
 
 	return nil
 }

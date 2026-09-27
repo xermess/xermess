@@ -38,7 +38,7 @@ type providerResponse struct {
 	TokenURL     string `json:"token_url"`
 	UserInfoURL  string `json:"userinfo_url"`
 
-	Enabled            bool `json:"enabled"`
+	IsEnabled          bool `json:"is_enabled"`
 	LinkVerifiedEmails bool `json:"link_verified_emails"`
 	AllowRegistration  bool `json:"allow_registration"`
 	Position           int  `json:"position"`
@@ -71,8 +71,8 @@ func newProviderResponse(provider model.SocialProvider, issuer string, identitie
 		TokenAuthUsed:      provider.TokenAuthMethod(),
 		AuthorizeURL:       provider.AuthorizeURL,
 		TokenURL:           provider.TokenURL,
-		UserInfoURL:        provider.UserInfoURL,
-		Enabled:            provider.Enabled,
+		UserInfoURL:        provider.UserinfoURL,
+		IsEnabled:          provider.IsEnabled,
 		LinkVerifiedEmails: provider.LinkVerifiedEmails,
 		AllowRegistration:  provider.AllowRegistration,
 		Position:           provider.Position,

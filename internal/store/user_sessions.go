@@ -82,16 +82,16 @@ func (s *Store) UserSession(ctx context.Context, id uuid.UUID) (*model.UserSessi
 // user. Ending the sessions alone would leave every application signed in
 // until its tokens ran out.
 func (s *Store) SignOutUser(ctx context.Context, user uuid.UUID, at time.Time) (sessions, tokens int64, err error) {
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		result := tx.Model(&model.UserSession{}).
-			Where("user_id = ? AND revoked_at IS NULL AND expires_at > ?", user, at).
-			Update("revoked_at", at)
-		if result.Error != nil {
-			return result.Error
-		}
-		sessions = result.RowsAffected
+	var ended []model.UserSession
 
-		result = tx.Model(&model.RefreshToken{}).
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var err error
+		if ended, err = revokeUserSessionsIn(tx, at, "user_id = ? AND expires_at > ?", user, at); err != nil {
+			return err
+		}
+		sessions = int64(len(ended))
+
+		result := tx.Model(&model.RefreshToken{}).
 			Where("user_id = ? AND revoked_at IS NULL AND expires_at > ?", user, at).
 			Update("revoked_at", at)
 		if result.Error != nil {
@@ -101,6 +101,9 @@ func (s *Store) SignOutUser(ctx context.Context, user uuid.UUID, at time.Time) (
 
 		return nil
 	})
+	if err == nil {
+		s.putUserSessions(ctx, ended...)
+	}
 
 	return sessions, tokens, err
 }

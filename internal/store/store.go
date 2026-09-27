@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"gorm.io/gorm"
@@ -18,11 +19,12 @@ import (
 	"loginer/internal/cache"
 )
 
-// Store holds the database connection every query runs on, and the cache in
-// front of it.
+// Store holds the database connection every query runs on, and the two Redis
+// databases in front of it.
 type Store struct {
-	db    *gorm.DB
-	cache *cache.Cache
+	db       *gorm.DB
+	cache    *cache.Cache
+	sessions *cache.Cache
 }
 
 // New returns a store backed by the given connection, with no cache.
@@ -30,17 +32,31 @@ func New(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
 
-// WithCache puts a cache in front of the reads that every page asks for. A
-// nil cache is no cache.
+// WithCache puts Redis in front of the reads every request makes. A nil
+// Redis is no cache.
 //
-// Only a few reads go through it — what the sign-in pages and the panel ask
-// for on every render and nobody changes often: the languages and their
-// text, the organisation, the login flows and the sign-in buttons. Each
-// method that writes one of those forgets its group once the write has
-// committed. Nothing else is cached, so nothing else can be stale.
-func (s *Store) WithCache(c *cache.Cache) *Store {
-	s.cache = c
+// Only a few reads go through it. In the cache database: what the sign-in
+// pages and the panel ask for on every render and nobody changes often — the
+// languages and their text, the organisation, the login flows, the sign-in
+// buttons, how one-time codes work. In the session database: what every
+// signed-in request reads to decide who is asking and what they may do — the
+// sessions behind the cookies, the administrators with their roles, the
+// applications by client id, the administrators' sign-in settings. Each
+// method that writes one of those forgets it once the write has committed.
+// Nothing else is cached, so nothing else can be stale: not users, not
+// tokens or codes, which are spent once and have to be spent in the database.
+func (s *Store) WithCache(r *cache.Redis) *Store {
+	s.cache = r.CacheDB()
+	s.sessions = r.SessionDB()
 	return s
+}
+
+// in is the database a group is kept in.
+func (s *Store) in(group string) *cache.Cache {
+	if slices.Contains(cache.Groups[cache.SessionDatabase], group) {
+		return s.sessions
+	}
+	return s.cache
 }
 
 // cached reads one value through the cache: from Redis when it is there, and
@@ -48,7 +64,7 @@ func (s *Store) WithCache(c *cache.Cache) *Store {
 // error from `load` is returned and nothing is kept.
 func cached[T any](ctx context.Context, s *Store, group, field string, load func() (T, error)) (T, error) {
 	var value T
-	if s.cache.Get(ctx, group, field, &value) {
+	if s.in(group).Get(ctx, group, field, &value) {
 		return value, nil
 	}
 
@@ -57,7 +73,7 @@ func cached[T any](ctx context.Context, s *Store, group, field string, load func
 		return value, err
 	}
 
-	s.cache.Set(ctx, group, field, value)
+	s.in(group).Set(ctx, group, field, value)
 
 	return value, nil
 }
@@ -66,7 +82,20 @@ func cached[T any](ctx context.Context, s *Store, group, field string, load func
 // the write has committed: forgetting earlier would let a reader put the old
 // row back before the new one is there.
 func (s *Store) forget(ctx context.Context, groups ...string) {
-	s.cache.Forget(ctx, groups...)
+	for _, group := range groups {
+		s.in(group).Forget(ctx, group)
+	}
+}
+
+// forgetting is forget for a write that may have failed: it forgets once the
+// write has succeeded, and answers the write's error either way — so a write
+// reads `return s.forgetting(ctx, write(), groups...)`.
+func (s *Store) forgetting(ctx context.Context, err error, groups ...string) error {
+	if err == nil {
+		s.forget(ctx, groups...)
+	}
+
+	return err
 }
 
 // ErrNotFound is returned when a row that was asked for is not there. It

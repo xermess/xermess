@@ -1,4 +1,5 @@
 import type { LogFilter } from '$lib/api';
+import type { CacheKeyParams } from './cache';
 import type { RoleListParams } from './roles';
 
 /**
@@ -83,6 +84,17 @@ export const keys = {
 	otp: {
 		/** There is one record of how the emailed codes behave. */
 		settings: ['otp', 'settings'] as const
+	},
+
+	cache: {
+		/** Everything about Redis goes when any of it changes: a key removed
+		    changes the counts, and a group cleared changes the keys. */
+		all: ['cache'] as const,
+		overview: ['cache', 'overview'] as const,
+		/** One page of one database's keys, as the filters describe it. */
+		keys: (params: CacheKeyParams) =>
+			['cache', 'keys', params.database, params.kind, params.group, params.search] as const,
+		key: (database: string, name: string) => ['cache', 'key', database, name] as const
 	},
 
 	social: {

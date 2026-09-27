@@ -51,7 +51,7 @@ func FromStore(st Store, opener Opener) Source {
 // unsealed. The panel's test message uses it too, with what is on the form.
 func Of(stored model.MailSettings, password string) Settings {
 	return Settings{
-		Enabled:     stored.Enabled,
+		Enabled:     stored.IsEnabled,
 		Host:        stored.Host,
 		Port:        stored.Port,
 		Encryption:  Encryption(stored.Encryption),
@@ -76,7 +76,7 @@ const implicitTLSPort = 465
 // is returned beside the record rather than in it.
 func Seed(cfg config.Mail) (model.MailSettings, string) {
 	settings := model.DefaultMailSettings()
-	settings.Enabled = cfg.Host != ""
+	settings.IsEnabled = cfg.Host != ""
 	settings.Host = cfg.Host
 	settings.Username = cfg.Username
 

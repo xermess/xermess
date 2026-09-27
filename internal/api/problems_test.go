@@ -96,6 +96,7 @@ func TestErrorParametersAreSent(t *testing.T) {
 		"sso_role_mapping_invalid": {"group"},
 		"mail_test_failed":         {"reason"},
 		"mail_content_key_unknown": {"key"},
+		"cache_ttl_invalid":        {"max"},
 		"validation.max":           {"field", "max"},
 		"validation.min":           {"field", "min"},
 		"validation.oneof":         {"field", "values"},

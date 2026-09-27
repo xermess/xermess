@@ -68,7 +68,7 @@
 				{#if missingFrom(provider, kindOf(provider))}
 					<!-- Registered but not usable yet: the button would fail. -->
 					<Tag tone="warning" strong>{missingFrom(provider, kindOf(provider))}</Tag>
-				{:else if provider.enabled}
+				{:else if provider.is_enabled}
 					<Badge tone="success">offered</Badge>
 				{:else}
 					<Badge>off</Badge>

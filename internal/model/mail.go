@@ -24,11 +24,11 @@ import (
 type MailSettings struct {
 	Base
 
-	// Enabled is whether messages are sent at all. Off, each one is written
+	// IsEnabled is whether messages are sent at all. Off, each one is written
 	// to the log instead — which is how a developer follows a reset link
 	// without a mail server, and how an installation that has not been given
 	// one yet behaves rather than failing every sign-up.
-	Enabled bool `gorm:"not null" json:"enabled"`
+	IsEnabled bool `gorm:"not null" json:"is_enabled"`
 
 	Host string `gorm:"size:255" json:"host"`
 	Port int    `gorm:"not null" json:"port"`
@@ -94,7 +94,7 @@ func IsMailEncryption(value MailEncryption) bool {
 // installation be tried.
 func DefaultMailSettings() MailSettings {
 	return MailSettings{
-		Enabled:     false,
+		IsEnabled:   false,
 		Port:        587,
 		Encryption:  MailStartTLS,
 		FromAddress: "no-reply@localhost",
@@ -136,7 +136,7 @@ func (m MailSettings) Validate() error {
 		}
 	}
 
-	if !m.Enabled {
+	if !m.IsEnabled {
 		return nil
 	}
 

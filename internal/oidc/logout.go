@@ -130,10 +130,10 @@ func (s *Service) endSession(ctx context.Context, sessionToken, subject string, 
 // sign-in pages show.
 type PublicApplication struct {
 	Name              string `json:"name"`
-	LogoURI           string `json:"logo_uri"`
-	ClientURI         string `json:"client_uri"`
-	PolicyURI         string `json:"policy_uri"`
-	TosURI            string `json:"tos_uri"`
+	LogoURL           string `json:"logo_url"`
+	WebsiteURL        string `json:"website_url"`
+	PrivacyURL        string `json:"privacy_url"`
+	TermsURL          string `json:"terms_url"`
 	AllowRegistration bool   `json:"allow_registration"`
 }
 
@@ -141,11 +141,11 @@ type PublicApplication struct {
 func Public(app *model.Application) PublicApplication {
 	return PublicApplication{
 		Name:              app.Name,
-		LogoURI:           app.LogoURI,
-		ClientURI:         app.ClientURI,
-		PolicyURI:         app.PolicyURI,
-		TosURI:            app.TosURI,
-		AllowRegistration: app.AllowRegistration && app.Enabled,
+		LogoURL:           app.LogoURL,
+		WebsiteURL:        app.WebsiteURL,
+		PrivacyURL:        app.PrivacyURL,
+		TermsURL:          app.TermsURL,
+		AllowRegistration: app.AllowRegistration && app.IsEnabled,
 	}
 }
 

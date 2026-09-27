@@ -15,7 +15,7 @@ type scopeResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	Default     bool      `json:"default"`
+	IsDefault   bool      `json:"is_default"`
 }
 
 // apiResponse is an API as the panel sees it.
@@ -60,7 +60,7 @@ func newAPIResponse(api model.API, details apiDetails) apiResponse {
 			ID:          scope.ID,
 			Name:        scope.Name,
 			Description: scope.Description,
-			Default:     scope.Default,
+			IsDefault:   scope.IsDefault,
 		})
 	}
 
@@ -104,7 +104,7 @@ type applicationAccess struct {
 	Name       string                `json:"name"`
 	Type       model.ApplicationType `json:"type"`
 	ClientID   string                `json:"client_id"`
-	Enabled    bool                  `json:"enabled"`
+	IsEnabled  bool                  `json:"is_enabled"`
 	Authorized bool                  `json:"authorized"`
 	// Allowed are the ids of the API's scopes the application may ask for.
 	Allowed []uuid.UUID `json:"allowed"`
@@ -118,7 +118,7 @@ func newApplicationsResponse(apps []store.APIApplication) gin.H {
 			Name:       it.Application.Name,
 			Type:       it.Application.Type,
 			ClientID:   it.Application.ClientID,
-			Enabled:    it.Application.Enabled,
+			IsEnabled:  it.Application.IsEnabled,
 			Authorized: it.Authorized,
 			Allowed:    it.Allowed,
 		})

@@ -41,7 +41,7 @@ func newSessionResponse(session store.ActiveSession) sessionResponse {
 		},
 		IP:         session.IP,
 		UserAgent:  session.UserAgent,
-		SignedInAt: session.AuthTime,
+		SignedInAt: session.AuthenticatedAt,
 		ExpiresAt:  session.ExpiresAt,
 	}
 }

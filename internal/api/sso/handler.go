@@ -165,7 +165,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	h.audit.RecordWith(c, "sso_connection.updated", targetType, connection.ID.String(), map[string]any{
-		"connection": connection.Name, "enabled": connection.Enabled, "enforce_domains": connection.EnforceDomains,
+		"connection": connection.Name, "is_enabled": connection.IsEnabled, "enforce_domains": connection.EnforceDomains,
 		"new_provider": newProvider,
 	})
 

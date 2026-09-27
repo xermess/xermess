@@ -23,7 +23,7 @@ func TestSocialProviderValidate(t *testing.T) {
 		p.ClientID, p.ClientSecret = "keycloak", []byte("sealed")
 		p.AuthorizeURL = "https://sso.example.com/authorize"
 		p.TokenURL = "https://sso.example.com/token"
-		p.UserInfoURL = "https://sso.example.com/userinfo"
+		p.UserinfoURL = "https://sso.example.com/userinfo"
 		return p
 	}
 
@@ -84,14 +84,14 @@ func TestSocialProviderValidate(t *testing.T) {
 			name: "an OAuth 2.0 provider with no profile to read",
 			provider: func() SocialProvider {
 				p := custom()
-				p.Kind, p.UserInfoURL = SocialOAuth2, ""
+				p.Kind, p.UserinfoURL = SocialOAuth2, ""
 				return p
 			}(),
 			want: "userinfo_url is required for this kind of provider",
 		},
 		{
 			name:     "OpenID Connect may leave the profile out, since the id_token carries one",
-			provider: func() SocialProvider { p := custom(); p.UserInfoURL = ""; return p }(),
+			provider: func() SocialProvider { p := custom(); p.UserinfoURL = ""; return p }(),
 		},
 		{
 			name:     "scopes listed as one string",
@@ -149,7 +149,7 @@ func TestSocialSpecsAreComplete(t *testing.T) {
 			p.TeamID, p.KeyID, p.PrivateKey = "team", "key", []byte("pem")
 			p.AuthorizeURL = "https://example.com/authorize"
 			p.TokenURL = "https://example.com/token"
-			p.UserInfoURL = "https://example.com/userinfo"
+			p.UserinfoURL = "https://example.com/userinfo"
 
 			if err := p.Validate(); err != nil {
 				t.Errorf("a new %s provider is not valid: %v", spec.Kind, err)

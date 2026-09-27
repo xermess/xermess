@@ -16,14 +16,14 @@ type fieldResponse struct {
 	Label string          `json:"label"`
 	Type  model.FieldType `json:"type"`
 
-	Required   bool     `json:"required"`
-	Unique     bool     `json:"unique"`
+	IsRequired bool     `json:"is_required"`
+	IsUnique   bool     `json:"is_unique"`
 	Min        *float64 `json:"min"`
 	Max        *float64 `json:"max"`
 	StartsWith string   `json:"starts_with"`
 
-	Position int  `json:"position"`
-	Builtin  bool `json:"builtin"`
+	Position  int  `json:"position"`
+	IsBuiltin bool `json:"is_builtin"`
 }
 
 func newFieldResponse(field model.UserField) fieldResponse {
@@ -31,16 +31,16 @@ func newFieldResponse(field model.UserField) fieldResponse {
 		Name:       field.Name,
 		Label:      field.Label,
 		Type:       field.Type,
-		Required:   field.Required,
-		Unique:     field.Unique,
+		IsRequired: field.IsRequired,
+		IsUnique:   field.IsUnique,
 		Min:        field.Min,
 		Max:        field.Max,
 		StartsWith: field.StartsWith,
 		Position:   field.Position,
-		Builtin:    field.Builtin,
+		IsBuiltin:  field.IsBuiltin,
 	}
 
-	if !field.Builtin {
+	if !field.IsBuiltin {
 		out.ID = field.ID.String()
 	}
 

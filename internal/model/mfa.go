@@ -11,8 +11,8 @@ import (
 type MFA struct {
 	Base
 
-	AdminUserID uuid.UUID `gorm:"type:uuid;index;not null" json:"admin_user_id"`
-	AdminUser   AdminUser `gorm:"foreignKey:AdminUserID" json:"-"`
+	AdminID uuid.UUID `gorm:"type:uuid;index;not null" json:"admin_id"`
+	Admin   Admin     `gorm:"foreignKey:AdminID" json:"-"`
 
 	Method MFAMethod `gorm:"type:varchar(32);index;not null" json:"method"`
 	Label  string    `gorm:"size:100" json:"label,omitempty"`
@@ -35,7 +35,7 @@ type MFA struct {
 
 // TableName pins the table name.
 func (MFA) TableName() string {
-	return "mfa"
+	return "mfa_factors"
 }
 
 // IsConfirmed reports whether enrolment was finished. An unconfirmed factor
@@ -46,7 +46,7 @@ func (m MFA) IsConfirmed() bool {
 
 // HasMFA reports whether the administrator has a confirmed second factor. The
 // store loads only confirmed factors onto an administrator, so any is one.
-func (a AdminUser) HasMFA() bool {
+func (a Admin) HasMFA() bool {
 	for _, factor := range a.MFA {
 		if factor.IsConfirmed() {
 			return true

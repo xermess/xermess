@@ -89,7 +89,7 @@
 		const match = shipped.find((one) => one.code === current);
 		const names = languageCode.test(current) ? namesOf(current) : null;
 		name = match?.name ?? names?.name ?? '';
-		native = match?.native ?? names?.native ?? '';
+		native = match?.native_name ?? names?.native ?? '';
 
 		// A code the server ships a translation of starts from it, unless
 		// somebody has already said otherwise.
@@ -100,7 +100,7 @@
 	function restore(language: ShippedLanguage) {
 		code = language.code;
 		name = language.name;
-		native = language.native;
+		native = language.native_name;
 		copyFrom = language.code;
 		namesTyped = false;
 	}
@@ -112,13 +112,13 @@
 					{
 						value: shippedMatch.code,
 						label: 'The shipped translation',
-						description: shippedMatch.native
+						description: shippedMatch.native_name
 					}
 				]
 			: []),
 		...languages.map((language) => ({
 			value: language.code,
-			label: `A copy of ${language.native}`,
+			label: `A copy of ${language.native_name}`,
 			description: language.name
 		}))
 	]);
@@ -128,8 +128,8 @@
 			languagesApi.create({
 				code: trimmed,
 				name: name.trim(),
-				native: native.trim(),
-				enabled,
+				native_name: native.trim(),
+				is_enabled: enabled,
 				copy_from: copyFrom === NOTHING ? undefined : copyFrom
 			}),
 		onSuccess: async ({ language }) => {
@@ -175,7 +175,7 @@
 				{#each shipped as language (language.code)}
 					<Button size="sm" variant="outline" onclick={() => restore(language)}>
 						<Icon icon={RiArrowGoBackLine} />
-						<span lang={language.code}>{language.native}</span>
+						<span lang={language.code}>{language.native_name}</span>
 					</Button>
 				{/each}
 			</div>

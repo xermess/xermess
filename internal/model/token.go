@@ -40,9 +40,9 @@ type ScopeDecision struct {
 	Kind    string `json:"kind"` // "openid" or "api"
 	Granted bool   `json:"granted"`
 	Reason  string `json:"reason"`
-	// Default marks an API scope that was not asked for, but added because
+	// IsDefault marks an API scope that was not asked for, but added because
 	// the API makes it a default.
-	Default bool `json:"default,omitempty"`
+	IsDefault bool `json:"is_default,omitempty"`
 }
 
 // TokenPreview is what a token request amounts to: whether a token is issued
@@ -92,7 +92,7 @@ func EvaluateToken(r TokenRequest) TokenPreview {
 	}
 
 	switch {
-	case !app.Enabled:
+	case !app.IsEnabled:
 		return deny("the application is disabled")
 	case r.User == nil && !slices.Contains(app.GrantTypes, GrantClientCredentials):
 		return deny("a token without a user needs the client_credentials grant, which the application does not have")
@@ -192,17 +192,17 @@ func EvaluateToken(r TokenRequest) TokenPreview {
 	// still reported, so it is clear why it is missing.
 	if r.API != nil {
 		for _, apiScope := range r.API.Scopes {
-			if !apiScope.Default || slices.Contains(requested, apiScope.Name) {
+			if !apiScope.IsDefault || slices.Contains(requested, apiScope.Name) {
 				continue
 			}
 
 			ok, reason := apiDecision(apiScope)
 			preview.Decisions = append(preview.Decisions, ScopeDecision{
-				Scope:   apiScope.Name,
-				Kind:    "api",
-				Granted: ok,
-				Reason:  "default scope: " + reason,
-				Default: true,
+				Scope:     apiScope.Name,
+				Kind:      "api",
+				Granted:   ok,
+				Reason:    "default scope: " + reason,
+				IsDefault: true,
 			})
 			if ok {
 				granted = append(granted, apiScope.Name)
@@ -269,7 +269,7 @@ func EvaluateToken(r TokenRequest) TokenPreview {
 		}
 		if slices.Contains(granted, ScopeEmail) {
 			id["email"] = r.User.Email
-			id["email_verified"] = r.User.EmailVerified
+			id["email_verified"] = r.User.IsEmailVerified
 		}
 		if app.AssertRoles && rolesGranted {
 			id[ClaimApplicationRoles] = appRoles

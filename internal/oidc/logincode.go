@@ -82,7 +82,7 @@ func (s *Service) sendLoginCode(
 		return nil, err
 	}
 
-	code, codeHash, err := model.NewOTP(settings.Length)
+	code, codeHash, err := model.NewOTP(settings.CodeLength)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (s *Service) sendLoginCode(
 		CodeHash:   codeHash,
 		UserID:     user.ID,
 		Request:    request,
-		Remember:   remember,
+		RememberMe: remember,
 		SentAt:     now,
 		ExpiresAt:  now.Add(settings.Lifetime()),
 	}
@@ -158,7 +158,7 @@ func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, cli
 		return nil, err
 	}
 
-	return s.startSession(ctx, user, flow, waiting.code.Request, waiting.code.Remember, client, "user.login")
+	return s.startSession(ctx, user, flow, waiting.code.Request, waiting.code.RememberMe, client, "user.login")
 }
 
 // ResendLoginCode sends another code for a sign-in that is still waiting,
@@ -180,7 +180,7 @@ func (s *Service) ResendLoginCode(ctx context.Context, handle string, client Cli
 		return nil, ErrCodeTooSoon
 	}
 
-	code, codeHash, err := model.NewOTP(waiting.settings.Length)
+	code, codeHash, err := model.NewOTP(waiting.settings.CodeLength)
 	if err != nil {
 		return nil, err
 	}

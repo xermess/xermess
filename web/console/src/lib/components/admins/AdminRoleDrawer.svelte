@@ -37,7 +37,7 @@
 	const editing = $derived(role !== null);
 
 	/** super_admin is built in: it is shown, never changed. */
-	const locked = $derived(role?.builtin ?? false);
+	const locked = $derived(role?.is_builtin ?? false);
 
 	const groups = $derived(byGroup(catalog));
 

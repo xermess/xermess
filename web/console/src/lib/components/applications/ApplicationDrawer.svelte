@@ -111,12 +111,12 @@
 
 		for (const flow of all) {
 			if (flow.is_default) continue;
-			if (!flow.enabled && flow.id !== form.login_flow_id) continue;
+			if (!flow.is_enabled && flow.id !== form.login_flow_id) continue;
 
 			options.push({
 				value: flow.id,
 				label: flow.name,
-				description: flow.enabled ? flow.description : `${flow.description} · turned off`
+				description: flow.is_enabled ? flow.description : `${flow.description} · turned off`
 			});
 		}
 
@@ -171,8 +171,8 @@
 	/** Picking a type on a new application starts its settings over from what
 	    that type should have, keeping only what was typed about it. */
 	function changeType(type: ApplicationType) {
-		const { name, description, logo_uri, client_uri, policy_uri, tos_uri } = form;
-		fill({ ...blank(type), name, description, logo_uri, client_uri, policy_uri, tos_uri });
+		const { name, description, logo_url, website_url, privacy_url, terms_url } = form;
+		fill({ ...blank(type), name, description, logo_url, website_url, privacy_url, terms_url });
 	}
 
 	function toggle<T extends string>(list: T[], value: T, on: boolean): T[] {
@@ -299,13 +299,13 @@
 			<FieldGrid>
 				<Input
 					label="Homepage URL"
-					bind:value={form.client_uri}
+					bind:value={form.website_url}
 					type="url"
 					placeholder="https://shop.example.com"
 				/>
 				<Input
 					label="Logo URL"
-					bind:value={form.logo_uri}
+					bind:value={form.logo_url}
 					type="url"
 					placeholder="https://shop.example.com/logo.png"
 					hint="https only."
@@ -313,9 +313,9 @@
 			</FieldGrid>
 
 			<SwitchField
-				label="Enabled"
+				label="Is Enabled"
 				description="A disabled application cannot sign anyone in."
-				bind:checked={form.enabled}
+				bind:checked={form.is_enabled}
 			/>
 		</FormSection>
 
@@ -336,7 +336,7 @@
 			{#if !kind.public}
 				<Select
 					label="Client authentication"
-					bind:value={form.token_endpoint_auth_method}
+					bind:value={form.token_auth_method}
 					options={authMethods}
 				/>
 
@@ -495,13 +495,13 @@
 				<FieldGrid>
 					<Input
 						label="Terms of service URL"
-						bind:value={form.tos_uri}
+						bind:value={form.terms_url}
 						type="url"
 						placeholder="https://shop.example.com/terms"
 					/>
 					<Input
 						label="Privacy policy URL"
-						bind:value={form.policy_uri}
+						bind:value={form.privacy_url}
 						type="url"
 						placeholder="https://shop.example.com/privacy"
 					/>
@@ -579,8 +579,8 @@
 				<strong>{current.name}</strong>
 				<span>{kind.label} · {kind.public ? 'Public client' : 'Confidential client'}</span>
 			</div>
-			<Badge tone={current.enabled ? 'success' : 'neutral'}>
-				{current.enabled ? 'Enabled' : 'Disabled'}
+			<Badge tone={current.is_enabled ? 'success' : 'neutral'}>
+				{current.is_enabled ? 'Enabled' : 'Disabled'}
 			</Badge>
 		</div>
 	{/if}

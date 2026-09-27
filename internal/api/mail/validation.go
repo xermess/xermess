@@ -19,7 +19,7 @@ import (
 // broken, since the record is only saved once this returns.
 func (r *settingsRequest) applyTo(settings *model.MailSettings, sealer *jose.Sealer) ([]string, error) {
 	updated := *settings
-	updated.Enabled = validate.Flag(r.Enabled, settings.Enabled)
+	updated.IsEnabled = validate.Flag(r.IsEnabled, settings.IsEnabled)
 	updated.Host = validate.Lower(r.Host, settings.Host)
 	updated.Port = validate.Number(r.Port, settings.Port)
 	updated.Encryption = model.MailEncryption(validate.Lower(r.Encryption, string(settings.Encryption)))
@@ -57,7 +57,7 @@ func (r *settingsRequest) applyTo(settings *model.MailSettings, sealer *jose.Sea
 		name  string
 		moved bool
 	}{
-		{"enabled", updated.Enabled != settings.Enabled},
+		{"is_enabled", updated.IsEnabled != settings.IsEnabled},
 		{"host", updated.Host != settings.Host},
 		{"port", updated.Port != settings.Port},
 		{"encryption", updated.Encryption != settings.Encryption},
@@ -88,7 +88,7 @@ func (r *testRequest) settings(stored *model.MailSettings, sealer *jose.Sealer) 
 	// A test sends whatever is on the form, whether or not sending is
 	// switched on: turning it on after the test has worked is the order
 	// somebody would do this in.
-	trying.Enabled = true
+	trying.IsEnabled = true
 	trying.Host = validate.Lower(r.Host, stored.Host)
 	trying.Port = validate.Number(r.Port, stored.Port)
 	trying.Encryption = model.MailEncryption(validate.Lower(r.Encryption, string(stored.Encryption)))

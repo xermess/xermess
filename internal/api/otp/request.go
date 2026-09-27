@@ -12,7 +12,7 @@ const (
 // Every field is a pointer because this is a PATCH: nil is "not sent", and
 // the stored value stands.
 type settingsRequest struct {
-	Length          *int `json:"length"`
+	CodeLength      *int `json:"code_length"`
 	LifetimeMinutes *int `json:"lifetime_minutes"`
 	MaxAttempts     *int `json:"max_attempts"`
 	ResendSeconds   *int `json:"resend_seconds"`

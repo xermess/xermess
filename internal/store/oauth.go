@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"loginer/internal/brand"
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -38,13 +39,34 @@ func (s *Store) CreateSigningKey(ctx context.Context, key *model.SigningKey) err
 // ---- Applications and audiences -------------------------------------------
 
 // ApplicationByClientID returns the application a client id belongs to.
+// Every authorization, token and logout request asks, so it is read through
+// the session database.
 func (s *Store) ApplicationByClientID(ctx context.Context, clientID string) (*model.Application, error) {
-	var app model.Application
-	if err := s.db.WithContext(ctx).First(&app, "client_id = ?", clientID).Error; err != nil {
-		return nil, translate(err)
+	kept, err := cached(ctx, s, cache.Clients, "client_id:"+clientID, func() (client, error) {
+		var app model.Application
+		if err := s.db.WithContext(ctx).First(&app, "client_id = ?", clientID).Error; err != nil {
+			return client{}, translate(err)
+		}
+
+		return client{Application: app, SecretHash: app.ClientSecretHash}, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	app := kept.Application
+	app.ClientSecretHash = kept.SecretHash
+
 	return &app, nil
+}
+
+// client is how an application is kept in the session database. The model
+// leaves the hash of its secret out of its JSON; the token endpoint checks a
+// client's secret against it, so it is kept here, spelled out. It is a
+// SHA-256 of a random secret, which is why it may leave the database at all.
+type client struct {
+	Application model.Application `json:"application"`
+	SecretHash  string            `json:"secret_hash"`
 }
 
 // Audience is what a token request naming an API needs to know about it: the
@@ -290,31 +312,48 @@ func (s *Store) RevokeRefreshTokensForUser(ctx context.Context, user uuid.UUID, 
 
 // CreateUserSession starts a user session.
 func (s *Store) CreateUserSession(ctx context.Context, session *model.UserSession) error {
-	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(session).Error)
+	if err := translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(session).Error); err != nil {
+		return err
+	}
+
+	s.putUserSessions(ctx, *session)
+
+	return nil
 }
 
-// UserSessionByHash returns the session a cookie belongs to.
+// UserSessionByHash returns the session a cookie belongs to. Every sign-in
+// page and account page asks, so it is read through the session database.
 func (s *Store) UserSessionByHash(ctx context.Context, hash string) (*model.UserSession, error) {
+	var kept userSession
+	if s.sessions.Session(ctx, cache.UserSession, hash, &kept) {
+		session := kept.model(hash)
+		return &session, nil
+	}
+
 	var session model.UserSession
 	if err := s.db.WithContext(ctx).First(&session, "token_hash = ?", hash).Error; err != nil {
 		return nil, translate(err)
 	}
+
+	s.sessions.FillSession(ctx, cache.UserSession, hash, newUserSession(session), session.ExpiresAt)
 
 	return &session, nil
 }
 
 // RevokeUserSession ends a session.
 func (s *Store) RevokeUserSession(ctx context.Context, id uuid.UUID, at time.Time) error {
-	return s.db.WithContext(ctx).Model(&model.UserSession{}).
-		Where("id = ? AND revoked_at IS NULL", id).
-		Update("revoked_at", at).Error
+	ended, err := revokeUserSessionsIn(s.db.WithContext(ctx), at, "id = ?", id)
+	s.putUserSessions(ctx, ended...)
+
+	return err
 }
 
 // RevokeUserSessionsFor ends every session a user has, in every browser.
 func (s *Store) RevokeUserSessionsFor(ctx context.Context, user uuid.UUID, at time.Time) error {
-	return s.db.WithContext(ctx).Model(&model.UserSession{}).
-		Where("user_id = ? AND revoked_at IS NULL", user).
-		Update("revoked_at", at).Error
+	ended, err := revokeUserSessionsIn(s.db.WithContext(ctx), at, "user_id = ?", user)
+	s.putUserSessions(ctx, ended...)
+
+	return err
 }
 
 // ---- Password resets ------------------------------------------------------
@@ -338,7 +377,9 @@ func (s *Store) PasswordResetByHash(ctx context.Context, hash string) (*model.Pa
 // new password, and ends every session and refresh token the user has, in one
 // transaction. A link used by someone else first is ErrAlreadyUsed.
 func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, user *model.User, at time.Time) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	var ended []model.UserSession
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&model.PasswordReset{}).
 			Where("id = ? AND used_at IS NULL", reset.ID).
 			Update("used_at", at)
@@ -353,17 +394,20 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 		// proof the address is theirs as a verification link would be.
 		err := tx.Model(user).Updates(map[string]any{
 			"password_hash":         user.PasswordHash,
-			"is_temporary_password": false,
+			"is_password_temporary": false,
 			"failed_login_count":    0,
 			"locked_until":          nil,
-			"email_verified":        true,
+			"is_email_verified":     true,
 		}).Error
 		if err != nil {
 			return err
 		}
 
+		if ended, err = revokeUserSessionsIn(tx, at, "user_id = ?", user.ID); err != nil {
+			return err
+		}
+
 		statements := []string{
-			"UPDATE user_sessions SET revoked_at = @at WHERE user_id = @user AND revoked_at IS NULL",
 			"UPDATE refresh_tokens SET revoked_at = @at WHERE user_id = @user AND revoked_at IS NULL",
 			// Any other link sent to the same address stops working too.
 			"UPDATE password_resets SET used_at = @at WHERE user_id = @user AND used_at IS NULL",
@@ -376,6 +420,13 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	s.putUserSessions(ctx, ended...)
+
+	return nil
 }
 
 // ---- A user's own account -------------------------------------------------
@@ -386,7 +437,7 @@ func (s *Store) ActiveUserSessions(ctx context.Context, user uuid.UUID, now time
 	var sessions []model.UserSession
 	err := s.db.WithContext(ctx).
 		Where("user_id = ? AND revoked_at IS NULL AND expires_at > ?", user, now).
-		Order("auth_time DESC").
+		Order("authenticated_at DESC").
 		Find(&sessions).Error
 
 	return sessions, err
@@ -395,17 +446,22 @@ func (s *Store) ActiveUserSessions(ctx context.Context, user uuid.UUID, now time
 // ChangeUserPassword saves a user's new password and, in the same transaction,
 // ends every session but `keep` and revokes every refresh token they have.
 func (s *Store) ChangeUserPassword(ctx context.Context, user *model.User, keep uuid.UUID, at time.Time) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	var ended []model.UserSession
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Model(user).Updates(map[string]any{
 			"password_hash":         user.PasswordHash,
-			"is_temporary_password": false,
+			"is_password_temporary": false,
 		}).Error
 		if err != nil {
 			return err
 		}
 
+		if ended, err = revokeUserSessionsIn(tx, at, "user_id = ? AND id <> ?", user.ID, keep); err != nil {
+			return err
+		}
+
 		statements := []string{
-			"UPDATE user_sessions SET revoked_at = @at WHERE user_id = @user AND id <> @keep AND revoked_at IS NULL",
 			"UPDATE refresh_tokens SET revoked_at = @at WHERE user_id = @user AND revoked_at IS NULL",
 		}
 		for _, statement := range statements {
@@ -416,6 +472,13 @@ func (s *Store) ChangeUserPassword(ctx context.Context, user *model.User, keep u
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	s.putUserSessions(ctx, ended...)
+
+	return nil
 }
 
 // Grant is what one application holds for a user: the scopes of its usable
@@ -445,14 +508,14 @@ func (s *Store) UserGrants(ctx context.Context, user uuid.UUID, now time.Time) (
 	for _, token := range tokens {
 		grant, seen := byApp[token.ApplicationID]
 		if !seen {
-			grant = &Grant{FirstIssued: token.AuthTime, LastIssued: token.CreatedAt}
+			grant = &Grant{FirstIssued: token.AuthenticatedAt, LastIssued: token.CreatedAt}
 			byApp[token.ApplicationID] = grant
 			order = append(order, token.ApplicationID)
 		}
 
 		grant.Scopes = append(grant.Scopes, token.Scope)
-		if token.AuthTime.Before(grant.FirstIssued) {
-			grant.FirstIssued = token.AuthTime
+		if token.AuthenticatedAt.Before(grant.FirstIssued) {
+			grant.FirstIssued = token.AuthenticatedAt
 		}
 	}
 
@@ -536,8 +599,7 @@ func (s *Store) DeleteSigningKeys(ctx context.Context, before time.Time) error {
 // DeleteSigningKeysExcept removes every key but these: what revoking a
 // compromised key means, since a published key is one APIs still trust.
 func (s *Store) DeleteSigningKeysExcept(ctx context.Context, keep []string) error {
-	// GORM names the KID field's column k_id.
-	return s.db.WithContext(ctx).Where("k_id NOT IN ?", keep).Delete(&model.SigningKey{}).Error
+	return s.db.WithContext(ctx).Where("kid NOT IN ?", keep).Delete(&model.SigningKey{}).Error
 }
 
 // ---- Email verifications ----------------------------------------------------
@@ -583,7 +645,7 @@ func (s *Store) VerifyEmail(ctx context.Context, verification *model.EmailVerifi
 			return err
 		}
 
-		changes := map[string]any{"email_verified": true}
+		changes := map[string]any{"is_email_verified": true}
 		if verification.IsChange() {
 			changes["email"] = model.NormalizeEmail(verification.NewEmail)
 		}

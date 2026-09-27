@@ -58,7 +58,7 @@ func TestLiveErrorsCarryCodes(t *testing.T) {
 		{
 			name: "the admin API, a language added twice",
 			send: func(out *problemBody) int {
-				return super.do(http.MethodPost, "/languages", map[string]any{"code": "ru", "name": "Russian", "native": "Русский"}, out)
+				return super.do(http.MethodPost, "/languages", map[string]any{"code": "ru", "name": "Russian", "native_name": "Русский"}, out)
 			},
 			wantStatus: http.StatusConflict,
 			wantCode:   "language_code_taken",
@@ -66,7 +66,7 @@ func TestLiveErrorsCarryCodes(t *testing.T) {
 		{
 			name: "the admin API, a code that is not a language tag",
 			send: func(out *problemBody) int {
-				return super.do(http.MethodPost, "/languages", map[string]any{"code": "not a tag", "name": "X", "native": "X"}, out)
+				return super.do(http.MethodPost, "/languages", map[string]any{"code": "not a tag", "name": "X", "native_name": "X"}, out)
 			},
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "validation.languagetag",
@@ -128,7 +128,7 @@ func TestLiveResetEmailIsInTheReadersLanguage(t *testing.T) {
 	s := newLiveServer(t)
 	super := s.superAdmin()
 
-	super.must(http.StatusOK, http.MethodPatch, "/languages/ru", map[string]any{"enabled": true}, nil)
+	super.must(http.StatusOK, http.MethodPatch, "/languages/ru", map[string]any{"is_enabled": true}, nil)
 
 	for _, email := range []string{"ru@example.com", "xx@example.com"} {
 		super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{

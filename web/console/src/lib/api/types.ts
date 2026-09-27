@@ -147,7 +147,7 @@ export type AdminRole = {
 	description: string;
 	permissions: AdminPermissionName[];
 	/** super_admin: grants everything, and cannot be changed or removed. */
-	builtin: boolean;
+	is_builtin: boolean;
 	admin_count: number;
 	created_at: string;
 	updated_at: string;
@@ -176,11 +176,11 @@ export type Application = {
 	name: string;
 	description: string;
 	type: ApplicationType;
-	logo_uri: string;
-	client_uri: string;
+	logo_url: string;
+	website_url: string;
 	/** The privacy policy and terms of service its sign-in pages link to. */
-	policy_uri: string;
-	tos_uri: string;
+	privacy_url: string;
+	terms_url: string;
 	client_id: string;
 	client_id_issued_at: number;
 	/** Whether a secret exists. The secret itself is only ever shown once. */
@@ -188,7 +188,7 @@ export type Application = {
 	/** The last four characters of the secret, to tell which one is in use. */
 	secret_hint: string;
 	secret_created_at: string | null;
-	token_endpoint_auth_method: AuthMethod;
+	token_auth_method: AuthMethod;
 	grant_types: GrantType[];
 	response_types: string[];
 	redirect_uris: string[];
@@ -202,7 +202,7 @@ export type Application = {
 	assert_roles: boolean;
 	/** Only let users holding one of its roles sign in to it. */
 	require_role_assignment: boolean;
-	enabled: boolean;
+	is_enabled: boolean;
 	/** Offer "Create an account" on its sign-in page. */
 	allow_registration: boolean;
 	/** The login flow it signs people in with, null for the default one. */
@@ -219,11 +219,11 @@ export type ApplicationInput = Pick<
 	| 'name'
 	| 'description'
 	| 'type'
-	| 'logo_uri'
-	| 'client_uri'
-	| 'policy_uri'
-	| 'tos_uri'
-	| 'token_endpoint_auth_method'
+	| 'logo_url'
+	| 'website_url'
+	| 'privacy_url'
+	| 'terms_url'
+	| 'token_auth_method'
 	| 'grant_types'
 	| 'redirect_uris'
 	| 'post_logout_redirect_uris'
@@ -234,7 +234,7 @@ export type ApplicationInput = Pick<
 	| 'refresh_token_lifetime'
 	| 'assert_roles'
 	| 'require_role_assignment'
-	| 'enabled'
+	| 'is_enabled'
 	| 'allow_registration'
 > & {
 	/** The flow to sign people in with: an id, or "" for the default one. */
@@ -353,8 +353,8 @@ export type FieldType = 'text' | 'number' | 'bool' | 'email' | 'date';
     value or the length of text; `starts_with` is a prefix text must begin
     with. A rule that is not set is null. */
 export type FieldRules = {
-	required: boolean;
-	unique: boolean;
+	is_required: boolean;
+	is_unique: boolean;
 	min: number | null;
 	max: number | null;
 	starts_with: string;
@@ -362,7 +362,7 @@ export type FieldRules = {
 
 /** One field of a user record.
  *
- *  `builtin` says which kind it is: a built-in field is a column of the
+ *  `is_builtin` says which kind it is: a built-in field is a column of the
  *  record — every installation has it, and it cannot be changed or removed —
  *  while an additional one was added in the panel and its values live in
  *  `data`. The API returns both in one list, built-ins first. */
@@ -374,7 +374,7 @@ export type UserField = FieldRules & {
 	label: string;
 	type: FieldType;
 	position: number;
-	builtin: boolean;
+	is_builtin: boolean;
 };
 
 /** What the panel sends when adding a field. A field's name and type are
@@ -389,12 +389,12 @@ export type FieldInput = FieldRules & {
 /** The built-in fields of a user record: the columns every installation has. */
 export type UserBuiltins = {
 	email: string;
-	email_verified: boolean;
+	is_email_verified: boolean;
 	first_name: string;
 	last_name: string;
 	is_active: boolean;
 	/** The password is one an administrator set, to be replaced by the user. */
-	is_temporary_password: boolean;
+	is_password_temporary: boolean;
 };
 
 /** One provider a user signs in with, as their record shows it. */
@@ -550,7 +550,7 @@ export type APIScope = {
 	name: string;
 	description: string;
 	/** Added to every token for the API, when allowed and granted. */
-	default: boolean;
+	is_default: boolean;
 };
 
 /** One application, and what it may do with an API. */
@@ -559,7 +559,7 @@ export type APIApplication = {
 	name: string;
 	type: ApplicationType;
 	client_id: string;
-	enabled: boolean;
+	is_enabled: boolean;
 	authorized: boolean;
 	/** Ids of the API's scopes the application may ask for. */
 	allowed: string[];
@@ -593,7 +593,7 @@ export type APIInput = {
 	signing_algorithm: SigningAlgorithm;
 	token_lifetime: number;
 	allow_offline_access: boolean;
-	scopes: { id?: string; name: string; description: string; default: boolean }[];
+	scopes: { id?: string; name: string; description: string; is_default: boolean }[];
 };
 
 /** What one application may do with one API. */
@@ -620,7 +620,7 @@ export type ScopeDecision = {
 	granted: boolean;
 	reason: string;
 	/** Not asked for, but added as one of the API's default scopes. */
-	default?: boolean;
+	is_default?: boolean;
 };
 
 /** What a token request amounts to. */
@@ -707,7 +707,7 @@ export type SocialProvider = {
 	authorize_url: string;
 	token_url: string;
 	userinfo_url: string;
-	enabled: boolean;
+	is_enabled: boolean;
 	link_verified_emails: boolean;
 	allow_registration: boolean;
 	position: number;
@@ -722,7 +722,7 @@ export type SocialProvider = {
 
     Everything is optional because the endpoint is a PATCH: a request that
     does not mention a setting leaves it as it is — so turning a provider off
-    is `{ enabled: false }` and nothing else. The kind and the slug are read
+    is `{ is_enabled: false }` and nothing else. The kind and the slug are read
     when it is registered and never again. */
 export type SocialProviderInput = {
 	kind?: SocialKind;
@@ -738,7 +738,7 @@ export type SocialProviderInput = {
 	authorize_url?: string;
 	token_url?: string;
 	userinfo_url?: string;
-	enabled?: boolean;
+	is_enabled?: boolean;
 	link_verified_emails?: boolean;
 	allow_registration?: boolean;
 };
@@ -746,7 +746,7 @@ export type SocialProviderInput = {
 /** How administrators are made to sign in, and what that means for the ones
     there are. */
 export type AdminSecurity = {
-	mfa_required: boolean;
+	require_mfa: boolean;
 	administrators: number;
 	with_mfa: number;
 };
@@ -776,7 +776,7 @@ export type LoginFlow = {
 	description: string;
 	/** The flow every application that names none falls back to. */
 	is_default: boolean;
-	enabled: boolean;
+	is_enabled: boolean;
 	steps: LoginStep[];
 	/** Whether anybody may sign in through this flow at all. Off, every way
 	    in is refused — including registering, which ends in a session. */
@@ -808,7 +808,7 @@ export type LoginFlowInput = {
 	slug?: string;
 	description?: string;
 	is_default?: boolean;
-	enabled?: boolean;
+	is_enabled?: boolean;
 	steps?: LoginStep[];
 	allow_sign_in?: boolean;
 	allow_registration?: boolean;
@@ -848,7 +848,7 @@ export type Language = {
 	code: string;
 	/** The language in English, and in itself. */
 	name: string;
-	native: string;
+	native_name: string;
 	/** The apps this language is translated for, which the server decides. */
 	apps: LocaleApp[];
 	/** How much of each of those apps is translated, as a percentage of the
@@ -858,7 +858,7 @@ export type Language = {
 	missing: Partial<Record<LocaleApp, number>>;
 	/** Whether the sign-in pages offer it, and whether it is the one somebody
 	    gets before they have chosen. */
-	enabled: boolean;
+	is_enabled: boolean;
 	is_default: boolean;
 	/** Where it comes in the picker, lowest first. */
 	position: number;
@@ -876,7 +876,7 @@ export type Language = {
 export type ShippedLanguage = {
 	code: string;
 	name: string;
-	native: string;
+	native_name: string;
 };
 
 /** Everything the Languages page lists. */
@@ -891,8 +891,8 @@ export type LanguageList = {
     setting. */
 export type LanguageInput = {
 	name?: string;
-	native?: string;
-	enabled?: boolean;
+	native_name?: string;
+	is_enabled?: boolean;
 	is_default?: boolean;
 	position?: number;
 };
@@ -903,8 +903,8 @@ export type LanguageInput = {
 export type NewLanguageInput = {
 	code: string;
 	name: string;
-	native: string;
-	enabled?: boolean;
+	native_name: string;
+	is_enabled?: boolean;
 	is_default?: boolean;
 	copy_from?: string;
 };
@@ -932,7 +932,7 @@ export type SSOConnection = {
 	slug: string;
 	name: string;
 	protocol: SSOProtocol;
-	enabled: boolean;
+	is_enabled: boolean;
 	/** The email domains it signs people in for — and, enforced, the only way
 	    in for them. */
 	domains: string[];
@@ -1023,7 +1023,7 @@ export type MailEncryption = 'starttls' | 'tls' | 'none';
     is already there. */
 export type MailSettings = {
 	/** Off, every message is written to the server's log instead of sent. */
-	enabled: boolean;
+	is_enabled: boolean;
 	host: string;
 	port: number;
 	encryption: MailEncryption;
@@ -1078,7 +1078,7 @@ export type MailMessageSpec = {
 export type MailLanguageContent = {
 	code: string;
 	name: string;
-	native: string;
+	native_name: string;
 	/** Whether the sign-in pages are offered in this language. */
 	offered: boolean;
 	messages: Record<string, string>;
@@ -1096,7 +1096,7 @@ export type MailContent = {
     it. Which sign-ins ask for a code is the login flow's emailed code step,
     not this. */
 export type OTPSettings = {
-	length: number;
+	code_length: number;
 	lifetime_minutes: number;
 	max_attempts: number;
 	resend_seconds: number;
@@ -1118,7 +1118,7 @@ export type OTPFlow = {
 	id: string;
 	name: string;
 	slug: string;
-	enabled: boolean;
+	is_enabled: boolean;
 	is_default: boolean;
 };
 
@@ -1131,3 +1131,95 @@ export type OTPResponse = {
 
 /** What the panel sends for them: a PATCH, so what is left out stands. */
 export type OTPSettingsInput = Partial<OTPSettings>;
+
+// ---- Redis ------------------------------------------------------------------
+
+/** The two Redis databases: `cache` holds what every page reads and anybody
+    may see; `sessions` holds who is signed in and what they may do, and the
+    rate limit's counts. */
+export type CacheDatabaseName = 'cache' | 'sessions';
+
+/** What a key is, from its name. */
+export type CacheKind = 'entry' | 'stale' | 'generation' | 'session' | 'ratelimit' | 'other';
+
+/** A group of cached values, forgotten as one. */
+export type CacheGroup = {
+	name: string;
+	/** Which generation is current: clearing the group moves it on. */
+	generation: number;
+	/** Values of the current generation. */
+	entries: number;
+	/** Values of older generations, left to expire. */
+	stale: number;
+	/** Whether this server still reads the group. */
+	known: boolean;
+};
+
+/** One Redis database, summed up. */
+export type CacheDatabase = {
+	name: CacheDatabaseName;
+	number: number;
+	available: boolean;
+	/** Every key this server keeps there. */
+	keys: number;
+	kinds: Partial<Record<CacheKind, number>>;
+	groups: CacheGroup[];
+	/** Sessions, by kind: `admin` and `user`. */
+	sessions: Record<string, number>;
+	/** Whether its cached values may be edited by hand. */
+	editable: boolean;
+	/** Memory the Redis server uses, which both databases share. */
+	memory_bytes: number;
+	version: string;
+};
+
+/** What the Cache page reads first. */
+export type CacheOverview = {
+	/** False when the server runs without Redis. */
+	configured: boolean;
+	databases: CacheDatabase[];
+};
+
+/** One key, described. */
+export type CacheKey = {
+	/** The key without the server's prefix. */
+	name: string;
+	kind: CacheKind;
+	/** The group, the kind of session, or the rate limit's scope. */
+	group: string;
+	/** The entry, the token's hash, or the address. */
+	entry: string;
+	/** How long it has left; -1 for a key that does not expire. */
+	ttl_seconds: number;
+	size_bytes: number;
+	editable: boolean;
+};
+
+/** A key with what it holds. */
+export type CacheKeyValue = CacheKey & {
+	/** Redis's type for it: `string` for JSON, `hash` for a rate limit. */
+	type: string;
+	value: unknown;
+};
+
+/** A page of keys; an empty cursor after the last. */
+export type CacheKeyPage = {
+	keys: CacheKey[];
+	cursor: string;
+};
+
+/** Narrows a listing of keys. */
+export type CacheKeyQuery = {
+	kind?: CacheKind | '';
+	group?: string;
+	search?: string;
+	cursor?: string;
+	limit?: number;
+};
+
+/** A cached value written by hand: any JSON but null, and how long it should
+    live — left out, the time it had left. */
+export type CacheKeyInput = {
+	value: unknown;
+	ttl_seconds?: number;
+};

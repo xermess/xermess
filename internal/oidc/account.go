@@ -82,7 +82,7 @@ func (s *Service) ChangePassword(ctx context.Context, session *Session, current,
 	} else if err != nil {
 		return err
 	}
-	user.IsTemporaryPassword = false
+	user.IsPasswordTemporary = false
 
 	if err := s.store.ChangeUserPassword(ctx, user, session.Record.ID, now); err != nil {
 		return err
@@ -117,7 +117,7 @@ func (s *Service) Sessions(ctx context.Context, session *Session) ([]SessionInfo
 			ID:        record.ID,
 			IP:        record.IP,
 			UserAgent: record.UserAgent,
-			SignedIn:  record.AuthTime,
+			SignedIn:  record.AuthenticatedAt,
 			ExpiresAt: record.ExpiresAt,
 			Current:   record.ID == session.Record.ID,
 		})
@@ -156,8 +156,8 @@ func (s *Service) EndSession(ctx context.Context, session *Session, id uuid.UUID
 type ConnectedApplication struct {
 	ClientID   string    `json:"client_id"`
 	Name       string    `json:"name"`
-	LogoURI    string    `json:"logo_uri"`
-	ClientURI  string    `json:"client_uri"`
+	LogoURL    string    `json:"logo_url"`
+	WebsiteURL string    `json:"website_url"`
 	Scopes     []string  `json:"scopes"`
 	Authorized time.Time `json:"authorized_at"`
 	LastUsed   time.Time `json:"last_used_at"`
@@ -183,8 +183,8 @@ func (s *Service) ConnectedApplications(ctx context.Context, session *Session) (
 		out = append(out, ConnectedApplication{
 			ClientID:   grant.Application.ClientID,
 			Name:       grant.Application.Name,
-			LogoURI:    grant.Application.LogoURI,
-			ClientURI:  grant.Application.ClientURI,
+			LogoURL:    grant.Application.LogoURL,
+			WebsiteURL: grant.Application.WebsiteURL,
 			Scopes:     scopes,
 			Authorized: grant.FirstIssued,
 			LastUsed:   grant.LastIssued,

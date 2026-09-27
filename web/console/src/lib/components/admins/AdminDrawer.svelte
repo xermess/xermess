@@ -95,13 +95,13 @@
 		{ value: 'disabled', label: 'Disabled', description: 'Blocked for good' }
 	];
 
-	const superRole = $derived(roles.find((role) => role.builtin));
+	const superRole = $derived(roles.find((role) => role.is_builtin));
 
 	const roleOptions = $derived<SelectOption[]>(
 		roles.map((role) => ({
 			value: role.id,
 			label: role.name,
-			description: role.builtin ? 'everything' : `${role.permissions.length} permissions`
+			description: role.is_builtin ? 'everything' : `${role.permissions.length} permissions`
 		}))
 	);
 

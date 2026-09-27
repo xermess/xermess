@@ -214,7 +214,7 @@ func (s *Service) socialProvider(ctx context.Context, slug string) (*model.Socia
 		return nil, ErrSocialUnknown
 	case err != nil:
 		return nil, err
-	case !provider.Enabled:
+	case !provider.IsEnabled:
 		return nil, ErrSocialUnknown
 	}
 
@@ -555,7 +555,7 @@ func (s *Service) signInWithIdentity(
 	}
 
 	// Someone who has signed in with this provider before.
-	identity, err := s.store.UserIdentity(ctx, provider.ID, who.Subject)
+	identity, err := s.store.SocialIdentity(ctx, provider.ID, who.Subject)
 	switch {
 	case err == nil:
 		user, err := s.store.User(ctx, identity.UserID)
@@ -590,7 +590,7 @@ func (s *Service) signInWithIdentity(
 	user, err := s.store.UserByEmail(ctx, email)
 	switch {
 	case err == nil:
-		if !who.EmailVerified || !provider.LinkVerifiedEmails || !user.EmailVerified {
+		if !who.EmailVerified || !provider.LinkVerifiedEmails || !user.IsEmailVerified {
 			return nil, ErrSocialLinkRefused
 		}
 		if !user.CanSignIn(now) {
@@ -619,12 +619,12 @@ func (s *Service) signInWithIdentity(
 	}
 
 	user = &model.User{
-		Email:         email,
-		EmailVerified: who.EmailVerified,
-		FirstName:     truncate(who.FirstName, 100),
-		LastName:      truncate(who.LastName, 100),
-		IsActive:      true,
-		Data:          map[string]any{},
+		Email:           email,
+		IsEmailVerified: who.EmailVerified,
+		FirstName:       truncate(who.FirstName, 100),
+		LastName:        truncate(who.LastName, 100),
+		IsActive:        true,
+		Data:            map[string]any{},
 	}
 
 	roles, err := s.store.DefaultUserRoles(ctx)
@@ -664,7 +664,7 @@ func (s *Service) socialRegistrationAllowed(ctx context.Context, request string)
 		return nil
 	}
 
-	if !req.Application.AllowRegistration || !req.Application.Enabled {
+	if !req.Application.AllowRegistration || !req.Application.IsEnabled {
 		return ErrSocialRegistrationClosed
 	}
 
@@ -679,7 +679,7 @@ func (s *Service) connectIdentity(
 	email string,
 	now time.Time,
 ) error {
-	identity := &model.UserIdentity{
+	identity := &model.SocialIdentity{
 		UserID:      user.ID,
 		ProviderID:  provider.ID,
 		Subject:     who.Subject,
@@ -687,7 +687,7 @@ func (s *Service) connectIdentity(
 		LastLoginAt: &now,
 	}
 
-	return s.store.CreateUserIdentity(ctx, identity)
+	return s.store.CreateSocialIdentity(ctx, identity)
 }
 
 func (s *Service) startSocialSession(

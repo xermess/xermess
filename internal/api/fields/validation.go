@@ -70,8 +70,8 @@ func (r *rulesRequest) applyTo(field *model.UserField) error {
 	}
 
 	field.Label = label
-	field.Required = r.Required
-	field.Unique = r.Unique
+	field.IsRequired = r.IsRequired
+	field.IsUnique = r.IsUnique
 	field.Min = r.Min
 	field.Max = r.Max
 	field.StartsWith = r.StartsWith

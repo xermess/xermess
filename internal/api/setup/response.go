@@ -14,6 +14,6 @@ type adminResponse struct {
 	FullName string `json:"full_name"`
 }
 
-func newAdminResponse(a *model.AdminUser) adminResponse {
+func newAdminResponse(a *model.Admin) adminResponse {
 	return adminResponse{ID: a.ID.String(), Email: a.Email, FullName: a.FullName()}
 }

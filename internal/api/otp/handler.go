@@ -94,7 +94,7 @@ func (h *Handler) Update(c *gin.Context) {
 	// server is to get into, so the log says which way it moved.
 	h.audit.RecordWith(c, "otp.settings_updated", targetType, targetID, map[string]any{
 		"fields":           changed,
-		"length":           settings.Length,
+		"code_length":      settings.CodeLength,
 		"lifetime_minutes": settings.LifetimeMinutes,
 		"max_attempts":     settings.MaxAttempts,
 	})

@@ -17,7 +17,7 @@ import (
 type UserQuery struct {
 	// Search matches the email or any value the record holds.
 	Search string
-	// Verified filters on the email_verified flag. Nil means both.
+	// Verified filters on the is_email_verified flag. Nil means both.
 	Verified *bool
 	// Role keeps the users who hold this role directly. Nil means everyone.
 	Role   *uuid.UUID
@@ -43,7 +43,7 @@ func (s *Store) Users(ctx context.Context, q UserQuery) ([]model.User, int64, er
 	}
 
 	if q.Verified != nil {
-		query = query.Where("email_verified = ?", *q.Verified)
+		query = query.Where("is_email_verified = ?", *q.Verified)
 	}
 
 	if q.Role != nil {

@@ -44,7 +44,7 @@
 	{#snippet row(language)}
 		<td>
 			<span class="names">
-				<strong lang={language.code}>{language.native}</strong>
+				<strong lang={language.code}>{language.native_name}</strong>
 				<span class="english">{language.name}</span>
 			</span>
 		</td>
@@ -79,7 +79,7 @@
 			<span class="status">
 				{#if language.is_default}
 					<Tag tone="info" strong>default</Tag>
-				{:else if language.enabled}
+				{:else if language.is_enabled}
 					<Badge tone="success">offered</Badge>
 				{:else}
 					<Badge>off</Badge>

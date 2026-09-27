@@ -28,8 +28,8 @@ import (
 type OTPSettings struct {
 	Base
 
-	// Length is how many digits a code has.
-	Length int `gorm:"not null" json:"length"`
+	// CodeLength is how many digits a code has.
+	CodeLength int `gorm:"not null" json:"code_length"`
 
 	// LifetimeMinutes is how long a code works for.
 	LifetimeMinutes int `gorm:"not null" json:"lifetime_minutes"`
@@ -75,7 +75,7 @@ const (
 // signing in has seen it before.
 func DefaultOTPSettings() OTPSettings {
 	return OTPSettings{
-		Length:          6,
+		CodeLength:      6,
 		LifetimeMinutes: 10,
 		MaxAttempts:     5,
 		ResendSeconds:   60,
@@ -95,8 +95,8 @@ func (o OTPSettings) Resend() time.Duration {
 // Validate reports the first thing wrong with the settings.
 func (o OTPSettings) Validate() error {
 	switch {
-	case o.Length < MinOTPLength || o.Length > MaxOTPLength:
-		return fmt.Errorf("length must be between %d and %d", MinOTPLength, MaxOTPLength)
+	case o.CodeLength < MinOTPLength || o.CodeLength > MaxOTPLength:
+		return fmt.Errorf("code_length must be between %d and %d", MinOTPLength, MaxOTPLength)
 	case o.LifetimeMinutes < 1 || o.LifetimeMinutes > MaxOTPLifetimeMinutes:
 		return fmt.Errorf("lifetime_minutes must be between 1 and %d", MaxOTPLifetimeMinutes)
 	case o.MaxAttempts < 1 || o.MaxAttempts > MaxOTPAttempts:
@@ -133,10 +133,10 @@ type LoginCode struct {
 	// when somebody is signing in to their account itself.
 	Request string `gorm:"size:64"`
 
-	// Remember is the "stay signed in" box as it was ticked before the code
+	// RememberMe is the "stay signed in" box as it was ticked before the code
 	// was asked for: the sign-in is one act, and the answer to it should not
 	// depend on where the code arrived.
-	Remember bool `gorm:"not null"`
+	RememberMe bool `gorm:"not null"`
 
 	// Attempts is how many wrong codes have been typed.
 	Attempts int `gorm:"not null"`
@@ -145,8 +145,8 @@ type LoginCode struct {
 	// before another is counted from.
 	SentAt time.Time `gorm:"not null"`
 
-	ExpiresAt  time.Time `gorm:"not null;index"`
-	ConsumedAt *time.Time
+	ExpiresAt time.Time `gorm:"not null;index"`
+	UsedAt    *time.Time
 }
 
 // TableName pins the table name.
@@ -157,7 +157,7 @@ func (LoginCode) TableName() string {
 // Usable reports whether a code can still be typed: not used, not expired,
 // and not guessed at more than it allows.
 func (c LoginCode) Usable(now time.Time, maxAttempts int) bool {
-	return c.ConsumedAt == nil && now.Before(c.ExpiresAt) && c.Attempts < maxAttempts
+	return c.UsedAt == nil && now.Before(c.ExpiresAt) && c.Attempts < maxAttempts
 }
 
 // NewOTP returns a code of `length` digits and its hash. Every digit comes

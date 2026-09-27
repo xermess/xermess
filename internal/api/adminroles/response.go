@@ -16,15 +16,15 @@ type roleResponse struct {
 	// Permissions are the catalog names the role grants. super_admin lists
 	// every one, which is what it means.
 	Permissions []string `json:"permissions"`
-	// Builtin marks super_admin, which cannot be changed or removed.
-	Builtin bool `json:"builtin"`
+	// IsBuiltin marks super_admin, which cannot be changed or removed.
+	IsBuiltin bool `json:"is_builtin"`
 	// AdminCount is how many administrators hold the role.
 	AdminCount int64     `json:"admin_count"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-func newRoleResponse(role model.Role, admins int64) roleResponse {
+func newRoleResponse(role model.AdminRole, admins int64) roleResponse {
 	permissions := []string{}
 	for _, name := range model.AdminPermissionNames() {
 		if role.Grants(name) {
@@ -37,7 +37,7 @@ func newRoleResponse(role model.Role, admins int64) roleResponse {
 		Name:        role.Name,
 		Description: role.Description,
 		Permissions: permissions,
-		Builtin:     role.IsSuperAdmin(),
+		IsBuiltin:   role.IsSuperAdmin(),
 		AdminCount:  admins,
 		CreatedAt:   role.CreatedAt,
 		UpdatedAt:   role.UpdatedAt,
@@ -50,7 +50,7 @@ type listResponse struct {
 	Total int            `json:"total"`
 }
 
-func newListResponse(roles []model.Role, counts map[uuid.UUID]int64) listResponse {
+func newListResponse(roles []model.AdminRole, counts map[uuid.UUID]int64) listResponse {
 	out := make([]roleResponse, 0, len(roles))
 	for _, role := range roles {
 		out = append(out, newRoleResponse(role, counts[role.ID]))

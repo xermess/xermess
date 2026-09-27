@@ -6,6 +6,7 @@ import {
 	RiBuildingLine,
 	RiCodeBoxLine,
 	RiComputerLine,
+	RiDatabase2Line,
 	RiFileList3Line,
 	RiGitBranchLine,
 	RiGroupLine,
@@ -184,6 +185,12 @@ export const branches: SidebarBranch[] = [
 				route: '/admin/(panel)/dashboard/mail',
 				label: 'Mail',
 				icon: RiMailLine,
+				allowed: (admin) => admin.is_super_admin
+			},
+			{
+				route: '/admin/(panel)/dashboard/cache',
+				label: 'Cache',
+				icon: RiDatabase2Line,
 				allowed: (admin) => admin.is_super_admin
 			}
 		]

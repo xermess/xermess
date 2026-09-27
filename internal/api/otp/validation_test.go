@@ -27,23 +27,23 @@ func TestSettingsRequestApplyTo(t *testing.T) {
 		},
 		{
 			name:    "a longer code",
-			request: settingsRequest{Length: ptr(8)},
-			changed: []string{"length"},
+			request: settingsRequest{CodeLength: ptr(8)},
+			changed: []string{"code_length"},
 		},
 		{
 			name:    "the same values again are no change",
-			request: settingsRequest{Length: ptr(6), MaxAttempts: ptr(5)},
+			request: settingsRequest{CodeLength: ptr(6), MaxAttempts: ptr(5)},
 			changed: []string{},
 		},
 		{
 			name: "every setting at once, in the order they are listed",
 			request: settingsRequest{
-				Length:          ptr(4),
+				CodeLength:      ptr(4),
 				LifetimeMinutes: ptr(5),
 				MaxAttempts:     ptr(3),
 				ResendSeconds:   ptr(30),
 			},
-			changed: []string{"length", "lifetime_minutes", "max_attempts", "resend_seconds"},
+			changed: []string{"code_length", "lifetime_minutes", "max_attempts", "resend_seconds"},
 		},
 		{
 			name:    "no wait between messages",
@@ -52,8 +52,8 @@ func TestSettingsRequestApplyTo(t *testing.T) {
 		},
 		{
 			name:    "a code too short to be worth guessing at",
-			request: settingsRequest{Length: ptr(3)},
-			want:    "length must be between 4 and 10",
+			request: settingsRequest{CodeLength: ptr(3)},
+			want:    "code_length must be between 4 and 10",
 		},
 		{
 			name:    "a code that outlives the message it came in",

@@ -28,7 +28,7 @@ func TestLiveMailSettingsAreSuperAdmins(t *testing.T) {
 	}
 
 	super.must(http.StatusOK, http.MethodPatch, "/mail", map[string]any{
-		"enabled": true, "host": "SMTP.Example.COM", "port": 465, "encryption": "tls",
+		"is_enabled": true, "host": "SMTP.Example.COM", "port": 465, "encryption": "tls",
 		"username": "apikey", "password": "a secret", "from_address": "no-reply@example.com",
 	}, &settings)
 

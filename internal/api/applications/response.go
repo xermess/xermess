@@ -17,10 +17,10 @@ type applicationResponse struct {
 	Name        string                `json:"name"`
 	Description string                `json:"description"`
 	Type        model.ApplicationType `json:"type"`
-	LogoURI     string                `json:"logo_uri"`
-	ClientURI   string                `json:"client_uri"`
-	PolicyURI   string                `json:"policy_uri"`
-	TosURI      string                `json:"tos_uri"`
+	LogoURL     string                `json:"logo_url"`
+	WebsiteURL  string                `json:"website_url"`
+	PrivacyURL  string                `json:"privacy_url"`
+	TermsURL    string                `json:"terms_url"`
 
 	ClientID         string     `json:"client_id"`
 	ClientIDIssuedAt int64      `json:"client_id_issued_at"`
@@ -28,13 +28,13 @@ type applicationResponse struct {
 	SecretHint       string     `json:"secret_hint"`
 	SecretCreatedAt  *time.Time `json:"secret_created_at"`
 
-	TokenEndpointAuthMethod model.AuthMethod `json:"token_endpoint_auth_method"`
-	GrantTypes              []string         `json:"grant_types"`
-	ResponseTypes           []string         `json:"response_types"`
-	RedirectURIs            []string         `json:"redirect_uris"`
-	PostLogoutRedirectURIs  []string         `json:"post_logout_redirect_uris"`
-	Scopes                  []string         `json:"scopes"`
-	RequirePKCE             bool             `json:"require_pkce"`
+	TokenAuthMethod        model.AuthMethod `json:"token_auth_method"`
+	GrantTypes             []string         `json:"grant_types"`
+	ResponseTypes          []string         `json:"response_types"`
+	RedirectURIs           []string         `json:"redirect_uris"`
+	PostLogoutRedirectURIs []string         `json:"post_logout_redirect_uris"`
+	Scopes                 []string         `json:"scopes"`
+	RequirePKCE            bool             `json:"require_pkce"`
 
 	AccessTokenLifetime  int `json:"access_token_lifetime"`
 	IDTokenLifetime      int `json:"id_token_lifetime"`
@@ -42,7 +42,7 @@ type applicationResponse struct {
 
 	AssertRoles           bool `json:"assert_roles"`
 	RequireRoleAssignment bool `json:"require_role_assignment"`
-	Enabled               bool `json:"enabled"`
+	IsEnabled             bool `json:"is_enabled"`
 	AllowRegistration     bool `json:"allow_registration"`
 
 	// LoginFlowID is the flow this application signs people in with, null
@@ -58,37 +58,37 @@ type applicationResponse struct {
 
 func newApplicationResponse(app model.Application, roles int64) applicationResponse {
 	return applicationResponse{
-		ID:                      app.ID,
-		Name:                    app.Name,
-		Description:             app.Description,
-		Type:                    app.Type,
-		LogoURI:                 app.LogoURI,
-		ClientURI:               app.ClientURI,
-		PolicyURI:               app.PolicyURI,
-		TosURI:                  app.TosURI,
-		ClientID:                app.ClientID,
-		ClientIDIssuedAt:        app.CreatedAt.Unix(),
-		HasSecret:               app.HasSecret() && app.ClientSecretHash != "",
-		SecretHint:              app.SecretHint,
-		SecretCreatedAt:         app.SecretCreatedAt,
-		TokenEndpointAuthMethod: app.TokenEndpointAuthMethod,
-		GrantTypes:              nonNil(app.GrantTypes),
-		ResponseTypes:           app.ResponseTypes(),
-		RedirectURIs:            nonNil(app.RedirectURIs),
-		PostLogoutRedirectURIs:  nonNil(app.PostLogoutRedirectURIs),
-		Scopes:                  nonNil(app.Scopes),
-		RequirePKCE:             app.RequirePKCE,
-		AccessTokenLifetime:     app.AccessTokenLifetime,
-		IDTokenLifetime:         app.IDTokenLifetime,
-		RefreshTokenLifetime:    app.RefreshTokenLifetime,
-		AssertRoles:             app.AssertRoles,
-		RequireRoleAssignment:   app.RequireRoleAssignment,
-		Enabled:                 app.Enabled,
-		AllowRegistration:       app.AllowRegistration,
-		LoginFlowID:             app.LoginFlowID,
-		RoleCount:               roles,
-		CreatedAt:               app.CreatedAt,
-		UpdatedAt:               app.UpdatedAt,
+		ID:                     app.ID,
+		Name:                   app.Name,
+		Description:            app.Description,
+		Type:                   app.Type,
+		LogoURL:                app.LogoURL,
+		WebsiteURL:             app.WebsiteURL,
+		PrivacyURL:             app.PrivacyURL,
+		TermsURL:               app.TermsURL,
+		ClientID:               app.ClientID,
+		ClientIDIssuedAt:       app.CreatedAt.Unix(),
+		HasSecret:              app.HasSecret() && app.ClientSecretHash != "",
+		SecretHint:             app.SecretHint,
+		SecretCreatedAt:        app.SecretCreatedAt,
+		TokenAuthMethod:        app.TokenAuthMethod,
+		GrantTypes:             nonNil(app.GrantTypes),
+		ResponseTypes:          app.ResponseTypes(),
+		RedirectURIs:           nonNil(app.RedirectURIs),
+		PostLogoutRedirectURIs: nonNil(app.PostLogoutRedirectURIs),
+		Scopes:                 nonNil(app.Scopes),
+		RequirePKCE:            app.RequirePKCE,
+		AccessTokenLifetime:    app.AccessTokenLifetime,
+		IDTokenLifetime:        app.IDTokenLifetime,
+		RefreshTokenLifetime:   app.RefreshTokenLifetime,
+		AssertRoles:            app.AssertRoles,
+		RequireRoleAssignment:  app.RequireRoleAssignment,
+		IsEnabled:              app.IsEnabled,
+		AllowRegistration:      app.AllowRegistration,
+		LoginFlowID:            app.LoginFlowID,
+		RoleCount:              roles,
+		CreatedAt:              app.CreatedAt,
+		UpdatedAt:              app.UpdatedAt,
 	}
 }
 

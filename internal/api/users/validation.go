@@ -72,7 +72,7 @@ func normalise(
 			continue
 		}
 
-		if field.Unique {
+		if field.IsUnique {
 			taken, err := st.FieldValueTaken(ctx, field.Name, value, self)
 			if err != nil {
 				return nil, err

@@ -10,7 +10,7 @@ import (
 
 // field builds a field of the given type for a test to use.
 func field(t FieldType, required bool) UserField {
-	return UserField{Name: "probe", Label: "Probe", Type: t, Required: required}
+	return UserField{Name: "probe", Label: "Probe", Type: t, IsRequired: required}
 }
 
 // TestNormalise covers what a submitted value becomes, which is the one place
@@ -249,7 +249,7 @@ func TestBuiltinFieldsAreDescribed(t *testing.T) {
 			t.Errorf("%s has type %q, which is not a field type", field.Name, field.Type)
 		}
 
-		if !field.Builtin {
+		if !field.IsBuiltin {
 			t.Errorf("%s is in BuiltinFields but is not marked as built in", field.Name)
 		}
 
@@ -269,13 +269,13 @@ func TestBuiltinFieldsAreDescribed(t *testing.T) {
 // no column behind it would show nothing and save nowhere.
 func TestBuiltinFieldsMatchTheColumns(t *testing.T) {
 	columns := map[string]bool{
-		FieldEmailName:         true,
-		FieldEmailVerifiedName: true,
-		FieldFirstNameName:     true,
-		FieldLastNameName:      true,
-		FieldIsActiveName:      true,
+		FieldEmailName:           true,
+		FieldIsEmailVerifiedName: true,
+		FieldFirstNameName:       true,
+		FieldLastNameName:        true,
+		FieldIsActiveName:        true,
 
-		FieldIsTemporaryPasswordName: true,
+		FieldIsPasswordTemporaryName: true,
 	}
 
 	for _, field := range BuiltinFields() {

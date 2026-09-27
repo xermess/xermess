@@ -9,6 +9,7 @@ export {
 	languagesApi,
 	mailApi,
 	otpApi,
+	cacheApi,
 	sessionsApi,
 	organizationApi,
 	socialApi,

@@ -39,7 +39,7 @@ type providerRequest struct {
 	TokenURL     *string `json:"token_url"`
 	UserInfoURL  *string `json:"userinfo_url"`
 
-	Enabled            *bool `json:"enabled"`
+	IsEnabled          *bool `json:"is_enabled"`
 	LinkVerifiedEmails *bool `json:"link_verified_emails"`
 	AllowRegistration  *bool `json:"allow_registration"`
 

@@ -52,7 +52,7 @@ func TestRoleRequestApplyTo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := tt.request
-			var role model.Role
+			var role model.AdminRole
 
 			err := request.applyTo(&role)
 

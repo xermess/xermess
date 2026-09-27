@@ -76,5 +76,5 @@ func listQuery(c *gin.Context) store.AdminQuery {
 // administrator sends. The flag is a pointer so a request that does not
 // mention it leaves it alone.
 type securityRequest struct {
-	MFARequired *bool `json:"mfa_required"`
+	RequireMFA *bool `json:"require_mfa"`
 }

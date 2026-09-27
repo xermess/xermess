@@ -63,7 +63,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	role := &model.Role{}
+	role := &model.AdminRole{}
 	if err := req.applyTo(role); err != nil {
 		respond.Failure(c, h.log, err, "checking an admin role failed")
 		return
@@ -128,7 +128,7 @@ func (h *Handler) Delete(c *gin.Context) {
 
 // withCount builds the response for one role, with how many hold it. A count
 // that cannot be read is not worth failing a write that already happened.
-func (h *Handler) withCount(c *gin.Context, role *model.Role) roleResponse {
+func (h *Handler) withCount(c *gin.Context, role *model.AdminRole) roleResponse {
 	counts, err := h.store.AdminRoleMemberCounts(c.Request.Context())
 	if err != nil {
 		h.log.Error("counting admin role members failed", "error", err)
@@ -139,7 +139,7 @@ func (h *Handler) withCount(c *gin.Context, role *model.Role) roleResponse {
 
 // findEditable loads the role named in the path, answering the request itself
 // if there is no such role or it is super_admin, which is built in.
-func (h *Handler) findEditable(c *gin.Context) (*model.Role, bool) {
+func (h *Handler) findEditable(c *gin.Context) (*model.AdminRole, bool) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		respond.BadRequest(c, "that is not a role id")

@@ -61,7 +61,7 @@ func (s *Store) AuditQuery(ctx context.Context, filter AuditFilter) ([]model.Aud
 	query := s.db.WithContext(ctx).Model(&model.AuditLog{})
 
 	// What users did at the sign-in pages: no administrator, a user target.
-	const byUser = "(admin_user_id IS NULL AND target_type = 'user')"
+	const byUser = "(admin_id IS NULL AND target_type = 'user')"
 
 	if term := strings.TrimSpace(filter.Search); term != "" {
 		like := "%" + escapeLike(term) + "%"
@@ -167,13 +167,13 @@ func (s *Store) Counts(ctx context.Context, now, since time.Time) (Counts, error
 			(SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND is_active) AS active_users,
 			(SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND created_at >= @since) AS new_users,
 			(SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL) AS applications,
-			(SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL AND enabled) AS enabled_applications,
+			(SELECT COUNT(*) FROM applications WHERE deleted_at IS NULL AND is_enabled) AS enabled_applications,
 			(SELECT COUNT(*) FROM apis WHERE deleted_at IS NULL) AS apis,
 			(SELECT COUNT(*) FROM api_scopes WHERE deleted_at IS NULL) AS api_scopes,
 			(SELECT COUNT(*) FROM user_roles WHERE deleted_at IS NULL) AS user_roles,
-			(SELECT COUNT(*) FROM admin_users WHERE deleted_at IS NULL) AS admins,
-			(SELECT COUNT(*) FROM admin_users WHERE deleted_at IS NULL AND locked_until > @now) AS locked_admins,
-			(SELECT COUNT(*) FROM admin_user_sessions
+			(SELECT COUNT(*) FROM admins WHERE deleted_at IS NULL) AS admins,
+			(SELECT COUNT(*) FROM admins WHERE deleted_at IS NULL AND locked_until > @now) AS locked_admins,
+			(SELECT COUNT(*) FROM admin_sessions
 				WHERE deleted_at IS NULL AND revoked_at IS NULL AND expires_at > @now) AS active_sessions`,
 		map[string]any{"now": now, "since": since},
 	).Scan(&counts).Error
@@ -280,7 +280,7 @@ func (s *Store) TopActors(ctx context.Context, since time.Time, limit int) ([]Ac
 		SELECT actor_email AS actor, COUNT(*) AS events
 		FROM audit_logs
 		WHERE created_at >= @since AND actor_email <> '' AND action NOT LIKE 'admin.log%'
-			AND admin_user_id IS NOT NULL
+			AND admin_id IS NOT NULL
 		GROUP BY actor_email
 		ORDER BY events DESC, actor_email
 		LIMIT @limit`,
@@ -307,8 +307,8 @@ var targetTables = map[string]struct{ table, name, application string }{
 	"user_role":      {table: "user_roles", name: "name", application: "application_id"},
 	"application":    {table: "applications", name: "name", application: "id"},
 	"api":            {table: "apis", name: "name"},
-	"admin_user":     {table: "admin_users", name: "username"},
-	"admin_role":     {table: "roles", name: "name"},
+	"admin_user":     {table: "admins", name: "username"},
+	"admin_role":     {table: "admin_roles", name: "name"},
 	"login_flow":     {table: "login_flows", name: "name"},
 	"language":       {table: "languages", name: "name"},
 	"sso_connection": {table: "sso_connections", name: "name"},

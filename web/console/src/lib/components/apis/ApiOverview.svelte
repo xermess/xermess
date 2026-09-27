@@ -19,7 +19,7 @@
 
 	let { api, onTab }: Props = $props();
 
-	const defaults = $derived(api.scopes.filter((scope) => scope.default).length);
+	const defaults = $derived(api.scopes.filter((scope) => scope.is_default).length);
 
 	const stats = $derived([
 		{

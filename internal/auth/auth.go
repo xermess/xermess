@@ -117,7 +117,7 @@ func (s *Service) MFARequired(ctx context.Context) bool {
 		return true
 	}
 
-	return security.MFARequired
+	return security.RequireMFA
 }
 
 // Request describes where a call came from, which is recorded on the session
@@ -134,7 +134,7 @@ type Request struct {
 // A right password is not always a finished sign-in. An administrator with a
 // second factor gets a session in StateMFA, and one who must set a factor up
 // gets StateEnroll; either can do nothing else until that step is done.
-func (s *Service) Login(ctx context.Context, username, password string, req Request) (string, *model.AdminUser, State, error) {
+func (s *Service) Login(ctx context.Context, username, password string, req Request) (string, *model.Admin, State, error) {
 	admin, err := s.store.AdminByUsername(ctx, username)
 
 	switch {
@@ -186,11 +186,11 @@ func (s *Service) Login(ctx context.Context, username, password string, req Requ
 		return "", nil, StateNone, err
 	}
 
-	session := model.AdminUserSession{
-		AdminUserID: admin.ID,
+	session := model.AdminSession{
+		AdminID:     admin.ID,
 		TokenHash:   hashToken(token),
 		ExpiresAt:   time.Now().Add(lifetime),
-		MFAPassed:   state == StateSignedIn,
+		IsMFAPassed: state == StateSignedIn,
 		UserAgent:   req.UserAgent,
 		IP:          req.IP,
 	}
@@ -209,7 +209,7 @@ func (s *Service) Login(ctx context.Context, username, password string, req Requ
 
 // signedIn finishes a sign-in: the last sign-in is recorded, the wrong
 // passwords before it forgotten, and the log told how it happened.
-func (s *Service) signedIn(ctx context.Context, admin *model.AdminUser, req Request, method string) error {
+func (s *Service) signedIn(ctx context.Context, admin *model.Admin, req Request, method string) error {
 	if err := s.store.MarkAdminSignedIn(ctx, admin, time.Now(), req.IP); err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (s *Service) signedIn(ctx context.Context, admin *model.AdminUser, req Requ
 
 // Session returns the session a token carries, whatever state it is in, with
 // its administrator.
-func (s *Service) Session(ctx context.Context, token string) (*model.AdminUser, *model.AdminUserSession, State, error) {
+func (s *Service) Session(ctx context.Context, token string) (*model.Admin, *model.AdminSession, State, error) {
 	if token == "" {
 		return nil, nil, StateNone, ErrNoSession
 	}
@@ -239,17 +239,19 @@ func (s *Service) Session(ctx context.Context, token string) (*model.AdminUser, 
 		return nil, nil, StateNone, ErrNoSession
 	}
 
-	admin, err := s.store.AdminByID(ctx, session.AdminUserID)
+	// The administrator as the session database keeps them: the roles and
+	// factors, without the password — nothing here checks or writes one.
+	admin, err := s.store.AdminPrincipal(ctx, session.AdminID)
 	if err != nil || !admin.CanSignIn(now) {
 		return nil, nil, StateNone, ErrNoSession
 	}
 
 	switch {
-	case session.MFAPassed && s.MFARequired(ctx) && !admin.HasMFA():
+	case session.IsMFAPassed && s.MFARequired(ctx) && !admin.HasMFA():
 		// Signed in before two-factor sign-in was required, or had it reset:
 		// the session is good for setting it up and nothing else.
 		return admin, session, StateEnroll, nil
-	case session.MFAPassed:
+	case session.IsMFAPassed:
 		return admin, session, StateSignedIn, nil
 	case admin.HasMFA():
 		return admin, session, StateMFA, nil
@@ -265,7 +267,7 @@ func (s *Service) Session(ctx context.Context, token string) (*model.AdminUser, 
 // Authenticate returns the administrator a fully signed-in session belongs
 // to, and the session. It is what the middleware calls on every request to
 // the panel's API; a session half way through signing in is no session here.
-func (s *Service) Authenticate(ctx context.Context, token string) (*model.AdminUser, *model.AdminUserSession, error) {
+func (s *Service) Authenticate(ctx context.Context, token string) (*model.Admin, *model.AdminSession, error) {
 	admin, session, state, err := s.Session(ctx, token)
 	if err != nil {
 		return nil, nil, err
@@ -297,7 +299,7 @@ func (s *Service) Logout(ctx context.Context, token string, req Request) error {
 		return err
 	}
 
-	if admin, err := s.store.AdminByID(ctx, session.AdminUserID); err == nil {
+	if admin, err := s.store.AdminByID(ctx, session.AdminID); err == nil {
 		s.record(ctx, &admin.ID, admin.Username, "admin.logout", req, "")
 	}
 
@@ -320,12 +322,12 @@ func (s *Service) record(ctx context.Context, adminID *uuid.UUID, actor, action 
 // left out.
 func (s *Service) recordWith(ctx context.Context, adminID *uuid.UUID, actor, action string, req Request, metadata map[string]any) {
 	entry := model.AuditLog{
-		AdminUserID: adminID,
-		ActorEmail:  actor,
-		Action:      action,
-		TargetType:  "admin_user",
-		IP:          req.IP,
-		UserAgent:   req.UserAgent,
+		AdminID:    adminID,
+		ActorEmail: actor,
+		Action:     action,
+		TargetType: "admin_user",
+		IP:         req.IP,
+		UserAgent:  req.UserAgent,
 	}
 	for key, value := range metadata {
 		if value != "" && value != nil {

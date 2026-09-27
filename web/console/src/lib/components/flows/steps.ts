@@ -53,7 +53,7 @@ export type FlowDraft = {
 	slug: string;
 	description: string;
 	is_default: boolean;
-	enabled: boolean;
+	is_enabled: boolean;
 	steps: LoginStep[];
 	allow_sign_in: boolean;
 	allow_registration: boolean;
@@ -71,7 +71,7 @@ export function draftOf(flow: FlowDraft): FlowDraft {
 		slug: flow.slug,
 		description: flow.description,
 		is_default: flow.is_default,
-		enabled: flow.enabled,
+		is_enabled: flow.is_enabled,
 		steps: [...flow.steps],
 		allow_sign_in: flow.allow_sign_in,
 		allow_registration: flow.allow_registration,
@@ -104,7 +104,8 @@ export function problemsOf(draft: FlowDraft): string[] {
 		problems.push('The identifier has to be lower case letters, numbers and dashes.');
 	if (!draft.steps.some((step) => PROOF_STEPS.includes(step)))
 		problems.push('Add Password or Other accounts: without one, nobody can sign in.');
-	if (draft.is_default && !draft.enabled) problems.push('The default flow cannot be turned off.');
+	if (draft.is_default && !draft.is_enabled)
+		problems.push('The default flow cannot be turned off.');
 	if (
 		!Number.isInteger(draft.session_lifetime_hours) ||
 		draft.session_lifetime_hours < 1 ||
@@ -151,7 +152,7 @@ export type FlowTemplate = {
 const base: Omit<FlowDraft, 'name' | 'slug' | 'steps'> = {
 	description: '',
 	is_default: false,
-	enabled: true,
+	is_enabled: true,
 	allow_sign_in: true,
 	allow_registration: true,
 	allow_password_reset: true,
@@ -229,7 +230,7 @@ export function toFile(draft: FlowDraft): FlowFile {
 		name: copy.name,
 		slug: copy.slug,
 		description: copy.description,
-		enabled: copy.enabled,
+		is_enabled: copy.is_enabled,
 		steps: copy.steps,
 		allow_sign_in: copy.allow_sign_in,
 		allow_registration: copy.allow_registration,
@@ -269,7 +270,7 @@ export function fromFile(text: string, kinds: LoginStepSpec[]): FlowDraft {
 		name: file.name,
 		slug: typeof file.slug === 'string' ? file.slug : slugFrom(file.name),
 		description: typeof file.description === 'string' ? file.description : '',
-		enabled: file.enabled !== false,
+		is_enabled: file.is_enabled !== false,
 		steps: file.steps as LoginStep[],
 		// A switch the file does not mention keeps the default: the ones that
 		// are on unless said otherwise read `!== false`, and the ones that are

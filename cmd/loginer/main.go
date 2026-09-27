@@ -66,10 +66,11 @@ func run(log *slog.Logger) error {
 		}
 	}
 
-	// Redis, when one is configured: the cache in front of the reads every
-	// page makes, and where the rate limit counts. A configured Redis that
-	// does not answer stops the server here, like a database that does not;
-	// none configured runs without, as the server always could.
+	// Redis, when one is configured: a cache database in front of the reads
+	// every page makes, and a session database for the sessions, who they
+	// belong to and the rate limit's counts. A configured Redis that does
+	// not answer stops the server here, like a database that does not; none
+	// configured runs without, as the server always could.
 	shared, err := cache.Open(context.Background(), cfg.Redis, log)
 	if err != nil {
 		return err
@@ -77,7 +78,8 @@ func run(log *slog.Logger) error {
 	defer shared.Close()
 
 	if shared != nil {
-		log.Info("redis connected", "addr", cfg.Redis.Addr(), "db", cfg.Redis.DB, "prefix", cfg.Redis.Prefix)
+		log.Info("redis connected", "addr", cfg.Redis.Addr(), "cache_db", cfg.Redis.CacheDB,
+			"session_db", cfg.Redis.SessionDB, "prefix", cfg.Redis.Prefix)
 	} else {
 		log.Info("redis is not configured; reading every page from the database")
 	}

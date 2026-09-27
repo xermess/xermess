@@ -24,16 +24,16 @@ type Language struct {
 	Code string `gorm:"size:16;not null;uniqueIndex" json:"code"`
 
 	// Name is what the language is called in English, for the panel, and
-	// Native what it calls itself — which is what the picker on the sign-in
+	// NativeName what it calls itself — which is what the picker on the sign-in
 	// pages shows, since somebody looking for their language scans for it
 	// written in it.
-	Name   string `gorm:"size:64;not null" json:"name"`
-	Native string `gorm:"size:64;not null" json:"native"`
+	Name       string `gorm:"size:64;not null" json:"name"`
+	NativeName string `gorm:"size:64;not null" json:"native_name"`
 
-	// Enabled shows the language in the picker on the sign-in pages. The
+	// IsEnabled shows the language in the picker on the sign-in pages. The
 	// default language is always enabled — it is what somebody sees before
 	// choosing, so it has to be one they could choose.
-	Enabled bool `gorm:"not null" json:"enabled"`
+	IsEnabled bool `gorm:"not null" json:"is_enabled"`
 
 	// IsDefault marks the language somebody sees before they have chosen one.
 	// Exactly one row has it; the store moves it rather than letting two rows
@@ -60,8 +60,8 @@ const BaseLanguage = "en"
 // DefaultLanguage is the row a fresh installation starts with.
 func DefaultLanguage() Language {
 	return Language{
-		Code: BaseLanguage, Name: "English", Native: "English",
-		Enabled: true, IsDefault: true, Position: 1,
+		Code: BaseLanguage, Name: "English", NativeName: "English",
+		IsEnabled: true, IsDefault: true, Position: 1,
 	}
 }
 
@@ -84,9 +84,9 @@ func (l Language) Validate() error {
 		return fmt.Errorf("name is required")
 	case utf8.RuneCountInString(l.Name) > 64:
 		return fmt.Errorf("name must be at most 64 characters")
-	case strings.TrimSpace(l.Native) == "":
+	case strings.TrimSpace(l.NativeName) == "":
 		return fmt.Errorf("native name is required")
-	case utf8.RuneCountInString(l.Native) > 64:
+	case utf8.RuneCountInString(l.NativeName) > 64:
 		return fmt.Errorf("native name must be at most 64 characters")
 	case l.Position < 0:
 		return fmt.Errorf("position cannot be negative")
@@ -94,7 +94,7 @@ func (l Language) Validate() error {
 
 	// The default is what somebody sees before choosing, so it has to be
 	// among what they could choose.
-	if l.IsDefault && !l.Enabled {
+	if l.IsDefault && !l.IsEnabled {
 		return fmt.Errorf("the default language cannot be turned off")
 	}
 

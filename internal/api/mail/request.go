@@ -19,7 +19,7 @@ const (
 // never has the stored one to send back, so leaving it out is how a form
 // saves without changing it, and an empty string is how it is cleared.
 type settingsRequest struct {
-	Enabled     *bool   `json:"enabled"`
+	IsEnabled   *bool   `json:"is_enabled"`
 	Host        *string `json:"host"`
 	Port        *int    `json:"port"`
 	Encryption  *string `json:"encryption"`

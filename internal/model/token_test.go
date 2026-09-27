@@ -32,7 +32,7 @@ func newFixture() fixture {
 		AccessTokenLifetime: 3600,
 		IDTokenLifetime:     3600,
 		AssertRoles:         true,
-		Enabled:             true,
+		IsEnabled:           true,
 	}
 	f.app.ID = uuid.New()
 
@@ -62,7 +62,7 @@ func newFixture() fixture {
 	f.emp = UserRole{Name: "employee"}
 	f.emp.ID = uuid.New()
 
-	f.user = User{Email: "mira@example.com", FirstName: "Mira", LastName: "Testova", EmailVerified: true, IsActive: true}
+	f.user = User{Email: "mira@example.com", FirstName: "Mira", LastName: "Testova", IsEmailVerified: true, IsActive: true}
 	f.user.ID = uuid.New()
 
 	return f
@@ -214,7 +214,7 @@ func TestEvaluateTokenRefusals(t *testing.T) {
 	}{
 		{
 			name:   "a disabled application",
-			change: func(f *fixture, r *TokenRequest) { r.Application.Enabled = false },
+			change: func(f *fixture, r *TokenRequest) { r.Application.IsEnabled = false },
 			reason: "the application is disabled",
 		},
 		{
@@ -376,8 +376,8 @@ func TestAPIValidate(t *testing.T) {
 // silently.
 func TestEvaluateTokenDefaultScopes(t *testing.T) {
 	f := newFixture()
-	f.orders.Scopes[0].Default = true // orders:read: allowed, and support grants it
-	f.orders.Scopes[1].Default = true // orders:write: allowed, but no role grants it
+	f.orders.Scopes[0].IsDefault = true // orders:read: allowed, and support grants it
+	f.orders.Scopes[1].IsDefault = true // orders:write: allowed, but no role grants it
 
 	p := EvaluateToken(f.request("openid"))
 
@@ -386,18 +386,18 @@ func TestEvaluateTokenDefaultScopes(t *testing.T) {
 	}
 
 	read := decision(p, "orders:read")
-	if !read.Granted || !read.Default || read.Reason != "default scope: granted by support" {
+	if !read.Granted || !read.IsDefault || read.Reason != "default scope: granted by support" {
 		t.Errorf("read = %+v, want granted as a default", read)
 	}
 
 	write := decision(p, "orders:write")
-	if write.Granted || !write.Default || write.Reason != "default scope: none of the user's roles grant this scope" {
+	if write.Granted || !write.IsDefault || write.Reason != "default scope: none of the user's roles grant this scope" {
 		t.Errorf("write = %+v, want refused and reported as a default", write)
 	}
 
 	// Asked for explicitly, a default scope is an ordinary request.
 	asked := EvaluateToken(f.request("orders:read"))
-	if d := decision(asked, "orders:read"); d.Default {
+	if d := decision(asked, "orders:read"); d.IsDefault {
 		t.Errorf("requested default = %+v, want it not marked as added", d)
 	}
 }

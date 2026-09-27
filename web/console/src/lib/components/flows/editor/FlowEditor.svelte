@@ -193,7 +193,7 @@
 	>
 		{#snippet meta()}
 			{#if flow?.is_default}<Tag tone="info" strong>default</Tag>{/if}
-			{#if !draft.enabled}<Tag>off</Tag>{/if}
+			{#if !draft.is_enabled}<Tag>off</Tag>{/if}
 			{#if editable && dirty && !creating}<Tag tone="warning">unsaved</Tag>{/if}
 		{/snippet}
 

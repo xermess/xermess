@@ -33,7 +33,7 @@ func stored(t *testing.T) model.MailSettings {
 	}
 
 	return model.MailSettings{
-		Enabled:     true,
+		IsEnabled:   true,
 		Host:        "smtp.example.com",
 		Port:        587,
 		Encryption:  model.MailStartTLS,
@@ -85,8 +85,8 @@ func TestSettingsRequestApplyTo(t *testing.T) {
 		},
 		{
 			name:    "turning sending off leaves the server as it is",
-			request: settingsRequest{Enabled: sentBool(false)},
-			changed: []string{"enabled"},
+			request: settingsRequest{IsEnabled: sentBool(false)},
+			changed: []string{"is_enabled"},
 			check: func(m model.MailSettings) error {
 				if m.Host != "smtp.example.com" {
 					return errors.New("the host was cleared: " + m.Host)
@@ -252,7 +252,7 @@ func TestTestRequestSettings(t *testing.T) {
 
 	t.Run("a test is sent even with sending switched off", func(t *testing.T) {
 		off := stored(t)
-		off.Enabled = false
+		off.IsEnabled = false
 
 		req := testRequest{To: "someone@example.com"}
 

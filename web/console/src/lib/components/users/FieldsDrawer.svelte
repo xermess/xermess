@@ -107,8 +107,8 @@
 		name = field.name;
 		label = field.label;
 		type = field.type;
-		required = field.required;
-		unique = field.unique;
+		required = field.is_required;
+		unique = field.is_unique;
 		min = field.min === null ? '' : String(field.min);
 		max = field.max === null ? '' : String(field.max);
 		startsWith = field.starts_with;
@@ -127,8 +127,8 @@
 	function rules() {
 		return {
 			label: label.trim() || name.trim(),
-			required,
-			unique,
+			is_required: required,
+			is_unique: unique,
 			min: bounded ? bound(min) : null,
 			max: bounded ? bound(max) : null,
 			starts_with: prefixed ? startsWith.trim() : ''
@@ -186,8 +186,8 @@
 	function summary(field: UserField): string[] {
 		const said: string[] = [];
 
-		if (field.required) said.push('required');
-		if (field.unique) said.push('unique');
+		if (field.is_required) said.push('required');
+		if (field.is_unique) said.push('unique');
 
 		const unit = field.type === 'number' ? '' : ' chars';
 		if (field.min !== null && field.max !== null) said.push(`${field.min}–${field.max}${unit}`);

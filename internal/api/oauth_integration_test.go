@@ -86,7 +86,7 @@ func newOAuthFixture(t *testing.T) *oauthFixture {
 	}
 	f.super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
 		"email": adaEmail, "first_name": "Ada", "last_name": "Lovelace",
-		"password": adaPassword, "confirm_password": adaPassword, "email_verified": true,
+		"password": adaPassword, "confirm_password": adaPassword, "is_email_verified": true,
 	}, &user)
 	f.userID = user.User.ID
 
@@ -647,7 +647,7 @@ func TestLiveOAuthLogoutLeavesOtherPeoplesSessionsAlone(t *testing.T) {
 	f.super.must(http.StatusCreated, http.MethodPost, "/users", map[string]any{
 		"email": "grace@example.com", "first_name": "Grace",
 		"password": "grace-password-1", "confirm_password": "grace-password-1",
-		"email_verified": true,
+		"is_email_verified": true,
 	}, nil)
 
 	login := stranger.visit(f.authorizeURL(strangerChallenge, nil))
@@ -883,7 +883,7 @@ func TestLiveAccountRegisterAndResetPassword(t *testing.T) {
 	f.super.must(http.StatusOK, http.MethodPatch, "/applications/"+f.appID, map[string]any{
 		"name": "Shop", "grant_types": []string{"authorization_code", "refresh_token"},
 		"redirect_uris": []string{shopRedirect}, "scopes": []string{"openid", "email"},
-		"tos_uri": "https://shop.example.com/terms", "policy_uri": "https://shop.example.com/privacy",
+		"terms_url": "https://shop.example.com/terms", "privacy_url": "https://shop.example.com/privacy",
 	}, nil)
 
 	_, challenge = pkce(t)
@@ -891,12 +891,12 @@ func TestLiveAccountRegisterAndResetPassword(t *testing.T) {
 
 	var pending struct {
 		Application struct {
-			TosURI string `json:"tos_uri"`
+			TermsURL string `json:"terms_url"`
 		} `json:"application"`
 	}
 	b.account(http.MethodGet, "/requests/"+handle, nil, &pending)
-	if pending.Application.TosURI != "https://shop.example.com/terms" {
-		t.Errorf("request tos_uri = %q", pending.Application.TosURI)
+	if pending.Application.TermsURL != "https://shop.example.com/terms" {
+		t.Errorf("request terms_url = %q", pending.Application.TermsURL)
 	}
 
 	if status := b.account(http.MethodPost, "/register", map[string]any{"request": handle, "email": "lin@example.com", "password": "lin-password"}, nil); status != http.StatusBadRequest {
@@ -944,7 +944,7 @@ func TestLiveAccountRegisterAndResetPassword(t *testing.T) {
 
 	// A temporary password an administrator set sends the user to choose one.
 	f.super.must(http.StatusOK, http.MethodPatch, "/users/"+f.userID, map[string]any{
-		"email": adaEmail, "password": "temporary-1", "confirm_password": "temporary-1", "is_temporary_password": true,
+		"email": adaEmail, "password": "temporary-1", "confirm_password": "temporary-1", "is_password_temporary": true,
 	}, nil)
 
 	var temporary struct {

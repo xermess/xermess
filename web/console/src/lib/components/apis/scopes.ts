@@ -9,13 +9,13 @@ export type ScopeRow = {
 	id?: string;
 	name: string;
 	description: string;
-	default: boolean;
+	is_default: boolean;
 };
 
 let nextKey = 0;
 
 export function scopeRow(from?: Partial<ScopeRow>): ScopeRow {
-	return { name: '', description: '', default: false, ...from, key: nextKey++ };
+	return { name: '', description: '', is_default: false, ...from, key: nextKey++ };
 }
 
 /** A scope name as the server will store it. */
@@ -46,7 +46,7 @@ export function scopeInput(rows: ScopeRow[]): APIInput['scopes'] {
 			id: row.id,
 			name: tidyScope(row.name),
 			description: row.description.trim(),
-			default: row.default
+			is_default: row.is_default
 		}));
 }
 

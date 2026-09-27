@@ -18,11 +18,11 @@
 <AuthCard organization={data.organization} application={app} title={t('logged_out.title')}>
 	<Alert tone="success">{t('logged_out.body')}</Alert>
 
-	{#if app?.client_uri}
+	{#if app?.website_url}
 		<div class="action">
 			<!-- The application's own site. -->
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a class="primary" href={app.client_uri}>{t('logged_out.return', { app: app.name })}</a>
+			<a class="primary" href={app.website_url}>{t('logged_out.return', { app: app.name })}</a>
 		</div>
 	{/if}
 

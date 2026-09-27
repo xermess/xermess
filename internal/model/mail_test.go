@@ -6,7 +6,7 @@ import "testing"
 // then breaks in one way.
 func mailSettings() MailSettings {
 	return MailSettings{
-		Enabled:     true,
+		IsEnabled:   true,
 		Host:        "smtp.example.com",
 		Port:        587,
 		Encryption:  MailStartTLS,
@@ -33,7 +33,7 @@ func TestMailSettingsValidate(t *testing.T) {
 		{
 			name: "a half-filled form with sending off is somebody's work in progress",
 			change: func(m *MailSettings) {
-				m.Enabled = false
+				m.IsEnabled = false
 				m.Host = ""
 				m.FromAddress = ""
 			},
@@ -81,7 +81,7 @@ func TestMailSettingsValidate(t *testing.T) {
 		{
 			name: "an address that is not one, even with sending off",
 			change: func(m *MailSettings) {
-				m.Enabled = false
+				m.IsEnabled = false
 				m.FromAddress = "no-reply at example"
 			},
 			want: "from_address must be an email address",

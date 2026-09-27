@@ -33,6 +33,6 @@
 		value={String(value ?? '')}
 		oninput={(event) => (value = event.currentTarget.value)}
 		type={inputType}
-		required={field.required}
+		required={field.is_required}
 	/>
 {/if}

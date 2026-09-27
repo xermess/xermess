@@ -21,14 +21,14 @@ func (r *languageRequest) applyTo(language *model.Language) error {
 	if r.Name != nil {
 		language.Name = strings.TrimSpace(*r.Name)
 	}
-	if r.Native != nil {
-		language.Native = strings.TrimSpace(*r.Native)
+	if r.NativeName != nil {
+		language.NativeName = strings.TrimSpace(*r.NativeName)
 	}
 	if r.Position != nil {
 		language.Position = *r.Position
 	}
 
-	language.Enabled = validate.Flag(r.Enabled, language.Enabled)
+	language.IsEnabled = validate.Flag(r.IsEnabled, language.IsEnabled)
 	language.IsDefault = validate.Flag(r.IsDefault, language.IsDefault)
 
 	return settle(language)
@@ -38,18 +38,18 @@ func (r *languageRequest) applyTo(language *model.Language) error {
 func (r *createRequest) newLanguage() (*model.Language, error) {
 	r.Code = normalizeCode(r.Code)
 	r.Name = strings.TrimSpace(r.Name)
-	r.Native = strings.TrimSpace(r.Native)
+	r.NativeName = strings.TrimSpace(r.NativeName)
 
 	if err := validate.Struct(r); err != nil {
 		return nil, err
 	}
 
 	language := &model.Language{
-		Code:      normalizeCode(r.Code),
-		Name:      strings.TrimSpace(r.Name),
-		Native:    strings.TrimSpace(r.Native),
-		Enabled:   validate.Flag(r.Enabled, false),
-		IsDefault: validate.Flag(r.IsDefault, false),
+		Code:       normalizeCode(r.Code),
+		Name:       strings.TrimSpace(r.Name),
+		NativeName: strings.TrimSpace(r.NativeName),
+		IsEnabled:  validate.Flag(r.IsEnabled, false),
+		IsDefault:  validate.Flag(r.IsDefault, false),
 	}
 
 	return language, settle(language)
@@ -59,13 +59,13 @@ func (r *createRequest) newLanguage() (*model.Language, error) {
 // and validates what is left.
 func settle(language *model.Language) error {
 	if language.IsDefault {
-		language.Enabled = true
+		language.IsEnabled = true
 	}
 
 	// The base language is always offered: a page drawn in it is the last
 	// thing that still works when every other language is short of a key.
 	if language.Code == model.BaseLanguage {
-		language.Enabled = true
+		language.IsEnabled = true
 	}
 
 	if err := language.Validate(); err != nil {

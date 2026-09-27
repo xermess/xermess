@@ -24,7 +24,7 @@ export function grantedBy(
 ): AdminPermissionName[] {
 	const chosen = roles.filter((role) => held.includes(role.id));
 	const names = new Set(chosen.flatMap((role) => role.permissions));
-	const everything = chosen.some((role) => role.builtin);
+	const everything = chosen.some((role) => role.is_builtin);
 
 	return catalog
 		.filter((permission) => !scoped || permission.scopable)

@@ -217,7 +217,7 @@ func (s *Store) SaveAPI(ctx context.Context, api *model.API) error {
 				Updates(map[string]any{
 					"name":        scope.Name,
 					"description": scope.Description,
-					"default":     scope.Default,
+					"is_default":  scope.IsDefault,
 				}).Error
 			if err != nil {
 				return err

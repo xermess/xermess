@@ -17,7 +17,7 @@ import (
 // since the record is only saved once this returns.
 func (r *settingsRequest) applyTo(settings *model.OTPSettings) ([]string, error) {
 	updated := *settings
-	updated.Length = validate.Number(r.Length, settings.Length)
+	updated.CodeLength = validate.Number(r.CodeLength, settings.CodeLength)
 	updated.LifetimeMinutes = validate.Number(r.LifetimeMinutes, settings.LifetimeMinutes)
 	updated.MaxAttempts = validate.Number(r.MaxAttempts, settings.MaxAttempts)
 	updated.ResendSeconds = validate.Number(r.ResendSeconds, settings.ResendSeconds)
@@ -32,7 +32,7 @@ func (r *settingsRequest) applyTo(settings *model.OTPSettings) ([]string, error)
 		was    int
 		became int
 	}{
-		{"length", settings.Length, updated.Length},
+		{"code_length", settings.CodeLength, updated.CodeLength},
 		{"lifetime_minutes", settings.LifetimeMinutes, updated.LifetimeMinutes},
 		{"max_attempts", settings.MaxAttempts, updated.MaxAttempts},
 		{"resend_seconds", settings.ResendSeconds, updated.ResendSeconds},

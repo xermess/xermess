@@ -28,7 +28,7 @@
 		if (term === '') return list.data.languages;
 
 		return list.data.languages.filter((language) =>
-			[language.name, language.native, language.code].some((value) =>
+			[language.name, language.native_name, language.code].some((value) =>
 				value.toLowerCase().includes(term)
 			)
 		);

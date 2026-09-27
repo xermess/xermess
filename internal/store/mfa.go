@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -19,7 +20,7 @@ import (
 func (s *Store) MFAFactors(ctx context.Context, admin uuid.UUID, method model.MFAMethod) ([]model.MFA, error) {
 	var factors []model.MFA
 	err := s.db.WithContext(ctx).
-		Where("admin_user_id = ? AND method = ?", admin, method).
+		Where("admin_id = ? AND method = ?", admin, method).
 		Order("created_at DESC").
 		Find(&factors).Error
 
@@ -29,9 +30,9 @@ func (s *Store) MFAFactors(ctx context.Context, admin uuid.UUID, method model.MF
 // StartMFA stores a new, unconfirmed factor, removing any other unconfirmed one
 // of the same method: only the enrolment under way can be confirmed.
 func (s *Store) StartMFA(ctx context.Context, factor *model.MFA) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Unscoped().
-			Where("admin_user_id = ? AND method = ? AND confirmed_at IS NULL", factor.AdminUserID, factor.Method).
+			Where("admin_id = ? AND method = ? AND confirmed_at IS NULL", factor.AdminID, factor.Method).
 			Delete(&model.MFA{}).Error
 		if err != nil {
 			return err
@@ -39,15 +40,20 @@ func (s *Store) StartMFA(ctx context.Context, factor *model.MFA) error {
 
 		return translate(tx.Omit(clause.Associations).Create(factor).Error)
 	})
+	if err == nil {
+		s.forget(ctx, cache.Admins)
+	}
+
+	return err
 }
 
 // ConfirmMFA marks a factor confirmed with its recovery codes, and removes every
 // other factor of the same method: confirming a new authenticator replaces the
 // old one.
 func (s *Store) ConfirmMFA(ctx context.Context, factor *model.MFA) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Unscoped().
-			Where("admin_user_id = ? AND method = ? AND id <> ?", factor.AdminUserID, factor.Method, factor.ID).
+			Where("admin_id = ? AND method = ? AND id <> ?", factor.AdminID, factor.Method, factor.ID).
 			Delete(&model.MFA{}).Error
 		if err != nil {
 			return err
@@ -55,6 +61,11 @@ func (s *Store) ConfirmMFA(ctx context.Context, factor *model.MFA) error {
 
 		return tx.Omit(clause.Associations).Save(factor).Error
 	})
+	if err == nil {
+		s.forget(ctx, cache.Admins)
+	}
+
+	return err
 }
 
 // ClaimMFAStep records that a factor accepted a code for the step starting at
@@ -111,24 +122,45 @@ func (s *Store) SetRecoveryCodes(ctx context.Context, factor *model.MFA) error {
 // what turning two-factor sign-in off, or a super admin resetting it, means.
 // With `keep` set, that one session stays signed in.
 func (s *Store) RemoveMFA(ctx context.Context, admin uuid.UUID, keep *uuid.UUID, at time.Time) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().Where("admin_user_id = ?", admin).Delete(&model.MFA{}).Error; err != nil {
+	var ended []model.AdminSession
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Where("admin_id = ?", admin).Delete(&model.MFA{}).Error; err != nil {
 			return err
 		}
 
-		query := tx.Model(&model.AdminUserSession{}).Where("admin_user_id = ? AND revoked_at IS NULL", admin)
+		condition, args := "admin_id = ?", []any{admin}
 		if keep != nil {
-			query = query.Where("id <> ?", *keep)
+			condition, args = "admin_id = ? AND id <> ?", []any{admin, *keep}
 		}
 
-		return query.Update("revoked_at", at).Error
+		var err error
+		ended, err = revokeAdminSessionsIn(tx, at, condition, args...)
+		return err
 	})
+	if err != nil {
+		return err
+	}
+
+	s.forget(ctx, cache.Admins)
+	s.putAdminSessions(ctx, ended...)
+
+	return nil
 }
 
 // PassSessionMFA marks a session's second factor cleared, and gives it the
 // lifetime of a full session from now.
 func (s *Store) PassSessionMFA(ctx context.Context, session uuid.UUID, expires time.Time) error {
-	return s.db.WithContext(ctx).Model(&model.AdminUserSession{}).
+	var passed []model.AdminSession
+	err := s.db.WithContext(ctx).Model(&passed).
+		Clauses(clause.Returning{}).
 		Where("id = ? AND revoked_at IS NULL", session).
-		Updates(map[string]any{"mfa_passed": true, "expires_at": expires}).Error
+		Updates(map[string]any{"is_mfa_passed": true, "expires_at": expires}).Error
+	if err != nil {
+		return err
+	}
+
+	s.putAdminSessions(ctx, passed...)
+
+	return nil
 }

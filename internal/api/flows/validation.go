@@ -25,7 +25,7 @@ func (r *flowRequest) applyTo(flow *model.LoginFlow, creating bool) error {
 	flow.Description = validate.Text(r.Description, flow.Description)
 
 	flow.IsDefault = validate.Flag(r.IsDefault, flow.IsDefault)
-	flow.Enabled = validate.Flag(r.Enabled, flow.Enabled)
+	flow.IsEnabled = validate.Flag(r.IsEnabled, flow.IsEnabled)
 
 	flow.AllowSignIn = validate.Flag(r.AllowSignIn, flow.AllowSignIn)
 	flow.AllowRegistration = validate.Flag(r.AllowRegistration, flow.AllowRegistration)
@@ -48,7 +48,7 @@ func (r *flowRequest) applyTo(flow *model.LoginFlow, creating bool) error {
 	// a default that is off. Saying so here saves an administrator a second
 	// save to find that out.
 	if flow.IsDefault {
-		flow.Enabled = true
+		flow.IsEnabled = true
 	}
 
 	// What a flow has to be is the model's to say.

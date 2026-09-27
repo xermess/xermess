@@ -85,7 +85,7 @@ func TestSeed(t *testing.T) {
 			name: "nothing configured sends nothing",
 			cfg:  config.Mail{Port: 587, From: brand.Name + " <no-reply@localhost>"},
 			want: model.MailSettings{
-				Enabled: false, Port: 587, Encryption: model.MailStartTLS,
+				IsEnabled: false, Port: 587, Encryption: model.MailStartTLS,
 				FromAddress: "no-reply@localhost", FromName: brand.Name,
 			},
 		},
@@ -96,7 +96,7 @@ func TestSeed(t *testing.T) {
 				From: "Acme <no-reply@acme.example>",
 			},
 			want: model.MailSettings{
-				Enabled: true, Host: "smtp.example.com", Port: 587,
+				IsEnabled: true, Host: "smtp.example.com", Port: 587,
 				Encryption: model.MailStartTLS, Username: "apikey",
 				FromAddress: "no-reply@acme.example", FromName: "Acme",
 			},
@@ -105,7 +105,7 @@ func TestSeed(t *testing.T) {
 			name: "the port that expects TLS from the first byte",
 			cfg:  config.Mail{Host: "smtp.example.com", Port: 465, From: "a@b.example"},
 			want: model.MailSettings{
-				Enabled: true, Host: "smtp.example.com", Port: 465,
+				IsEnabled: true, Host: "smtp.example.com", Port: 465,
 				Encryption: model.MailTLS, FromAddress: "a@b.example",
 			},
 		},
@@ -113,7 +113,7 @@ func TestSeed(t *testing.T) {
 			name: "an address that is not one is left for the Mail page",
 			cfg:  config.Mail{Host: "smtp.example.com", Port: 25, From: "no-reply at acme"},
 			want: model.MailSettings{
-				Enabled: true, Host: "smtp.example.com", Port: 25,
+				IsEnabled: true, Host: "smtp.example.com", Port: 25,
 				Encryption: model.MailStartTLS,
 				// The default's, since nothing could be read from the file.
 				FromAddress: "no-reply@localhost", FromName: brand.Name,
@@ -130,8 +130,8 @@ func TestSeed(t *testing.T) {
 			}
 
 			switch {
-			case got.Enabled != tt.want.Enabled:
-				t.Errorf("enabled = %v, want %v", got.Enabled, tt.want.Enabled)
+			case got.IsEnabled != tt.want.IsEnabled:
+				t.Errorf("enabled = %v, want %v", got.IsEnabled, tt.want.IsEnabled)
 			case got.Host != tt.want.Host:
 				t.Errorf("host = %q, want %q", got.Host, tt.want.Host)
 			case got.Port != tt.want.Port:
@@ -148,7 +148,7 @@ func TestSeed(t *testing.T) {
 
 			// Whatever the configuration said, the row a fresh installation
 			// starts with has to be one the panel would accept.
-			if got.Enabled {
+			if got.IsEnabled {
 				if err := got.Validate(); err != nil {
 					t.Errorf("the seeded settings are invalid: %v", err)
 				}
@@ -160,7 +160,7 @@ func TestSeed(t *testing.T) {
 // The settings a stored record becomes, with its password already unsealed.
 func TestOf(t *testing.T) {
 	stored := model.MailSettings{
-		Enabled: true, Host: "smtp.example.com", Port: 465,
+		IsEnabled: true, Host: "smtp.example.com", Port: 465,
 		Encryption: model.MailTLS, Username: "apikey",
 		FromAddress: "no-reply@acme.example", FromName: "Acme",
 	}

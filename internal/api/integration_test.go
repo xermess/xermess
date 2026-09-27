@@ -58,7 +58,7 @@ type liveServer struct {
 	store *store.Store
 	// cache is the Redis the server reads through, or nil when the tests
 	// have none.
-	cache *cache.Cache
+	cache *cache.Redis
 }
 
 // testAccountURL is where the provider sends browsers to sign in. Nothing is
@@ -606,7 +606,7 @@ type apiScope struct {
 	ID          string `json:"id,omitempty"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Default     bool   `json:"default"`
+	Default     bool   `json:"is_default"`
 }
 
 type apiBody struct {
@@ -891,7 +891,7 @@ func TestLiveOrganizationSaveIgnoresAStaleCache(t *testing.T) {
 	stale := model.DefaultOrganization()
 	stale.ID = uuid.New()
 	stale.Name = "stale"
-	s.cache.Set(context.Background(), cache.Organization, "settings", stale)
+	s.cache.Cache.Set(context.Background(), cache.Organization, "settings", stale)
 
 	var answer struct {
 		Organization struct {

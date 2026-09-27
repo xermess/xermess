@@ -5,10 +5,10 @@ import { legalLinks, supportLinks } from './legal';
 
 const application = (over: Partial<Application> = {}): Application => ({
 	name: 'Shop',
-	logo_uri: '',
-	client_uri: '',
-	policy_uri: '',
-	tos_uri: '',
+	logo_url: '',
+	website_url: '',
+	privacy_url: '',
+	terms_url: '',
 	allow_registration: true,
 	...over
 });
@@ -33,8 +33,8 @@ describe('legalLinks', () => {
 	it("prefers the application's own agreements", () => {
 		const links = legalLinks(
 			application({
-				tos_uri: 'https://shop.example.com/terms',
-				policy_uri: 'https://shop.example.com/privacy'
+				terms_url: 'https://shop.example.com/terms',
+				privacy_url: 'https://shop.example.com/privacy'
 			}),
 			org
 		);
@@ -46,7 +46,7 @@ describe('legalLinks', () => {
 	});
 
 	it("falls back to the organisation's, one link at a time", () => {
-		const links = legalLinks(application({ tos_uri: 'https://shop.example.com/terms' }), org);
+		const links = legalLinks(application({ terms_url: 'https://shop.example.com/terms' }), org);
 
 		expect(links.map((link) => link.href)).toEqual([
 			'https://shop.example.com/terms',

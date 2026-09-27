@@ -248,7 +248,7 @@ func TestLiveSSOWithOpenIDConnect(t *testing.T) {
 	super.must(http.StatusCreated, http.MethodPost, "/sso-connections", map[string]any{
 		"protocol": "oidc", "name": "Acme", "issuer": idp.server.URL,
 		"client_id": fakeClientID, "client_secret": fakeClientSecret,
-		"domains": []string{"ACME.test", "@acme.test"}, "enabled": true,
+		"domains": []string{"ACME.test", "@acme.test"}, "is_enabled": true,
 		"role_mappings": []map[string]string{{"group": "Engineering", "role_id": engineer}},
 		"sync_roles":    true,
 	}, &created)
@@ -403,7 +403,7 @@ func TestLiveSSOMatchingAndProvisioning(t *testing.T) {
 	super.must(http.StatusCreated, http.MethodPost, "/sso-connections", map[string]any{
 		"protocol": "oidc", "name": "Acme", "issuer": idp.server.URL,
 		"client_id": fakeClientID, "client_secret": fakeClientSecret,
-		"domains": []string{"acme.test"}, "enabled": true, "matching": "deny", "create_users": false,
+		"domains": []string{"acme.test"}, "is_enabled": true, "matching": "deny", "create_users": false,
 	}, &created)
 
 	idp.signs(map[string]any{"sub": "okta|grace", "email": "grace@acme.test"})
@@ -427,7 +427,7 @@ func TestLiveSSOMatchingAndProvisioning(t *testing.T) {
 	}
 
 	super.must(http.StatusOK, http.MethodPatch, "/users/"+grace.User.ID, map[string]any{
-		"email": "grace@acme.test", "first_name": "Grace", "email_verified": true,
+		"email": "grace@acme.test", "first_name": "Grace", "is_email_verified": true,
 	}, nil)
 
 	b := s.browser()
@@ -439,7 +439,7 @@ func TestLiveSSOMatchingAndProvisioning(t *testing.T) {
 	}
 
 	// Off, a connection signs nobody in.
-	super.must(http.StatusOK, http.MethodPatch, "/sso-connections/"+created.Connection.ID, map[string]any{"enabled": false}, nil)
+	super.must(http.StatusOK, http.MethodPatch, "/sso-connections/"+created.Connection.ID, map[string]any{"is_enabled": false}, nil)
 	off := s.browser().visit(s.root + "/oauth2/sso/acme/start")
 	if off.Query().Get("reason") != "sso_unknown" {
 		t.Errorf("a connection that is off sent the browser to %s", off)
@@ -592,7 +592,7 @@ func TestLiveSSOWithSAML(t *testing.T) {
 	}
 	super.must(http.StatusCreated, http.MethodPost, "/sso-connections", map[string]any{
 		"protocol": "saml", "name": "Globex", "metadata": idp.metadata(t),
-		"domains": []string{"globex.test"}, "enabled": true, "name_id_format": "persistent",
+		"domains": []string{"globex.test"}, "is_enabled": true, "name_id_format": "persistent",
 		"groups_attribute": "eduPersonAffiliation",
 		"role_mappings":    []map[string]string{{"group": "audit", "role_id": auditor}},
 	}, &created)
@@ -685,7 +685,7 @@ func TestLiveSSOCallbackOnlySignsInTheBrowserThatStarted(t *testing.T) {
 	super.must(http.StatusCreated, http.MethodPost, "/sso-connections", map[string]any{
 		"protocol": "oidc", "name": "Acme", "issuer": idp.server.URL,
 		"client_id": fakeClientID, "client_secret": fakeClientSecret,
-		"domains": []string{"acme.test"}, "enabled": true,
+		"domains": []string{"acme.test"}, "is_enabled": true,
 	}, nil)
 
 	idp.signs(map[string]any{
@@ -746,7 +746,7 @@ func TestLiveSSOWithoutDomains(t *testing.T) {
 
 	connection := map[string]any{
 		"protocol": "oidc", "name": "Partners", "issuer": idp.server.URL,
-		"client_id": fakeClientID, "client_secret": fakeClientSecret, "enabled": true,
+		"client_id": fakeClientID, "client_secret": fakeClientSecret, "is_enabled": true,
 	}
 
 	for _, tt := range []struct {
@@ -814,7 +814,7 @@ func TestLiveSSOProviderFailuresAreRecorded(t *testing.T) {
 	super.must(http.StatusCreated, http.MethodPost, "/sso-connections", map[string]any{
 		"protocol": "oidc", "name": "Acme", "issuer": idp.server.URL,
 		"client_id": fakeClientID, "client_secret": fakeClientSecret,
-		"domains": []string{"acme.test"}, "enabled": true, "scopes": []string{"email", "profile", "groups"},
+		"domains": []string{"acme.test"}, "is_enabled": true, "scopes": []string{"email", "profile", "groups"},
 	}, &created)
 
 	failures := func() []string {
@@ -922,7 +922,7 @@ func TestLiveSSOForgetsIdentitiesOfAnotherProvider(t *testing.T) {
 	super.must(http.StatusCreated, http.MethodPost, "/sso-connections", map[string]any{
 		"protocol": "oidc", "name": "Acme", "issuer": before.server.URL,
 		"client_id": fakeClientID, "client_secret": fakeClientSecret,
-		"domains": []string{"acme.test"}, "enabled": true,
+		"domains": []string{"acme.test"}, "is_enabled": true,
 	}, &created)
 
 	for _, person := range []map[string]any{

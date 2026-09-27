@@ -41,7 +41,7 @@
 					id: scope.id,
 					name: scope.name,
 					description: scope.description,
-					default: scope.default
+					is_default: scope.is_default
 				}))
 			)
 	);

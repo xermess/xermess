@@ -86,7 +86,7 @@ func (h *Handler) Create(c *gin.Context) {
 	// shape, under its own name, and not yet offered.
 	flow := model.DefaultLoginFlow()
 	flow.IsDefault = false
-	flow.Enabled = false
+	flow.IsEnabled = false
 	flow.Name, flow.Slug, flow.Description = "", "", ""
 
 	if err := req.applyTo(&flow, true); err != nil {
@@ -145,7 +145,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	h.audit.RecordWith(c, "login_flow.updated", targetType, flow.ID.String(), map[string]any{
-		"flow": flow.Name, "enabled": flow.Enabled, "is_default": flow.IsDefault,
+		"flow": flow.Name, "is_enabled": flow.IsEnabled, "is_default": flow.IsDefault,
 	})
 
 	h.answer(c, http.StatusOK, flow)

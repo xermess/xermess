@@ -112,7 +112,7 @@ func (s *Store) DefaultUserRoles(ctx context.Context) ([]model.UserRole, error) 
 	var roles []model.UserRole
 	err := s.db.WithContext(ctx).
 		Where("is_default = ?", true).
-		Where("application_id IS NULL OR application_id IN (SELECT id FROM applications WHERE enabled)").
+		Where("application_id IS NULL OR application_id IN (SELECT id FROM applications WHERE is_enabled)").
 		Order("application_id NULLS FIRST, name").
 		Find(&roles).Error
 

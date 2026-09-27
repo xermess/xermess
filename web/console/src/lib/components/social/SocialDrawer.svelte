@@ -102,7 +102,7 @@
 			authorizeURL = provider.authorize_url;
 			tokenURL = provider.token_url;
 			userInfoURL = provider.userinfo_url;
-			enabled = provider.enabled;
+			enabled = provider.is_enabled;
 			linkVerifiedEmails = provider.link_verified_emails;
 			allowRegistration = provider.allow_registration;
 			return;
@@ -139,7 +139,7 @@
 			name: name.trim(),
 			client_id: clientID.trim(),
 			scopes: scopes.split(/\s+/).filter(Boolean),
-			enabled,
+			is_enabled: enabled,
 			link_verified_emails: linkVerifiedEmails,
 			allow_registration: allowRegistration
 		};

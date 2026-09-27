@@ -31,7 +31,7 @@
 	    field binds text. */
 	function formOf(otp: OTPResponse['otp']) {
 		return {
-			length: String(otp.length),
+			code_length: String(otp.code_length),
 			lifetime_minutes: String(otp.lifetime_minutes),
 			max_attempts: String(otp.max_attempts),
 			resend_seconds: String(otp.resend_seconds)
@@ -54,7 +54,7 @@
 	}
 
 	const input = $derived<Required<OTPSettingsInput>>({
-		length: Number(form.length),
+		code_length: Number(form.code_length),
 		lifetime_minutes: Number(form.lifetime_minutes),
 		max_attempts: Number(form.max_attempts),
 		resend_seconds: Number(form.resend_seconds)
@@ -71,7 +71,7 @@
 	}
 
 	const complete = $derived(
-		within(input.length, limits.min_length, limits.max_length) &&
+		within(input.code_length, limits.min_length, limits.max_length) &&
 			within(input.lifetime_minutes, 1, limits.max_lifetime_minutes) &&
 			within(input.max_attempts, 1, limits.max_attempts) &&
 			within(input.resend_seconds, 0, limits.max_resend_seconds)
@@ -83,7 +83,7 @@
 	const odds = $derived.by(() => {
 		if (!complete) return '';
 
-		const codes = 10 ** input.length;
+		const codes = 10 ** input.code_length;
 		const chance = Math.round(codes / input.max_attempts);
 
 		return `A code is 1 of ${codes.toLocaleString()}, and one sign-in gets ${input.max_attempts} ${
@@ -141,7 +141,7 @@
 		<FieldGrid spacing="comfortable">
 			<Input
 				label="Digits"
-				bind:value={form.length}
+				bind:value={form.code_length}
 				type="number"
 				min={limits.min_length}
 				max={limits.max_length}
@@ -204,7 +204,7 @@
 							{#if flow.is_default}
 								<Tag tone="info" small>Default</Tag>
 							{/if}
-							{#if flow.enabled}
+							{#if flow.is_enabled}
 								<Tag tone="success" dot small>On</Tag>
 							{:else}
 								<Tag small>Off</Tag>
