@@ -135,7 +135,11 @@ func (s *Store) APIApplications(ctx context.Context, apiID uuid.UUID, only []uui
 func (s *Store) APIAuditLog(ctx context.Context, apiID uuid.UUID, limit int) ([]model.AuditLog, error) {
 	var events []model.AuditLog
 	err := s.db.WithContext(ctx).
-		Where("(target_type = ? AND target_id = ?) OR (metadata IS NOT NULL AND metadata::jsonb ->> 'api_id' = ?)",
+		// Each side matches an index — idx_audit_logs_target, and
+		// idx_audit_logs_api, whose predicate the LIKE repeats — so the log
+		// is read by index however long it grows.
+		Where(`(target_type = ? AND target_id = ?)
+			OR (metadata LIKE '%"api_id"%' AND (metadata::jsonb) ->> 'api_id' = ?)`,
 			"api", apiID.String(), apiID.String()).
 		Order("created_at DESC").
 		Limit(limit).

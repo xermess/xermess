@@ -10,11 +10,15 @@ import (
 )
 
 // Base carries the columns every table has. Embed it in each model.
+//
+// DeletedAt makes GORM's queries skip soft-deleted rows, but nothing here
+// soft-deletes — every delete is a hard one — so it is always null, and has
+// no index: none could ever narrow a query.
 type Base struct {
 	ID        uuid.UUID      `gorm:"type:uuid;primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	DeletedAt gorm.DeletedAt `json:"-"`
 }
 
 // BeforeCreate gives a row its id before it is written. GORM finds this hook

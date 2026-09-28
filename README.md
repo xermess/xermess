@@ -1343,6 +1343,17 @@ gets its tables from the models, so the file cannot disagree with them; a
 database that already exists is stepped forward by the migrations added after
 it, one change each.
 
+`20260928164719_query_indexes.go` adds the indexes the hot queries were
+missing, found by reading their plans on a database of a few hundred
+thousand users: the users page's order, user search (a trigram index, over the
+one expression `store.Users` matches), the join tables' second columns, and an
+API's activity. User search needs Postgres's `pg_trgm`, a trusted extension
+the database owner can create; where it cannot be, the migration skips that
+one index and search reads the table. It also drops the index `model.Base`
+put on every `deleted_at`: nothing is soft-deleted, so the column is always
+null and the index only slowed every insert. A new query on a large table
+comes with an `EXPLAIN` of it, and its index in a migration of its own.
+
 ```sh
 make migrate-new name=add_admin_phone   # create an empty migration
 make migrate-up                         # apply pending

@@ -27,19 +27,19 @@ type UserQuery struct {
 
 // Users returns a page of users, newest first, along with how many match the
 // query in total — which is what the panel shows above the table.
+// userSearch is the whole record as one lower-cased text — the address, the
+// names, and the additional fields' JSON — so one box searches all of it,
+// and a name typed in full ("ada lovelace") matches across the two. It is
+// written exactly as idx_users_search indexes it (migrations/
+// 20260928164719_query_indexes.go): the planner only uses a trigram index
+// for the very expression it was built on.
+const userSearch = `LOWER(email || ' ' || COALESCE(first_name, '') || ' ' || COALESCE(last_name, '') || ' ' || COALESCE(data, ''))`
+
 func (s *Store) Users(ctx context.Context, q UserQuery) ([]model.User, int64, error) {
 	query := s.db.WithContext(ctx).Model(&model.User{})
 
 	if search := strings.TrimSpace(q.Search); search != "" {
-		like := contains(search)
-		// The built-in fields are columns and are searched as such; the
-		// additional ones live in a JSON column, and casting it to text
-		// searches every one of them at once. One box, the whole record.
-		query = query.Where(
-			`LOWER(email) LIKE ? OR LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ?
-			 OR LOWER(data::text) LIKE ?`,
-			like, like, like, like,
-		)
+		query = query.Where(userSearch+" LIKE ?", contains(search))
 	}
 
 	if q.Verified != nil {

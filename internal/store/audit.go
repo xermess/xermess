@@ -64,7 +64,7 @@ func (s *Store) AuditQuery(ctx context.Context, filter AuditFilter) ([]model.Aud
 	const byUser = "(admin_id IS NULL AND target_type = 'user')"
 
 	if term := strings.TrimSpace(filter.Search); term != "" {
-		like := "%" + escapeLike(term) + "%"
+		like := "%" + likeEscaper.Replace(term) + "%"
 		actor := "actor_email ILIKE @like"
 		if filter.HideUserActors {
 			actor = "(actor_email ILIKE @like AND NOT " + byUser + ")"
@@ -114,12 +114,6 @@ func (s *Store) AuditQuery(ctx context.Context, filter AuditFilter) ([]model.Aud
 	last := events[len(events)-1]
 
 	return events, &AuditCursor{At: last.CreatedAt, ID: last.ID}, nil
-}
-
-// escapeLike makes a search term match itself: % and _ are wildcards in
-// LIKE, and a backslash is the escape Postgres uses by default.
-func escapeLike(term string) string {
-	return strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(term)
 }
 
 // The actions signing in leaves behind, as the admin and account services

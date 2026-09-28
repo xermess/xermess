@@ -519,18 +519,30 @@ func (s *Store) UserGrants(ctx context.Context, user uuid.UUID, now time.Time) (
 		}
 	}
 
+	if len(order) == 0 {
+		return []Grant{}, nil
+	}
+
+	// Every application at once, rather than one query each. One deleted
+	// since is simply missing, and so is its grant.
+	var apps []model.Application
+	if err := s.db.WithContext(ctx).Where("id IN ?", order).Find(&apps).Error; err != nil {
+		return nil, err
+	}
+	found := make(map[uuid.UUID]model.Application, len(apps))
+	for _, app := range apps {
+		found[app.ID] = app
+	}
+
 	out := make([]Grant, 0, len(order))
 	for _, id := range order {
-		app, err := s.Application(ctx, id)
-		if errors.Is(err, ErrNotFound) {
+		app, ok := found[id]
+		if !ok {
 			continue
-		}
-		if err != nil {
-			return nil, err
 		}
 
 		grant := byApp[id]
-		grant.Application = *app
+		grant.Application = app
 		out = append(out, *grant)
 	}
 
