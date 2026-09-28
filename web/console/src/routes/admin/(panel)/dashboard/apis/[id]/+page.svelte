@@ -12,7 +12,7 @@
 		RiShieldCheckLine
 	} from 'svelte-remixicon';
 	import { BRAND } from '$lib/brand';
-	import { Badge, CopyButton, Icon, PageHeader, Tabs } from '$lib/components/ui';
+	import { Badge, CopyButton, Icon, Note, PageHeader, Tabs } from '$lib/components/ui';
 	import { can } from '$lib/permissions';
 	import { apiOptions } from '$lib/query';
 	import ApiApplications from '$lib/components/apis/ApiApplications.svelte';
@@ -77,6 +77,9 @@
 						Role-based access
 					</Badge>
 				{/if}
+				{#if api.system}
+					<Badge>Built-in</Badge>
+				{/if}
 				<Badge>{api.signing_algorithm}</Badge>
 			{/snippet}
 		</PageHeader>
@@ -89,6 +92,15 @@
 		{#if api.description}
 			<p class="description">{api.description}</p>
 		{/if}
+
+		{#if api.system}
+			<Note>
+				{api.system === 'admin'
+					? 'This is the server’s own admin API. Its scopes are the admin permissions: allow an application some of them — such as admin-cli — and its client credentials token can call the matching admin routes.'
+					: 'This is the server’s own account API. An application allowed its scopes can call a signed-in user’s account routes with that user’s access token.'}
+				Its identifier and scopes are the server’s, and it cannot be deleted.
+			</Note>
+		{/if}
 	</div>
 
 	<Tabs {tabs} bind:value={() => tab, show} label="API sections">
@@ -99,7 +111,7 @@
 				{:else if value === 'settings'}
 					<ApiSettings {api} {editable} />
 				{:else if value === 'scopes'}
-					<ApiScopes {api} {editable} />
+					<ApiScopes {api} editable={editable && !api.system} />
 				{:else if value === 'applications'}
 					<ApiApplications {api} admin={data.admin} />
 				{:else if value === 'logs'}

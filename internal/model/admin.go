@@ -34,6 +34,10 @@ type Admin struct {
 
 	// Assignments are the roles the administrator holds, each for the whole
 	// panel or for one application.
+	// Service marks an application calling the admin API with a token, made
+	// by ServiceAdmin and never stored.
+	Service bool `gorm:"-" json:"-"`
+
 	Assignments []AdminRoleAssignment `gorm:"constraint:OnDelete:CASCADE" json:"-"`
 	Sessions    []AdminSession        `gorm:"constraint:OnDelete:CASCADE" json:"-"`
 	MFA         []MFA                 `gorm:"constraint:OnDelete:CASCADE" json:"-"`
@@ -183,4 +187,22 @@ func (a Admin) ScopedPermissions() map[uuid.UUID][]string {
 	}
 
 	return scoped
+}
+
+// ServiceAdmin is software calling the admin API with an access token — an
+// application, not a person — as the administrator the route guards and the
+// handlers see: holding exactly the permissions its token grants, for the
+// whole panel, and never a super admin. Username is the application's client
+// ID, which is what the activity log names as the actor.
+func ServiceAdmin(app Application, permissions []string) *Admin {
+	return &Admin{
+		Username:  app.ClientID,
+		FirstName: app.Name,
+		IsActive:  true,
+		Service:   true,
+		Status:    StatusActive,
+		Assignments: []AdminRoleAssignment{{
+			Role: AdminRole{Name: "application:" + app.ClientID, Permissions: permissions},
+		}},
+	}
 }

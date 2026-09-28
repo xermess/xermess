@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"loginer/internal/brand"
 )
 
 // API is a resource server: a service applications ask for access tokens to
@@ -46,12 +48,74 @@ type API struct {
 	// an access token for the API.
 	AllowOfflineAccess bool `gorm:"not null" json:"allow_offline_access"`
 
+	// System names the part of this server the API is — SystemAdminAPI or
+	// SystemAccountAPI — or is empty for an API an administrator added. A
+	// system API is made at startup and kept in step with the server: its
+	// identifier and scopes are the server's, so the panel changes neither
+	// and cannot delete it.
+	System string `gorm:"type:varchar(16);not null;default:''" json:"system,omitempty"`
+
 	Scopes []APIScope `gorm:"constraint:OnDelete:CASCADE" json:"scopes,omitempty"`
 }
 
 // TableName pins the table name.
 func (API) TableName() string {
 	return "apis"
+}
+
+// The APIs this server is itself, which access tokens can be issued for so
+// that other software can call it: the admin API, as a service with no user,
+// and the account API, for a signed-in user.
+const (
+	SystemAdminAPI   = "admin"
+	SystemAccountAPI = "account"
+)
+
+// The account API's scopes: reading a user's own account, and changing it.
+const (
+	ScopeAccountRead  = "account.read"
+	ScopeAccountWrite = "account.write"
+)
+
+// AdminCLIClientID is the application made at startup to call the admin API
+// with, Keycloak's admin-cli. It is a machine-to-machine application an
+// administrator gives admin API scopes and a secret before it can do anything.
+const AdminCLIClientID = "admin-cli"
+
+// SystemAPIs are the system APIs as the server defines them. The admin API's
+// scopes are the admin permissions, one for one, so a token's scopes are
+// checked with the same guards as an administrator's roles; each is a default
+// scope, so an application that asks for none gets every one it is allowed.
+// Super-admin routes are not among them: those are for a person.
+func SystemAPIs() []API {
+	admin := API{
+		Name:             "Admin API",
+		Identifier:       brand.AdminAPIIdentifier,
+		Description:      "This server's admin API, for software managing users and settings as a service.",
+		System:           SystemAdminAPI,
+		SigningAlgorithm: AlgRS256,
+	}
+	for _, permission := range AdminPermissions {
+		admin.Scopes = append(admin.Scopes, APIScope{
+			Name:        permission.Name,
+			Description: permission.Description,
+			IsDefault:   true,
+		})
+	}
+
+	account := API{
+		Name:             "Account API",
+		Identifier:       brand.AccountAPIIdentifier,
+		Description:      "A signed-in user's own account: what the sign-in app's account pages do.",
+		System:           SystemAccountAPI,
+		SigningAlgorithm: AlgRS256,
+		Scopes: []APIScope{
+			{Name: ScopeAccountRead, Description: "Read the user's profile, sessions and connected applications", IsDefault: true},
+			{Name: ScopeAccountWrite, Description: "Change the user's profile, password and email, and end their sessions"},
+		},
+	}
+
+	return []API{admin, account}
 }
 
 // APIScope is one thing a token for an API may allow — "orders:read" — which

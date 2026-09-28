@@ -1,0 +1,522 @@
+package apidoc
+
+import (
+	"encoding/json"
+	"fmt"
+	"go/format"
+	"net/http"
+	"net/url"
+	"sort"
+	"strings"
+
+	"loginer/internal/brand"
+	"loginer/internal/model"
+)
+
+// The examples every endpoint carries: cURL first, which is what a reader
+// sees until they choose, then Java's java.net.http, Go's net/http and
+// Python's requests. Each is the request and nothing else — no framework, no
+// generated client — so it reads the same whatever a reader builds with. The
+// docs draw them as tabs.
+
+// sample is one request in one language.
+type sample struct {
+	title, language, code string
+}
+
+// request is what the three examples are written from.
+type request struct {
+	method string
+	// base and token are the variables the server's address and the bearer
+	// token are in, as shell, Java and Python name them — ISSUER, ADMIN_TOKEN;
+	// goName gives Go's spelling.
+	base     string
+	segments []segment
+	query    [][2]string
+	form     [][2]string
+	body     any
+	session  string // the cookie's name, when a session is needed
+	basic    bool
+	bearer   bool
+	token    string
+}
+
+// segment is a piece of the path: literal text, or a path parameter.
+type segment struct {
+	text  string
+	param bool
+}
+
+func requestOf(server Server, op Operation) request {
+	r := request{method: op.Method}
+
+	if server.Key == "admin" {
+		r.base = "ADMIN_API"
+	} else {
+		r.base = "ISSUER"
+	}
+
+	literal := ""
+	for _, part := range strings.Split(strings.TrimPrefix(op.Path, "/"), "/") {
+		if name, ok := strings.CutPrefix(part, ":"); ok {
+			r.segments = append(r.segments, segment{text: literal + "/"}, segment{text: name, param: true})
+			literal = ""
+			continue
+		}
+		literal += "/" + part
+	}
+	if literal != "" {
+		r.segments = append(r.segments, segment{text: literal})
+	}
+
+	if op.Method == http.MethodGet {
+		for _, param := range op.QueryParams {
+			if param.Required || len(r.query) < 3 {
+				r.query = append(r.query, [2]string{param.Name, exampleValue(param.Name)})
+			}
+		}
+	}
+
+	// A route an access token can call is shown called with one: that is
+	// how software calls it, and the session cookie is the browser's.
+	r.token = "ACCESS_TOKEN"
+	switch {
+	case op.Access.Token != "":
+		r.bearer = true
+		if op.Access.Token == "admin" {
+			r.token = "ADMIN_TOKEN"
+		}
+	case op.Access.Session == "user":
+		r.session = brand.UserSessionCookie
+	case op.Access.Session != "":
+		r.session = brand.AdminSessionCookie
+	case op.BasicAuth:
+		r.basic = true
+	}
+	for _, h := range op.Headers {
+		if strings.EqualFold(h.Name, "Authorization") && !op.BasicAuth {
+			r.bearer = true
+		}
+	}
+
+	if op.Body != nil {
+		r.body = example(op.Body, "", 0, true)
+	} else if op.Method != http.MethodGet {
+		for _, param := range op.FormParams {
+			if r.basic && (param.Name == "client_id" || param.Name == "client_secret") {
+				continue
+			}
+			// A bearer token goes in the header, not the form beside it.
+			if r.bearer && param.Name == "access_token" {
+				continue
+			}
+			r.form = append(r.form, [2]string{param.Name, exampleValue(param.Name)})
+		}
+		r.form = oneGrant(r.form)
+	}
+
+	return r
+}
+
+// codeExchange is what the token endpoint reads for the authorization code
+// grant. The endpoint reads every grant's parameters, and an example sending
+// all of them at once — a code and a refresh token together — is one no
+// reader could use; the guides show the other grants.
+var codeExchange = map[string]bool{"grant_type": true, "code": true, "redirect_uri": true, "code_verifier": true}
+
+// oneGrant narrows a token request's form to one grant's parameters.
+func oneGrant(form [][2]string) [][2]string {
+	isToken := false
+	for _, pair := range form {
+		isToken = isToken || pair[0] == "grant_type"
+	}
+	if !isToken {
+		return form
+	}
+
+	var out [][2]string
+	for _, pair := range form {
+		if codeExchange[pair[0]] {
+			out = append(out, pair)
+		}
+	}
+	return out
+}
+
+// exampleValue is a value for a query or form parameter that looks like
+// what the parameter holds.
+func exampleValue(name string) string {
+	switch name {
+	case "grant_type":
+		return model.GrantAuthorizationCode
+	case "response_type":
+		return "code"
+	case "code_challenge_method":
+		return model.PKCES256
+	case "code":
+		return "SplxlOBeZQQYbYS6WxSbIA"
+	case "state":
+		return "af0ifjsldkj"
+	case "nonce":
+		return "n-0S6_WzA2Mj"
+	case "prompt":
+		return "login"
+	case "audience":
+		return "https://api.example.com"
+	}
+	if value := exampleString(&Schema{Type: "string"}, name); value != "string" {
+		return value
+	}
+	return "value"
+}
+
+func (r request) samples() []sample {
+	return []sample{
+		{"cURL", "bash", r.curl()},
+		{"Java", "java", r.java()},
+		{"Go", "go", r.golang()},
+		{"Python", "python", r.python()},
+	}
+}
+
+// ---- cURL: the parts a reader fills in are shell variables.
+
+func (r request) curl() string {
+	target := "$" + r.base
+	for _, s := range r.segments {
+		if s.param {
+			target += "$" + strings.ToUpper(s.text)
+		} else {
+			target += s.text
+		}
+	}
+	if len(r.query) > 0 {
+		target += "?" + encode(r.query)
+	}
+
+	lines := []string{"curl"}
+	if r.method != http.MethodGet {
+		lines[0] += " -X " + r.method
+	}
+	lines[0] += ` "` + target + `"`
+
+	switch {
+	case r.session != "":
+		lines = append(lines, `-b "`+r.session+`=$SESSION"`)
+	case r.basic:
+		lines = append(lines, `-u "$CLIENT_ID:$CLIENT_SECRET"`)
+	}
+	if r.bearer {
+		lines = append(lines, `-H "Authorization: Bearer $`+r.token+`"`)
+	}
+
+	switch {
+	case r.body != nil:
+		body, _ := json.Marshal(r.body)
+		// Single-quoted for the shell, so a quote inside is closed, escaped
+		// and reopened.
+		quoted := strings.ReplaceAll(string(body), "'", `'\''`)
+		lines = append(lines, `-H "Content-Type: application/json"`, "-d '"+quoted+"'")
+	case len(r.form) > 0:
+		for _, pair := range r.form {
+			lines = append(lines, `-d "`+encode([][2]string{pair})+`"`)
+		}
+	}
+
+	return strings.Join(lines, " \\\n  ")
+}
+
+// ---- Java: java.net.http, Java 15 or later for the text block.
+
+func (r request) java() string {
+	var b strings.Builder
+
+	uri := r.base
+	for _, s := range r.segments {
+		if s.param {
+			uri += " + " + camel(s.text, false)
+		} else {
+			uri += " + " + quoteJava(s.text)
+		}
+	}
+	if len(r.query) > 0 {
+		uri += " + " + quoteJava("?"+encode(r.query))
+	}
+
+	b.WriteString("HttpRequest request = HttpRequest.newBuilder()\n")
+	fmt.Fprintf(&b, "        .uri(URI.create(%s))\n", uri)
+
+	switch {
+	case r.session != "":
+		fmt.Fprintf(&b, "        .header(\"Cookie\", \"%s=\" + SESSION)\n", r.session)
+	case r.basic:
+		b.WriteString("        .header(\"Authorization\", \"Basic \" + Base64.getEncoder()\n")
+		b.WriteString("                .encodeToString((CLIENT_ID + \":\" + CLIENT_SECRET).getBytes(UTF_8)))\n")
+	}
+	if r.bearer {
+		fmt.Fprintf(&b, "        .header(\"Authorization\", \"Bearer \" + %s)\n", r.token)
+	}
+
+	publisher := "BodyPublishers.noBody()"
+	switch {
+	case r.body != nil:
+		b.WriteString("        .header(\"Content-Type\", \"application/json\")\n")
+		indented, _ := json.MarshalIndent(r.body, "                ", "  ")
+		publisher = "BodyPublishers.ofString(\"\"\"\n                " + string(indented) + "\n                \"\"\")"
+	case len(r.form) > 0:
+		b.WriteString("        .header(\"Content-Type\", \"application/x-www-form-urlencoded\")\n")
+		// One parameter a line, joined as the form is sent.
+		lines := make([]string, len(r.form))
+		for i, pair := range r.form {
+			prefix := "&"
+			if i == 0 {
+				prefix = ""
+			}
+			lines[i] = quoteJava(prefix + encode([][2]string{pair}))
+		}
+		publisher = "BodyPublishers.ofString(\n                " +
+			strings.Join(lines, "\n                + ") + ")"
+	}
+
+	switch r.method {
+	case http.MethodGet:
+		b.WriteString("        .GET()\n")
+	case http.MethodDelete:
+		b.WriteString("        .DELETE()\n")
+	case http.MethodPost, http.MethodPut:
+		fmt.Fprintf(&b, "        .%s(%s)\n", r.method, publisher)
+	default:
+		fmt.Fprintf(&b, "        .method(%q, %s)\n", r.method, publisher)
+	}
+	b.WriteString("        .build();\n\n")
+
+	b.WriteString("HttpResponse<String> response = HttpClient.newHttpClient()\n")
+	b.WriteString("        .send(request, BodyHandlers.ofString());")
+
+	return b.String()
+}
+
+// ---- Go: net/http, and nothing else.
+
+func (r request) golang() string {
+	var b strings.Builder
+
+	target := goName(r.base)
+	for _, s := range r.segments {
+		if s.param {
+			target += "+" + camel(s.text, true)
+		} else {
+			target += "+" + fmt.Sprintf("%q", s.text)
+		}
+	}
+	if len(r.query) > 0 {
+		target += "+" + fmt.Sprintf("%q", "?"+encode(r.query))
+	}
+
+	body := "nil"
+	switch {
+	case r.body != nil:
+		indented, _ := json.MarshalIndent(r.body, "", "\t")
+		fmt.Fprintf(&b, "body := strings.NewReader(`%s`)\n", indented)
+		body = "body"
+	case len(r.form) > 0:
+		b.WriteString("form := url.Values{\n")
+		for _, pair := range r.form {
+			fmt.Fprintf(&b, "\t%q: {%q},\n", pair[0], pair[1])
+		}
+		b.WriteString("}\n")
+		body = "strings.NewReader(form.Encode())"
+	}
+
+	fmt.Fprintf(&b, "req, err := http.NewRequest(http.Method%s, %s, %s)\n", goMethod(r.method), target, body)
+	b.WriteString("if err != nil {\n\treturn err\n}\n")
+
+	switch {
+	case r.body != nil:
+		b.WriteString("req.Header.Set(\"Content-Type\", \"application/json\")\n")
+	case len(r.form) > 0:
+		b.WriteString("req.Header.Set(\"Content-Type\", \"application/x-www-form-urlencoded\")\n")
+	}
+	switch {
+	case r.session != "":
+		fmt.Fprintf(&b, "req.AddCookie(&http.Cookie{Name: %q, Value: session})\n", r.session)
+	case r.basic:
+		b.WriteString("req.SetBasicAuth(clientID, clientSecret)\n")
+	}
+	if r.bearer {
+		fmt.Fprintf(&b, "req.Header.Set(\"Authorization\", \"Bearer \"+%s)\n", goName(r.token))
+	}
+
+	b.WriteString("\nres, err := http.DefaultClient.Do(req)\n")
+	b.WriteString("if err != nil {\n\treturn err\n}\n")
+	b.WriteString("defer res.Body.Close()")
+
+	// gofmt's alignment, which a snippet written by hand would not have. The
+	// snippet is a list of statements, which format takes as a partial file.
+	if formatted, err := format.Source([]byte(b.String())); err == nil {
+		return string(formatted)
+	}
+	return b.String()
+}
+
+func goMethod(method string) string {
+	return method[:1] + strings.ToLower(method[1:])
+}
+
+// ---- Python: requests.
+
+func (r request) python() string {
+	var b strings.Builder
+
+	target := "{" + r.base + "}"
+	for _, s := range r.segments {
+		if s.param {
+			target += "{" + s.text + "}"
+		} else {
+			target += s.text
+		}
+	}
+
+	args := []string{`f"` + target + `"`}
+	if len(r.query) > 0 {
+		args = append(args, "params="+pythonPairs(r.query))
+	}
+	switch {
+	case r.body != nil:
+		args = append(args, "json="+pythonLiteral(r.body, 1))
+	case len(r.form) > 0:
+		args = append(args, "data="+pythonPairs(r.form))
+	}
+	switch {
+	case r.session != "":
+		args = append(args, fmt.Sprintf("cookies={%q: SESSION}", r.session))
+	case r.basic:
+		args = append(args, "auth=(CLIENT_ID, CLIENT_SECRET)")
+	}
+	if r.bearer {
+		args = append(args, `headers={"Authorization": f"Bearer {`+r.token+`}"}`)
+	}
+
+	call := "requests." + strings.ToLower(r.method)
+	if len(args) == 1 {
+		fmt.Fprintf(&b, "response = %s(%s)\n", call, args[0])
+	} else {
+		fmt.Fprintf(&b, "response = %s(\n", call)
+		for _, arg := range args {
+			fmt.Fprintf(&b, "    %s,\n", arg)
+		}
+		b.WriteString(")\n")
+	}
+	b.WriteString("response.raise_for_status()")
+
+	return b.String()
+}
+
+func pythonPairs(pairs [][2]string) string {
+	var b strings.Builder
+	b.WriteString("{\n")
+	for _, pair := range pairs {
+		fmt.Fprintf(&b, "        %s: %s,\n", pythonString(pair[0]), pythonString(pair[1]))
+	}
+	b.WriteString("    }")
+	return b.String()
+}
+
+// pythonLiteral writes an example value as Python: a dict, a list, True,
+// None. depth is how many levels of four spaces it starts at.
+func pythonLiteral(value any, depth int) string {
+	pad := strings.Repeat("    ", depth)
+	inner := pad + "    "
+
+	switch v := value.(type) {
+	case orderedObject:
+		if len(v) == 0 {
+			return "{}"
+		}
+		var b strings.Builder
+		b.WriteString("{\n")
+		for _, f := range v {
+			fmt.Fprintf(&b, "%s%s: %s,\n", inner, pythonString(f.name), pythonLiteral(f.value, depth+1))
+		}
+		b.WriteString(pad + "}")
+		return b.String()
+	case map[string]any:
+		if len(v) == 0 {
+			return "{}"
+		}
+		keys := make([]string, 0, len(v))
+		for key := range v {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		var b strings.Builder
+		b.WriteString("{\n")
+		for _, key := range keys {
+			fmt.Fprintf(&b, "%s%s: %s,\n", inner, pythonString(key), pythonLiteral(v[key], depth+1))
+		}
+		b.WriteString(pad + "}")
+		return b.String()
+	case []any:
+		if len(v) == 0 {
+			return "[]"
+		}
+		var b strings.Builder
+		b.WriteString("[\n")
+		for _, item := range v {
+			fmt.Fprintf(&b, "%s%s,\n", inner, pythonLiteral(item, depth+1))
+		}
+		b.WriteString(pad + "]")
+		return b.String()
+	case string:
+		return pythonString(v)
+	case bool:
+		if v {
+			return "True"
+		}
+		return "False"
+	case nil:
+		return "None"
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+// pythonString quotes a string for Python: JSON's escapes are Python's.
+func pythonString(s string) string {
+	quoted, _ := json.Marshal(s)
+	return string(quoted)
+}
+
+// quoteJava quotes a string for Java: Go's escapes are Java's for the
+// characters an example holds.
+func quoteJava(s string) string {
+	return fmt.Sprintf("%q", s)
+}
+
+// encode is pairs as a query string or form body, in the order given.
+func encode(pairs [][2]string) string {
+	parts := make([]string, len(pairs))
+	for i, pair := range pairs {
+		parts[i] = url.QueryEscape(pair[0]) + "=" + url.QueryEscape(pair[1])
+	}
+	return strings.Join(parts, "&")
+}
+
+// goName is an UPPER_SNAKE variable as Go spells it: ADMIN_API is adminAPI.
+func goName(name string) string {
+	return camel(strings.ToLower(name), true)
+}
+
+// camel is a snake_case name as a variable: clientID in Go, clientId in Java.
+func camel(name string, goStyle bool) string {
+	parts := strings.Split(name, "_")
+	for i := 1; i < len(parts); i++ {
+		switch upper := strings.ToUpper(parts[i]); {
+		case goStyle && (upper == "ID" || upper == "URL" || upper == "URI" || upper == "API"):
+			parts[i] = upper
+		default:
+			parts[i] = exported(parts[i])
+		}
+	}
+	return strings.Join(parts, "")
+}

@@ -109,9 +109,19 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
+	// A system API's scopes are the server's — the admin permissions, or the
+	// account API's two — so they stay what the server made them, whatever
+	// the request says; its name, description and token settings are the
+	// panel's to change.
+	scopes := api.Scopes
+
 	if err := req.applyTo(api, false); err != nil {
 		respond.Failure(c, h.log, err, "checking an API failed")
 		return
+	}
+
+	if api.System != "" {
+		api.Scopes = scopes
 	}
 
 	if err := h.store.SaveAPI(c.Request.Context(), api); err != nil {
@@ -124,12 +134,20 @@ func (h *Handler) Update(c *gin.Context) {
 	h.answer(c, http.StatusOK, api.ID)
 }
 
+// systemAPI is the answer to deleting an API this server is itself.
+var systemAPI = respond.Define(http.StatusConflict, "system_api", respond.Admin)
+
 // Delete removes an API, its scopes, every application's authorisation for it
 // and every role's grant of its scopes. Tokens already issued for it stay
 // valid until they expire.
 func (h *Handler) Delete(c *gin.Context) {
 	api, ok := h.find(c)
 	if !ok {
+		return
+	}
+
+	if api.System != "" {
+		respond.Fail(c, systemAPI)
 		return
 	}
 

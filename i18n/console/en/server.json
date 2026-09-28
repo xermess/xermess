@@ -53,6 +53,9 @@
 		"cache_kind_invalid": "There is no such kind of key.",
 		"cache_cursor_invalid": "The listing could not be continued. Start it again.",
 		"cache_value_invalid": "The value has to be valid JSON.",
-		"cache_ttl_invalid": "The time to live has to be between 0 and {max} seconds."
+		"cache_ttl_invalid": "The time to live has to be between 0 and {max} seconds.",
+		"token_refused": "This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access.",
+		"system_api": "This API is part of the server and cannot be deleted.",
+		"system_application": "admin-cli is part of the server and cannot be deleted. Turn it off instead."
 	}
 }

@@ -538,6 +538,9 @@ export type API = {
 	issuer: string;
 	/** Where the keys its tokens are signed with are published. */
 	jwks_uri: string;
+	/** "admin" or "account" for an API this server is itself: its identifier
+	    and scopes are the server's, and it cannot be deleted. */
+	system: '' | 'admin' | 'account';
 	created_at: string;
 	updated_at: string;
 };

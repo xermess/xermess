@@ -216,8 +216,14 @@ func (f *oauthFixture) authorizeURL(challenge string, extra url.Values) string {
 // password, and back to the application.
 func (f *oauthFixture) signIn(b *browser, challenge string) *url.URL {
 	f.s.t.Helper()
+	return f.signInWith(b, challenge, nil)
+}
 
-	login := b.visit(f.authorizeURL(challenge, nil))
+// signInWith is signIn with parameters of the authorization request changed.
+func (f *oauthFixture) signInWith(b *browser, challenge string, extra url.Values) *url.URL {
+	f.s.t.Helper()
+
+	login := b.visit(f.authorizeURL(challenge, extra))
 	if !strings.HasPrefix(login.String(), testAccountURL+"/login?") {
 		f.s.t.Fatalf("authorize sent the browser to %s, want the sign-in page", login)
 	}

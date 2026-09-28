@@ -97,3 +97,7 @@ export function lines(text: string): string[] {
 		.map((line) => line.trim())
 		.filter((line) => line !== '');
 }
+
+/** The application the server makes for calling its admin API with, which
+    the panel marks as built-in and the server will not delete. */
+export const ADMIN_CLI = 'admin-cli';

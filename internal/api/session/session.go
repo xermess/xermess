@@ -4,7 +4,10 @@
 package session
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -13,6 +16,7 @@ import (
 	"loginer/internal/auth"
 	"loginer/internal/brand"
 	"loginer/internal/model"
+	"loginer/internal/oidc"
 )
 
 // Cookie carries the session token between the browser and the server. It is
@@ -68,6 +72,55 @@ func Require(service *auth.Service) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// tokenRefused is an access token the admin API will not take: see
+// oidc.AdminCaller for why one is refused.
+var tokenRefused = respond.Define(http.StatusUnauthorized, "token_refused", respond.Admin)
+
+// RequireAny is Require for the routes software may call too: it takes an
+// administrator's session cookie, or an access token for the admin API from
+// an application such as admin-cli. A token caller becomes a service admin
+// holding the permissions its token grants, so Can, CanAnywhere and every
+// check a handler makes work unchanged — and RequireSuperAdmin refuses it.
+//
+// A request carrying a token is judged by the token alone, never by a cookie
+// it happens to carry as well.
+func RequireAny(service *auth.Service, provider *oidc.Service, log *slog.Logger) gin.HandlerFunc {
+	cookie := Require(service)
+
+	return func(c *gin.Context) {
+		token := Bearer(c)
+		if token == "" {
+			cookie(c)
+			return
+		}
+
+		caller, err := provider.AdminCaller(c.Request.Context(), token)
+		if errors.Is(err, oidc.ErrTokenRefused) {
+			c.Header("WWW-Authenticate", `Bearer realm="`+brand.Realm+`", error="invalid_token"`)
+			respond.Abort(c, tokenRefused)
+			return
+		}
+		if err != nil {
+			respond.Failure(c, log, err, "checking an admin API token failed")
+			c.Abort()
+			return
+		}
+
+		c.Set(key, model.ServiceAdmin(*caller.Application, caller.Permissions))
+		c.Next()
+	}
+}
+
+// Bearer is the access token in the request's Authorization header, or ""
+// when it carries none.
+func Bearer(c *gin.Context) string {
+	scheme, token, found := strings.Cut(c.GetHeader("Authorization"), " ")
+	if !found || !strings.EqualFold(scheme, "Bearer") {
+		return ""
+	}
+	return strings.TrimSpace(token)
 }
 
 // RequireSetup lets through a signed-in administrator, and one who is half

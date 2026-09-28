@@ -36,6 +36,9 @@ func TestCSRF(t *testing.T) {
 		{name: "a form with no content type", method: http.MethodPost, body: `a=b`, headers: map[string]string{"Origin": "https://evil.example"}, want: http.StatusUnsupportedMediaType},
 		{name: "cross-site without Origin", method: http.MethodDelete, headers: map[string]string{"Sec-Fetch-Site": "same-site"}, want: http.StatusForbidden},
 		{name: "not a browser", method: http.MethodPost, body: `{}`, contentType: "application/json", want: http.StatusNoContent},
+		{name: "a bearer token from an allowed page on another origin", method: http.MethodPatch, body: `{}`, contentType: "application/json", headers: map[string]string{"Origin": "https://shop.example", "Authorization": "Bearer abc"}, want: http.StatusNoContent},
+		{name: "a bearer token still sends JSON", method: http.MethodPost, body: `a=b`, contentType: "text/plain", headers: map[string]string{"Authorization": "Bearer abc"}, want: http.StatusUnsupportedMediaType},
+		{name: "an empty bearer is no token", method: http.MethodPost, body: `{}`, contentType: "application/json", headers: map[string]string{"Origin": "https://evil.example", "Authorization": "Bearer "}, want: http.StatusForbidden},
 		{name: "reads are not checked", method: http.MethodGet, headers: map[string]string{"Origin": "https://evil.example"}, want: http.StatusNoContent},
 	}
 

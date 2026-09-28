@@ -205,30 +205,32 @@
 			</Button>
 		</div>
 
-		<section class="danger">
-			<div>
-				<strong>Delete this API</strong>
-				<p>
-					{api.application_count > 0
-						? `${api.application_count} ${api.application_count === 1 ? 'application loses' : 'applications lose'} access, and`
-						: 'Its'}
-					{api.application_count > 0
-						? 'roles lose its scopes.'
-						: 'scopes are removed from every role.'}
-					This cannot be undone.
-				</p>
-			</div>
+		{#if !api.system}
+			<section class="danger">
+				<div>
+					<strong>Delete this API</strong>
+					<p>
+						{api.application_count > 0
+							? `${api.application_count} ${api.application_count === 1 ? 'application loses' : 'applications lose'} access, and`
+							: 'Its'}
+						{api.application_count > 0
+							? 'roles lose its scopes.'
+							: 'scopes are removed from every role.'}
+						This cannot be undone.
+					</p>
+				</div>
 
-			<Button
-				colorPalette="danger"
-				variant="subtle"
-				size="sm"
-				onclick={() => (confirmingDelete = true)}
-			>
-				<Icon icon={RiDeleteBinLine} />
-				Delete
-			</Button>
-		</section>
+				<Button
+					colorPalette="danger"
+					variant="subtle"
+					size="sm"
+					onclick={() => (confirmingDelete = true)}
+				>
+					<Icon icon={RiDeleteBinLine} />
+					Delete
+				</Button>
+			</section>
+		{/if}
 	{/if}
 </form>
 

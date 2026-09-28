@@ -10,7 +10,7 @@
 	} from 'svelte-remixicon';
 	import type { Application } from '$lib/api';
 	import { Badge, Code, type Column, DataTable, Icon } from '$lib/components/ui';
-	import { types } from './applications';
+	import { ADMIN_CLI, types } from './applications';
 
 	type Props = {
 		applications: Application[];
@@ -48,7 +48,12 @@
 >
 	{#snippet row(application)}
 		<td>
-			<span class="name">{application.name}</span>
+			<span class="name">
+				{application.name}
+				{#if application.client_id === ADMIN_CLI}
+					<Badge>Built-in</Badge>
+				{/if}
+			</span>
 			{#if application.description}
 				<span class="hint">{application.description}</span>
 			{/if}

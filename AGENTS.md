@@ -1,10 +1,11 @@
 # Working in this repository
 
-Loginer is an OAuth 2.0 / OpenID Connect server in Go, with two SvelteKit apps
-under `web/`: `console` (the admin panel) and `id` (sign-in pages and a user's
-own account). `README.md` is the long-form documentation and is kept current —
-read the part that covers what you are changing, and update it when your change
-makes a sentence in it untrue.
+Loginer is an OAuth 2.0 / OpenID Connect server in Go, with three SvelteKit apps
+under `web/`: `console` (the admin panel), `id` (sign-in pages and a user's
+own account) and `docs` (the documentation for developers integrating with
+it). `README.md` is the long-form documentation and is kept current — read the
+part that covers what you are changing, and update it when your change makes a
+sentence in it untrue.
 
 ## Commands
 
@@ -14,7 +15,8 @@ makes a sentence in it untrue.
 | Go tests only              | `make test`                                          |
 | Tests that need Postgres   | `make test-integration` (runs every `TestLive…`)     |
 | Lint and type-check apps   | `make web-check` (or `bun run lint` / `bun run check` in `web/<app>`) |
-| Run everything             | `make dev` — API on :8080/:8081, id :5173, console :5174 |
+| Run everything             | `make dev` — API on :8080/:8081, id :5173, console :5174, docs :5175 |
+| API reference              | `make docs` (write it), `make docs-check`            |
 | Migrations                 | `make migrate-up`, `migrate-down`, `migrate-status`, `migrate-new name=x` |
 
 Before saying a change is done, run `make check` and, for anything the apps
@@ -39,9 +41,11 @@ internal/auth           signing administrators in, and what they may do
 internal/oidc           the provider: authorize, tokens, userinfo, logout
 internal/api/server.go  the engine, and the table of every route
 internal/api/<subject>/ handler.go, request.go, response.go, validation.go
+internal/apidoc         writes the API reference from the source (make docs)
 migrations/             the schema, then one file per change, applied in order
 web/console/src/lib/    api/, query/, components/ui/, components/<feature>/
 web/console/src/routes/admin/(panel)/  everything behind a session
+web/docs/src/content/   the docs: guides by hand, reference/ by make docs
 ```
 
 Nothing above `store` writes a query, and nothing below `api` knows about HTTP.
@@ -57,7 +61,23 @@ error never reaches a browser.
 belongs to, keeping that package's four files, then mount it in
 `registerRoutes` in `internal/api/server.go` — the one place that says which
 paths exist, and on which of the two servers. Put it behind `session.Require`
-and the permission it needs. Add it to the API table in `README.md`.
+and the permission it needs. Give the handler a doc comment and its request
+type's fields comments: they are its documentation. Run `make docs`, which
+writes the API reference and the OpenAPI documents from all of that —
+`TestTheReferenceIsCurrent` fails until you do.
+
+**The docs.** `web/docs/src/content/` is Markdown, and a file's path is its
+address. A guide says where the sidebar lists it in its front matter —
+`section:` (one of `SECTIONS` in `web/docs/src/lib/server/content.ts`),
+`order:`, and a short `nav:` label — so regrouping never moves an address. Guides are written by hand, and never spell the project's name:
+`{{name}}` and the other keys of `PLACEHOLDERS` in `web/docs/src/lib/brand.ts`
+are filled in as the page renders. `content/reference/` is `make docs`'s and
+is never edited — change the code it was read from. Examples are in cURL, Java,
+Go and Python — in that order, cURL being what a reader sees first — as
+consecutive fenced blocks titled `title="cURL"`, `"Java"`, `"Go"`,
+`"Python"`, which the page draws as tabs. The docs are drawn with the
+console's look: `web/docs/src/lib/styles/tokens.css` copies the console's
+tokens by name, so a change to `theme.ts` is copied there too.
 
 **A model.** A struct in `internal/model`, embedding `Base`, registered in
 `model.All()` — and bump the count in `TestAllListsEveryModel`, which exists to
@@ -76,6 +96,10 @@ anywhere is ever edited.
 `session.CanAnywhere`, and added to the `AdminPermissionName` union in
 `web/console/src/lib/api/types.ts`. The panel builds its own permission UI from
 the catalog the API serves, so nothing else needs changing.
+It becomes an admin API scope by itself on the next start
+(`store.EnsureSystemAPIs`), so admin-cli can be given it: a route guarded by it
+under `managed` in the route table takes an admin-cli token too. A route for a
+person alone — their own account, or a super admin's — goes under `signedIn`.
 
 **Something written to the activity log.** `audit.Record` or `RecordWith` from
 the handler, then give the action a sentence, an icon and a category in

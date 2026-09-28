@@ -65,6 +65,15 @@ const (
 	LanguageCookie = Slug + "-account-language"
 )
 
+// The identifiers of the two APIs this server is itself: the audience an
+// access token names to call the admin API or the account API. They are URNs
+// rather than addresses because an installation's addresses are its own to
+// choose, and a token's audience must not change when they do.
+const (
+	AdminAPIIdentifier   = "urn:" + Slug + ":admin-api"
+	AccountAPIIdentifier = "urn:" + Slug + ":account-api"
+)
+
 // RedisPrefix starts every key this server writes, so one Redis can serve
 // several installations without their keys meeting.
 const RedisPrefix = Slug + ":"

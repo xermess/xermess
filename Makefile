@@ -1,7 +1,7 @@
 # Loginer — run `make` for the list of targets.
 
 SHELL   := bash
-APPS    := console id
+APPS    := console id docs
 # Not ./...: that walks into web/*/node_modules.
 PKGS    := ./cmd/... ./internal/... ./migrations/... ./i18n/...
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -15,7 +15,7 @@ COMPOSE_LOCAL := $(COMPOSE) -f deploy/compose.local.yaml
 MODE ?= $(if $(filter prod --prod,$(MAKECMDGOALS)),prod,dev)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup full-start dev prod --dev --prod run build test test-integration check \
+.PHONY: help setup full-start dev prod --dev --prod run build test test-integration check docs docs-check \
 	migrate-up migrate-down migrate-status migrate-new db-create db-reset db-psql \
 	web-check web-build deploy-build deploy-up deploy-down deploy-logs \
 	deploy-local deploy-local-down deploy-local-logs clean
@@ -60,6 +60,12 @@ test-integration: ## Run the tests that need Postgres and Redis (throwaway datab
 	@. scripts/lib.sh && load_env && LOGINER_TEST_DB_DSN="$${DB_URL:-$$LOGINER_DB_DSN}" \
 		LOGINER_TEST_REDIS="$${LOGINER_TEST_REDIS:-$${LOGINER_REDIS_HOST:+$$LOGINER_REDIS_HOST:$${LOGINER_REDIS_PORT:-6379}}}" \
 		go test -count=1 -run Live ./internal/...
+
+docs: ## Write the API reference (OpenAPI and web/docs pages) from the Go source
+	go run ./cmd/apidoc
+
+docs-check: ## Fail if the API reference is behind the Go source
+	go run ./cmd/apidoc -check
 
 web-check: ## Lint and type-check the web apps
 	@for app in $(APPS); do echo "==> $$app"; (cd web/$$app && bun run lint && bun run check) || exit 1; done

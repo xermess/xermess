@@ -82,6 +82,7 @@ func TestEveryProviderProblemIsAnswered(t *testing.T) {
 func TestErrorParametersAreSent(t *testing.T) {
 	sent := map[string][]string{
 		"rate_limited":             {"seconds"},
+		"account_scope_missing":    {"scope"},
 		"cross_origin":             {"origin"},
 		"password_too_short":       {"min"},
 		"admin_password_too_short": {"min"},

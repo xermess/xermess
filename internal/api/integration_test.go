@@ -225,6 +225,9 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	if err := st.EnsureLanguages(context.Background(), shipped); err != nil {
 		t.Fatal(err)
 	}
+	if err := st.EnsureSystemAPIs(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 
 	provider, err := oidc.New(context.Background(), serverCfg, st, mailer, log)
 	if err != nil {
@@ -784,7 +787,9 @@ func TestLiveOverview(t *testing.T) {
 	var got overviewBody
 	super.must(http.StatusOK, http.MethodGet, "/overview", nil, &got)
 
-	if got.Counts["applications"] != 1 || got.Counts["enabled_applications"] != 1 || got.Counts["user_roles"] != 1 || got.Counts["admins"] != 1 {
+	// Two applications: the test's, and admin-cli, which every installation
+	// starts with.
+	if got.Counts["applications"] != 2 || got.Counts["enabled_applications"] != 2 || got.Counts["user_roles"] != 1 || got.Counts["admins"] != 1 {
 		t.Errorf("counts = %v", got.Counts)
 	}
 	if got.Counts["active_sessions"] != 1 {

@@ -16,6 +16,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,6 +24,8 @@ import (
 	"loginer/internal/api/respond"
 	"loginer/internal/api/session"
 	"loginer/internal/api/validate"
+	"loginer/internal/brand"
+	"loginer/internal/model"
 	"loginer/internal/oidc"
 	"loginer/internal/store"
 )
@@ -414,9 +417,27 @@ func (h *Handler) Logout(c *gin.Context) {
 // sessionKey is the Gin context key RequireSession stores the session under.
 const sessionKey = "user_session"
 
+// The account API's answers to an access token it will not take, and to one
+// without the scope a route needs.
+var (
+	accountTokenRefused = respond.Define(http.StatusUnauthorized, "account_token_refused", respond.Public)
+	accountScopeMissing = respond.Define(http.StatusForbidden, "account_scope_missing", respond.Public)
+)
+
 // RequireSession refuses the request unless it carries a user's session, and
 // hands the session to the handlers behind it.
+//
+// The session is the sign-in app's cookie, or an access token for the account
+// API that an application got for the user. A token has to carry
+// account.read to read and account.write to change anything; with a token
+// there is no browser session, so none of the user's sessions is the
+// current one. A request carrying a token is judged by the token alone.
 func (h *Handler) RequireSession(c *gin.Context) {
+	if bearer := session.Bearer(c); bearer != "" {
+		h.requireToken(c, bearer)
+		return
+	}
+
 	token, _ := c.Cookie(session.UserCookie)
 
 	current, err := h.provider.SessionFor(c.Request.Context(), token)
@@ -431,6 +452,34 @@ func (h *Handler) RequireSession(c *gin.Context) {
 	}
 
 	c.Set(sessionKey, current)
+	c.Next()
+}
+
+// requireToken is RequireSession for an access token.
+func (h *Handler) requireToken(c *gin.Context, token string) {
+	caller, err := h.provider.AccountCaller(c.Request.Context(), token)
+	if errors.Is(err, oidc.ErrTokenRefused) {
+		c.Header("WWW-Authenticate", `Bearer realm="`+brand.Realm+`", error="invalid_token"`)
+		respond.Abort(c, accountTokenRefused)
+		return
+	}
+	if err != nil {
+		h.fail(c, err, "checking an account API token failed")
+		c.Abort()
+		return
+	}
+
+	needed := []string{model.ScopeAccountWrite}
+	if c.Request.Method == http.MethodGet {
+		needed = append(needed, model.ScopeAccountRead)
+	}
+	if !slices.ContainsFunc(caller.Scopes, func(scope string) bool { return slices.Contains(needed, scope) }) {
+		c.Header("WWW-Authenticate", `Bearer realm="`+brand.Realm+`", error="insufficient_scope", scope="`+needed[len(needed)-1]+`"`)
+		respond.Abort(c, accountScopeMissing, "scope", needed[len(needed)-1])
+		return
+	}
+
+	c.Set(sessionKey, caller.Session)
 	c.Next()
 }
 

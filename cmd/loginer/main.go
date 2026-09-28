@@ -121,6 +121,13 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
+	// The admin API and the account API, as APIs tokens can be issued for,
+	// and admin-cli to call the admin API with. The admin API's scopes follow
+	// the permission catalog, so this runs on every start.
+	if err := st.EnsureSystemAPIs(context.Background()); err != nil {
+		return err
+	}
+
 	// Email goes through whichever server the Mail page names when a message
 	// is sent, rather than whichever one the configuration named at startup.
 	mailer := mail.New(mail.FromStore(st, sealer), log)

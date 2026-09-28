@@ -65,6 +65,8 @@
 		"code_attempts_used": "Too many wrong codes. Sign in again to get a new one.",
 		"code_too_soon": "Wait a moment before asking for another code.",
 		"sign_in_closed": "Sign-ins are closed right now. Try again later, or ask whoever runs this service.",
-		"email_change_not_offered": "Your email cannot be changed here."
+		"email_change_not_offered": "Your email cannot be changed here.",
+		"account_token_refused": "This access token is not accepted by the account API: it has expired, is for another API, or its user can no longer sign in.",
+		"account_scope_missing": "This access token needs the {scope} scope."
 	}
 }

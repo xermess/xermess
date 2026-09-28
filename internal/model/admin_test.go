@@ -304,3 +304,35 @@ func TestMFAIsConfirmed(t *testing.T) {
 		t.Error("a confirmed factor reported itself unconfirmed")
 	}
 }
+
+// Software calling the admin API with a token is seen as an administrator
+// holding exactly its token's permissions, for the whole panel, and never a
+// super admin — so the routes' guards judge it like anyone else.
+func TestServiceAdmin(t *testing.T) {
+	app := Application{Name: "admin-cli", ClientID: AdminCLIClientID}
+	admin := ServiceAdmin(app, []string{PermUsersRead})
+
+	tests := []struct {
+		name string
+		got  bool
+		want bool
+	}{
+		{"it holds its token's permission", admin.HasPermission(PermUsersRead), true},
+		{"and no other", admin.HasPermission(PermUsersWrite), false},
+		{"for every application", admin.HasPermissionAnywhere(PermUsersRead), true},
+		{"it is never a super admin", admin.IsSuperAdmin(), false},
+		{"it is a service", admin.Service, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.got != tt.want {
+				t.Errorf("got %v, want %v", tt.got, tt.want)
+			}
+		})
+	}
+
+	if admin.Username != AdminCLIClientID {
+		t.Errorf("Username = %q, want the client id the log names", admin.Username)
+	}
+}

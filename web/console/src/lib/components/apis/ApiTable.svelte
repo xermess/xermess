@@ -42,7 +42,12 @@
 >
 	{#snippet row(api)}
 		<td>
-			<span class="name">{api.name}</span>
+			<span class="name">
+				{api.name}
+				{#if api.system}
+					<Badge>Built-in</Badge>
+				{/if}
+			</span>
 			{#if api.description}
 				<span class="muted">{api.description}</span>
 			{/if}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Run the whole stack: the Loginer API and the console and id apps.
+# Run the whole stack: the Loginer API and the console, id and docs apps.
 #
 #   scripts/start.sh --dev     Vite dev servers, hot reload (default)
 #   scripts/start.sh --prod    production builds, served by Node
@@ -29,13 +29,14 @@ admin_port="${LOGINER_ADMIN_ADDR:-:8081}" admin_port="${admin_port##*:}"
 apps=(
 	"id      5173 http://localhost:$api_port   /api/v1/account,/oauth2,/.well-known"
 	"console 5174 http://localhost:$admin_port /api/v1/admin"
+	"docs    5175 http://localhost:$api_port   /.well-known"
 )
 
 logs="$root/.logs"
 mkdir -p "$logs" bin
 
 # A port is taken when anything at all answers on it (curl exit 7: refused).
-for port in "$api_port" "$admin_port" 5173 5174; do
+for port in "$api_port" "$admin_port" 5173 5174 5175; do
 	code=0 && curl -s -o /dev/null --max-time 1 "http://localhost:$port" || code=$?
 	[[ $code == 7 ]] || die "port $port is already in use"
 done

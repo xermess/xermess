@@ -193,6 +193,13 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 
+	// The server makes admin-cli again on its next start, so deleting it
+	// would only lose its scopes; turning it off is how to stop it.
+	if app.ClientID == model.AdminCLIClientID {
+		respond.Fail(c, systemApplication)
+		return
+	}
+
 	if err := h.store.DeleteApplication(c.Request.Context(), app); err != nil {
 		respond.Failure(c, h.log, err, "deleting application failed")
 		return
@@ -202,6 +209,9 @@ func (h *Handler) Delete(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+// systemApplication is the answer to deleting admin-cli.
+var systemApplication = respond.Define(http.StatusConflict, "system_application", respond.Admin)
 
 // APIAccess lists every API with what the application may do with it:
 // whether it is authorised to ask for tokens for it, and which scopes.

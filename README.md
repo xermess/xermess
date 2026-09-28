@@ -1,8 +1,9 @@
 # Loginer
 
 An authentication server written in Go, with its frontends under `web/`:
-`web/console`, the admin panel, and `web/id`, where users sign in and
-manage their accounts.
+`web/console`, the admin panel, `web/id`, where users sign in and
+manage their accounts, and `web/docs`, the documentation for developers
+integrating with it.
 
 An OAuth 2.0 authorization server and OpenID Connect provider: authorization
 code with PKCE, refresh tokens, client credentials, userinfo, logout,
@@ -24,7 +25,7 @@ make setup              # .env with a secret key, the database, dependencies
 make full-start dev     # or: make dev
 ```
 
-That starts the API and both apps. The API's logs stay in the terminal;
+That starts the API and the three apps. The API's logs stay in the terminal;
 the apps log to `.logs/<app>.log` (`tail -f .logs/id.log`). Ctrl-C stops all of
 them.
 
@@ -32,6 +33,7 @@ them.
 | ----------- | ------------------------------------ |
 | id          | http://localhost:5173                |
 | console     | http://localhost:5174/admin/login    |
+| docs        | http://localhost:5175                |
 | API         | :8080 public, :8081 admin            |
 
 `make full-start prod` (or `make prod`, or `make full-start -- --prod`) builds
@@ -53,6 +55,7 @@ Run `make` for the list:
 | Setup    | `setup`                                                                  |
 | Run      | `full-start dev\|prod`, `dev`, `prod`, `run` (API only), `build`          |
 | Quality  | `check`, `test`, `test-integration`, `web-check`, `web-build`            |
+| Docs     | `docs` (write the API reference), `docs-check`                           |
 | Database | `migrate-up`, `migrate-down`, `migrate-status`, `migrate-new name=x`, `db-create`, `db-reset`, `db-psql` |
 | Deploy   | `deploy-build`, `deploy-up`, `deploy-down`, `deploy-logs`, `clean`       |
 
@@ -110,6 +113,9 @@ internal/api/validate/         request validation rules
 internal/api/session/          the cookie, the session check, the current admin
 internal/api/respond/          how an error is written, once for every endpoint
 internal/api/audit/            recording what an administrator did
+internal/api/reference/        serves each server's OpenAPI document, embedded
+internal/apidoc/               writes the API reference from the source (make docs)
+cmd/apidoc/                    runs it
 internal/model/                one file per table, listed in model.All
 
 migrations/                    the schema, as Go files applied in order
@@ -128,6 +134,7 @@ deploy/docker/                 api.Dockerfile, web.Dockerfile (any app), their i
 
 web/console/                   the admin panel (SvelteKit)
 web/id/                        the users' app: sign-in pages and account management (SvelteKit)
+web/docs/                      the developer documentation: guides and the API reference (SvelteKit)
 web/serve.js                   serves an app's build with its API paths in front, for make prod
 
 web/console/src/lib/api/               the typed client for this API
@@ -330,6 +337,67 @@ English alone, as their pages are still English in the markup; giving one a
 code is defining its problem and adding the sentence to
 `i18n/console/en/server.json`.
 
+### The reference
+
+Every endpoint of both servers is documented in `web/docs`, and none of it is
+written by hand. `make docs` (`cmd/apidoc`, `internal/apidoc`) type-checks the
+source and reads the route table in `internal/api/server.go` — the path, the
+session, the permission and the rate limit of every route — then each
+handler's doc comment, the request type it binds with its fields' comments and
+`validate` rules, what it answers, and the problems its code returns. It
+writes:
+
+- `internal/api/reference/{public,admin}.json`, OpenAPI 3.1, which the servers
+  embed and serve with their own address filled in: the public one to anyone at
+  `GET /.well-known/openapi.json` — beside the discovery document, so every
+  proxy already routes it — and the admin one to a signed-in administrator at
+  `GET /api/v1/admin/openapi.json`;
+- the same documents under `web/docs/static/openapi/`, for the docs' downloads;
+- a Postman Collection v2.1 for each server under `web/docs/static/collections/`,
+  which Bruno imports too: every endpoint as a request, in the reference's
+  sections, authenticating the way software calls it, with the addresses and
+  secrets as collection variables — the admin one starts with a request that
+  gets admin-cli's token. The docs' header **Export** menu downloads these and
+  the OpenAPI documents;
+- `web/docs/src/content/reference/`, a Markdown page per handler package, the
+  errors and the admin permissions.
+
+`TestTheReferenceIsCurrent` fails while any of those is behind the code, and
+`TestEveryMountedRouteIsInTheReference` holds what was read from the source to
+the routes Gin actually mounts. A guard the reader does not recognise stops the
+generator rather than going undocumented: teach `internal/apidoc/routes.go`
+what it means. The guides beside the reference (`web/docs/src/content/`) are
+written by hand, and the discovery document links the docs as
+`service_documentation`.
+
+The tables below are a summary; the reference is the full list.
+
+### Calling the admin and account APIs with a token
+
+Both of the server's own APIs take an access token it issued, as well as the
+cookie their app sends, so other software can use them:
+
+- **The admin API**, as a service. Every installation has **admin-cli**, a
+  machine-to-machine application made at startup (`store.EnsureSystemAPIs`),
+  like Keycloak's. An administrator allows it admin API scopes on its API
+  access tab and rotates its secret; its client credentials token for
+  `urn:<slug>:admin-api` then calls every permission-guarded admin route, the
+  token's scopes standing in for roles (`session.RequireAny`,
+  `model.ServiceAdmin`). Super-admin routes, and an administrator's own account
+  and second factor, take a person's session only. A user's token is refused
+  whatever its scopes, scopes are rechecked against the application on every
+  call, and the activity log names the application.
+- **The account API**, for a user — what the id app's account pages call. An
+  application allowed `account.read` / `account.write` signs the user in with
+  `audience=urn:<slug>:account-api` and calls `/api/v1/account/*` with the
+  token. Reading needs `account.read`, changing needs `account.write`.
+
+The two APIs are system APIs (`apis.system`): made and kept in step at every
+start — the admin API's scopes are the permission catalog — and the panel
+shows them as built-in, keeps their identifiers and scopes, and will not
+delete them or admin-cli. The docs' guides are "Manage users with admin-cli"
+and "Let users manage their account".
+
 ### Endpoints
 
 | Method | Path                          | Needs a session | Description                    |
@@ -396,7 +464,8 @@ code is defining its problem and adding the sentence to
 | `DELETE` | `/api/v1/admin/sessions`    | yes             | Ends every session of the caller's but this one |
 
 The table above is the start of the admin API; the full list, with the
-permission each route needs, is in `registerRoutes` in `internal/api/server.go`.
+permission each route needs, is the Admin API section of `web/docs`, read from
+`registerAdminRoutes` in `internal/api/server.go`.
 
 ### The provider
 
@@ -404,6 +473,7 @@ permission each route needs, is in `registerRoutes` in `internal/api/server.go`.
 | ------ | ------------------------------------- | -------------------------------------------- |
 | `GET`  | `/.well-known/openid-configuration`   | Discovery document, with the organisation's `op_tos_uri` and `op_policy_uri` |
 | `GET`  | `/.well-known/jwks.json`              | Public signing keys                          |
+| `GET`  | `/.well-known/openapi.json`           | This server's OpenAPI document               |
 | `GET`  | `/oauth2/authorize`                   | Start a sign-in; redirects to the sign-in page or back with a code |
 | `POST` | `/oauth2/token`                       | `authorization_code`, `refresh_token`, `client_credentials` |
 | `GET`  | `/oauth2/userinfo`                    | Claims about the user behind an access token |

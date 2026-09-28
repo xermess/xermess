@@ -27,6 +27,10 @@ type apiResponse struct {
 	EnforceRoles bool            `json:"enforce_roles"`
 	Scopes       []scopeResponse `json:"scopes"`
 
+	// System is "admin" or "account" for an API this server is itself,
+	// whose identifier and scopes the panel shows but does not change.
+	System string `json:"system"`
+
 	SigningAlgorithm   string `json:"signing_algorithm"`
 	TokenLifetime      int    `json:"token_lifetime"`
 	AllowOfflineAccess bool   `json:"allow_offline_access"`
@@ -68,6 +72,7 @@ func newAPIResponse(api model.API, details apiDetails) apiResponse {
 		ID:                 api.ID,
 		Name:               api.Name,
 		Identifier:         api.Identifier,
+		System:             api.System,
 		Description:        api.Description,
 		EnforceRoles:       api.EnforceRoles,
 		Scopes:             scopes,

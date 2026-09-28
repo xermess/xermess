@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"loginer/internal/api/session"
 	"loginer/internal/model"
@@ -40,9 +41,16 @@ func (r Recorder) RecordWith(c *gin.Context, action, targetType, targetID string
 		return
 	}
 
-	id := actor.ID
+	// An application calling with a token is no administrator in the table:
+	// the entry names it by its client ID, and points at nobody.
+	var adminID *uuid.UUID
+	if !actor.Service {
+		id := actor.ID
+		adminID = &id
+	}
+
 	entry := model.AuditLog{
-		AdminID:    &id,
+		AdminID:    adminID,
 		ActorEmail: actor.Username,
 		Action:     action,
 		TargetType: targetType,

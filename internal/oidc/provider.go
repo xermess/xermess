@@ -165,6 +165,11 @@ type Discovery struct {
 	OpTosURI    string `json:"op_tos_uri,omitempty"`
 	OpPolicyURI string `json:"op_policy_uri,omitempty"`
 
+	// ServiceDocumentation is where a developer reads how to integrate with
+	// this provider: the project's documentation, whose API reference is
+	// written from this server's code.
+	ServiceDocumentation string `json:"service_documentation"`
+
 	ClaimsParameterSupported     bool `json:"claims_parameter_supported"`
 	RequestParameterSupported    bool `json:"request_parameter_supported"`
 	RequestURIParameterSupported bool `json:"request_uri_parameter_supported"`
@@ -211,8 +216,9 @@ func (s *Service) Discovery(ctx context.Context) Discovery {
 		CodeChallengeMethodsSupported:              []string{model.PKCES256},
 		PromptValuesSupported:                      []string{"none", "login"},
 		AuthorizationResponseIssParameterSupported: true,
-		OpTosURI:    tos,
-		OpPolicyURI: policy,
+		OpTosURI:             tos,
+		OpPolicyURI:          policy,
+		ServiceDocumentation: brand.DocsURL,
 	}
 }
 
