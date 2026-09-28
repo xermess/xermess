@@ -10,7 +10,7 @@
 		createQuery,
 		useQueryClient
 	} from '@tanstack/svelte-query';
-	import { cacheApi, messageOf, type CacheDatabaseName, type CacheKey } from '$lib/api';
+	import { cacheApi, type CacheDatabaseName, type CacheKey } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import { cacheKeysOptions, cacheOverviewOptions, keys } from '$lib/query';
 	import {
@@ -25,7 +25,8 @@
 		SegmentedControl,
 		Select,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import CacheGroups from '$lib/components/cache/CacheGroups.svelte';
 	import CacheKeyDrawer from '$lib/components/cache/CacheKeyDrawer.svelte';
@@ -50,7 +51,6 @@
 	const rows = $derived(listing.data?.pages.flatMap((one) => one.keys) ?? []);
 
 	let search = $derived(data.search);
-	let error = $state('');
 
 	async function apply(changes: Record<string, string>) {
 		const params = new SvelteURLSearchParams(page.url.searchParams);
@@ -76,7 +76,6 @@
 
 	/** Another database has other kinds and groups, so its filters start over. */
 	function switchTo(name: CacheDatabaseName) {
-		error = '';
 		apply({ database: name === 'cache' ? '' : name, kind: '', group: '', search: '' });
 	}
 
@@ -105,9 +104,12 @@
 
 	const clear = createMutation(() => ({
 		mutationFn: (group: string) => cacheApi.clearGroup(data.database, group),
-		onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.cache.all }),
+		onSuccess: () => {
+			notify.success('Group cleared');
+			return queryClient.invalidateQueries({ queryKey: keys.cache.all });
+		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not clear this group');
+			notify.error(err, 'Could not clear this group');
 		}
 	}));
 
@@ -116,11 +118,12 @@
 	const flush = createMutation(() => ({
 		mutationFn: () => cacheApi.flush(data.database),
 		onSuccess: async () => {
+			notify.success('Database flushed');
 			await queryClient.invalidateQueries({ queryKey: keys.cache.all });
 			flushing = false;
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not flush this database');
+			notify.error(err, 'Could not flush this database');
 			flushing = false;
 		}
 	}));
@@ -201,10 +204,6 @@
 
 	<p class="about">{databases[data.database].description}</p>
 
-	{#if error}
-		<Alert>{error}</Alert>
-	{/if}
-
 	{#if database && !database.available}
 		<Alert tone="warning">
 			Redis did not answer for this database. The server is reading everything from the database
@@ -220,7 +219,6 @@
 				clearing={clear.isPending ? clear.variables : undefined}
 				onFilter={(group) => apply({ group })}
 				onClear={(group) => {
-					error = '';
 					clear.mutate(group);
 				}}
 			/>
@@ -254,7 +252,6 @@
 		confirmLabel={`Flush ${label.toLowerCase()}`}
 		busy={flush.isPending}
 		onConfirm={() => {
-			error = '';
 			flush.mutate();
 		}}
 	/>

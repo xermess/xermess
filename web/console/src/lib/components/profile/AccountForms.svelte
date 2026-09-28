@@ -1,8 +1,16 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
 	import { RiImageLine, RiLockPasswordLine, RiUserLine } from 'svelte-remixicon';
-	import { adminApi, messageOf, type Admin } from '$lib/api';
-	import { Alert, Button, FieldGrid, Input, Panel, PasswordInput, Thumb } from '$lib/components/ui';
+	import { adminApi, type Admin } from '$lib/api';
+	import {
+		Button,
+		FieldGrid,
+		Input,
+		Panel,
+		PasswordInput,
+		Thumb,
+		notify
+	} from '$lib/components/ui';
 	import { ADMIN_DEPENDENCY, MIN_ADMIN_PASSWORD } from '$lib/constants';
 	import { initials } from '$lib/utils/format';
 
@@ -29,8 +37,6 @@
 	    with, so a session left open is not enough to move it. */
 	let emailPassword = $state('');
 	let savingProfile = $state(false);
-	let profileError = $state('');
-	let profileSaved = $state(false);
 
 	const emailChanged = $derived(email.trim().toLowerCase() !== admin.email.toLowerCase());
 	const profileChanged = $derived(
@@ -48,8 +54,6 @@
 	async function saveProfile(event: SubmitEvent) {
 		event.preventDefault();
 		savingProfile = true;
-		profileError = '';
-		profileSaved = false;
 
 		try {
 			await adminApi.updateProfile({
@@ -60,13 +64,13 @@
 				current_password: emailChanged ? emailPassword : undefined
 			});
 			emailPassword = '';
-			profileSaved = true;
+			notify.success('Your profile is saved');
 			// The name is in the header and the address in the menu: both
 			// come from the layout's read of the administrator, and only that
 			// is read again — not the page open behind the dialog.
 			await invalidate(ADMIN_DEPENDENCY);
 		} catch (err) {
-			profileError = messageOf(err, 'Could not save your profile');
+			notify.error(err, 'Could not save your profile');
 		} finally {
 			savingProfile = false;
 		}
@@ -78,20 +82,16 @@
 	let newPassword = $state('');
 	let confirmPassword = $state('');
 	let changingPassword = $state(false);
-	let passwordError = $state('');
-	let passwordChanged = $state(false);
 
 	async function changePassword(event: SubmitEvent) {
 		event.preventDefault();
-		passwordError = '';
-		passwordChanged = false;
 
 		if (newPassword.length < MIN_ADMIN_PASSWORD) {
-			passwordError = `The new password must be at least ${MIN_ADMIN_PASSWORD} characters.`;
+			notify.problem(`The new password must be at least ${MIN_ADMIN_PASSWORD} characters.`);
 			return;
 		}
 		if (newPassword !== confirmPassword) {
-			passwordError = 'The two new passwords are not the same.';
+			notify.problem('The two new passwords are not the same.');
 			return;
 		}
 
@@ -100,9 +100,9 @@
 		try {
 			await adminApi.changePassword(currentPassword, newPassword);
 			currentPassword = newPassword = confirmPassword = '';
-			passwordChanged = true;
+			notify.success('Your password is changed', 'Your other sessions are signed out.');
 		} catch (err) {
-			passwordError = messageOf(err, 'Could not change your password');
+			notify.error(err, 'Could not change your password');
 		} finally {
 			changingPassword = false;
 		}
@@ -146,9 +146,6 @@
 				/>
 			{/if}
 
-			{#if profileError}<Alert>{profileError}</Alert>{/if}
-			{#if profileSaved}<Alert tone="success">Your profile is saved.</Alert>{/if}
-
 			<div class="actions">
 				<Button
 					type="submit"
@@ -185,11 +182,6 @@
 			<p class="quiet">
 				{`At least ${MIN_ADMIN_PASSWORD} characters. Changing it signs you out everywhere but here.`}
 			</p>
-
-			{#if passwordError}<Alert>{passwordError}</Alert>{/if}
-			{#if passwordChanged}
-				<Alert tone="success">Your password is changed. Your other sessions are signed out.</Alert>
-			{/if}
 
 			<div class="actions">
 				<Button

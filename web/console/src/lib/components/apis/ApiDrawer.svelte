@@ -4,9 +4,8 @@
 	import { resolve } from '$app/paths';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiArrowDownSLine, RiLinksLine } from 'svelte-remixicon';
-	import { ApiError, apisApi, type SigningAlgorithm } from '$lib/api';
+	import { apisApi, type SigningAlgorithm } from '$lib/api';
 	import {
-		Alert,
 		Button,
 		Drawer,
 		FormSection,
@@ -14,7 +13,8 @@
 		Input,
 		Select,
 		SwitchField,
-		Textarea
+		Textarea,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import ScopeEditor from './ScopeEditor.svelte';
@@ -46,7 +46,6 @@
 	let lifetimeMinutes = $state('');
 	let offlineAccess = $state(false);
 
-	let error = $state('');
 	let saving = $state(false);
 
 	const ready = $derived(
@@ -68,7 +67,6 @@
 			algorithm = 'RS256';
 			lifetimeMinutes = '';
 			offlineAccess = false;
-			error = '';
 		});
 	});
 
@@ -87,12 +85,13 @@
 				scopes: scopeInput(rows)
 			}),
 		onSuccess: async (result) => {
+			notify.success(`${result.api.name} created`);
 			await queryClient.invalidateQueries({ queryKey: keys.apis.all });
 			open = false;
 			await goto(resolve('/admin/(panel)/dashboard/apis/[id]', { id: result.api.id }));
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not create this API';
+			notify.error(err, 'Could not create this API');
 		},
 		onSettled: () => {
 			saving = false;
@@ -104,17 +103,12 @@
 
 		if (saving || !ready) return;
 
-		error = '';
 		saving = true;
 		create.mutate();
 	}
 </script>
 
 <Drawer bind:open title="New API" onsubmit={submit}>
-	{#if error}
-		<div class="error"><Alert>{error}</Alert></div>
-	{/if}
-
 	<FormSection
 		title="API"
 		description="A protected resource applications request access tokens for. Its identifier is the audience of those tokens."
@@ -206,10 +200,6 @@
 </Drawer>
 
 <style>
-	.error {
-		margin-bottom: var(--space-4);
-	}
-
 	.advanced {
 		margin-top: var(--space-5);
 		padding-top: var(--space-5);

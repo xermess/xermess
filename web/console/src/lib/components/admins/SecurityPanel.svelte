@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { createMutation } from '@tanstack/svelte-query';
 	import { RiShieldKeyholeLine } from 'svelte-remixicon';
-	import { ApiError, adminsApi, type AdminSecurity } from '$lib/api';
-	import { Alert, Panel, SwitchField, Tag, ConfirmDialog } from '$lib/components/ui';
+	import { adminsApi, type AdminSecurity } from '$lib/api';
+	import { Alert, Panel, SwitchField, Tag, ConfirmDialog, notify } from '$lib/components/ui';
 
 	type Props = {
 		/** How administrators are made to sign in, as the page loaded it. */
@@ -17,7 +17,6 @@
 	// svelte-ignore state_referenced_locally
 	let current = $state(security);
 
-	let error = $state('');
 	let saving = $state(false);
 	let confirming = $state(false);
 
@@ -29,12 +28,17 @@
 	const save = createMutation(() => ({
 		mutationFn: (required: boolean) => adminsApi.updateSecurity({ require_mfa: required }),
 		onSuccess: (result) => {
+			notify.success(
+				result.require_mfa
+					? 'Administrators now need a second factor'
+					: 'Administrators no longer need a second factor'
+			);
 			current = result;
 			confirming = false;
 		},
 		onError: (err: unknown) => {
 			confirming = false;
-			error = err instanceof ApiError ? err.message : 'Could not change this setting';
+			notify.error(err, 'Could not change this setting');
 		},
 		onSettled: () => {
 			saving = false;
@@ -49,7 +53,6 @@
 			return;
 		}
 
-		error = '';
 		saving = true;
 		save.mutate(required);
 	}
@@ -62,10 +65,6 @@
 			{current.administrators === 1 ? 'administrator has one' : 'administrators have one'}
 		</Tag>
 	{/snippet}
-
-	{#if error}
-		<div class="message"><Alert tone="danger">{error}</Alert></div>
-	{/if}
 
 	<SwitchField
 		label="Require an authenticator"
@@ -97,7 +96,4 @@
 </ConfirmDialog>
 
 <style>
-	.message {
-		margin-bottom: var(--space-3);
-	}
 </style>

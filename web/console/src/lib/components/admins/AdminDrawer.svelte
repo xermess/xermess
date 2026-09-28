@@ -3,7 +3,6 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiAddLine, RiCloseLine, RiMailLine, RiShieldKeyholeLine } from 'svelte-remixicon';
 	import {
-		ApiError,
 		adminsApi,
 		type AdminInput,
 		type AdminPermission,
@@ -12,7 +11,6 @@
 		type Application
 	} from '$lib/api';
 	import {
-		Alert,
 		Badge,
 		Button,
 		ConfirmDialog,
@@ -23,7 +21,8 @@
 		Input,
 		PasswordInput,
 		Select,
-		type SelectOption
+		type SelectOption,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { grantedBy } from './permissions';
@@ -62,7 +61,6 @@
 	let rows = $state<Row[]>([]);
 	let nextKey = 0;
 
-	let error = $state('');
 	let saving = $state(false);
 	let confirmingReset = $state(false);
 	let resetting = $state(false);
@@ -70,14 +68,17 @@
 	async function resetMfa() {
 		if (!admin) return;
 		resetting = true;
-		error = '';
 
 		try {
 			await adminsApi.resetMfa(admin.id);
+			notify.success(
+				'Two-factor sign-in reset',
+				'They set up a new authenticator at their next sign-in.'
+			);
 			await queryClient.invalidateQueries({ queryKey: keys.admins.all });
 			open = false;
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : 'Could not reset two-factor sign-in';
+			notify.error(err, 'Could not reset two-factor sign-in');
 		} finally {
 			resetting = false;
 			confirmingReset = false;
@@ -179,7 +180,6 @@
 			role: a.role.id,
 			scope: a.application?.id ?? PANEL
 		}));
-		error = '';
 	});
 
 	function addRow() {
@@ -219,11 +219,12 @@
 	const save = createMutation(() => ({
 		mutationFn: () => (admin ? adminsApi.update(admin.id, payload()) : adminsApi.create(payload())),
 		onSuccess: async () => {
+			notify.success(admin ? 'Administrator saved' : 'Administrator created');
 			await queryClient.invalidateQueries({ queryKey: keys.admins.all });
 			open = false;
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this administrator';
+			notify.error(err, 'Could not save this administrator');
 		},
 		onSettled: () => {
 			saving = false;
@@ -235,7 +236,6 @@
 
 		if (!canSubmit) return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -247,10 +247,6 @@
 	meta={isSelf ? 'you' : undefined}
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="error"><Alert>{error}</Alert></div>
-	{/if}
-
 	<FormSection
 		title="Account"
 		description="Who the administrator is, and the address they sign in with."
@@ -435,10 +431,6 @@
 />
 
 <style>
-	.error {
-		margin-bottom: var(--space-4);
-	}
-
 	.hint {
 		margin: calc(var(--space-2) * -1) 0 0;
 		color: var(--color-text-hint);

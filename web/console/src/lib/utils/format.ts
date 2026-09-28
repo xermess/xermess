@@ -121,3 +121,9 @@ export function initials(name: string): string {
 
 	return letters.toUpperCase();
 }
+
+/** A number of things, the noun agreeing with it: "1 role", "3 roles". Every
+    noun the panel counts takes an s, so there is no table of plurals. */
+export function countOf(n: number, noun: string): string {
+	return `${n} ${noun}${n === 1 ? '' : 's'}`;
+}

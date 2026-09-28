@@ -2,9 +2,8 @@
 	import { untrack } from 'svelte';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiArrowGoBackLine } from 'svelte-remixicon';
-	import { languagesApi, messageOf, type Language, type ShippedLanguage } from '$lib/api';
+	import { languagesApi, type Language, type ShippedLanguage } from '$lib/api';
 	import {
-		Alert,
 		Button,
 		Drawer,
 		FieldGrid,
@@ -12,7 +11,8 @@
 		Icon,
 		Input,
 		Select,
-		SwitchField
+		SwitchField,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { languageCode, namesOf } from './translations';
@@ -45,7 +45,6 @@
 	    name somebody wrote is never replaced behind their back. */
 	let namesTyped = $state(false);
 
-	let error = $state('');
 	let saving = $state(false);
 
 	$effect(() => {
@@ -57,7 +56,6 @@
 		copyFrom = NOTHING;
 		enabled = false;
 		namesTyped = false;
-		error = '';
 	});
 
 	const trimmed = $derived(code.trim());
@@ -133,12 +131,13 @@
 				copy_from: copyFrom === NOTHING ? undefined : copyFrom
 			}),
 		onSuccess: async ({ language }) => {
+			notify.success(`${language.name} added`);
 			open = false;
 			await queryClient.invalidateQueries({ queryKey: keys.languages.list });
 			onCreated(language);
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not add this language');
+			notify.error(err, 'Could not add this language');
 		},
 		onSettled: () => {
 			saving = false;
@@ -150,7 +149,6 @@
 
 		if (!ready || saving) return;
 
-		error = '';
 		saving = true;
 		create.mutate();
 	}
@@ -162,10 +160,6 @@
 	description="It starts off, so it can be translated before anybody is offered it."
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="message"><Alert>{error}</Alert></div>
-	{/if}
-
 	{#if shipped.length > 0}
 		<FormSection
 			title="Bring back a shipped language"
@@ -232,10 +226,6 @@
 </Drawer>
 
 <style>
-	.message {
-		margin-bottom: var(--space-4);
-	}
-
 	.restore {
 		display: flex;
 		flex-wrap: wrap;

@@ -21,6 +21,7 @@ export { default as SearchInput } from './SearchInput.svelte';
 export { default as PasswordInput } from './PasswordInput.svelte';
 export { default as Select } from './Select.svelte';
 export { default as DatePicker } from './DatePicker.svelte';
+export { todayIso } from './date';
 export type { SelectOption } from './select';
 export { default as Switch } from './Switch.svelte';
 export { default as SwitchField } from './SwitchField.svelte';
@@ -31,6 +32,8 @@ export { default as FilterChip } from './FilterChip.svelte';
 
 // Surfaces and feedback
 export { default as Alert } from './Alert.svelte';
+export { default as Toaster } from './Toaster.svelte';
+export { notify } from './toast';
 export { default as Badge } from './Badge.svelte';
 export { default as Card } from './Card.svelte';
 export { default as Drawer } from './Drawer.svelte';

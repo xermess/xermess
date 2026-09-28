@@ -82,6 +82,10 @@
 	--scrollbar-thumb-hover: #b6b9be;
 	--tooltip-surface: #2b2b2e;
 	--tooltip-text: #fff;
+	--toast-surface: #16191d;
+	--toast-text: #fff;
+	--toast-hint: #aab0b7;
+	--toast-icon: #3ea6e6;
 	--row-hover: #f7f7f8;
 	--popover-surface: var(--color-surface);
 	--popover-surface-alt: var(--color-surface-alt);
@@ -171,6 +175,10 @@
 	--scrollbar-thumb: #2f3336;
 	--scrollbar-thumb-hover: #4c5257;
 	--tooltip-surface: #202327;
+	--toast-surface: #fff;
+	--toast-text: #16191d;
+	--toast-hint: #5b6168;
+	--toast-icon: #0088cc;
 	--row-hover: #0e1012;
 	--popover-surface: #0f1114;
 	--popover-surface-alt: #15171a;
@@ -225,6 +233,10 @@
 		--scrollbar-thumb: #2f3336;
 		--scrollbar-thumb-hover: #4c5257;
 		--tooltip-surface: #202327;
+		--toast-surface: #fff;
+		--toast-text: #16191d;
+		--toast-hint: #5b6168;
+		--toast-icon: #0088cc;
 		--row-hover: #0e1012;
 		--popover-surface: #0f1114;
 		--popover-surface-alt: #15171a;

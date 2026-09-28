@@ -20,3 +20,4 @@ export { default as SocialButtons } from './SocialButtons.svelte';
 export { default as SSOButtons } from './SSOButtons.svelte';
 export { default as TextField } from './TextField.svelte';
 export { default as ThemeToggle } from './ThemeToggle.svelte';
+export { default as Toaster } from './Toaster.svelte';

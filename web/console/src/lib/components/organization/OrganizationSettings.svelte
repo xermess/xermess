@@ -12,13 +12,18 @@
 		RiShieldCheckLine,
 		RiTimeLine
 	} from 'svelte-remixicon';
+	import { organizationApi, type Organization, type OrganizationSettings } from '$lib/api';
 	import {
-		ApiError,
-		organizationApi,
-		type Organization,
-		type OrganizationSettings
-	} from '$lib/api';
-	import { Alert, Button, Code, FieldGrid, Input, Select, Tag, Thumb } from '$lib/components/ui';
+		Alert,
+		Button,
+		Code,
+		FieldGrid,
+		Input,
+		Select,
+		Tag,
+		Thumb,
+		notify
+	} from '$lib/components/ui';
 	import { ADMIN_DEPENDENCY } from '$lib/constants';
 	import { keys, organizationOptions } from '$lib/query';
 	import { formatDate, initials } from '$lib/utils/format';
@@ -52,16 +57,10 @@
 	// svelte-ignore state_referenced_locally
 	let form = $state(settingsOf(organization));
 
-	let error = $state('');
-	let saved = $state(false);
 	let saving = $state(false);
 
-	/** Puts the form back to what is stored, and takes down whatever the last
-	    attempt said: neither the error nor the confirmation is about the form
-	    once it holds the stored values again. */
+	/** Puts the form back to what is stored. */
 	function discard() {
-		error = '';
-		saved = false;
 		form = settingsOf(organization);
 	}
 
@@ -141,7 +140,7 @@
 		onSuccess: async (result) => {
 			queryClient.setQueryData(keys.organization.settings, result);
 			form = settingsOf(result.organization);
-			saved = true;
+			notify.success('Settings saved', 'The sign-in pages and the discovery document follow.');
 			// The log gains an entry for the change, and the header shows the
 			// name and logo it was loaded with.
 			await Promise.all([
@@ -150,7 +149,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save these settings';
+			notify.error(err, 'Could not save these settings');
 		},
 		onSettled: () => {
 			saving = false;
@@ -162,8 +161,6 @@
 
 		if (!editable || saving || !dirty || !complete) return;
 
-		error = '';
-		saved = false;
 		saving = true;
 		save.mutate();
 	}
@@ -217,14 +214,6 @@
 
 	{#if !editable}
 		<Alert tone="info">Your roles let you see these settings but not change them.</Alert>
-	{/if}
-
-	{#if error}
-		<Alert>{error}</Alert>
-	{:else if saved && !dirty}
-		<Alert tone="success"
-			>Settings saved. The sign-in pages and the discovery document follow.</Alert
-		>
 	{/if}
 
 	<fieldset disabled={!editable}>

@@ -571,16 +571,6 @@
 	padding: var(--space-2);
 }
 
-[data-scope='date-picker'][data-part='content'][data-state='open'] {
-	animation: select-in var(--speed) ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	[data-scope='date-picker'][data-part='content'][data-state='open'] {
-		animation: none;
-	}
-}
-
 /* Back, the title, forward: the title is a button too, and steps out to the
    months, then the years. */
 [data-scope='date-picker'][data-part='view-control'] {
@@ -648,7 +638,9 @@
 	text-align: center;
 }
 
-[data-scope='date-picker'][data-part='table-cell'] {
+/* Ark renders the cell as a bare td, without its data-part, so it is found
+   through the table. */
+[data-scope='date-picker'][data-part='table'] td {
 	padding: 1px;
 	text-align: center;
 }

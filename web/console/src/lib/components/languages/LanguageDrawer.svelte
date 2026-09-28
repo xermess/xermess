@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiDeleteBinLine, RiSettings3Line, RiTranslate2 } from 'svelte-remixicon';
-	import { languagesApi, messageOf, type Language, type LocaleApp } from '$lib/api';
+	import { languagesApi, type Language, type LocaleApp } from '$lib/api';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		Drawer,
@@ -13,7 +12,8 @@
 		Input,
 		Note,
 		SwitchField,
-		Tabs
+		Tabs,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import TranslationEditor from './TranslationEditor.svelte';
@@ -49,7 +49,6 @@
 	let drafts = $state<Record<string, Record<string, string> | null>>({});
 	let dirty = $state<Record<string, boolean>>({});
 
-	let error = $state('');
 	let saving = $state(false);
 	let confirmingDelete = $state(false);
 
@@ -62,7 +61,6 @@
 		if (!open || !language) return;
 
 		tab = startingTab;
-		error = '';
 		confirmingDelete = false;
 		name = language.name;
 		native = language.native_name;
@@ -134,6 +132,7 @@
 			return code;
 		},
 		onSuccess: async () => {
+			notify.success(`${language?.name ?? 'Language'} saved`);
 			open = false;
 
 			// The editor seeds itself from its cached text, so what was cached
@@ -145,7 +144,7 @@
 			await queryClient.invalidateQueries({ queryKey: keys.languages.list });
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not save this language');
+			notify.error(err, 'Could not save this language');
 		},
 		onSettled: () => {
 			saving = false;
@@ -155,6 +154,7 @@
 	const remove = createMutation(() => ({
 		mutationFn: () => languagesApi.remove(language?.code ?? ''),
 		onSuccess: async () => {
+			notify.success(`${language?.name ?? 'Language'} removed`);
 			open = false;
 			queryClient.removeQueries({ queryKey: keys.languages.translations });
 
@@ -162,7 +162,7 @@
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = messageOf(err, 'Could not remove this language');
+			notify.error(err, 'Could not remove this language');
 		}
 	}));
 
@@ -171,7 +171,6 @@
 
 		if (!ready || saving || (!settingsChanged && textChanged.length === 0)) return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -189,10 +188,6 @@
 	meta={language?.code}
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="message"><Alert>{error}</Alert></div>
-	{/if}
-
 	{#if language}
 		<Tabs {tabs} bind:value={tab} label="Languages">
 			{#snippet panel(value)}
@@ -342,10 +337,6 @@
 />
 
 <style>
-	.message {
-		margin-bottom: var(--space-4);
-	}
-
 	.panel {
 		padding-top: var(--space-4);
 	}

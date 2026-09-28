@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { messageOf, useTranslator } from '$lib/i18n';
+	import { notify } from '$lib/toast.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { account } from '$lib/api';
-	import { Alert, AppMark, Button, Icon, Panel } from '$lib/components';
+	import { AppMark, Button, Icon, Panel } from '$lib/components';
 	import { formatDate, timeAgo } from '$lib/utils/format';
 	import type { PageProps } from './$types';
 
@@ -24,21 +25,17 @@
 
 	let confirming = $state<string | null>(null);
 	let disconnecting = $state<string | null>(null);
-	let error = $state('');
-	let notice = $state('');
 
 	async function disconnect(clientId: string, name: string) {
 		disconnecting = clientId;
-		error = '';
-		notice = '';
 
 		try {
 			await account.disconnect(clientId);
-			notice = `${name} can no longer act for you. You’ll be asked to sign in the next time you use it.`;
+			notify.success(t('apps.disconnected', { app: name }), t('apps.disconnected_body'));
 			confirming = null;
 			await invalidateAll();
 		} catch (err) {
-			error = messageOf(err, t);
+			notify.error(messageOf(err, t));
 		} finally {
 			disconnecting = null;
 		}
@@ -54,9 +51,6 @@
 		<h1>{t('apps.title')}</h1>
 		<p>{t('apps.description')}</p>
 	</div>
-
-	{#if error}<Alert>{error}</Alert>{/if}
-	{#if notice}<Alert tone="success">{notice}</Alert>{/if}
 
 	{#if data.applications.length === 0}
 		<Panel title={t('apps.empty')}>

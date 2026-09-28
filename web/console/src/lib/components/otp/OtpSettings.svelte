@@ -2,7 +2,7 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { resolve } from '$app/paths';
 	import { RiGitBranchLine, RiHashtag, RiShieldKeyholeLine, RiTimerLine } from 'svelte-remixicon';
-	import { ApiError, otpApi, type OTPResponse, type OTPSettingsInput } from '$lib/api';
+	import { otpApi, type OTPResponse, type OTPSettingsInput } from '$lib/api';
 	import {
 		Alert,
 		Button,
@@ -12,7 +12,8 @@
 		ListItem,
 		Panel,
 		Tag,
-		Thumb
+		Thumb,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
@@ -43,13 +44,9 @@
 	// svelte-ignore state_referenced_locally
 	let form = $state(formOf(settings.otp));
 
-	let error = $state('');
-	let saved = $state(false);
 	let saving = $state(false);
 
 	function discard() {
-		error = '';
-		saved = false;
 		form = formOf(stored);
 	}
 
@@ -96,12 +93,12 @@
 		onSuccess: async (result) => {
 			queryClient.setQueryData(keys.otp.settings, result);
 			form = formOf(result.otp);
-			saved = true;
+			notify.success('Settings saved', 'The next code sent follows them.');
 			// The log gains an entry for the change.
 			await queryClient.invalidateQueries({ queryKey: keys.admin.overview });
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save these settings';
+			notify.error(err, 'Could not save these settings');
 		},
 		onSettled: () => {
 			saving = false;
@@ -113,20 +110,12 @@
 
 		if (saving || !dirty || !complete) return;
 
-		error = '';
-		saved = false;
 		saving = true;
 		save.mutate();
 	}
 </script>
 
 <form onsubmit={submit}>
-	{#if error}
-		<Alert>{error}</Alert>
-	{:else if saved && !dirty}
-		<Alert tone="success">Settings saved. The next code sent follows them.</Alert>
-	{/if}
-
 	{#if settings.flows.length === 0}
 		<!-- Settings nothing reads are a note rather than a setting, so the
 		     page says so instead of looking as though it is doing something. -->

@@ -109,6 +109,15 @@ pages. An ISO date pasted in is understood as well. The calendar's title steps
 out to months and then years, for a day far from this one. `compact` is the
 toolbar's version, as on `Input` and `Select`.
 
+Pass `todayIso()` rather than `new Date().toISOString()` for today: the
+second is the day in UTC, which is tomorrow or yesterday for part of every
+day almost everywhere.
+
+The calendar's styles are in `styles/ark.css`. The buttons at a field's
+right end — a clear button, a select's arrow, a calendar, a password's eye —
+share one size and one set of slots (`styles/fields.css`, "the right-hand
+end"), so every field lines them up alike.
+
 ## Three props, and what they do
 
 Every control takes the same three, and they combine: any size, in any
@@ -302,4 +311,5 @@ settings and logs pages. Reach for these before writing a box of your own.
 | `Kbd`           | A key on the keyboard, for writing a shortcut down.                                                                                                        |
 | `Note`          | The quiet sentence under a list or a form; brings no margin of its own.                                                                                    |
 | `FieldGrid`     | Fields side by side, one column when it is narrow (by its own width); a child with `class="full"` spans the row.                                           |
-| `Alert`         | A message: `danger` (the default) is announced as an error; `warning`, `info`, `success` are notes.                                                        |
+| `Alert`         | A note about the page itself: what it shows or cannot show. Not the outcome of an action — that is `notify`.                                               |
+| `notify`        | What an action came to: `notify.success(title)`, `notify.error(err, fallback)`. A toast in the corner, drawn by `<Toaster />` in the root layout.          |

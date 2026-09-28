@@ -14,7 +14,8 @@
 		Panel,
 		Tag,
 		Thumb,
-		ConfirmDialog
+		ConfirmDialog,
+		notify
 	} from '$lib/components/ui';
 	import { keys, mfaStatusOptions, profileSessionsOptions } from '$lib/query';
 	import { formatRelative } from '$lib/utils/format';
@@ -50,14 +51,12 @@
 	let code = $state('');
 	let busy = $state(false);
 	let newCodes = $state<string[]>([]);
-	let failure = $state('');
 
-	/** The query's failure, or the last action's. */
+	/** What could not be read. An action's failure is a toast instead. */
 	const error = $derived(
-		failure ||
-			(status.error || ownSessions.error
-				? messageOf(status.error ?? ownSessions.error, 'Could not read your account')
-				: '')
+		status.error || ownSessions.error
+			? messageOf(status.error ?? ownSessions.error, 'Could not read your account')
+			: ''
 	);
 
 	/* ---- Sessions ------------------------------------------------------ */
@@ -67,20 +66,18 @@
 	/** Asked before signing out everywhere else, in place, not in a dialog. */
 	let confirmingOthers = $state(false);
 	let endingOthers = $state(false);
-	let notice = $state('');
 
 	const otherSessions = $derived(sessions.filter((session) => session.active && !session.current));
 
 	async function endSession(session: AdminSession) {
 		ending = session.id;
-		failure = '';
-		notice = '';
 
 		try {
 			await adminApi.endSession(session.id);
+			notify.success('Session signed out');
 			await queryClient.invalidateQueries({ queryKey: keys.profile.sessions });
 		} catch (err) {
-			failure = messageOf(err, 'Could not sign that session out');
+			notify.error(err, 'Could not sign that session out');
 		} finally {
 			ending = null;
 		}
@@ -88,17 +85,17 @@
 
 	async function endOthers() {
 		endingOthers = true;
-		failure = '';
 
 		try {
 			const { ended } = await adminApi.endOtherSessions();
-			notice =
-				ended === 1 ? 'One other session signed out.' : `${ended} other sessions signed out.`;
+			notify.success(
+				ended === 1 ? 'One other session signed out' : `${ended} other sessions signed out`
+			);
 			confirmingOthers = false;
 			await queryClient.invalidateQueries({ queryKey: keys.profile.sessions });
 		} catch (err) {
 			confirmingOthers = false;
-			failure = messageOf(err, 'Could not sign the other sessions out');
+			notify.error(err, 'Could not sign the other sessions out');
 		} finally {
 			endingOthers = false;
 		}
@@ -114,13 +111,13 @@
 
 	async function disable() {
 		busy = true;
-		failure = '';
 
 		try {
 			await mfaApi.disable(code.trim());
+			notify.success('Two-factor sign-in turned off');
 			backToReading();
 		} catch (err) {
-			failure = messageOf(err, 'Could not turn two-factor sign-in off');
+			notify.error(err, 'Could not turn two-factor sign-in off');
 		} finally {
 			busy = false;
 		}
@@ -128,16 +125,16 @@
 
 	async function regenerate() {
 		busy = true;
-		failure = '';
 
 		try {
 			const { recovery_codes } = await mfaApi.recoveryCodes(code.trim());
+			notify.success('New recovery codes made', 'Save them now: the old ones no longer work.');
 			newCodes = recovery_codes;
 			mode = 'codes';
 			asking = null;
 			code = '';
 		} catch (err) {
-			failure = messageOf(err, 'Could not make new recovery codes');
+			notify.error(err, 'Could not make new recovery codes');
 		} finally {
 			busy = false;
 		}
@@ -288,10 +285,6 @@
 				<p class="quiet padded">Reading your sessions…</p>
 			{:else}
 				<SessionList {sessions} onEnd={endSession} {ending} />
-
-				{#if notice}
-					<div class="padded"><Alert tone="success">{notice}</Alert></div>
-				{/if}
 
 				{#if otherSessions.length > 0}
 					<!-- Everywhere else at once: what to do after a shared computer

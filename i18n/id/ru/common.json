@@ -29,7 +29,8 @@
 		"save_changes": "Сохранить изменения",
 		"sign_in": "Войти",
 		"sign_out": "Выйти",
-		"back_to_sign_in": "Вернуться ко входу"
+		"back_to_sign_in": "Вернуться ко входу",
+		"dismiss": "Закрыть"
 	},
 	"time": {
 		"never": "Никогда"
@@ -38,5 +39,8 @@
 		"on": "{browser} на {system}",
 		"unknown_browser": "Неизвестный браузер",
 		"unknown_system": "неизвестном устройстве"
+	},
+	"toast": {
+		"region": "Уведомления"
 	}
 }

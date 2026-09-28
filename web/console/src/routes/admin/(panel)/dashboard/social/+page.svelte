@@ -11,10 +11,9 @@
 		RiRefreshLine
 	} from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { ApiError, socialApi, type SocialProvider } from '$lib/api';
+	import { socialApi, type SocialProvider } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		Icon,
@@ -24,12 +23,14 @@
 		SegmentedControl,
 		SelectionBar,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import SocialDrawer from '$lib/components/social/SocialDrawer.svelte';
 	import SocialTable from '$lib/components/social/SocialTable.svelte';
 	import { can } from '$lib/permissions';
 	import { firstPage, keys, LIST_PAGE_SIZE, socialProvidersOptions } from '$lib/query';
+	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -90,7 +91,6 @@
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 
 	let confirmingRemove = $state(false);
-	let error = $state('');
 	let busy = $state(false);
 
 	/** How many accounts the ticked providers sign in, so removing them says
@@ -152,7 +152,6 @@
 	function reset() {
 		selected = [];
 		confirmingRemove = false;
-		error = '';
 	}
 
 	/** Offering or withdrawing the ticked providers: one call each, because
@@ -170,13 +169,14 @@
 				await socialApi.update(id, { is_enabled: enabled });
 			}
 		},
-		onSuccess: () => {
+		onSuccess: (_result: void, enabled: boolean) => {
+			notify.success(enabled ? 'Providers turned on' : 'Providers turned off');
 			reset();
 			return queryClient.invalidateQueries({ queryKey: keys.social.all });
 		},
 		onError: (err: unknown) => {
 			confirmingRemove = false;
-			error = err instanceof ApiError ? err.message : 'Could not change these providers';
+			notify.error(err, 'Could not change these providers');
 		},
 		onSettled: () => {
 			busy = false;
@@ -189,7 +189,8 @@
 				await socialApi.remove(id);
 			}
 		},
-		onSuccess: () => {
+		onSuccess: (_result: void, ids: string[]) => {
+			notify.success(`${countOf(ids.length, 'provider')} removed`);
 			reset();
 			// Users lose a way in, so their records change with them.
 			return Promise.all([
@@ -199,7 +200,7 @@
 		},
 		onError: (err: unknown) => {
 			confirmingRemove = false;
-			error = err instanceof ApiError ? err.message : 'Could not remove these providers';
+			notify.error(err, 'Could not remove these providers');
 		},
 		onSettled: () => {
 			busy = false;
@@ -209,7 +210,6 @@
 	function run(what: 'enable' | 'disable' | 'remove') {
 		if (busy) return;
 
-		error = '';
 		busy = true;
 
 		if (what === 'remove') {
@@ -266,10 +266,6 @@
 		onChange={(status) => apply({ status })}
 	/>
 </Toolbar>
-
-{#if error}
-	<Alert>{error}</Alert>
-{/if}
 
 <SocialTable
 	providers={rows}

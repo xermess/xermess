@@ -261,28 +261,52 @@
 	color: var(--color-danger);
 }
 
-/* --------------------------------------------------------------- password */
+/* ------------------------------------------------------ the right-hand end */
 
-.field-box [data-scope='password-input'][data-part='control'] {
-	display: block;
+/* What sits at the box's right end — a password's eye, a select's arrow, a
+   date's calendar, and a clear button left of any of them — is laid out in
+   slots of one size, 28px, 8px in from the edge and 2px apart, each centred
+   on the box. The value stops short of whichever slots the box has:
+   --field-end is how far, and every control's right padding reads it. */
+.field-box {
+	--field-slot: 28px;
+	--field-end: 14px;
 }
 
-.field-box [data-scope='password-input'][data-part='input'] {
-	padding-right: 48px;
+.field-box[data-compact] {
+	--field-end: 12px;
 }
 
-/* The buttons that sit inside the box at its right end — a password's
-   show/hide, a select's clear — share one look, centred on the box. */
+.field-box:has([data-part='visibility-trigger']),
+.field-box:has([data-scope='select'][data-part='indicator']),
+.field-box:has([data-scope='date-picker'][data-part='trigger']) {
+	--field-end: calc(8px + var(--field-slot) + 6px);
+}
+
+.field-box:has([data-scope][data-part='clear-trigger']) {
+	--field-end: calc(8px + 2 * var(--field-slot) + 2px + 6px);
+}
+
+.field-box [data-part='input'],
+.field-box [data-scope='select'][data-part='trigger'] {
+	padding-right: var(--field-end);
+}
+
+/* The buttons: one look, the icon centred in them. A button's own padding
+   is taken away, or it pushes a 16px icon off the middle of a 28px box. */
 .field-box [data-part='visibility-trigger'],
-.field-box [data-part='clear-trigger'] {
+.field-box [data-part='clear-trigger'],
+.field-box [data-scope='date-picker'][data-part='trigger'] {
 	position: absolute;
 	top: 50%;
 	right: 8px;
 	z-index: 2;
 	display: grid;
 	place-items: center;
-	width: 32px;
-	height: 32px;
+	width: var(--field-slot);
+	height: var(--field-slot);
+	margin: 0;
+	padding: 0;
 	border: none;
 	border-radius: var(--radius-sm);
 	background: transparent;
@@ -295,21 +319,36 @@
 }
 
 .field-box [data-part='visibility-trigger']:hover,
-.field-box [data-part='clear-trigger']:hover {
+.field-box [data-part='clear-trigger']:hover,
+.field-box [data-scope='date-picker'][data-part='trigger']:hover,
+.field-box [data-scope='date-picker'][data-part='trigger'][data-state='open'] {
 	background: var(--color-secondary);
 	color: var(--color-text);
 }
 
-/* The clear button is the smaller of the two, left of a select's arrow. */
+.field-box [data-part='visibility-trigger']:focus-visible,
+.field-box [data-part='clear-trigger']:focus-visible,
+.field-box [data-scope='date-picker'][data-part='trigger']:focus-visible {
+	outline: 2px solid var(--color-info);
+	outline-offset: -2px;
+}
+
+/* The clear button takes the second slot, left of the arrow or calendar. */
 .field-box [data-part='clear-trigger'] {
-	right: 36px;
-	width: 24px;
-	height: 24px;
+	right: calc(8px + var(--field-slot) + 2px);
+}
+
+/* --------------------------------------------------------------- password */
+
+.field-box [data-scope='password-input'][data-part='control'] {
+	display: block;
 }
 
 /* ------------------------------------------------------------------ select */
 
-.field-box [data-scope='select'][data-part='control'] {
+/* The control is not what the buttons are placed against: the box is. */
+.field-box [data-scope='select'][data-part='control'],
+.field-box [data-scope='date-picker'][data-part='control'] {
 	position: static;
 	display: block;
 }
@@ -318,7 +357,6 @@
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
-	padding-right: 40px;
 	text-align: left;
 	cursor: pointer;
 }
@@ -345,11 +383,12 @@
 	color: transparent;
 }
 
-/* The arrow, centred at the right end, turned over while the list is open. */
+/* The arrow, in the first slot, turned over while the list is open. It is
+   part of the trigger, so pressing it opens the list. */
 .field-box [data-scope='select'][data-part='indicator'] {
 	position: absolute;
 	top: 50%;
-	right: 12px;
+	right: calc(8px + (var(--field-slot) - 16px) / 2);
 	z-index: 2;
 	display: flex;
 	color: var(--color-text-hint);
@@ -373,53 +412,10 @@
 
 /* ------------------------------------------------------------- date picker */
 
-/* A date is typed into the box like any value; the calendar button sits at
-   its right end where a select has its arrow, and the clear button left of
-   it, as on a select. */
-.field-box [data-scope='date-picker'][data-part='control'] {
-	position: static;
-	display: block;
-}
-
+/* A day is typed into the box like any value, with the calendar button in
+   the first slot. */
 .field-box [data-scope='date-picker'][data-part='input'] {
-	padding-right: 44px;
 	font-variant-numeric: tabular-nums;
-}
-
-.field-box:has([data-scope='date-picker'][data-part='clear-trigger'])
-	[data-scope='date-picker'][data-part='input'] {
-	padding-right: 68px;
-}
-
-.field-box [data-scope='date-picker'][data-part='trigger'] {
-	position: absolute;
-	top: 50%;
-	right: 8px;
-	z-index: 2;
-	display: grid;
-	place-items: center;
-	width: 28px;
-	height: 28px;
-	border: none;
-	border-radius: var(--radius-sm);
-	background: transparent;
-	color: var(--color-text-hint);
-	cursor: pointer;
-	transform: translateY(-50%);
-	transition:
-		background-color var(--speed-fast),
-		color var(--speed-fast);
-}
-
-.field-box [data-scope='date-picker'][data-part='trigger']:hover,
-.field-box [data-scope='date-picker'][data-part='trigger'][data-state='open'] {
-	background: var(--color-secondary);
-	color: var(--color-text);
-}
-
-.field-box [data-scope='date-picker'][data-part='trigger']:focus-visible {
-	outline: 2px solid var(--color-info);
-	outline-offset: -2px;
 }
 
 .field-box [data-scope='date-picker'][data-part='trigger'][data-readonly],
@@ -456,7 +452,7 @@
 .field-box[data-compact] [data-part='input'],
 .field-box[data-compact] [data-scope='select'][data-part='trigger'] {
 	height: 100%;
-	padding: 0 12px 0 10px;
+	padding: 0 var(--field-end) 0 10px;
 	font-size: var(--text-sm);
 }
 
@@ -467,22 +463,9 @@
 	height: 100%;
 }
 
-.field-box[data-compact] [data-scope='date-picker'][data-part='input'] {
-	width: 100%;
-	padding-right: 40px;
-}
-
-.field-box[data-compact]:has([data-scope='date-picker'][data-part='clear-trigger'])
-	[data-scope='date-picker'][data-part='input'] {
-	padding-right: 64px;
-}
-
-.field-box[data-compact] [data-scope='select'][data-part='trigger'] {
-	padding-right: 36px;
-}
-
 .field-box[data-compact] [data-part='input'] {
 	flex: 1;
+	width: 100%;
 	min-width: 0;
 }
 

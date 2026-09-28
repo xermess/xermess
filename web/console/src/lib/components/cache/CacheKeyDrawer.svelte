@@ -12,7 +12,8 @@
 		Input,
 		Note,
 		Tag,
-		Textarea
+		Textarea,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { formatBytes, formatTTL, kinds } from './cache';
@@ -41,12 +42,10 @@
 	const editable = $derived(current?.editable ?? false);
 
 	let ttl = $state('');
-	let error = $state('');
 	let confirmingDelete = $state(false);
 
 	$effect(() => {
 		if (!open) return;
-		error = '';
 		confirmingDelete = false;
 		ttl = '';
 	});
@@ -82,22 +81,24 @@
 				ttl_seconds: ttlSeconds
 			}),
 		onSuccess: async () => {
+			notify.success('Value saved');
 			await refill();
 			open = false;
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not save this value');
+			notify.error(err, 'Could not save this value');
 		}
 	}));
 
 	const remove = createMutation(() => ({
 		mutationFn: () => cacheApi.remove(database, key?.name ?? ''),
 		onSuccess: async () => {
+			notify.success('Key removed');
 			await refill();
 			open = false;
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not remove this key');
+			notify.error(err, 'Could not remove this key');
 		}
 	}));
 
@@ -106,7 +107,6 @@
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (!editable || !parsed || !ttlValid || busy) return;
-		error = '';
 		save.mutate();
 	}
 
@@ -131,10 +131,6 @@
 	meta={key ? kinds[key.kind].label : undefined}
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="error"><Alert>{error}</Alert></div>
-	{/if}
-
 	{#if value.isError}
 		<Alert>{messageOf(value.error, 'Could not read this key')}</Alert>
 	{:else if current}
@@ -203,7 +199,6 @@
 							loading={remove.isPending}
 							disabled={busy}
 							onclick={() => {
-								error = '';
 								remove.mutate();
 							}}
 						>
@@ -246,10 +241,6 @@
 </Drawer>
 
 <style>
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
 	.tags,
 	.confirm {
 		display: inline-flex;

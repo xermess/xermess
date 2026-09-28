@@ -5,7 +5,7 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { ApiError, adminsApi, type AdminRole } from '$lib/api';
+	import { adminsApi, type AdminRole } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import {
 		adminPermissionsOptions,
@@ -15,7 +15,6 @@
 		LIST_PAGE_SIZE
 	} from '$lib/query';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		Icon,
@@ -24,10 +23,12 @@
 		SearchInput,
 		SelectionBar,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import AdminRoleDrawer from '$lib/components/admins/AdminRoleDrawer.svelte';
 	import AdminRoleTable from '$lib/components/admins/AdminRoleTable.svelte';
+	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -65,7 +66,6 @@
 	);
 
 	let confirmingDelete = $state(false);
-	let error = $state('');
 	let busy = $state(false);
 
 	async function apply(changes: { search?: string }) {
@@ -113,7 +113,6 @@
 	function reset() {
 		selected = [];
 		confirmingDelete = false;
-		error = '';
 	}
 
 	const removeSelected = createMutation(() => ({
@@ -122,13 +121,14 @@
 				await adminsApi.removeRole(id);
 			}
 		},
-		onSuccess: () => {
+		onSuccess: (_result: void, ids: string[]) => {
+			notify.success(`${countOf(ids.length, 'admin role')} deleted`);
 			reset();
 			return queryClient.invalidateQueries({ queryKey: keys.admins.all });
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = err instanceof ApiError ? err.message : 'Could not delete these roles';
+			notify.error(err, 'Could not delete these roles');
 		},
 		onSettled: () => {
 			busy = false;
@@ -171,10 +171,6 @@
 	/>
 </Toolbar>
 
-{#if error}
-	<Alert>{error}</Alert>
-{/if}
-
 <AdminRoleTable
 	roles={rows}
 	onOpen={openRole}
@@ -203,7 +199,6 @@
 	{busy}
 	onConfirm={() => {
 		if (busy) return;
-		error = '';
 		busy = true;
 		removeSelected.mutate(chosen);
 	}}

@@ -2,9 +2,8 @@
 	import { untrack } from 'svelte';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiAddLine, RiCloseLine, RiGlobalLine, RiShieldUserLine } from 'svelte-remixicon';
-	import { ApiError, rolesApi, type Admin, type API, type Application, type Role } from '$lib/api';
+	import { rolesApi, type Admin, type API, type Application, type Role } from '$lib/api';
 	import {
-		Alert,
 		Badge,
 		Button,
 		Drawer,
@@ -16,7 +15,8 @@
 		Select,
 		SwitchField,
 		Textarea,
-		type SelectOption
+		type SelectOption,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import Choice from './Choice.svelte';
@@ -100,7 +100,6 @@
 	let adding = $state(false);
 	let picked = $state<string[]>([]);
 
-	let error = $state('');
 	let saving = $state(false);
 
 	const editing = $derived(role !== null);
@@ -189,7 +188,6 @@
 		scopeSearch = '';
 		adding = false;
 		picked = [];
-		error = '';
 	});
 
 	/** Changing the scope of a new role drops what it can no longer include. */
@@ -231,6 +229,7 @@
 	const save = createMutation(() => ({
 		mutationFn: () => (role ? rolesApi.update(role.id, payload()) : rolesApi.create(payload())),
 		onSuccess: async () => {
+			notify.success(role ? 'Role saved' : 'Role created');
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.roles.all }),
 				queryClient.invalidateQueries({ queryKey: keys.users.all })
@@ -238,7 +237,7 @@
 			open = false;
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this role';
+			notify.error(err, 'Could not save this role');
 		},
 		onSettled: () => {
 			saving = false;
@@ -250,7 +249,6 @@
 
 		if (!editable || saving || !ready) return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -262,10 +260,6 @@
 	meta={role ? `${role.user_count} ${role.user_count === 1 ? 'user' : 'users'}` : undefined}
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="error"><Alert>{error}</Alert></div>
-	{/if}
-
 	<fieldset disabled={!editable}>
 		<FormSection title="Role" description="What applications check for, and where it applies.">
 			<Select
@@ -530,10 +524,6 @@
 		margin: 0;
 		padding: 0;
 		border: none;
-	}
-
-	.error {
-		margin-bottom: var(--space-4);
 	}
 
 	.adding {

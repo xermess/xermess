@@ -4,9 +4,8 @@
 	import { resolve } from '$app/paths';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiDeleteBinLine, RiLinksLine } from 'svelte-remixicon';
-	import { ApiError, apisApi, type API, type SigningAlgorithm } from '$lib/api';
+	import { apisApi, type API, type SigningAlgorithm } from '$lib/api';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		FieldGrid,
@@ -16,7 +15,8 @@
 		Note,
 		Select,
 		SwitchField,
-		Textarea
+		Textarea,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { algorithms, apiInput, roleBasedAccess } from './scopes';
@@ -37,8 +37,6 @@
 	let lifetimeMinutes = $state('');
 	let offlineAccess = $state(false);
 
-	let error = $state('');
-	let saved = $state(false);
 	let saving = $state(false);
 
 	let confirmingDelete = $state(false);
@@ -88,11 +86,11 @@
 		onSuccess: async (result) => {
 			queryClient.setQueryData(keys.apis.one(api.id), result.api);
 			fill(result.api);
-			saved = true;
+			notify.success('Settings saved');
 			await queryClient.invalidateQueries({ queryKey: keys.apis.all });
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this API';
+			notify.error(err, 'Could not save this API');
 		},
 		onSettled: () => {
 			saving = false;
@@ -102,6 +100,7 @@
 	const remove = createMutation(() => ({
 		mutationFn: () => apisApi.remove(api.id),
 		onSuccess: async () => {
+			notify.success(`${api.name} deleted`);
 			await goto(resolve('/admin/(panel)/dashboard/apis'));
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.apis.all }),
@@ -110,7 +109,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not delete this API';
+			notify.error(err, 'Could not delete this API');
 			deleting = false;
 			confirmingDelete = false;
 		}
@@ -121,20 +120,12 @@
 
 		if (!editable || saving || !dirty || name.trim() === '') return;
 
-		error = '';
-		saved = false;
 		saving = true;
 		save.mutate();
 	}
 </script>
 
 <form onsubmit={submit}>
-	{#if error}
-		<div class="message"><Alert>{error}</Alert></div>
-	{:else if saved && !dirty}
-		<p class="message saved">Settings saved.</p>
-	{/if}
-
 	<fieldset disabled={!editable}>
 		<FormSection title="General" description="How the API is named and described in this panel.">
 			<Input label="Name" bind:value={name} required />
@@ -243,7 +234,6 @@
 	confirmLabel="Delete API"
 	busy={deleting}
 	onConfirm={() => {
-		error = '';
 		deleting = true;
 		remove.mutate();
 	}}
@@ -259,17 +249,6 @@
 		margin: 0;
 		padding: 0;
 		border: none;
-	}
-
-	.message {
-		margin: 0 0 var(--space-4);
-	}
-
-	.saved {
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--surface-success);
-		font-size: var(--text-sm);
 	}
 
 	.actions {

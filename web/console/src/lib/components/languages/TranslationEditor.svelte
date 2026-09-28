@@ -2,7 +2,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { RiDownload2Line, RiErrorWarningLine, RiUpload2Line } from 'svelte-remixicon';
 	import type { LocaleApp } from '$lib/api';
-	import { Alert, Button, Icon, SearchInput, Switch } from '$lib/components/ui';
+	import { Alert, Button, Icon, SearchInput, Switch, notify } from '$lib/components/ui';
 	import { nest } from './flatten';
 	import { translationOptions } from '$lib/query';
 	import { download, missingParameters, readTranslationFile } from './translations';
@@ -80,7 +80,6 @@
 		draft = { ...draft, [key]: value };
 	}
 
-	let notice = $state<{ tone: 'success' | 'danger'; text: string } | null>(null);
 	let fileInput = $state<HTMLInputElement>();
 
 	/** A translation file, merged over what is there: every key it has text
@@ -96,23 +95,20 @@
 
 		const result = await readTranslationFile(file, saved.data.keys);
 		if (!result.ok) {
-			notice = {
-				tone: 'danger',
-				text: `${file.name} is not a translation file: it has to be one JSON object of texts by key.`
-			};
+			notify.problem(
+				`${file.name} is not a translation file: it has to be one JSON object of texts by key.`
+			);
 			return;
 		}
 
 		draft = { ...draft, ...result.messages };
 
-		const imported = `${Object.keys(result.messages).length} texts imported from ${file.name}. Save to keep them.`;
-		notice = {
-			tone: 'success',
-			text:
-				result.skipped > 0
-					? `${imported} ${`${result.skipped} keys this version does not use were skipped.`}`
-					: imported
-		};
+		notify.success(
+			`${Object.keys(result.messages).length} texts imported from ${file.name}`,
+			result.skipped > 0
+				? `Save to keep them. ${result.skipped} keys this version does not use were skipped.`
+				: 'Save to keep them.'
+		);
 	}
 
 	/** Every key, translated or not, so the file is also the template for
@@ -174,10 +170,6 @@
 				</Button>
 			</span>
 		</div>
-
-		{#if notice}
-			<div class="notice"><Alert tone={notice.tone}>{notice.text}</Alert></div>
-		{/if}
 
 		{#if visible.length === 0}
 			<p class="state">Nothing matches.</p>

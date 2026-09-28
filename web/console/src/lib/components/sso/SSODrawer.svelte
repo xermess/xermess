@@ -34,7 +34,8 @@
 		Select,
 		SwitchField,
 		Tabs,
-		Textarea
+		Textarea,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import DomainsField from './DomainsField.svelte';
@@ -92,7 +93,6 @@
 	let mappings = $state<SSORoleMapping[]>([]);
 	let syncRoles = $state(false);
 
-	let error = $state('');
 	let saving = $state(false);
 	let confirmingDelete = $state(false);
 	let tested = $state<SSOTestResult | null>(null);
@@ -105,7 +105,6 @@
 		current = connection;
 		fill(connection);
 		tab = 'connection';
-		error = '';
 		confirmingDelete = false;
 		tested = null;
 		testError = '';
@@ -212,6 +211,7 @@
 		mutationFn: () => (current ? ssoApi.update(current.id, input()) : ssoApi.create(input())),
 		onSuccess: async ({ connection: saved }) => {
 			const created = !editing;
+			notify.success(created ? 'Connection created' : 'Connection saved');
 			await queryClient.invalidateQueries({ queryKey: keys.sso.all });
 
 			if (created) {
@@ -224,7 +224,7 @@
 			open = false;
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not save this connection');
+			notify.error(err, 'Could not save this connection');
 		},
 		onSettled: () => {
 			saving = false;
@@ -234,23 +234,25 @@
 	const remove = createMutation(() => ({
 		mutationFn: () => ssoApi.remove(current?.id ?? ''),
 		onSuccess: async () => {
+			notify.success('Connection removed');
 			open = false;
 			await queryClient.invalidateQueries({ queryKey: keys.sso.all });
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = messageOf(err, 'Could not remove this connection');
+			notify.error(err, 'Could not remove this connection');
 		}
 	}));
 
 	const refresh = createMutation(() => ({
 		mutationFn: () => ssoApi.refreshMetadata(current?.id ?? ''),
 		onSuccess: async ({ connection: saved }) => {
+			notify.success('Metadata read again');
 			current = saved;
 			await queryClient.invalidateQueries({ queryKey: keys.sso.all });
 		},
 		onError: (err: unknown) => {
-			error = messageOf(err, 'Could not save this connection');
+			notify.error(err, 'Could not read the metadata again');
 		}
 	}));
 
@@ -279,7 +281,6 @@
 
 		if (missing || saving || readOnly) return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -372,10 +373,6 @@
 	meta={current?.slug}
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="message"><Alert>{error}</Alert></div>
-	{/if}
-
 	<Tabs {tabs} bind:value={tab} label="SSO integrations">
 		{#snippet panel(value)}
 			<div class="panel">
@@ -710,10 +707,6 @@
 />
 
 <style>
-	.message {
-		margin-bottom: var(--space-4);
-	}
-
 	.panel {
 		padding-top: var(--space-4);
 	}

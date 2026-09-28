@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiAddLine, RiDeleteBinLine, RiPencilLine } from 'svelte-remixicon';
-	import { ApiError, usersApi, type FieldType, type UserField } from '$lib/api';
+	import { usersApi, type FieldType, type UserField } from '$lib/api';
 	import {
-		Alert,
 		Badge,
 		Button,
 		Drawer,
@@ -12,7 +11,8 @@
 		IconButton,
 		Input,
 		Select,
-		Switch
+		Switch,
+		notify
 	} from '$lib/components/ui';
 	import type { SelectOption } from '$lib/components/ui';
 	import { keys } from '$lib/query';
@@ -64,8 +64,6 @@
 	let max = $state('');
 	let startsWith = $state('');
 
-	let error = $state('');
-
 	/** True while a field is being written or removed. Ours rather than the
 	    mutations' own isPending, so the panel cannot be left disabled by a
 	    flag we do not control. */
@@ -99,7 +97,6 @@
 		min = '';
 		max = '';
 		startsWith = '';
-		error = '';
 	}
 
 	function edit(field: UserField) {
@@ -112,7 +109,6 @@
 		min = field.min === null ? '' : String(field.min);
 		max = field.max === null ? '' : String(field.max);
 		startsWith = field.starts_with;
-		error = '';
 	}
 
 	/** An empty box means "no bound", which the API reads as null. */
@@ -144,11 +140,12 @@
 				? usersApi.updateField(editing.id, rules())
 				: usersApi.addField({ ...rules(), name: name.trim() || suggestName(label), type }),
 		onSuccess: async () => {
+			notify.success(editing?.id ? 'Field saved' : 'Field added');
 			await refill();
 			blank();
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this field';
+			notify.error(err, 'Could not save this field');
 		},
 		onSettled: () => {
 			busy = false;
@@ -158,12 +155,13 @@
 	const remove = createMutation(() => ({
 		mutationFn: (field: UserField) => usersApi.removeField(field.id ?? ''),
 		onSuccess: async (_result: void, field: UserField) => {
+			notify.success(`${field.label} removed`);
 			await refill();
 
 			if (editing?.id === field.id) blank();
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not remove this field';
+			notify.error(err, 'Could not remove this field');
 		},
 		onSettled: () => {
 			busy = false;
@@ -177,7 +175,6 @@
 		// would refill the same list.
 		if (busy) return;
 
-		error = '';
 		busy = true;
 		save.mutate();
 	}
@@ -205,10 +202,6 @@
 	title="User fields"
 	description="The columns a user record has, and the rules their values keep. Adding one needs no migration: the values live in the record itself."
 >
-	{#if error}
-		<div class="error"><Alert>{error}</Alert></div>
-	{/if}
-
 	<FormSection
 		title="Built-in fields"
 		description="Every user record has these. They are columns of the record itself, so they cannot be changed or removed."
@@ -264,7 +257,6 @@
 						colorPalette="danger"
 						onclick={() => {
 							if (busy) return;
-							error = '';
 							busy = true;
 							remove.mutate(field);
 						}}
@@ -356,10 +348,6 @@
 </Drawer>
 
 <style>
-	.error {
-		margin-bottom: var(--space-4);
-	}
-
 	.fields {
 		display: flex;
 		flex-direction: column;

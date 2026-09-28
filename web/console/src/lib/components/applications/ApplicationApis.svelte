@@ -2,8 +2,8 @@
 	import { resolve } from '$app/paths';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { RiCodeBoxLine, RiShieldCheckLine } from 'svelte-remixicon';
-	import { ApiError, applicationsApi, type APIAccess } from '$lib/api';
-	import { Alert, Badge, Checkbox, Icon, Note, Switch } from '$lib/components/ui';
+	import { applicationsApi, type APIAccess } from '$lib/api';
+	import { Alert, Badge, Checkbox, Icon, Note, Switch, notify } from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
 	type Props = {
@@ -21,8 +21,6 @@
 		queryFn: async () => (await applicationsApi.apiAccess(applicationId)).apis
 	}));
 
-	let error = $state('');
-
 	/** The API being saved, so only its card shows the wait. */
 	let saving = $state<string | null>(null);
 
@@ -33,12 +31,19 @@
 			scopes === null
 				? applicationsApi.revokeAPI(applicationId, api.id)
 				: applicationsApi.authorizeAPI(applicationId, api.id, scopes),
-		onSuccess: async (result: { apis: APIAccess[] }) => {
+		onSuccess: async (result: { apis: APIAccess[] }, { api, scopes }) => {
+			notify.success(
+				scopes === null
+					? `Access to ${api.name} removed`
+					: api.authorized
+						? `Access to ${api.name} saved`
+						: `Allowed to call ${api.name}`
+			);
 			queryClient.setQueryData(keys.applications.access(applicationId), result.apis);
 			await queryClient.invalidateQueries({ queryKey: keys.apis.all });
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not change this API access';
+			notify.error(err, 'Could not change this API access');
 		},
 		onSettled: () => {
 			saving = null;
@@ -48,7 +53,6 @@
 	function save(api: APIAccess, scopes: string[] | null) {
 		if (saving) return;
 
-		error = '';
 		saving = api.id;
 		change.mutate({ api, scopes });
 	}
@@ -73,10 +77,6 @@
 	Which APIs this application may ask for tokens for, and the most each token may carry. A user's
 	token gets an allowed scope only when their roles grant it too, if the API enforces roles.
 </p>
-
-{#if error}
-	<div class="error"><Alert>{error}</Alert></div>
-{/if}
 
 {#if access.isPending}
 	<Note>Loading APIs…</Note>
@@ -192,10 +192,6 @@
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		line-height: 1.45;
-	}
-
-	.error {
-		margin-bottom: var(--space-3);
 	}
 
 	.muted {

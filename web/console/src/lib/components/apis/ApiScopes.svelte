@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { ApiError, apisApi, type API } from '$lib/api';
-	import { Alert, Button } from '$lib/components/ui';
+	import { apisApi, type API } from '$lib/api';
+	import { Button, notify } from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import ScopeEditor from './ScopeEditor.svelte';
 	import { apiInput, scopeInput, scopeProblem, scopeRow, type ScopeRow } from './scopes';
@@ -17,8 +17,6 @@
 	const queryClient = useQueryClient();
 
 	let rows = $state<ScopeRow[]>([]);
-	let error = $state('');
-	let saved = $state(false);
 	let saving = $state(false);
 
 	function fill(from: API) {
@@ -57,14 +55,14 @@
 		onSuccess: async (result) => {
 			queryClient.setQueryData(keys.apis.one(api.id), result.api);
 			fill(result.api);
-			saved = true;
+			notify.success('Scopes saved');
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.apis.all }),
 				queryClient.invalidateQueries({ queryKey: keys.roles.all })
 			]);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save the scopes';
+			notify.error(err, 'Could not save the scopes');
 		},
 		onSettled: () => {
 			saving = false;
@@ -76,8 +74,6 @@
 
 		if (!editable || saving || !dirty || !valid) return;
 
-		error = '';
-		saved = false;
 		saving = true;
 		save.mutate();
 	}
@@ -90,12 +86,6 @@
 		without being asked for, as long as the application is allowed it and, with role-based access, the
 		user's roles grant it.
 	</p>
-
-	{#if error}
-		<div class="message"><Alert>{error}</Alert></div>
-	{:else if saved && !dirty}
-		<p class="message saved">Scopes saved.</p>
-	{/if}
 
 	<ScopeEditor bind:rows {editable} />
 
@@ -127,17 +117,6 @@
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		line-height: 1.5;
-	}
-
-	.message {
-		margin: 0 0 var(--space-4);
-	}
-
-	.saved {
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--surface-success);
-		font-size: var(--text-sm);
 	}
 
 	.warning {

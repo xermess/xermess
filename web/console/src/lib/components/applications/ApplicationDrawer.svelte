@@ -9,7 +9,6 @@
 		RiShieldCheckLine
 	} from 'svelte-remixicon';
 	import {
-		ApiError,
 		applicationsApi,
 		type Admin,
 		type Application,
@@ -20,7 +19,6 @@
 		type Scope
 	} from '$lib/api';
 	import {
-		Alert,
 		Badge,
 		Button,
 		ConfirmDialog,
@@ -33,7 +31,8 @@
 		type SelectOption,
 		SwitchField,
 		Tabs,
-		Textarea
+		Textarea,
+		notify
 	} from '$lib/components/ui';
 	import Choice from '$lib/components/roles/Choice.svelte';
 	import { keys, loginFlowChoicesOptions } from '$lib/query';
@@ -77,7 +76,6 @@
 	let idMinutes = $state('60');
 	let refreshDays = $state('30');
 
-	let error = $state('');
 	let saving = $state(false);
 	let confirmingRotate = $state(false);
 
@@ -142,7 +140,6 @@
 
 		current = application;
 		secret = '';
-		error = '';
 		confirmingRotate = false;
 		fill(application ? asInput(application) : blank('web'));
 	});
@@ -211,9 +208,17 @@
 	const save = createMutation(() => ({
 		mutationFn: () =>
 			current ? applicationsApi.update(current.id, payload()) : applicationsApi.create(payload()),
-		onSuccess: saved,
+		onSuccess: (result: ApplicationWithSecret) => {
+			// A new application's secret is shown in its panel, which it can be
+			// copied from; the toast only points there.
+			notify.success(
+				current ? 'Application saved' : 'Application created',
+				result.client_secret ? 'Copy its secret now: it is shown once.' : undefined
+			);
+			return saved(result);
+		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this application';
+			notify.error(err, 'Could not save this application');
 		},
 		onSettled: () => {
 			saving = false;
@@ -223,12 +228,13 @@
 	const rotate = createMutation(() => ({
 		mutationFn: () => applicationsApi.rotateSecret(current!.id),
 		onSuccess: async (result: ApplicationWithSecret) => {
+			notify.success('Secret rotated', 'Copy the new one now: it is shown once.');
 			confirmingRotate = false;
 			await saved(result);
 		},
 		onError: (err: unknown) => {
 			confirmingRotate = false;
-			error = err instanceof ApiError ? err.message : 'Could not rotate the secret';
+			notify.error(err, 'Could not rotate the secret');
 		},
 		onSettled: () => {
 			saving = false;
@@ -240,7 +246,6 @@
 
 		if (!editable || tab !== 'settings' || saving || form.name.trim() === '') return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -248,7 +253,6 @@
 	function rotateNow() {
 		if (!current || saving) return;
 
-		error = '';
 		saving = true;
 		rotate.mutate();
 	}
@@ -557,10 +561,6 @@
 		<SecretPanel clientId={current.client_id} {secret} />
 	{/if}
 
-	{#if error}
-		<div class="error"><Alert>{error}</Alert></div>
-	{/if}
-
 	{#if current}
 		<!-- What the application is, at a glance, before its settings. -->
 		<div class="summary">
@@ -631,10 +631,6 @@
 		margin: 0;
 		padding: 0;
 		border: none;
-	}
-
-	.error {
-		margin-bottom: var(--space-4);
 	}
 
 	.summary {

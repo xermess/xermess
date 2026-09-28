@@ -2,13 +2,12 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiShieldKeyholeLine } from 'svelte-remixicon';
 	import {
-		ApiError,
 		adminsApi,
 		type AdminPermission,
 		type AdminPermissionName,
 		type AdminRole
 	} from '$lib/api';
-	import { Alert, Badge, Button, Drawer, FormSection, Input, Textarea } from '$lib/components/ui';
+	import { Badge, Button, Drawer, FormSection, Input, Textarea, notify } from '$lib/components/ui';
 	import Choice from '$lib/components/roles/Choice.svelte';
 	import { tidyName } from '$lib/components/roles/roles';
 	import { keys } from '$lib/query';
@@ -29,7 +28,6 @@
 	let name = $state('');
 	let description = $state('');
 	let granted = $state<AdminPermissionName[]>([]);
-	let error = $state('');
 
 	/** True while the role is being written. */
 	let saving = $state(false);
@@ -47,7 +45,6 @@
 		name = role?.name ?? '';
 		description = role?.description ?? '';
 		granted = role ? [...role.permissions] : [];
-		error = '';
 	});
 
 	function toggle(permission: AdminPermissionName, on: boolean) {
@@ -64,11 +61,12 @@
 		mutationFn: () =>
 			role ? adminsApi.updateRole(role.id, payload()) : adminsApi.createRole(payload()),
 		onSuccess: async () => {
+			notify.success(role ? 'Admin role saved' : 'Admin role created');
 			await queryClient.invalidateQueries({ queryKey: keys.admins.all });
 			open = false;
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this role';
+			notify.error(err, 'Could not save this role');
 		},
 		onSettled: () => {
 			saving = false;
@@ -80,7 +78,6 @@
 
 		if (locked || saving || name.trim() === '') return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -94,10 +91,6 @@
 		: undefined}
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="error"><Alert>{error}</Alert></div>
-	{/if}
-
 	{#if locked}
 		<p class="note">
 			super_admin grants every permission, and is the only role that can manage administrators and
@@ -185,10 +178,6 @@
 		margin: 0;
 		padding: 0;
 		border: none;
-	}
-
-	.error {
-		margin-bottom: var(--space-4);
 	}
 
 	.note {

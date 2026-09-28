@@ -16,7 +16,7 @@
 		createQuery,
 		useQueryClient
 	} from '@tanstack/svelte-query';
-	import { ApiError, usersApi, type UserRecord } from '$lib/api';
+	import { usersApi, type UserRecord } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import {
 		applicationChoicesOptions,
@@ -28,7 +28,6 @@
 	} from '$lib/query';
 	import { can } from '$lib/permissions';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		FilterChip,
@@ -39,11 +38,13 @@
 		SegmentedControl,
 		SelectionBar,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import FieldsDrawer from '$lib/components/users/FieldsDrawer.svelte';
 	import UserDrawer from '$lib/components/users/UserDrawer.svelte';
 	import UserTable from '$lib/components/users/UserTable.svelte';
+	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -95,7 +96,6 @@
 	const visible = $derived(new Set(rows.map((user) => user.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 	let confirmingDelete = $state(false);
-	let error = $state('');
 
 	/** True while the chosen records are being deleted. Ours rather than the
 	    mutation's own isPending, so the bar cannot be left disabled. */
@@ -159,7 +159,6 @@
 	function reset() {
 		selected = [];
 		confirmingDelete = false;
-		error = '';
 	}
 
 	/** The records behind the ticked ids, in the order the table shows them. */
@@ -176,7 +175,8 @@
 				await usersApi.remove(id);
 			}
 		},
-		onSuccess: () => {
+		onSuccess: (_result: void, ids: string[]) => {
+			notify.success(`${countOf(ids.length, 'user')} deleted`);
 			reset();
 			// A role's count of users changes with them.
 			return Promise.all([
@@ -186,7 +186,7 @@
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = err instanceof ApiError ? err.message : 'Could not delete these users';
+			notify.error(err, 'Could not delete these users');
 		},
 		onSettled: () => {
 			busy = false;
@@ -275,10 +275,6 @@
 	/>
 </Toolbar>
 
-{#if error}
-	<Alert>{error}</Alert>
-{/if}
-
 <UserTable
 	users={rows}
 	fields={fields.data}
@@ -316,7 +312,6 @@
 	{busy}
 	onConfirm={() => {
 		if (busy) return;
-		error = '';
 		busy = true;
 		removeSelected.mutate(chosen);
 	}}

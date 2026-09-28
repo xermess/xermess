@@ -17,7 +17,7 @@
 		createQuery,
 		useQueryClient
 	} from '@tanstack/svelte-query';
-	import { ApiError, rolesApi, type Role } from '$lib/api';
+	import { rolesApi, type Role } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import {
 		applicationChoicesOptions,
@@ -28,7 +28,6 @@
 	} from '$lib/query';
 	import { canEditRoles } from '$lib/components/roles/roles';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		Icon,
@@ -38,10 +37,12 @@
 		SegmentedControl,
 		SelectionBar,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import RoleDrawer from '$lib/components/roles/RoleDrawer.svelte';
 	import RoleTable from '$lib/components/roles/RoleTable.svelte';
+	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -97,7 +98,6 @@
 	const visible = $derived(new Set(rows.map((role) => role.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 	let confirmingDelete = $state(false);
-	let error = $state('');
 
 	/** True while the chosen roles are being deleted. */
 	let busy = $state(false);
@@ -166,7 +166,6 @@
 	function reset() {
 		selected = [];
 		confirmingDelete = false;
-		error = '';
 	}
 
 	/** The roles behind the ticked ids, in the order the table shows them. */
@@ -182,7 +181,8 @@
 				await rolesApi.remove(id);
 			}
 		},
-		onSuccess: () => {
+		onSuccess: (_result: void, ids: string[]) => {
+			notify.success(`${countOf(ids.length, 'role')} deleted`);
 			reset();
 			return Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.roles.all }),
@@ -191,7 +191,7 @@
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = err instanceof ApiError ? err.message : 'Could not delete these roles';
+			notify.error(err, 'Could not delete these roles');
 		},
 		onSettled: () => {
 			busy = false;
@@ -300,10 +300,6 @@
 	/>
 </Toolbar>
 
-{#if error}
-	<Alert>{error}</Alert>
-{/if}
-
 <RoleTable
 	roles={rows}
 	showApplication={data.tab === 'application'}
@@ -343,7 +339,6 @@
 	{busy}
 	onConfirm={() => {
 		if (busy) return;
-		error = '';
 		busy = true;
 		removeSelected.mutate(chosen);
 	}}

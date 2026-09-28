@@ -2,23 +2,22 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		RiAtLine,
-		RiCheckLine,
 		RiLockLine,
 		RiMailLine,
 		RiMailSendLine,
 		RiServerLine,
 		RiUserLine
 	} from 'svelte-remixicon';
-	import { ApiError, mailApi, type MailEncryption, type MailResponse } from '$lib/api';
+	import { mailApi, type MailEncryption, type MailResponse } from '$lib/api';
 	import {
-		Alert,
 		Button,
 		FieldGrid,
 		Input,
 		Panel,
 		Select,
 		SwitchField,
-		Tag
+		Tag,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
@@ -50,13 +49,9 @@
 	/** Asking for the stored password to go, for a server that takes none. */
 	let removePassword = $state(false);
 
-	let error = $state('');
-	let saved = $state(false);
 	let saving = $state(false);
 
 	function discard() {
-		error = '';
-		saved = false;
 		password = '';
 		removePassword = false;
 		form = formOf(stored);
@@ -126,12 +121,15 @@
 			form = formOf(result.mail);
 			password = '';
 			removePassword = false;
-			saved = true;
+			notify.success(
+				'Settings saved',
+				'The next password reset, confirmation and one-time code goes through this server.'
+			);
 			// The log gains an entry for the change.
 			await queryClient.invalidateQueries({ queryKey: keys.admin.overview });
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save these settings';
+			notify.error(err, 'Could not save these settings');
 		},
 		onSettled: () => {
 			saving = false;
@@ -143,8 +141,6 @@
 
 		if (saving || !dirty || !complete) return;
 
-		error = '';
-		saved = false;
 		saving = true;
 		save.mutate();
 	}
@@ -152,39 +148,29 @@
 	// ---- Sending a test message -------------------------------------------
 
 	let testTo = $state('');
-	let testError = $state('');
-	let testSent = $state('');
 
 	const test = createMutation(() => ({
 		mutationFn: () => mailApi.test({ ...input, password: passwordInput, to: testTo.trim() }),
 		onSuccess: async (result) => {
-			testSent = result.to;
+			notify.success(
+				`Test message sent to ${result.to}`,
+				'If it does not arrive, look in the spam folder before changing anything.'
+			);
 			await queryClient.invalidateQueries({ queryKey: keys.admin.overview });
 		},
 		onError: (err: unknown) => {
-			testError = err instanceof ApiError ? err.message : 'Could not send a test message';
+			notify.error(err, 'Could not send a test message');
 		}
 	}));
 
 	function sendTest() {
 		if (test.isPending || testTo.trim() === '') return;
 
-		testError = '';
-		testSent = '';
 		test.mutate();
 	}
 </script>
 
 <form onsubmit={submit}>
-	{#if error}
-		<Alert>{error}</Alert>
-	{:else if saved && !dirty}
-		<Alert tone="success">
-			Settings saved. The next password reset, confirmation and one-time code goes through this
-			server.
-		</Alert>
-	{/if}
-
 	<Panel title="Sending" icon={RiMailSendLine}>
 		{#snippet meta()}
 			{#if form.is_enabled}
@@ -298,15 +284,6 @@
 			Sends one message with the settings above, whether or not they have been saved — so a server
 			can be tried before anybody's sign-in depends on it. A password left blank is the stored one.
 		</p>
-
-		{#if testError}
-			<Alert>{testError}</Alert>
-		{:else if testSent}
-			<Alert tone="success">
-				<RiCheckLine size="16" /> Sent to {testSent}. If it does not arrive, look in the spam folder
-				before changing anything.
-			</Alert>
-		{/if}
 
 		<div class="try">
 			<Input

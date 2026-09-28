@@ -4,7 +4,6 @@
 	import { resolve } from '$app/paths';
 	import { RiComputerLine, RiMailLine, RiShieldUserLine, RiUserLine } from 'svelte-remixicon';
 	import {
-		ApiError,
 		usersApi,
 		type Admin,
 		type Application,
@@ -13,7 +12,6 @@
 		type UserRecord
 	} from '$lib/api';
 	import {
-		Alert,
 		Button,
 		Drawer,
 		FieldGrid,
@@ -27,7 +25,8 @@
 		SwitchField,
 		Tabs,
 		Tag,
-		Thumb
+		Thumb,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { markFor as providerMark } from '$lib/components/social/providers';
@@ -90,7 +89,6 @@
 	let isPasswordTemporary = $state(false);
 
 	let values = $state<Record<string, string | boolean>>({});
-	let error = $state('');
 
 	/** True while the record is being written. Ours rather than the
 	    mutation's own isPending, so a form cannot be left saying "Saving…". */
@@ -104,11 +102,11 @@
 	async function disconnect(identity: string) {
 		if (!current) return;
 
-		error = '';
 		disconnecting = identity;
 
 		try {
 			await usersApi.disconnect(current.id, identity);
+			notify.success('Provider disconnected');
 			await queryClient.invalidateQueries({ queryKey: keys.users.all });
 
 			// The drawer is looking at the record it was given, so the
@@ -118,7 +116,7 @@
 				social_accounts: current.social_accounts.filter((account) => account.id !== identity)
 			};
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : 'Could not disconnect this provider';
+			notify.error(err, 'Could not disconnect this provider');
 		} finally {
 			disconnecting = '';
 		}
@@ -183,7 +181,6 @@
 		// A password an administrator makes up for someone is one they should
 		// replace, so a new user's starts out temporary.
 		isPasswordTemporary = record ? record.is_password_temporary : true;
-		error = '';
 
 		values = Object.fromEntries(
 			extras.map((field) => {
@@ -230,6 +227,7 @@
 		mutationFn: () =>
 			current ? usersApi.update(current.id, payload()) : usersApi.create(payload()),
 		onSuccess: async (result: { user: UserRecord }) => {
+			notify.success(current ? 'User saved' : 'User created');
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.users.all }),
 				queryClient.invalidateQueries({ queryKey: keys.roles.all })
@@ -246,7 +244,7 @@
 			tab = 'roles';
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this user';
+			notify.error(err, 'Could not save this user');
 		},
 		onSettled: () => {
 			saving = false;
@@ -261,7 +259,6 @@
 		// mapping saves as it goes, so the form only ever writes the record.
 		if (tab !== 'user' || !canSubmit) return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -295,10 +292,6 @@
 	<Tabs {tabs} bind:value={tab} label="User sections">
 		{#snippet panel(value)}
 			{#if value === 'user'}
-				{#if error}
-					<div class="error"><Alert>{error}</Alert></div>
-				{/if}
-
 				<!-- A disabled fieldset disables every control inside it at once,
 				     which is how the tab becomes read-only for someone who may
 				     only look. -->
@@ -476,10 +469,6 @@
 		margin: 0;
 		padding: 0;
 		border: none;
-	}
-
-	.error {
-		margin-bottom: var(--space-4);
 	}
 
 	.note {

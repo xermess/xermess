@@ -2,15 +2,17 @@
 	import { resolve } from '$app/paths';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { RiAppsLine } from 'svelte-remixicon';
+	import { apisApi, applicationsApi, type Admin, type API, type APIApplication } from '$lib/api';
 	import {
-		ApiError,
-		apisApi,
-		applicationsApi,
-		type Admin,
-		type API,
-		type APIApplication
-	} from '$lib/api';
-	import { Alert, Badge, Checkbox, Icon, Note, SearchInput, Switch } from '$lib/components/ui';
+		Alert,
+		Badge,
+		Checkbox,
+		Icon,
+		Note,
+		SearchInput,
+		Switch,
+		notify
+	} from '$lib/components/ui';
 	import { can } from '$lib/permissions';
 	import { keys } from '$lib/query';
 	import { types } from '$lib/components/applications/applications';
@@ -30,7 +32,6 @@
 	}));
 
 	let search = $state('');
-	let error = $state('');
 
 	/** The application being saved, so only its row shows the wait. */
 	let saving = $state<string | null>(null);
@@ -55,7 +56,14 @@
 			scopes === null
 				? applicationsApi.revokeAPI(app.id, api.id)
 				: applicationsApi.authorizeAPI(app.id, api.id, scopes),
-		onSuccess: async (_result, { app }) => {
+		onSuccess: async (_result, { app, scopes }) => {
+			notify.success(
+				scopes === null
+					? `${app.name} can no longer call this API`
+					: app.authorized
+						? `Access saved for ${app.name}`
+						: `${app.name} can now call this API`
+			);
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.apis.applications(api.id) }),
 				queryClient.invalidateQueries({ queryKey: keys.apis.one(api.id) }),
@@ -65,7 +73,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not change this access';
+			notify.error(err, 'Could not change this access');
 		},
 		onSettled: () => {
 			saving = null;
@@ -75,7 +83,6 @@
 	function save(app: APIApplication, scopes: string[] | null) {
 		if (saving) return;
 
-		error = '';
 		saving = app.id;
 		change.mutate({ app, scopes });
 	}
@@ -89,10 +96,6 @@
 	The applications that may request access tokens for this API, and the most each token may carry.
 	Authorising here is the same as on the application's API access tab.
 </p>
-
-{#if error}
-	<div class="message"><Alert>{error}</Alert></div>
-{/if}
 
 {#if applications.isPending}
 	<Note>Loading applications…</Note>
@@ -193,10 +196,6 @@
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		line-height: 1.5;
-	}
-
-	.message {
-		margin-bottom: var(--space-3);
 	}
 
 	.toolbar {

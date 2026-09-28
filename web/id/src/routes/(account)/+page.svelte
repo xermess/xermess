@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { messageOf, useTranslator } from '$lib/i18n';
+	import { notify } from '$lib/toast.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { account } from '$lib/api';
-	import { Alert, Button, Icon, Panel, TextField } from '$lib/components';
+	import { Button, Icon, Panel, TextField } from '$lib/components';
 	import { formatDate, initials } from '$lib/utils/format';
 	import type { PageProps } from './$types';
 
@@ -17,8 +18,6 @@
 	// svelte-ignore state_referenced_locally
 	let lastName = $state(data.user.last_name);
 	let saving = $state(false);
-	let error = $state('');
-	let saved = $state(false);
 
 	/** Changing the address somebody signs in with, where the login flow
 	    allows it. It is not part of the form above: the name is saved, while
@@ -28,15 +27,11 @@
 
 	let changingEmail = $state(false);
 	let newEmail = $state('');
-	let emailError = $state('');
-	let emailSent = $state('');
 	let sendingEmail = $state(false);
 
 	function startEmailChange() {
 		changingEmail = true;
 		newEmail = '';
-		emailError = '';
-		emailSent = '';
 	}
 
 	async function sendEmailChange(event: SubmitEvent) {
@@ -46,14 +41,13 @@
 		if (sendingEmail || address === '') return;
 
 		sendingEmail = true;
-		emailError = '';
 
 		try {
 			await account.changeEmail({ email: address });
-			emailSent = address;
+			notify.success(t('account.email_change_sent', { email: address }));
 			changingEmail = false;
 		} catch (err) {
-			emailError = messageOf(err, t);
+			notify.error(messageOf(err, t));
 		} finally {
 			sendingEmail = false;
 		}
@@ -68,8 +62,6 @@
 		if (!changed || saving) return;
 
 		saving = true;
-		error = '';
-		saved = false;
 
 		try {
 			const { user: updated } = await account.updateProfile({
@@ -78,10 +70,10 @@
 			});
 			firstName = updated.first_name;
 			lastName = updated.last_name;
-			saved = true;
+			notify.success(t('profile.saved'));
 			await invalidateAll();
 		} catch (err) {
-			error = messageOf(err, t);
+			notify.error(messageOf(err, t));
 		} finally {
 			saving = false;
 		}
@@ -113,9 +105,6 @@
 
 	<form onsubmit={save}>
 		<Panel title={t('profile.personal_title')} description={t('profile.personal_description')}>
-			{#if error}<Alert>{error}</Alert>{/if}
-			{#if saved && !changed}<Alert tone="success">{t('profile.saved')}</Alert>{/if}
-
 			<div class="pair">
 				<TextField
 					label={t('field.first_name')}
@@ -141,13 +130,7 @@
 			/>
 
 			{#if mayChangeEmail}
-				{#if emailSent}
-					<Alert tone="success">{t('account.email_change_sent', { email: emailSent })}</Alert>
-				{/if}
-
 				{#if changingEmail}
-					{#if emailError}<Alert>{emailError}</Alert>{/if}
-
 					<TextField
 						label={t('account.email_change_title')}
 						bind:value={newEmail}

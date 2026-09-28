@@ -5,21 +5,22 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiRefreshLine } from 'svelte-remixicon';
 	import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { messageOf, sessionsApi, type UserSessionRecord } from '$lib/api';
+	import { sessionsApi, type UserSessionRecord } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import { keys, sessionsOptions } from '$lib/query';
 	import {
-		Alert,
 		ConfirmDialog,
 		FilterChip,
 		IconButton,
 		PageHeader,
 		SearchInput,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import SessionTable from '$lib/components/sessions/SessionTable.svelte';
 	import { can } from '$lib/permissions';
+	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -34,8 +35,6 @@
 	const canWrite = $derived(can(data.admin, 'users.write'));
 
 	let search = $derived(data.search);
-	let error = $state('');
-	let notice = $state('');
 
 	/** The user about to be signed out everywhere, waiting on a yes. */
 	/** The user a sign-out everywhere is asked about. It outlives the question
@@ -82,30 +81,28 @@
 
 	const end = createMutation(() => ({
 		mutationFn: (session: UserSessionRecord) => sessionsApi.end(session.id),
-		onMutate: () => {
-			error = '';
-			notice = '';
+		onSuccess: () => {
+			notify.success('Session ended');
+			return queryClient.invalidateQueries({ queryKey: keys.sessions.all });
 		},
-		onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.sessions.all }),
 		onError: (err: unknown) => {
-			error = messageOf(err);
+			notify.error(err, 'Could not end this session');
 		}
 	}));
 
 	const signOut = createMutation(() => ({
 		mutationFn: (user: UserSessionRecord['user']) => sessionsApi.signOutUser(user.id),
-		onMutate: () => {
-			error = '';
-			notice = '';
-		},
 		onSuccess: (result, user) => {
 			asking = false;
-			notice = `${user.email} was signed out of ${result.sessions} sessions, and ${result.tokens} application tokens were revoked.`;
+			notify.success(
+				`${user.email} is signed out everywhere`,
+				`${countOf(result.sessions, 'session')} ended, ${countOf(result.tokens, 'application token')} revoked.`
+			);
 			return queryClient.invalidateQueries({ queryKey: keys.sessions.all });
 		},
 		onError: (err: unknown) => {
 			asking = false;
-			error = messageOf(err);
+			notify.error(err, 'Could not sign this user out');
 		}
 	}));
 </script>
@@ -143,12 +140,6 @@
 		</FilterChip>
 	{/if}
 </Toolbar>
-
-{#if error}
-	<Alert>{error}</Alert>
-{:else if notice}
-	<Alert tone="success">{notice}</Alert>
-{/if}
 
 <SessionTable
 	sessions={rows}

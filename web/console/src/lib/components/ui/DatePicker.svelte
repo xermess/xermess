@@ -1,10 +1,6 @@
 <script lang="ts">
 	import type { ComponentType } from 'svelte';
-	import {
-		DatePicker as ArkDatePicker,
-		parseDate,
-		type DateValue
-	} from '@ark-ui/svelte/date-picker';
+	import { DatePicker as ArkDatePicker } from '@ark-ui/svelte/date-picker';
 	import { Portal } from '@ark-ui/svelte/portal';
 	import {
 		RiArrowLeftSLine,
@@ -12,6 +8,7 @@
 		RiCalendarLine,
 		RiCloseLine
 	} from 'svelte-remixicon';
+	import { formatDay, parseDay, timeZone, toDate, toIso } from './date';
 	import FieldText from './FieldText.svelte';
 	import Icon from './Icon.svelte';
 
@@ -58,41 +55,6 @@
 		onChange
 	}: Props = $props();
 
-	/** An ISO date as the picker's own kind of value, or nothing for anything
-	    that is not one. */
-	function toDate(iso: string | undefined): DateValue | undefined {
-		if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return undefined;
-
-		try {
-			return parseDate(iso);
-		} catch {
-			return undefined;
-		}
-	}
-
-	const pad = (n: number, width = 2) => String(n).padStart(width, '0');
-
-	/** Every day is written one way, day first — "12/03/2026" — rather than
-	    in the reader's locale: the server renders the field too, and a date
-	    written two ways would be two different pages. */
-	function format(date: DateValue): string {
-		return `${pad(date.day)}/${pad(date.month)}/${pad(date.year, 4)}`;
-	}
-
-	/** What can be typed: the day as it is shown, with slashes, dots or
-	    dashes between its parts, or an ISO date pasted in. */
-	function parse(text: string): DateValue | undefined {
-		const trimmed = text.trim();
-
-		const iso = toDate(trimmed);
-		if (iso) return iso;
-
-		const match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(trimmed);
-		if (!match) return undefined;
-
-		return toDate(`${match[3]}-${pad(Number(match[2]))}-${pad(Number(match[1]))}`);
-	}
-
 	const selected = $derived(toDate(value));
 	const canClear = $derived(clearable && value !== '' && !disabled && !readOnly);
 
@@ -119,19 +81,20 @@
 	{readOnly}
 	invalid={error !== undefined}
 	locale="en-GB"
+	{timeZone}
 	startOfWeek={1}
 	fixedWeeks
 	value={selected ? [selected] : []}
 	min={toDate(min)}
 	max={toDate(max)}
-	{format}
-	{parse}
+	format={formatDay}
+	parse={parseDay}
 	placeholder="dd/mm/yyyy"
 	positioning={{ placement: 'bottom-start', gutter: 4 }}
 	onOpenChange={(details) => (open = details.open)}
 	onValueChange={(details) => {
 		const [day] = details.value;
-		const next = day ? `${pad(day.year, 4)}-${pad(day.month)}-${pad(day.day)}` : '';
+		const next = day ? toIso(day) : '';
 		if (next === value) return;
 
 		value = next;
@@ -161,8 +124,8 @@
 		</ArkDatePicker.Control>
 	</div>
 
-	<!-- Portalled, as a select's list is, so a drawer that scrolls or a
-	     toolbar that hides its overflow never cuts the calendar off. -->
+	<!-- Portalled, as a select's list is, so a drawer that scrolls or a toolbar
+	     that hides its overflow never cuts the calendar off. -->
 	<Portal>
 		<ArkDatePicker.Positioner>
 			<ArkDatePicker.Content>

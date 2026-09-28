@@ -37,7 +37,8 @@
 		"this_device": "This device",
 		"no_other_sessions": "You’re not signed in anywhere else.",
 		"session_line": "{ip} · signed in {when} · until {until}",
-		"unknown_address": "Unknown address"
+		"unknown_address": "Unknown address",
+		"session_ended": "Signed out of that device"
 	},
 	"apps": {
 		"head": "Connected apps",
@@ -56,6 +57,8 @@
 		"scope_profile": "See your name",
 		"scope_email": "See your email address",
 		"scope_offline": "Stay signed in when you are away",
-		"scope_roles": "See your roles"
+		"scope_roles": "See your roles",
+		"disconnected": "{app} disconnected",
+		"disconnected_body": "It can no longer act for you. You’ll be asked to sign in the next time you use it."
 	}
 }

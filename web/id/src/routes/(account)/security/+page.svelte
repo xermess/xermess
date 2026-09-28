@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { messageOf, useTranslator } from '$lib/i18n';
+	import { notify } from '$lib/toast.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { account } from '$lib/api';
-	import { Alert, Button, Icon, Panel, PasswordField } from '$lib/components';
+	import { Button, Icon, Panel, PasswordField } from '$lib/components';
 	import { describeDevice, formatDate, timeAgo } from '$lib/utils/format';
 	import type { PageProps } from './$types';
 
@@ -16,8 +17,6 @@
 	let next = $state('');
 	let confirm = $state('');
 	let changing = $state(false);
-	let passwordError = $state('');
-	let passwordChanged = $state(false);
 
 	const mismatch = $derived(confirm !== '' && confirm !== next);
 	const canChange = $derived(
@@ -29,34 +28,31 @@
 		if (!canChange) return;
 
 		changing = true;
-		passwordError = '';
-		passwordChanged = false;
 
 		try {
 			await account.changePassword({ current_password: current, new_password: next });
 			current = next = confirm = '';
-			passwordChanged = true;
+			notify.success(t('security.password_changed'));
 			// Every other session has ended: the list below shrinks.
 			await invalidateAll();
 		} catch (err) {
-			passwordError = messageOf(err, t);
+			notify.error(messageOf(err, t));
 		} finally {
 			changing = false;
 		}
 	}
 
 	let ending = $state<string | null>(null);
-	let sessionError = $state('');
 
 	async function endSession(id: string) {
 		ending = id;
-		sessionError = '';
 
 		try {
 			await account.endSession(id);
+			notify.success(t('security.session_ended'));
 			await invalidateAll();
 		} catch (err) {
-			sessionError = messageOf(err, t);
+			notify.error(messageOf(err, t));
 		} finally {
 			ending = null;
 		}
@@ -77,11 +73,6 @@
 
 	<form onsubmit={changePassword}>
 		<Panel title={t('security.password_title')} description={t('security.password_description')}>
-			{#if passwordError}<Alert>{passwordError}</Alert>{/if}
-			{#if passwordChanged}
-				<Alert tone="success">{t('security.password_changed')}</Alert>
-			{/if}
-
 			<PasswordField label={t('field.current_password')} bind:value={current} disabled={changing} />
 			<div class="pair">
 				<PasswordField
@@ -112,8 +103,6 @@
 		{#snippet aside()}
 			<span class="count">{data.sessions.length}</span>
 		{/snippet}
-
-		{#if sessionError}<Alert>{sessionError}</Alert>{/if}
 
 		<ul class="sessions">
 			{#each data.sessions as session (session.id)}

@@ -5,17 +5,17 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiAddLine, RiCloseLine, RiRefreshLine, RiUpload2Line } from 'svelte-remixicon';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { flowsApi, messageOf, type LoginFlow } from '$lib/api';
+	import { flowsApi, type LoginFlow } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import {
-		Alert,
 		Button,
 		Icon,
 		IconButton,
 		PageHeader,
 		SearchInput,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import FlowTable from '$lib/components/flows/FlowTable.svelte';
 	import { TEMPLATES, freeSlug, fromFile } from '$lib/components/flows/steps';
@@ -58,7 +58,6 @@
 	const rows = $derived(visible.slice(0, shown));
 
 	let choosing = $state(false);
-	let error = $state('');
 	let importing = $state(false);
 	let file = $state<HTMLInputElement>();
 
@@ -96,7 +95,6 @@
 		input.value = '';
 		if (!chosen) return;
 
-		error = '';
 		importing = true;
 
 		try {
@@ -104,7 +102,7 @@
 			try {
 				draft = fromFile(await chosen.text(), flows.data.step_kinds);
 			} catch (err) {
-				error = (err as Error).message;
+				notify.problem((err as Error).message);
 				return;
 			}
 
@@ -115,9 +113,10 @@
 				is_default: false
 			});
 			await queryClient.invalidateQueries({ queryKey: keys.flows.all });
+			notify.success(`${result.flow.name} imported`);
 			await goto(resolve('/admin/(panel)/dashboard/flows/[id]', { id: result.flow.id }));
 		} catch (err) {
-			error = messageOf(err);
+			notify.error(err, 'Could not import this flow');
 		} finally {
 			importing = false;
 		}
@@ -178,10 +177,6 @@
 		{/if}
 	{/snippet}
 </PageHeader>
-
-{#if error}
-	<Alert>{error}</Alert>
-{/if}
 
 {#if choosing}
 	<section class="templates" aria-label="Start from a template">

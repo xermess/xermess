@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { QueryClientProvider } from '@tanstack/svelte-query';
 	import NavigationProgress from '$lib/components/layout/NavigationProgress.svelte';
+	import { Toaster } from '$lib/components/ui';
 	import { createQueryClient } from '$lib/query';
 	import '$lib/styles/app.css';
 	import type { LayoutProps } from './$types';
@@ -21,3 +22,6 @@
 <QueryClientProvider client={queryClient}>
 	{@render children()}
 </QueryClientProvider>
+
+<!-- Every page's toasts, the sign-in pages' included. -->
+<Toaster />

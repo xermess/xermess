@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Toaster } from '$lib/components';
 	import { provideTranslator, translator } from '$lib/i18n';
 	import '$lib/styles/app.css';
 	import type { LayoutProps } from './$types';
@@ -25,3 +26,6 @@
 </script>
 
 {@render children()}
+
+<!-- The account pages' toasts. -->
+<Toaster />

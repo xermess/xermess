@@ -5,12 +5,11 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createInfiniteQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { ApiError, applicationsApi, type Application } from '$lib/api';
+	import { applicationsApi, type Application } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import { applicationsOptions, keys, uniqueById } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		Icon,
@@ -20,10 +19,12 @@
 		SegmentedControl,
 		SelectionBar,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import ApplicationDrawer from '$lib/components/applications/ApplicationDrawer.svelte';
 	import ApplicationTable from '$lib/components/applications/ApplicationTable.svelte';
+	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -52,7 +53,6 @@
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 
 	let confirmingDelete = $state(false);
-	let error = $state('');
 	let busy = $state(false);
 
 	async function apply(changes: { search?: string; type?: string }) {
@@ -100,7 +100,6 @@
 	function reset() {
 		selected = [];
 		confirmingDelete = false;
-		error = '';
 	}
 
 	/** Removing an application takes its roles, and everyone's hold on them,
@@ -111,7 +110,8 @@
 				await applicationsApi.remove(id);
 			}
 		},
-		onSuccess: () => {
+		onSuccess: (_result: void, ids: string[]) => {
+			notify.success(`${countOf(ids.length, 'application')} deleted`);
 			reset();
 			return Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.applications.all }),
@@ -121,7 +121,7 @@
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = err instanceof ApiError ? err.message : 'Could not delete these applications';
+			notify.error(err, 'Could not delete these applications');
 		},
 		onSettled: () => {
 			busy = false;
@@ -181,10 +181,6 @@
 	/>
 </Toolbar>
 
-{#if error}
-	<Alert>{error}</Alert>
-{/if}
-
 <ApplicationTable
 	applications={rows}
 	onOpen={openApplication}
@@ -216,7 +212,6 @@
 	{busy}
 	onConfirm={() => {
 		if (busy) return;
-		error = '';
 		busy = true;
 		removeSelected.mutate(chosen);
 	}}

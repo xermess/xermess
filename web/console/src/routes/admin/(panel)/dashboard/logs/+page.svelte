@@ -21,7 +21,8 @@
 		SearchInput,
 		Select,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		todayIso
 	} from '$lib/components/ui';
 	import { keys, logsOptions } from '$lib/query';
 	import type { PageData } from './$types';
@@ -93,7 +94,7 @@
 		}
 	}
 
-	const today = new Date().toISOString().slice(0, 10);
+	const today = todayIso();
 </script>
 
 <svelte:head>
@@ -206,7 +207,7 @@
 
 	/* Room for the label, the day, and the clear and calendar buttons. */
 	.dates > :global(*) {
-		width: 13.5rem;
+		width: 14rem;
 	}
 
 	@media (max-width: 40rem) {

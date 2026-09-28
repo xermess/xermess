@@ -67,6 +67,14 @@
 	--color-warning: #d9682b;
 	--color-info: #2f6fdb;
 
+	/* A toast is the theme turned over — dark on the light page, white on the
+	   dark — and its icon is the brand in the other theme's shade, so it reads
+	   on it. The icon's shape tells a success from a failure. */
+	--toast-surface: #1f2328;
+	--toast-text: #ffffff;
+	--toast-hint: #a2a9ae;
+	--toast-icon: #7aa7ee;
+
 	--shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 6%);
 	--selection: #465a7340;
 
@@ -98,6 +106,10 @@
 	--color-danger: #e0566a;
 	--color-warning: #ec8a50;
 	--color-info: #7aa7ee;
+	--toast-surface: #ffffff;
+	--toast-text: #1f2328;
+	--toast-hint: #66707a;
+	--toast-icon: #2f6fdb;
 
 	/* Dark surfaces are separated by colour and borders, not depth. */
 	--shadow-card: none;
@@ -133,6 +145,10 @@
 		--color-danger: #e0566a;
 		--color-warning: #ec8a50;
 		--color-info: #7aa7ee;
+		--toast-surface: #ffffff;
+		--toast-text: #1f2328;
+		--toast-hint: #66707a;
+		--toast-icon: #2f6fdb;
 
 		--shadow-card: none;
 

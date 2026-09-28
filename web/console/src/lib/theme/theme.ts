@@ -119,6 +119,16 @@ const light = {
 	'tooltip-surface': '#2b2b2e',
 	'tooltip-text': '#fff',
 
+	// A toast is the theme turned over — black on the light page, white on
+	// the dark one — so it is the one thing on screen that stands out without
+	// a colour of its own. Its icon is the brand, whatever the toast says —
+	// the shape tells a success from a failure — and it is the brand as the
+	// other theme writes it, since that is what reads on black.
+	'toast-surface': '#16191d',
+	'toast-text': '#fff',
+	'toast-hint': '#aab0b7',
+	'toast-icon': '#3ea6e6',
+
 	'row-hover': '#f7f7f8',
 
 	// What floats over the page comes in two kinds, each with its own set: a
@@ -214,6 +224,11 @@ const dark: Partial<Record<ColorName, string>> = {
 	'scrollbar-thumb-hover': '#4c5257',
 
 	'tooltip-surface': '#202327',
+
+	'toast-surface': '#fff',
+	'toast-text': '#16191d',
+	'toast-hint': '#5b6168',
+	'toast-icon': '#0088cc',
 
 	'row-hover': '#0e1012',
 

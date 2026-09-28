@@ -5,12 +5,11 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { RiAddLine, RiDeleteBinLine, RiRefreshLine } from 'svelte-remixicon';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { ApiError, apisApi, type API } from '$lib/api';
+	import { apisApi, type API } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import { apisOptions, firstPage, keys, LIST_PAGE_SIZE } from '$lib/query';
 	import { can } from '$lib/permissions';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		Icon,
@@ -19,10 +18,12 @@
 		SearchInput,
 		SelectionBar,
 		ShowMore,
-		Toolbar
+		Toolbar,
+		notify
 	} from '$lib/components/ui';
 	import ApiDrawer from '$lib/components/apis/ApiDrawer.svelte';
 	import ApiTable from '$lib/components/apis/ApiTable.svelte';
+	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -56,7 +57,6 @@
 	);
 
 	let confirmingDelete = $state(false);
-	let error = $state('');
 	let busy = $state(false);
 
 	async function apply(changes: { search?: string }) {
@@ -104,7 +104,6 @@
 	function reset() {
 		selected = [];
 		confirmingDelete = false;
-		error = '';
 	}
 
 	const removeSelected = createMutation(() => ({
@@ -113,7 +112,8 @@
 				await apisApi.remove(id);
 			}
 		},
-		onSuccess: () => {
+		onSuccess: (_result: void, ids: string[]) => {
+			notify.success(`${countOf(ids.length, 'API')} deleted`);
 			reset();
 			return Promise.all([
 				queryClient.invalidateQueries({ queryKey: keys.apis.all }),
@@ -123,7 +123,7 @@
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = err instanceof ApiError ? err.message : 'Could not delete these APIs';
+			notify.error(err, 'Could not delete these APIs');
 		},
 		onSettled: () => {
 			busy = false;
@@ -168,10 +168,6 @@
 	/>
 </Toolbar>
 
-{#if error}
-	<Alert>{error}</Alert>
-{/if}
-
 <ApiTable
 	apis={rows}
 	onOpen={openApi}
@@ -200,7 +196,6 @@
 	{busy}
 	onConfirm={() => {
 		if (busy) return;
-		error = '';
 		busy = true;
 		removeSelected.mutate(chosen);
 	}}

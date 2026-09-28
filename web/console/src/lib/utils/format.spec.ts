@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeUserAgent, formatDateTime, formatDayHeading, formatRelative } from './format';
+import {
+	countOf,
+	describeUserAgent,
+	formatDateTime,
+	formatDayHeading,
+	formatRelative
+} from './format';
 
 describe('formatDateTime', () => {
 	it('reads a timestamp the way the panel shows it', () => {
@@ -56,5 +62,15 @@ describe('describeUserAgent', () => {
 		expect(describeUserAgent(chrome)).toBe('Chrome on macOS');
 		expect(describeUserAgent(firefox)).toBe('Firefox on Windows');
 		expect(describeUserAgent('')).toBe('Unknown device');
+	});
+});
+
+describe('countOf', () => {
+	it.each([
+		[1, 'role', '1 role'],
+		[0, 'role', '0 roles'],
+		[3, 'API', '3 APIs']
+	])('counts %i %s as "%s"', (n, noun, expected) => {
+		expect(countOf(n, noun)).toBe(expected);
 	});
 });

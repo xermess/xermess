@@ -10,13 +10,7 @@
 		RiArrowGoBackLine
 	} from 'svelte-remixicon';
 	import { useQueryClient } from '@tanstack/svelte-query';
-	import {
-		flowsApi,
-		messageOf,
-		type LoginFlow,
-		type LoginStep,
-		type LoginStepSpec
-	} from '$lib/api';
+	import { flowsApi, type LoginFlow, type LoginStep, type LoginStepSpec } from '$lib/api';
 	import {
 		Alert,
 		Button,
@@ -24,7 +18,8 @@
 		Icon,
 		IconButton,
 		PageHeader,
-		Tag
+		Tag,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { draftOf, download, freeSlug, problemsOf, toFile, type FlowDraft } from '../steps';
@@ -66,7 +61,6 @@
 	/** The gap a "+" on the canvas is waiting to fill from the palette. */
 	let waiting = $state<number | null>(null);
 
-	let error = $state('');
 	let busy = $state(false);
 	let confirmingDelete = $state(false);
 	/** Set on the way out after a save or a delete, which leave nothing to lose. */
@@ -143,12 +137,11 @@
 	// ---- Saving and the rest -----------------------------------------------------
 
 	async function run(action: () => Promise<void>) {
-		error = '';
 		busy = true;
 		try {
 			await action();
 		} catch (err) {
-			error = messageOf(err);
+			notify.error(err, 'Could not save this flow');
 		} finally {
 			busy = false;
 		}
@@ -169,6 +162,7 @@
 
 			await queryClient.invalidateQueries({ queryKey: keys.flows.all });
 			saved = JSON.stringify(draftOf(draft));
+			notify.success(creating ? `${result.flow.name} created` : 'Flow saved');
 
 			if (creating) {
 				leaving = true;
@@ -186,6 +180,7 @@
 			};
 			const result = await flowsApi.create(copy);
 			await queryClient.invalidateQueries({ queryKey: keys.flows.all });
+			notify.success(`${result.flow.name} created`);
 
 			leaving = true;
 			await goto(resolve('/admin/(panel)/dashboard/flows/[id]', { id: result.flow.id }));
@@ -195,6 +190,7 @@
 		run(async () => {
 			await flowsApi.remove(flow!.id);
 			await queryClient.invalidateQueries({ queryKey: keys.flows.all });
+			notify.success(`${flow!.name} deleted`);
 
 			leaving = true;
 			await goto(resolve('/admin/(panel)/dashboard/flows'));
@@ -255,9 +251,8 @@
 		{/snippet}
 	</PageHeader>
 
-	{#if error || problems.length > 0 || !editable}
+	{#if problems.length > 0 || !editable}
 		<div class="messages">
-			{#if error}<Alert>{error}</Alert>{/if}
 			{#if problems.length > 0}
 				<Alert tone="warning">
 					<span class="problems">

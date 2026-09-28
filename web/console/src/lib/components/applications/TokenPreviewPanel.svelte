@@ -8,7 +8,6 @@
 		RiUserLine
 	} from 'svelte-remixicon';
 	import {
-		ApiError,
 		applicationsApi,
 		usersApi,
 		type Admin,
@@ -17,14 +16,14 @@
 		type UserRecord
 	} from '$lib/api';
 	import {
-		Alert,
 		Button,
 		CopyButton,
 		Icon,
 		IconButton,
 		Note,
 		Select,
-		type SelectOption
+		type SelectOption,
+		notify
 	} from '$lib/components/ui';
 	import { can } from '$lib/permissions';
 	import { keys } from '$lib/query';
@@ -50,7 +49,6 @@
 	let extra = $state('');
 
 	let preview = $state<TokenPreview | null>(null);
-	let error = $state('');
 	let running = $state(false);
 
 	$effect(() => {
@@ -126,7 +124,7 @@
 			preview = result.preview;
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not evaluate this token request';
+			notify.error(err, 'Could not evaluate this token request');
 		},
 		onSettled: () => {
 			running = false;
@@ -136,7 +134,6 @@
 	function run() {
 		if (!canRun) return;
 
-		error = '';
 		running = true;
 		evaluate.mutate();
 	}
@@ -284,10 +281,6 @@
 		</Button>
 	</div>
 </div>
-
-{#if error}
-	<div class="error"><Alert>{error}</Alert></div>
-{/if}
 
 {#if preview}
 	<div class="result">
@@ -524,10 +517,6 @@
 	.run {
 		display: flex;
 		justify-content: flex-end;
-	}
-
-	.error {
-		margin-top: var(--space-3);
 	}
 
 	.result {

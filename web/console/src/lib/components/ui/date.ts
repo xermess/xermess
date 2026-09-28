@@ -1,0 +1,58 @@
+/**
+ * Days as the date picker reads and write them. A day travels as an ISO
+ * date — "2026-03-12" — the same value a native date input has, and is shown
+ * one way, day first — "12/03/2026" — rather than in the reader's locale: the
+ * server renders the field too, and a date written two ways would be two
+ * different pages.
+ */
+import { parseDate, type DateValue } from '@ark-ui/svelte/date-picker';
+
+const pad = (n: number, width = 2) => String(n).padStart(width, '0');
+
+/** An ISO date as the picker's own kind of value, or nothing for anything
+    that is not one. */
+export function toDate(iso: string | undefined): DateValue | undefined {
+	if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return undefined;
+
+	try {
+		return parseDate(iso);
+	} catch {
+		return undefined;
+	}
+}
+
+/** The reader's time zone, for the calendar's "today": Ark's is UTC unless
+    it is told otherwise. */
+export const timeZone =
+	typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
+
+/** Today where the reader is, as an ISO date — not in UTC, which is
+    another day for part of every day almost everywhere. */
+export function todayIso(): string {
+	const now = new Date();
+	return `${pad(now.getFullYear(), 4)}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** The picker's value back as an ISO date. */
+export function toIso(date: DateValue): string {
+	return `${pad(date.year, 4)}-${pad(date.month)}-${pad(date.day)}`;
+}
+
+/** A day as it is shown: "12/03/2026". */
+export function formatDay(date: DateValue): string {
+	return `${pad(date.day)}/${pad(date.month)}/${pad(date.year, 4)}`;
+}
+
+/** What can be typed: the day as it is shown, with slashes, dots or dashes
+    between its parts, or an ISO date pasted in. */
+export function parseDay(text: string): DateValue | undefined {
+	const trimmed = text.trim();
+
+	const iso = toDate(trimmed);
+	if (iso) return iso;
+
+	const match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(trimmed);
+	if (!match) return undefined;
+
+	return toDate(`${match[3]}-${pad(Number(match[2]))}-${pad(Number(match[1]))}`);
+}

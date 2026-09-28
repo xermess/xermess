@@ -2,13 +2,12 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiFileTextLine, RiRestartLine, RiTranslate2 } from 'svelte-remixicon';
 	import {
-		ApiError,
 		mailApi,
 		type MailContent,
 		type MailLanguageContent,
 		type MailMessageSpec
 	} from '$lib/api';
-	import { Alert, Button, Input, Panel, Select, Tag, Textarea } from '$lib/components/ui';
+	import { Button, Input, Panel, Select, Tag, Textarea, notify } from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
 	type Props = {
@@ -70,9 +69,6 @@
 		drafts = wordsOf(content.languages.find((one) => one.code === code));
 	});
 
-	let error = $state('');
-	let saved = $state(false);
-
 	const dirty = $derived(
 		content.messages.some(
 			(spec) =>
@@ -84,8 +80,7 @@
 	const save = createMutation(() => ({
 		mutationFn: () => mailApi.saveContent(code, drafts),
 		onSuccess: async () => {
-			saved = true;
-			error = '';
+			notify.success('Saved', 'The next message in this language uses these words.');
 			// The words are the sign-in pages' text, so the languages go with
 			// the mail content: both are reading the same rows.
 			await Promise.all([
@@ -95,7 +90,7 @@
 			]);
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save these words';
+			notify.error(err, 'Could not save these words');
 		}
 	}));
 
@@ -104,8 +99,6 @@
 
 		if (save.isPending || !dirty) return;
 
-		error = '';
-		saved = false;
 		save.mutate();
 	}
 
@@ -133,12 +126,6 @@
 		words — the same rows the Languages page holds, shown here as the messages they make. A field
 		left empty falls back to the English this release ships, which is what the placeholder shows.
 	</p>
-
-	{#if error}
-		<Alert>{error}</Alert>
-	{:else if saved && !dirty}
-		<Alert tone="success">Saved. The next message in this language uses these words.</Alert>
-	{/if}
 
 	<Panel title="Language" icon={RiTranslate2}>
 		{#snippet meta()}

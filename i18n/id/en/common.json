@@ -29,7 +29,8 @@
 		"save_changes": "Save changes",
 		"sign_in": "Sign in",
 		"sign_out": "Sign out",
-		"back_to_sign_in": "Back to sign in"
+		"back_to_sign_in": "Back to sign in",
+		"dismiss": "Dismiss"
 	},
 	"time": {
 		"never": "Never"
@@ -38,5 +39,8 @@
 		"on": "{browser} on {system}",
 		"unknown_browser": "Unknown browser",
 		"unknown_system": "an unknown device"
+	},
+	"toast": {
+		"region": "Notifications"
 	}
 }

@@ -8,17 +8,11 @@
 		RiNodeTree,
 		RiShieldUserLine
 	} from 'svelte-remixicon';
-	import {
-		ApiError,
-		usersApi,
-		type Admin,
-		type Application,
-		type Role,
-		type RoleMapping
-	} from '$lib/api';
-	import { Alert, Button, Icon, IconButton, Switch, Tooltip } from '$lib/components/ui';
+	import { usersApi, type Admin, type Application, type Role, type RoleMapping } from '$lib/api';
+	import { Alert, Button, Icon, IconButton, Switch, Tooltip, notify } from '$lib/components/ui';
 	import { canAnywhere } from '$lib/permissions';
 	import { keys } from '$lib/query';
+	import { countOf } from '$lib/utils/format';
 	import RolePicker from './RolePicker.svelte';
 	import { canAssign } from './roles';
 
@@ -51,7 +45,6 @@
 	/** The role being taken away, so only its chip shows the wait. */
 	let removing = $state<string | null>(null);
 
-	let error = $state('');
 	let busy = $state(false);
 
 	const mayAssign = $derived(canAnywhere(admin, 'role_assignments.write'));
@@ -130,13 +123,14 @@
 
 	const assign = createMutation(() => ({
 		mutationFn: (ids: string[]) => usersApi.assignRoles(userId, ids),
-		onSuccess: async (result: { roles: RoleMapping[] }) => {
+		onSuccess: async (result: { roles: RoleMapping[] }, ids: string[]) => {
+			notify.success(`${countOf(ids.length, 'role')} assigned`);
 			await refill(result.roles);
 			picked = [];
 			mode = 'held';
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not assign these roles';
+			notify.error(err, 'Could not assign these roles');
 		},
 		onSettled: () => {
 			busy = false;
@@ -145,9 +139,12 @@
 
 	const unassign = createMutation(() => ({
 		mutationFn: (id: string) => usersApi.unassignRole(userId, id),
-		onSuccess: (result: { roles: RoleMapping[] }) => refill(result.roles),
+		onSuccess: (result: { roles: RoleMapping[] }) => {
+			notify.success('Role removed');
+			return refill(result.roles);
+		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not remove this role';
+			notify.error(err, 'Could not remove this role');
 		},
 		onSettled: () => {
 			busy = false;
@@ -158,14 +155,12 @@
 	function remove(role: RoleMapping) {
 		if (busy) return;
 
-		error = '';
 		busy = true;
 		removing = role.id;
 		unassign.mutate(role.id);
 	}
 
 	function openAssign() {
-		error = '';
 		picked = [];
 		mode = 'assign';
 	}
@@ -173,15 +168,10 @@
 	function submitAssign() {
 		if (busy || picked.length === 0) return;
 
-		error = '';
 		busy = true;
 		assign.mutate(picked);
 	}
 </script>
-
-{#if error}
-	<div class="error"><Alert>{error}</Alert></div>
-{/if}
 
 {#if mode === 'held'}
 	<div class="bar">
@@ -327,10 +317,6 @@
 {/if}
 
 <style>
-	.error {
-		margin-bottom: var(--space-3);
-	}
-
 	.bar {
 		display: flex;
 		flex-wrap: wrap;

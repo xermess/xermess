@@ -2,7 +2,6 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { RiDeleteBinLine, RiExternalLinkLine } from 'svelte-remixicon';
 	import {
-		ApiError,
 		socialApi,
 		type SocialKind,
 		type SocialProvider,
@@ -11,7 +10,6 @@
 		type SocialTokenAuth
 	} from '$lib/api';
 	import {
-		Alert,
 		Button,
 		ConfirmDialog,
 		Drawer,
@@ -20,7 +18,8 @@
 		Icon,
 		Input,
 		Select,
-		SwitchField
+		SwitchField,
+		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 	import { kindOptions, tokenAuthOptions } from './providers';
@@ -57,7 +56,6 @@
 	let linkVerifiedEmails = $state(true);
 	let allowRegistration = $state(true);
 
-	let error = $state('');
 	let saving = $state(false);
 	let confirmingDelete = $state(false);
 
@@ -86,7 +84,6 @@
 	$effect(() => {
 		if (!open) return;
 
-		error = '';
 		confirmingDelete = false;
 		clientSecret = '';
 		privateKey = '';
@@ -174,11 +171,12 @@
 		mutationFn: () =>
 			provider ? socialApi.update(provider.id, input()) : socialApi.create(input()),
 		onSuccess: async () => {
+			notify.success(provider ? 'Provider saved' : 'Provider added');
 			open = false;
 			await queryClient.invalidateQueries({ queryKey: keys.social.all });
 		},
 		onError: (err: unknown) => {
-			error = err instanceof ApiError ? err.message : 'Could not save this provider';
+			notify.error(err, 'Could not save this provider');
 		},
 		onSettled: () => {
 			saving = false;
@@ -188,12 +186,13 @@
 	const remove = createMutation(() => ({
 		mutationFn: () => socialApi.remove(provider?.id ?? ''),
 		onSuccess: async () => {
+			notify.success('Provider removed');
 			open = false;
 			await queryClient.invalidateQueries({ queryKey: keys.social.all });
 		},
 		onError: (err: unknown) => {
 			confirmingDelete = false;
-			error = err instanceof ApiError ? err.message : 'Could not remove this provider';
+			notify.error(err, 'Could not remove this provider');
 			saving = false;
 		}
 	}));
@@ -203,7 +202,6 @@
 
 		if (!ready || saving) return;
 
-		error = '';
 		saving = true;
 		save.mutate();
 	}
@@ -218,10 +216,6 @@
 	meta={editing ? provider!.slug : undefined}
 	onsubmit={submit}
 >
-	{#if error}
-		<div class="message"><Alert>{error}</Alert></div>
-	{/if}
-
 	<FormSection
 		title="Provider"
 		description={editing
@@ -372,10 +366,6 @@
 />
 
 <style>
-	.message {
-		margin-bottom: var(--space-4);
-	}
-
 	.note {
 		margin: 0;
 		font-size: var(--text-sm);
