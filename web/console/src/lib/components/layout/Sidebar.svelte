@@ -40,6 +40,20 @@
 		if (!narrow.current) shell.setMenu(false);
 	});
 
+	// While the panel is open the page under it stays still: a swipe on the
+	// list scrolls the list, not the table it is covering.
+	$effect(() => {
+		if (!narrow.current || !shell.menuOpen) return;
+
+		const root = document.documentElement;
+		const before = root.style.overflow;
+		root.style.overflow = 'hidden';
+
+		return () => {
+			root.style.overflow = before;
+		};
+	});
+
 	// Escape closes it — listened for on the way down rather than on the way
 	// up, because the control that opens the panel carries a tooltip, and a
 	// tooltip takes Escape for itself before it reaches the window.

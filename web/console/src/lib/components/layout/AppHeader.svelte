@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { MediaQuery } from 'svelte/reactivity';
 	import {
 		RiCloseLine,
 		RiMenuLine,
@@ -12,7 +11,6 @@
 	import { BRAND } from '$lib/brand';
 	import { IconButton, ThemeToggle, Thumb } from '$lib/components/ui';
 	import { useShell } from '$lib/state/shell.svelte';
-	import { breakpoints } from '$lib/theme';
 	import { initials } from '$lib/utils/format';
 	import AccountMenu from './AccountMenu.svelte';
 	import CommandPalette from './CommandPalette.svelte';
@@ -25,39 +23,44 @@
 	/** The logo block is the top of the sidebar's column, so it folds with it. */
 	const shell = useShell();
 
-	/** The dashboard is where the sidebar is, and so where the logo block is
-	    ruled off as the top of its column. Elsewhere, such as the profile, it
-	    keeps the width without a line leading nowhere. */
+	/** The dashboard is where the sidebar is, and so where the header carries
+	    its controls and the logo block is ruled off as the top of its column.
+	    Elsewhere, such as the profile, it keeps the width without a line
+	    leading nowhere. */
 	const besideSidebar = $derived(page.route.id?.startsWith('/admin/(panel)/dashboard') ?? false);
-
-	/** The same width the sidebar reads: below it the column is a panel, so
-	    the control beside the logo opens and closes that panel rather than
-	    folding a column that is not there. */
-	const narrow = new MediaQuery(`max-width: ${breakpoints.sidebar}`);
-
-	const nav = $derived(
-		narrow.current
-			? {
-					icon: shell.menuOpen ? RiCloseLine : RiMenuLine,
-					label: shell.menuOpen ? 'Close the menu' : 'Open the menu',
-					press: () => shell.setMenu(!shell.menuOpen)
-				}
-			: {
-					icon: shell.collapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine,
-					label: shell.collapsed ? 'Expand the sidebar' : 'Collapse the sidebar',
-					press: shell.toggle
-				}
-	);
 
 	/** The organisation's name, or the product's on an installation nobody
 	    has named yet. */
 	const name = $derived(organization.name.trim() || BRAND.name);
 </script>
 
-<!-- Read left to right: whose panel this is, the sidebar's control, and at
-     the far end the tools — search, help, the theme — then who is signed in. -->
-<header class:mini={shell.collapsed}>
-	<div class="brand-column" class:ruled={besideSidebar}>
+<!-- One row, read left to right: whose panel this is, the sidebar's control,
+     then at the far end the tools — search, help, the theme — and who is
+     signed in.
+
+     A wide window has a sidebar column, and the logo block is its top: as
+     wide, as tinted, folding with it, with the fold control beside it. A
+     narrow one has none — the sections are a panel over the page — so the
+     control that opens the panel comes first and the logo and name follow
+     it.
+
+     Which of the two controls shows is the stylesheet's choice, not the
+     script's: the server renders both, so the page arrives right at any
+     width and nothing changes when it comes to life. -->
+<header class:mini={shell.collapsed} class:dashboard={besideSidebar}>
+	{#if besideSidebar}
+		<div class="menu-control">
+			<IconButton
+				icon={shell.menuOpen ? RiCloseLine : RiMenuLine}
+				label={shell.menuOpen ? 'Close the menu' : 'Open the menu'}
+				size="sm"
+				placement="right"
+				onclick={() => shell.setMenu(!shell.menuOpen)}
+			/>
+		</div>
+	{/if}
+
+	<div class="brand-column">
 		<a class="brand" href={resolve('/admin/dashboard')} aria-label="{name} Console">
 			<Thumb
 				src={organization.logo_url}
@@ -68,32 +71,32 @@
 				bare
 			/>
 
-			<span class="names" aria-hidden={shell.collapsed}>
+			<span class="names">
 				<strong title={name}>{name}</strong>
 				<small>Console</small>
 			</span>
 		</a>
 	</div>
 
-	<div class="bar">
-		<div class="start">
-			<!-- The control for the navigation: it folds the column where there
-			     is one, and opens the panel where the column has become one.
-			     Only on the dashboard, the one page with navigation beside it. -->
-			{#if besideSidebar}
-				<IconButton icon={nav.icon} label={nav.label} size="sm" onclick={nav.press} />
-			{/if}
+	{#if besideSidebar}
+		<div class="fold-control">
+			<IconButton
+				icon={shell.collapsed ? RiSidebarUnfoldLine : RiSidebarFoldLine}
+				label={shell.collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}
+				size="sm"
+				onclick={shell.toggle}
+			/>
 		</div>
+	{/if}
 
-		<!-- Search, help and the theme are quiet icons, grouped; a hairline,
-		     then who is signed in, which is a different kind of thing. -->
-		<div class="end">
-			<CommandPalette />
-			<HelpMenu />
-			<ThemeToggle size="sm" variant="ghost" />
-			<span class="rule" aria-hidden="true"></span>
-			<AccountMenu {admin} />
-		</div>
+	<!-- The tools are quiet icons, grouped at the far end; a hairline, then
+	     who is signed in, which is a different kind of thing. -->
+	<div class="end">
+		<CommandPalette />
+		<HelpMenu />
+		<ThemeToggle size="sm" variant="ghost" />
+		<span class="rule" aria-hidden="true"></span>
+		<AccountMenu {admin} />
 	</div>
 </header>
 
@@ -108,30 +111,31 @@
 		z-index: 10;
 		display: flex;
 		align-items: center;
+		gap: var(--space-2);
 		height: var(--header-height);
+		padding-right: var(--page-gutter);
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-surface);
 		overscroll-behavior: none;
 	}
 
 	/* The top of the sidebar's column: exactly as wide, and on the dashboard
-	   ruled off on the same line as the sidebar's edge, so the two read as one
-	   block. The width comes from the panel layout, which animates it, so
-	   both fold on the same frames. */
+	   ruled off on the same line as the sidebar's edge and wearing its tint,
+	   so the two read as one block. The width comes from the panel layout,
+	   which animates it, so both fold on the same frames. */
 	.brand-column {
 		display: flex;
 		flex-shrink: 0;
 		align-items: center;
 		align-self: stretch;
 		width: var(--sidebar-width);
+		min-width: 0;
 		overflow: hidden;
 		border-right: 1px solid transparent;
 		transition: border-color var(--speed);
 	}
 
-	/* On the dashboard it is the sidebar's top, so it wears the sidebar's
-	   tint as well as its edge. */
-	.brand-column.ruled {
+	.dashboard .brand-column {
 		border-right-color: var(--color-border);
 		background: var(--nav-surface);
 	}
@@ -152,7 +156,7 @@
 	}
 
 	.brand:focus-visible {
-		outline: 2px solid var(--color-accent);
+		outline: 2px solid var(--color-info);
 		outline-offset: -4px;
 	}
 
@@ -177,29 +181,9 @@
 		font-size: var(--text-xs);
 	}
 
-	.mini .names {
-		opacity: 0;
-	}
-
-	/* Everything past the logo block: the sidebar's control at the start,
-	   and the tools pushed to the end. */
-	.bar {
-		display: flex;
-		flex: 1;
-		align-items: center;
-		gap: var(--space-2);
-		min-width: 0;
-		height: 100%;
-		padding: 0 var(--page-gutter) 0 var(--space-2);
-	}
-
-	.start {
-		display: flex;
-		align-items: center;
-	}
-
 	.end {
 		display: flex;
+		flex-shrink: 0;
 		align-items: center;
 		gap: 2px;
 		margin-left: auto;
@@ -214,32 +198,55 @@
 		background: var(--color-border);
 	}
 
-	/* Narrow screens have no sidebar column — the sections are a panel the
-	   control beside the logo opens — so the logo block is only as wide as
-	   the mark, and the search takes the room in the middle. */
-	@media (max-width: 55rem) {
-		.brand-column,
-		.brand-column.ruled {
-			width: auto;
-			border-right-color: transparent;
-		}
-
-		.brand {
-			padding: 0 var(--space-1) 0 var(--space-3);
-		}
-
-		.names {
+	/* ---- A window wide enough for the sidebar column ------------------- */
+	@media (min-width: 55.0625rem) {
+		.menu-control {
 			display: none;
 		}
 
-		.bar {
-			padding-left: 0;
+		/* Folded, the column is the mark alone. */
+		.mini .names {
+			opacity: 0;
 		}
 	}
 
-	@media (max-width: 40rem) {
+	/* ---- A window too narrow for it (breakpoints.sidebar) -------------- */
+	@media (max-width: 55rem) {
+		header {
+			gap: var(--space-1);
+			padding-left: var(--space-2);
+		}
+
+		.fold-control {
+			display: none;
+		}
+
+		/* No column to top: the logo block is only as wide as the mark and
+		   the name, on the header's own white, and the name gives way first
+		   when the row is short of room. */
+		.brand-column,
+		.dashboard .brand-column {
+			width: auto;
+			flex-shrink: 1;
+			border-right-color: transparent;
+			background: none;
+		}
+
+		.brand {
+			gap: var(--space-2);
+			padding: 0 var(--space-1);
+		}
+
 		.rule {
 			margin: 0 var(--space-1);
+		}
+	}
+
+	/* A small phone: the mark says whose panel it is; the name would crowd
+	   out the tools. */
+	@media (max-width: 24rem) {
+		.names small {
+			display: none;
 		}
 	}
 </style>

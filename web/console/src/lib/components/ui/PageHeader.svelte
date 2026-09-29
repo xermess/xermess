@@ -180,13 +180,31 @@
 		line-height: 1.55;
 	}
 
+	/* A phone: what the page is comes first — the title, then what it is
+	   for — and what can be done follows on a row of its own, the icon
+	   buttons at its start and the main action at its end, rather than
+	   wedged between the title and its description. */
 	@media (max-width: 34rem) {
 		h1 {
 			font-size: var(--text-xl);
 		}
 
+		.title-row {
+			display: contents;
+		}
+
+		.title {
+			min-height: var(--control-height-sm);
+		}
+
+		.description {
+			order: 1;
+		}
+
 		.tools {
+			order: 2;
 			width: 100%;
+			margin-top: var(--space-2);
 		}
 
 		.actions {

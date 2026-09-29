@@ -209,7 +209,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<!-- One quiet icon among the header's others. The tooltip names the key,
+<!-- One quiet icon among the header's tools. The tooltip names the key,
      which is the faster way in and the one worth learning. -->
 <IconButton icon={RiSearchLine} label="Search (press /)" size="sm" onclick={show} />
 

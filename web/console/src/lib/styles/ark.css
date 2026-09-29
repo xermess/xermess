@@ -118,6 +118,16 @@
 	white-space: nowrap;
 }
 
+/* A screen without a pointer has nothing to hover: a tooltip there only
+   opens on a tap and stays over what the tap was for — the menu the button
+   opened, the page it went to. Every control that has one carries its name
+   for assistive technology already, so nothing is lost. */
+@media (hover: none) {
+	[data-scope='tooltip'][data-part='content'] {
+		display: none;
+	}
+}
+
 [data-scope='tooltip'][data-part='content'][data-state='open'] {
 	animation: tooltip-in var(--speed) ease-out;
 }
