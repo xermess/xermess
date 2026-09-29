@@ -4,15 +4,16 @@
 	import { cacheApi, messageOf, type CacheDatabaseName, type CacheKey } from '$lib/api';
 	import {
 		Alert,
+		CodeEditor,
+		DangerZone,
 		Button,
-		Drawer,
+		FullscreenDialog,
 		FieldGrid,
 		FormSection,
 		Icon,
 		Input,
 		Note,
 		Tag,
-		Textarea,
 		notify
 	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
@@ -125,9 +126,17 @@
 	});
 </script>
 
-<Drawer
+{#snippet actions()}
+	<Button variant="subtle" onclick={() => (open = false)} disabled={busy}>Cancel</Button>
+	<Button type="submit" loading={save.isPending} disabled={busy || !parsed || !ttlValid}>
+		Save value
+	</Button>
+{/snippet}
+
+<FullscreenDialog
 	bind:open
-	title={editable ? 'Edit cached value' : 'Cached key'}
+	actions={editable ? actions : undefined}
+	title={key?.name ?? 'Cached key'}
 	meta={key ? kinds[key.kind].label : undefined}
 	onsubmit={submit}
 >
@@ -159,12 +168,11 @@
 				? 'What the next reader decodes. A value that no longer fits what the server expects is read as missing, and the database is read instead.'
 				: 'Shown as it is. What decides who is signed in, and a generation counter, are never edited by hand.'}
 		>
-			<Textarea
+			<CodeEditor
 				label="JSON"
 				bind:value={text}
 				rows={16}
-				readonly={!editable}
-				spellcheck={false}
+				readOnly={!editable}
 				error={editable && !parsed ? 'This is not JSON, or it is null.' : undefined}
 			/>
 			{#if editable}
@@ -182,74 +190,51 @@
 		</FormSection>
 
 		{#if current.kind !== 'generation'}
-			<FormSection title="Remove" description={consequence}>
+			<DangerZone title="Remove this key" description={consequence}>
 				{#if confirmingDelete}
-					<span class="confirm">
-						<Button
-							variant="subtle"
-							size="sm"
-							onclick={() => (confirmingDelete = false)}
-							disabled={busy}
-						>
-							Keep it
-						</Button>
-						<Button
-							colorPalette="danger"
-							size="sm"
-							loading={remove.isPending}
-							disabled={busy}
-							onclick={() => {
-								remove.mutate();
-							}}
-						>
-							Remove this key
-						</Button>
-					</span>
+					<Button
+						variant="subtle"
+						size="sm"
+						onclick={() => (confirmingDelete = false)}
+						disabled={busy}
+					>
+						Keep it
+					</Button>
+					<Button
+						colorPalette="danger"
+						size="sm"
+						loading={remove.isPending}
+						disabled={busy}
+						onclick={() => remove.mutate()}
+					>
+						Remove this key
+					</Button>
 				{:else}
-					<span>
-						<Button
-							colorPalette="danger"
-							variant="subtle"
-							size="sm"
-							onclick={() => (confirmingDelete = true)}
-							disabled={busy}
-						>
-							<Icon icon={RiDeleteBinLine} />
-							Remove
-						</Button>
-					</span>
+					<Button
+						colorPalette="danger"
+						variant="subtle"
+						size="sm"
+						onclick={() => (confirmingDelete = true)}
+						disabled={busy}
+					>
+						<Icon icon={RiDeleteBinLine} />
+						Remove
+					</Button>
 				{/if}
-			</FormSection>
+			</DangerZone>
 		{:else}
 			<Note>A generation counter is not removed: clear its group instead.</Note>
 		{/if}
 	{:else}
 		<Note>Reading…</Note>
 	{/if}
-
-	{#snippet footer()}
-		<span class="spacer"></span>
-		<Button variant="subtle" onclick={() => (open = false)} disabled={busy}>
-			{editable ? 'Cancel' : 'Close'}
-		</Button>
-		{#if editable}
-			<Button type="submit" loading={save.isPending} disabled={busy || !parsed || !ttlValid}>
-				Save value
-			</Button>
-		{/if}
-	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <style>
-	.tags,
-	.confirm {
+	.tags {
 		display: inline-flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-1);
-	}
-
-	.spacer {
-		flex: 1;
 	}
 </style>

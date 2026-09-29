@@ -36,7 +36,7 @@
 
 		overflow: hidden;
 		border: 1px solid var(--color-secondary-alt);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-surface);
 		background: var(--color-surface);
 	}
 

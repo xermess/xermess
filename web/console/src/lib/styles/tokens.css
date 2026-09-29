@@ -9,7 +9,7 @@
 		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', 'DejaVu Sans Mono',
 		monospace;
 	--font-sans: 'Chirp', var(--font-system-sans);
-	--font-mono: var(--font-system-mono);
+	--font-mono: 'Google Sans Code', var(--font-system-mono);
 	--text-xs: 12px;
 	--text-sm: 13px;
 	--text-base: 14px;
@@ -21,6 +21,9 @@
 	--radius-md: 10px;
 	--radius-lg: 14px;
 	--radius-pill: 999px;
+	--radius-field: var(--radius-sm);
+	--radius-control: var(--radius-pill);
+	--radius-surface: var(--radius-lg);
 	--space-1: 5px;
 	--space-2: 10px;
 	--space-3: 15px;
@@ -30,17 +33,17 @@
 	--control-height: 45px;
 	--control-height-sm: 35px;
 	--control-height-lg: 52px;
-	--nav-item-height: 36px;
+	--nav-item-height: 34px;
 	--header-height: 55px;
 	--sidebar-width: 240px;
 	--content-max-width: 1400px;
 	--form-max-width: 760px;
 	--page-gutter: 16px;
-	--drawer-width: 40rem;
+	--dialog-column-width: 880px;
 	--scrollbar-size: 10px;
 	--speed-fast: 70ms;
 	--speed: 140ms;
-	--speed-drawer: 200ms;
+	--speed-slow: 200ms;
 
 	--color-brand: #0088cc;
 	--color-brand-hover: #0077b3;
@@ -74,8 +77,6 @@
 	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 8%);
 	--shadow-panel: 0 6px 16px -6px rgb(0 0 0 / 14%);
 	--shadow-md: 0 4px 20px 0 rgb(0 0 0 / 10%);
-	--shadow-drawer: -1px 0 6px 0 rgb(0 0 0 / 10%);
-	--drawer-border-color: transparent;
 	--selection: #b3dcf0;
 	--color-overlay: rgb(0 0 0 / 30%);
 	--scrollbar-thumb: #d4d6da;
@@ -87,6 +88,12 @@
 	--toast-hint: #aab0b7;
 	--toast-icon: #3ea6e6;
 	--row-hover: #f7f7f8;
+	--nav-surface: var(--color-surface-alt);
+	--nav-hover: var(--color-secondary-alt);
+	--nav-text: var(--color-text);
+	--nav-icon: var(--color-text-hint);
+	--nav-current: var(--color-brand);
+	--nav-current-text: var(--color-brand-text);
 	--popover-surface: var(--color-surface);
 	--popover-surface-alt: var(--color-surface-alt);
 	--popover-secondary: var(--color-secondary);
@@ -103,6 +110,17 @@
 	--dialog-input-border: var(--popover-input-border);
 	--dialog-input-border-hover: var(--popover-input-border-hover);
 	--dialog-row-hover: var(--popover-row-hover);
+	--syntax-foreground: var(--color-text);
+	--syntax-background: transparent;
+	--syntax-token-keyword: #0550ae;
+	--syntax-token-string: #0a7a3b;
+	--syntax-token-string-expression: #0a7a3b;
+	--syntax-token-constant: #b54708;
+	--syntax-token-function: #8250df;
+	--syntax-token-parameter: #953800;
+	--syntax-token-comment: var(--color-text-hint);
+	--syntax-token-punctuation: var(--color-text-hint);
+	--syntax-token-link: var(--color-info);
 	--color-scheme: light;
 
 	color-scheme: light;
@@ -168,8 +186,6 @@
 	--shadow-sm: none;
 	--shadow-panel: none;
 	--shadow-md: 0 12px 32px -8px rgb(0 0 0 / 70%);
-	--shadow-drawer: none;
-	--drawer-border-color: #1d2024;
 	--selection: #0a4d73;
 	--color-overlay: rgb(0 0 0 / 72%);
 	--scrollbar-thumb: #2f3336;
@@ -180,6 +196,7 @@
 	--toast-hint: #5b6168;
 	--toast-icon: #0088cc;
 	--row-hover: #0e1012;
+	--nav-hover: var(--color-secondary);
 	--popover-surface: #0f1114;
 	--popover-surface-alt: #15171a;
 	--popover-secondary: #1b1e22;
@@ -196,6 +213,12 @@
 	--dialog-input-border: #2a2d31;
 	--dialog-input-border-hover: #43484d;
 	--dialog-row-hover: #111316;
+	--syntax-token-keyword: #79c0ff;
+	--syntax-token-string: #7ee787;
+	--syntax-token-string-expression: #7ee787;
+	--syntax-token-constant: #ffa657;
+	--syntax-token-function: #d2a8ff;
+	--syntax-token-parameter: #ffa657;
 	--color-scheme: dark;
 
 	color-scheme: dark;
@@ -226,8 +249,6 @@
 		--shadow-sm: none;
 		--shadow-panel: none;
 		--shadow-md: 0 12px 32px -8px rgb(0 0 0 / 70%);
-		--shadow-drawer: none;
-		--drawer-border-color: #1d2024;
 		--selection: #0a4d73;
 		--color-overlay: rgb(0 0 0 / 72%);
 		--scrollbar-thumb: #2f3336;
@@ -238,6 +259,7 @@
 		--toast-hint: #5b6168;
 		--toast-icon: #0088cc;
 		--row-hover: #0e1012;
+		--nav-hover: var(--color-secondary);
 		--popover-surface: #0f1114;
 		--popover-surface-alt: #15171a;
 		--popover-secondary: #1b1e22;
@@ -254,6 +276,12 @@
 		--dialog-input-border: #2a2d31;
 		--dialog-input-border-hover: #43484d;
 		--dialog-row-hover: #111316;
+		--syntax-token-keyword: #79c0ff;
+		--syntax-token-string: #7ee787;
+		--syntax-token-string-expression: #7ee787;
+		--syntax-token-constant: #ffa657;
+		--syntax-token-function: #d2a8ff;
+		--syntax-token-parameter: #ffa657;
 		--color-scheme: dark;
 
 		color-scheme: dark;

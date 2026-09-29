@@ -21,7 +21,7 @@
 		Toolbar,
 		notify
 	} from '$lib/components/ui';
-	import ApiDrawer from '$lib/components/apis/ApiDrawer.svelte';
+	import ApiDialog from '$lib/components/apis/ApiDialog.svelte';
 	import ApiTable from '$lib/components/apis/ApiTable.svelte';
 	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
@@ -43,7 +43,7 @@
 
 	let search = $derived(data.search);
 
-	let drawerOpen = $state(false);
+	let dialogOpen = $state(false);
 
 	let selected = $state<string[]>([]);
 	const visible = $derived(new Set(rows.map((api) => api.id)));
@@ -81,7 +81,7 @@
 		timer = setTimeout(() => apply({ search }), 250);
 	}
 
-	/** An API is managed on its own page; the drawer only registers one. */
+	/** An API is managed on its own page; the dialog only registers one. */
 	function openApi(api: API) {
 		goto(resolve('/admin/(panel)/dashboard/apis/[id]', { id: api.id }));
 	}
@@ -150,7 +150,7 @@
 
 	{#snippet actions()}
 		{#if canWrite}
-			<Button onclick={() => (drawerOpen = true)}>
+			<Button onclick={() => (dialogOpen = true)}>
 				<Icon icon={RiAddLine} />
 				New API
 			</Button>
@@ -202,5 +202,5 @@
 />
 
 {#if canWrite}
-	<ApiDrawer bind:open={drawerOpen} />
+	<ApiDialog bind:open={dialogOpen} />
 {/if}

@@ -17,7 +17,7 @@
 	} from '$lib/api';
 	import {
 		Button,
-		CopyButton,
+		CodeBlock,
 		Icon,
 		IconButton,
 		Note,
@@ -315,13 +315,7 @@
 		{/if}
 
 		{#each blocks(preview) as block (block.title)}
-			<div class="claims">
-				<div class="claims-head">
-					<span>{block.title}</span>
-					<CopyButton value={json(block.value)} label={block.title} />
-				</div>
-				<pre>{json(block.value)}</pre>
-			</div>
+			<CodeBlock title={block.title} code={json(block.value)} />
 		{/each}
 	</div>
 {/if}
@@ -340,7 +334,7 @@
 		gap: var(--space-4);
 		padding: var(--space-4);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 	}
 
 	.field {
@@ -556,7 +550,7 @@
 		padding: 0;
 		overflow: hidden;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		list-style: none;
 	}
 
@@ -595,32 +589,6 @@
 	.reason {
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	.claims {
-		overflow: hidden;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-	}
-
-	.claims-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 4px 4px 4px var(--space-3);
-		border-bottom: 1px solid var(--color-border);
-		background: var(--color-secondary-alt);
-		font-size: var(--text-sm);
-		font-weight: 600;
-	}
-
-	pre {
-		margin: 0;
-		padding: var(--space-3);
-		overflow-x: auto;
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
-		line-height: 1.5;
 	}
 
 	@media (max-width: 34rem) {

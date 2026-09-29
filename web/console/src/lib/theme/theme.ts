@@ -82,7 +82,7 @@ const light = {
 	'color-text-disabled': '#969ba1',
 
 	// A field has no fill of its own and a hairline border, Telegram's: it
-	// takes the colour of whatever it sits on — the page, a panel, a drawer
+	// takes the colour of whatever it sits on — the page, a panel, a dialog
 	// — so it never reads as a block of a different grey.
 	'color-input': 'transparent',
 	'color-input-border': '#d3d7dc',
@@ -103,12 +103,6 @@ const light = {
 	// The drop under an open panel.
 	'shadow-panel': '0 6px 16px -6px rgb(0 0 0 / 14%)',
 	'shadow-md': '0 4px 20px 0 rgb(0 0 0 / 10%)',
-	// The hairline down the left of an open drawer. It stands in for a
-	// border: a line that is part of the panel would travel with it.
-	'shadow-drawer': '-1px 0 6px 0 rgb(0 0 0 / 10%)',
-	// Dark mode draws a drawer's left edge as a real border; light mode's
-	// travelling shadow does the same job.
-	'drawer-border-color': 'transparent',
 	selection: '#b3dcf0',
 	// What the page behind an open dialog is dimmed with.
 	'color-overlay': 'rgb(0 0 0 / 30%)',
@@ -131,8 +125,21 @@ const light = {
 
 	'row-hover': '#f7f7f8',
 
+	// The sidebar's column, header block included: a step off the page, so
+	// the column reads as a panel of its own, and a hover a step darker than
+	// the usual so it still shows on that tint. A page's name is in the full
+	// text colour — on white a grey name reads as disabled — and its icon a
+	// step quieter. The page being read is the one row filled solid in the
+	// brand: nothing else in the column is blue, so it is found at a glance.
+	'nav-surface': 'var(--color-surface-alt)',
+	'nav-hover': 'var(--color-secondary-alt)',
+	'nav-text': 'var(--color-text)',
+	'nav-icon': 'var(--color-text-hint)',
+	'nav-current': 'var(--color-brand)',
+	'nav-current-text': 'var(--color-brand-text)',
+
 	// What floats over the page comes in two kinds, each with its own set: a
-	// popover — a menu, a select's list — and a dialog — a drawer, a modal,
+	// popover — a menu, a select's list — and a dialog — a full-window one, a modal,
 	// the command palette. In the light theme both are white like the page,
 	// set apart by a hairline, a shadow and, for a dialog, the dimmed page.
 	'popover-surface': 'var(--color-surface)',
@@ -152,6 +159,22 @@ const light = {
 	'dialog-input-border': 'var(--popover-input-border)',
 	'dialog-input-border-hover': 'var(--popover-input-border-hover)',
 	'dialog-row-hover': 'var(--popover-row-hover)',
+
+	// Code, highlighted (ui/CodeBlock): Shiki colours each token with one of
+	// these, so a block of JSON follows the theme like everything else. In
+	// JSON a key is a keyword, a string value a string, and a number, true,
+	// false or null a constant.
+	'syntax-foreground': 'var(--color-text)',
+	'syntax-background': 'transparent',
+	'syntax-token-keyword': '#0550ae',
+	'syntax-token-string': '#0a7a3b',
+	'syntax-token-string-expression': '#0a7a3b',
+	'syntax-token-constant': '#b54708',
+	'syntax-token-function': '#8250df',
+	'syntax-token-parameter': '#953800',
+	'syntax-token-comment': 'var(--color-text-hint)',
+	'syntax-token-punctuation': 'var(--color-text-hint)',
+	'syntax-token-link': 'var(--color-info)',
 
 	// Read by `color-scheme` in base.css, so native controls — a date
 	// picker, a scrollbar — follow the theme.
@@ -212,8 +235,6 @@ const dark: Partial<Record<ColorName, string>> = {
 	'shadow-sm': 'none',
 	'shadow-panel': 'none',
 	'shadow-md': '0 12px 32px -8px rgb(0 0 0 / 70%)',
-	'shadow-drawer': 'none',
-	'drawer-border-color': '#1d2024',
 	selection: '#0a4d73',
 	// The page behind a dialog is dimmed with black, the theme's own colour:
 	// the page is black already, but its words, panels and borders are not,
@@ -231,6 +252,7 @@ const dark: Partial<Record<ColorName, string>> = {
 	'toast-icon': '#0088cc',
 
 	'row-hover': '#0e1012',
+	'nav-hover': 'var(--color-secondary)',
 
 	'popover-surface': '#0f1114',
 	'popover-surface-alt': '#15171a',
@@ -249,6 +271,13 @@ const dark: Partial<Record<ColorName, string>> = {
 	'dialog-input-border': '#2a2d31',
 	'dialog-input-border-hover': '#43484d',
 	'dialog-row-hover': '#111316',
+
+	'syntax-token-keyword': '#79c0ff',
+	'syntax-token-string': '#7ee787',
+	'syntax-token-string-expression': '#7ee787',
+	'syntax-token-constant': '#ffa657',
+	'syntax-token-function': '#d2a8ff',
+	'syntax-token-parameter': '#ffa657',
 
 	'color-scheme': 'dark'
 };
@@ -280,6 +309,18 @@ export const theme: Theme<ColorName> = {
 				weights: [400, 500, 700],
 				subsets: ['latin-ext', 'latin'],
 				file: (subset, weight) => `chirp/chirp-${subset}-${weight}-normal.woff2`
+			},
+			// Google Sans Code is the face for code: ids, keys, JSON. It is an
+			// open font (SIL OFL 1.1, the licence beside the files), taken from
+			// the @fontsource/google-sans-code release at the same weights and
+			// alphabets as Chirp.
+			{
+				family: 'Google Sans Code',
+				style: 'normal',
+				weights: [400, 500, 700],
+				subsets: ['latin-ext', 'latin'],
+				file: (subset, weight) =>
+					`google-sans-code/google-sans-code-${subset}-${weight}-normal.woff2`
 			}
 		]
 	},
@@ -291,7 +332,7 @@ export const theme: Theme<ColorName> = {
 				'system-sans': systemSans,
 				'system-mono': systemMono,
 				sans: "'Chirp', var(--font-system-sans)",
-				mono: 'var(--font-system-mono)'
+				mono: "'Google Sans Code', var(--font-system-mono)"
 			}
 		},
 		{
@@ -301,7 +342,22 @@ export const theme: Theme<ColorName> = {
 		{ prefix: '', tokens: { 'line-height': '1.5' } },
 		{
 			prefix: 'radius',
-			tokens: { sm: '6px', md: '10px', lg: '14px', pill: '999px' }
+			tokens: {
+				sm: '6px',
+				md: '10px',
+				lg: '14px',
+				pill: '999px',
+				// The panel's three kinds of corner, which every field, control
+				// and surface names. A field is the one thing drawn with a tight
+				// corner, so a box to type in never reads as a button; a control
+				// — a button, a chip, a filter — is a pill; a surface — a card, a
+				// table, a dialog — is softly rounded. The sizes above are for
+				// the small parts inside those: a menu's row, a checkbox, a tag
+				// of code.
+				field: 'var(--radius-sm)',
+				control: 'var(--radius-pill)',
+				surface: 'var(--radius-lg)'
+			}
 		},
 		// On a 5px step, like PocketBase.
 		{
@@ -320,7 +376,7 @@ export const theme: Theme<ColorName> = {
 				'control-height-lg': '52px',
 				// A row in a list of places to go, rather than a control to
 				// press: a column of 45px rows would be a column of buttons.
-				'nav-item-height': '36px',
+				'nav-item-height': '34px',
 				'header-height': '55px',
 				'sidebar-width': '240px',
 				// Every dashboard page sits in one frame, centred and no wider
@@ -332,16 +388,17 @@ export const theme: Theme<ColorName> = {
 				// The frame's inset from the window. It widens with the window:
 				// see `responsive` below.
 				'page-gutter': '16px',
-				// How wide a drawer opens. It never passes a narrow screen's edge.
-				'drawer-width': '40rem',
+				// How wide the column of a full-window dialog is: a form beside
+				// the titles of its sections, not a line across the window.
+				'dialog-column-width': '880px',
 				// The thumb is drawn inside a transparent border, so the bar reads
 				// thinner than the space it reserves (styles/scrollbars.css).
 				'scrollbar-size': '10px'
 			}
 		},
-		// Motion. A drawer arrives and leaves over PocketBase's
-		// --modalAnimationSpeed.
-		{ prefix: '', tokens: { 'speed-fast': '70ms', speed: '140ms', 'speed-drawer': '200ms' } }
+		// Motion. A dialog arrives and leaves, and the sidebar slides, over
+		// PocketBase's --modalAnimationSpeed.
+		{ prefix: '', tokens: { 'speed-fast': '70ms', speed: '140ms', 'speed-slow': '200ms' } }
 	],
 
 	breakpoints: {

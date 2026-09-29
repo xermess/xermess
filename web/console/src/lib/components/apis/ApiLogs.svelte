@@ -109,7 +109,7 @@
 		margin: 0;
 		padding: var(--space-4);
 		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		text-align: center;
@@ -118,7 +118,7 @@
 	.scroll {
 		overflow-x: auto;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 	}
 
 	table {

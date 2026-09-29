@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { RiDeleteBinLine, RiSettings3Line, RiTranslate2 } from 'svelte-remixicon';
+	import { RiSettings3Line, RiTranslate2 } from 'svelte-remixicon';
 	import { languagesApi, type Language, type LocaleApp } from '$lib/api';
 	import {
 		Button,
 		ConfirmDialog,
-		Drawer,
+		DangerZone,
+		FullscreenDialog,
 		FieldGrid,
 		FormSection,
-		Icon,
 		Input,
 		Note,
 		SwitchField,
@@ -181,8 +181,13 @@
 	}
 </script>
 
-<Drawer
+{#snippet status()}
+	{`Unsaved text: ${textChanged.map(appName).join(', ')}`}
+{/snippet}
+
+<FullscreenDialog
 	bind:open
+	status={textChanged.length > 0 ? status : undefined}
 	title={language?.native_name ?? ''}
 	description="Its names, where it is offered, and its text."
 	meta={language?.code}
@@ -193,7 +198,7 @@
 			{#snippet panel(value)}
 				<div class="panel">
 					{#if value === 'settings'}
-						<FormSection title="Names">
+						<FormSection title="Names" description="What it is called, here and to its readers.">
 							<FieldGrid>
 								<Input
 									label="Name in English"
@@ -213,7 +218,7 @@
 							</FieldGrid>
 						</FormSection>
 
-						<FormSection title="Translated">
+						<FormSection title="Translated" description="How much of each app's text it has.">
 							<div class="coverage">
 								{#each apps as app (app)}
 									{@const percent = language.coverage[app] ?? 0}
@@ -247,7 +252,10 @@
 							</Note>
 						</FormSection>
 
-						<FormSection title="Where it is offered">
+						<FormSection
+							title="Where it is offered"
+							description="Whether people can pick it, and where it sits in the list."
+						>
 							<SwitchField
 								label="The default language"
 								description="What somebody sees before they have chosen. Making this the default takes the mark from whichever language has it."
@@ -277,6 +285,14 @@
 								/>
 							</div>
 						</FormSection>
+
+						{#if canWrite && !language.base && !language.is_default}
+							<DangerZone
+								title="Remove this language"
+								description="Its text goes with it, and anybody who chose it gets the default from their next page."
+								onclick={() => (confirmingDelete = true)}
+							/>
+						{/if}
 					{:else}
 						{@const app = value as LocaleApp}
 						<TranslationEditor
@@ -294,38 +310,19 @@
 		</Tabs>
 	{/if}
 
-	{#snippet footer()}
-		{#if canWrite && language && !language.base && !language.is_default}
+	{#snippet actions()}
+		<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
+		{#if canWrite}
 			<Button
-				colorPalette="danger"
-				variant="subtle"
-				size="sm"
-				onclick={() => (confirmingDelete = true)}
+				type="submit"
+				loading={saving}
+				disabled={!ready || saving || (!settingsChanged && textChanged.length === 0)}
 			>
-				<Icon icon={RiDeleteBinLine} />
-				Remove
+				Save changes
 			</Button>
 		{/if}
-
-		<div class="actions">
-			{#if textChanged.length > 0}
-				<span class="unsaved">
-					{`Unsaved text: ${textChanged.map(appName).join(', ')}`}
-				</span>
-			{/if}
-			<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
-			{#if canWrite}
-				<Button
-					type="submit"
-					loading={saving}
-					disabled={!ready || saving || (!settingsChanged && textChanged.length === 0)}
-				>
-					Save changes
-				</Button>
-			{/if}
-		</div>
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <ConfirmDialog
 	bind:open={confirmingDelete}
@@ -389,26 +386,10 @@
 		max-width: 16rem;
 	}
 
-	.actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		margin-left: auto;
-	}
-
-	.unsaved {
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
 	@media (max-width: 36rem) {
 		.row {
 			grid-template-columns: 1fr;
 			gap: var(--space-1);
-		}
-
-		.unsaved {
-			display: none;
 		}
 	}
 </style>

@@ -3,14 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { RiDeleteBinLine, RiLinksLine } from 'svelte-remixicon';
+	import { RiLinksLine } from 'svelte-remixicon';
 	import { apisApi, type API, type SigningAlgorithm } from '$lib/api';
 	import {
 		Button,
 		ConfirmDialog,
+		DangerZone,
 		FieldGrid,
 		FormSection,
-		Icon,
 		Input,
 		Note,
 		Select,
@@ -197,30 +197,16 @@
 		</div>
 
 		{#if !api.system}
-			<section class="danger">
-				<div>
-					<strong>Delete this API</strong>
-					<p>
-						{api.application_count > 0
-							? `${api.application_count} ${api.application_count === 1 ? 'application loses' : 'applications lose'} access, and`
-							: 'Its'}
-						{api.application_count > 0
-							? 'roles lose its scopes.'
-							: 'scopes are removed from every role.'}
-						This cannot be undone.
-					</p>
-				</div>
-
-				<Button
-					colorPalette="danger"
-					variant="subtle"
-					size="sm"
-					onclick={() => (confirmingDelete = true)}
-				>
-					<Icon icon={RiDeleteBinLine} />
-					Delete
-				</Button>
-			</section>
+			<DangerZone
+				title="Delete this API"
+				description={`${
+					api.application_count > 0
+						? `${api.application_count} ${api.application_count === 1 ? 'application loses' : 'applications lose'} access, and roles lose its scopes.`
+						: 'Its scopes are removed from every role.'
+				} This cannot be undone.`}
+				label="Delete"
+				onclick={() => (confirmingDelete = true)}
+			/>
 		{/if}
 	{/if}
 </form>
@@ -256,23 +242,5 @@
 		justify-content: flex-end;
 		gap: var(--space-2);
 		margin-top: var(--space-4);
-	}
-
-	.danger {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: var(--space-3);
-		margin-top: var(--space-6);
-		padding: var(--space-3) var(--space-4);
-		border: 1px solid color-mix(in srgb, var(--color-danger) 40%, transparent);
-		border-radius: var(--radius-md);
-	}
-
-	.danger p {
-		margin: 2px 0 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 </style>

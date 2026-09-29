@@ -16,10 +16,10 @@
 		app: LocaleApp;
 		readOnly?: boolean;
 		/** The text as it is being edited, by key: null until the saved text
-		    has arrived. The drawer saves it. */
+		    has arrived. The dialog saves it. */
 		draft: Record<string, string> | null;
 		/** Told whether the draft differs from what is saved, each time that
-		    changes, so the drawer knows what it has to save. */
+		    changes, so the dialog knows what it has to save. */
 		onDirty: (dirty: boolean) => void;
 	};
 
@@ -328,7 +328,7 @@
 		min-height: var(--control-height);
 		padding: 10px 13px;
 		border: 1px solid var(--color-input-border);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-field);
 		background: var(--color-input);
 		color: var(--color-text);
 		font: inherit;

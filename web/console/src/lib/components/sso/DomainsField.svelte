@@ -29,7 +29,7 @@
 		domains = domains.filter((one) => one !== domain);
 	}
 
-	/** Enter adds rather than submitting the drawer's form. */
+	/** Enter adds rather than submitting the dialog's form. */
 	function keydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();

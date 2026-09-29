@@ -3,13 +3,16 @@
   Draws the panel's toasts (see ./toast.ts), centred at the bottom of the
   screen, newest nearest the edge. Mounted once, in the root layout.
 
-  A toast is a pill in the theme turned over — black on the light page, white
-  on the dark — so it is noticed without shouting: an icon in the brand's colour, the
+  A toast is the theme turned over — black on the light page, white on the
+  dark — so it is noticed without shouting: an icon in the brand's colour, the
   message, and a round close button. The icon is one colour whatever the
-  toast says; its shape tells a success from a failure. A second line of detail runs on after
-  the title rather than beneath it, which keeps the pill one line tall
-  whenever it fits. It pauses while the pointer is over it, and Ark announces
-  each to assistive technology as it arrives.
+  toast says; its shape tells a success from a failure.
+
+  A title alone is a pill, one line tall. With a description the title stays
+  on its own line and the description sits under it in the quieter colour, and
+  the pill becomes a rounded card: two lines of text inside a pill's ends
+  would run into the curve. It pauses while the pointer is over it, and Ark
+  announces each to assistive technology as it arrives.
 -->
 <script lang="ts">
 	import { Toast, Toaster } from '@ark-ui/svelte/toast';
@@ -20,7 +23,7 @@
 
 <Toaster {toaster}>
 	{#snippet children(toast)}
-		<Toast.Root class="toast">
+		<Toast.Root class={toast().description ? 'toast detailed' : 'toast'}>
 			<span class="glyph"
 				><Icon
 					icon={toast().type === 'success' ? RiCheckboxCircleFill : RiErrorWarningFill}
@@ -48,7 +51,7 @@
 		align-items: center;
 		gap: var(--space-2);
 		width: max-content;
-		max-width: min(30rem, calc(100vw - 2 * var(--page-gutter)));
+		max-width: min(26rem, calc(100vw - 2 * var(--page-gutter)));
 		min-height: 44px;
 		padding: 6px 6px 6px 12px;
 		border-radius: var(--radius-pill);
@@ -72,6 +75,22 @@
 		transition-timing-function: cubic-bezier(0.21, 1.02, 0.73, 1);
 	}
 
+	/* Two lines: a card, the icon and the close button held to the title's
+	   line rather than centred on the pair. */
+	:global(.toast.detailed) {
+		align-items: flex-start;
+		padding: 12px 10px 12px 14px;
+		border-radius: var(--radius-surface);
+	}
+
+	:global(.toast.detailed .glyph) {
+		margin-top: 1px;
+	}
+
+	:global(.toast.detailed .close) {
+		margin-top: -4px;
+	}
+
 	:global(.toast[data-state='closed']) {
 		transition:
 			translate 200ms,
@@ -86,28 +105,26 @@
 		color: var(--toast-icon);
 	}
 
-	/* The title, and the detail running on after it. */
+	/* The title on a line of its own, and the detail under it. */
 	.message {
+		display: flex;
 		flex: 1;
+		flex-direction: column;
+		gap: 2px;
 		min-width: 0;
-		font-size: var(--text-base);
-		line-height: 1.4;
 		overflow-wrap: anywhere;
 	}
 
-	:global(.toast .title),
-	:global(.toast .description) {
-		display: inline;
-	}
-
 	:global(.toast .title) {
+		font-size: var(--text-base);
 		font-weight: 600;
+		line-height: 1.4;
 	}
 
 	:global(.toast .description) {
-		margin-left: 6px;
 		color: var(--toast-hint);
 		font-size: var(--text-sm);
+		line-height: 1.45;
 	}
 
 	:global(.toast .close) {

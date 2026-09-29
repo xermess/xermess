@@ -207,7 +207,7 @@ is the sentence the API sent (`messageOf` in `$lib/api`).
 `+page.svelte` that seeds a TanStack query from what the server rendered, query
 options in `lib/query/` with their key in `lib/query/keys.ts`, a typed client
 call in `lib/api/admin.ts`, and the feature's components in
-`lib/components/<feature>/`. Add the route to `sections.ts` — under the branch
+`lib/components/<feature>/`. Add the route to `sections.ts` — under the group
 whose subject it belongs to — with an `allowed` check; the sidebar and the
 command palette both read that list, so nothing else needs touching.
 

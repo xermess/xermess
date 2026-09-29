@@ -52,7 +52,7 @@
 		margin-bottom: var(--space-5);
 		padding: var(--space-3) var(--space-4);
 		border: 1px solid color-mix(in srgb, var(--color-success), transparent 60%);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		background: var(--surface-success);
 	}
 

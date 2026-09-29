@@ -5,7 +5,7 @@
 	import {
 		Badge,
 		Button,
-		Drawer,
+		FullscreenDialog,
 		FormSection,
 		Icon,
 		IconButton,
@@ -197,10 +197,10 @@
 	}
 </script>
 
-<Drawer
+<FullscreenDialog
 	bind:open
 	title="User fields"
-	description="The columns a user record has, and the rules their values keep. Adding one needs no migration: the values live in the record itself."
+	description="The columns a user record has, and the rules their values keep."
 >
 	<FormSection
 		title="Built-in fields"
@@ -341,11 +341,10 @@
 		</form>
 	</FormSection>
 
-	{#snippet footer()}
-		<span class="spacer"></span>
+	{#snippet actions()}
 		<Button variant="subtle" onclick={() => (open = false)}>Done</Button>
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <style>
 	.fields {
@@ -425,9 +424,5 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
-	}
-
-	.spacer {
-		flex: 1;
 	}
 </style>

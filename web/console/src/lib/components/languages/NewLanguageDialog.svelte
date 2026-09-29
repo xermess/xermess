@@ -5,7 +5,7 @@
 	import { languagesApi, type Language, type ShippedLanguage } from '$lib/api';
 	import {
 		Button,
-		Drawer,
+		FullscreenDialog,
 		FieldGrid,
 		FormSection,
 		Icon,
@@ -154,7 +154,7 @@
 	}
 </script>
 
-<Drawer
+<FullscreenDialog
 	bind:open
 	title="New language"
 	description="It starts off, so it can be translated before anybody is offered it."
@@ -176,7 +176,7 @@
 		</FormSection>
 	{/if}
 
-	<FormSection title="Names">
+	<FormSection title="Names" description="The tag it is known by, and what it is called.">
 		<Input
 			label="Code"
 			bind:value={code}
@@ -207,7 +207,10 @@
 		</FieldGrid>
 	</FormSection>
 
-	<FormSection title="Start from">
+	<FormSection
+		title="Text"
+		description="Where its text starts from, and whether people can pick it yet."
+	>
 		<Select label="Start from" bind:value={copyFrom} options={sources} />
 
 		<SwitchField
@@ -217,25 +220,16 @@
 		/>
 	</FormSection>
 
-	{#snippet footer()}
-		<div class="actions">
-			<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
-			<Button type="submit" loading={saving} disabled={!ready || saving}>Add language</Button>
-		</div>
+	{#snippet actions()}
+		<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
+		<Button type="submit" loading={saving} disabled={!ready || saving}>Add language</Button>
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <style>
 	.restore {
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-2);
-	}
-
-	.actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		margin-left: auto;
 	}
 </style>

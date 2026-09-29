@@ -26,7 +26,7 @@
 		Toolbar,
 		notify
 	} from '$lib/components/ui';
-	import AdminRoleDrawer from '$lib/components/admins/AdminRoleDrawer.svelte';
+	import AdminRoleDialog from '$lib/components/admins/AdminRoleDialog.svelte';
 	import AdminRoleTable from '$lib/components/admins/AdminRoleTable.svelte';
 	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
@@ -204,4 +204,4 @@
 	}}
 />
 
-<AdminRoleDrawer role={editing} catalog={catalog.data} bind:open={roleOpen} />
+<AdminRoleDialog role={editing} catalog={catalog.data} bind:open={roleOpen} />

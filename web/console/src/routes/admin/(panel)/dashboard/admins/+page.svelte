@@ -34,7 +34,7 @@
 		Toolbar,
 		notify
 	} from '$lib/components/ui';
-	import AdminDrawer from '$lib/components/admins/AdminDrawer.svelte';
+	import AdminDialog from '$lib/components/admins/AdminDialog.svelte';
 	import AdminTable from '$lib/components/admins/AdminTable.svelte';
 	import SecurityPanel from '$lib/components/admins/SecurityPanel.svelte';
 	import { countOf } from '$lib/utils/format';
@@ -231,7 +231,7 @@
 	}}
 />
 
-<AdminDrawer
+<AdminDialog
 	admin={editing}
 	self={data.admin.id}
 	roles={roles.data}

@@ -5,7 +5,7 @@
 		children: Snippet;
 		/** How many fields to a row where there is room for them. */
 		columns?: 2 | 3;
-		/** `compact` for a drawer or a dialog; `comfortable` puts more air
+		/** `compact` for a form in a dialog; `comfortable` puts more air
 		    between the columns of a page of settings. */
 		spacing?: 'compact' | 'comfortable';
 	};
@@ -17,7 +17,7 @@
      read in full — an address, a URL — spans the row: give its wrapper
      class="full". The grid goes to one column when it has no room for two,
      measured on itself rather than the window, so it behaves the same in a
-     drawer, a dialog and a page. -->
+     dialog, a card and a page. -->
 <div class="frame">
 	<div class="field-grid {spacing}" style:--columns={columns}>
 		{@render children()}

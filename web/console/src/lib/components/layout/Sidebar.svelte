@@ -3,14 +3,8 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import type { Admin } from '$lib/api';
 	import { useShell } from '$lib/state/shell.svelte';
-	import SidebarBranch from './sidebar/SidebarBranch.svelte';
-	import SidebarLink from './sidebar/SidebarLink.svelte';
-	import {
-		isCurrentSection,
-		visibleBranches,
-		visibleOverview,
-		type Section
-	} from './sidebar/sections';
+	import SidebarGroup from './sidebar/SidebarGroup.svelte';
+	import { isCurrentSection, visibleGroups, type Section } from './sidebar/sections';
 
 	const shell = useShell();
 
@@ -22,12 +16,11 @@
 	const narrow = new MediaQuery('max-width: 55rem');
 
 	/** Folded to icons: only the column does that. A panel has the width for
-	    names, so its branches open underneath rather than beside. */
+	    names, so it always shows them. */
 	const folded = $derived(shell.collapsed && !narrow.current);
 
 	const admin = $derived(page.data.admin as Admin | undefined);
-	const overview = $derived(visibleOverview(admin));
-	const branches = $derived(visibleBranches(admin));
+	const groups = $derived(visibleGroups(admin));
 
 	// The page being read, by its route id rather than its path: that is the
 	// shape the section list is written in, so a row is marked without either
@@ -71,68 +64,21 @@
 
 <aside class:collapsed={folded} class:open={shell.menuOpen}>
 	<nav aria-label="Sections">
-		<!-- What is happening, before where things are: its own group at the
-		     top, named, and ruled off from the subjects below it. Folded, the
-		     name gives way and the rule keeps the two apart. -->
-		{#if overview.length > 0}
-			<section class="overview" aria-labelledby="overview-heading">
-				<h2 id="overview-heading" class="group-label">Overview</h2>
-				<ul>
-					{#each overview as item (item.route)}
-						<li>
-							<SidebarLink
-								route={item.route}
-								label={item.label}
-								icon={item.icon}
-								current={isCurrent(item.route)}
-								collapsed={folded}
-							/>
-						</li>
-					{/each}
-				</ul>
-			</section>
-		{/if}
-
-		{#if branches.length > 0}
-			<h2 class="group-label">Manage</h2>
-		{/if}
-
-		{#each branches as branch (branch.id)}
-			<div class="branch">
-				<SidebarBranch
-					{branch}
-					{isCurrent}
-					collapsed={folded}
-					open={shell.isOpen(branch.id)}
-					onToggle={() => shell.toggleBranch(branch.id)}
-				/>
-			</div>
+		{#each groups as group (group.id)}
+			<SidebarGroup
+				{group}
+				{isCurrent}
+				collapsed={folded}
+				open={shell.isOpen(group.id)}
+				onToggle={() => shell.toggleGroup(group.id)}
+			/>
 		{/each}
 	</nav>
 </aside>
 
 <style>
 	aside {
-		/* What every row in the column is drawn with. They are named here, on
-		   the one element that owns the navigation, so a row does not have to
-		   know which of the palette's greys means "the page you are on". Every
-		   one is a solid colour: a wash mixed with transparency reads as a
-		   different grey over every surface it lands on.
-
-		   Every row is in the full text colour: on white a grey name reads as
-		   disabled, not as a place to go. Sections are told from pages by
-		   weight, not by fading them. */
-		--nav-text: var(--color-text);
-		--nav-hover: var(--color-secondary);
-		/* The page being read is the one row in the brand colour, the way
-		   Telegram marks the open chat: nothing else in the column is blue,
-		   so it is found without looking for it. */
-		--nav-current: var(--color-brand);
-		--nav-current-text: var(--color-brand-text);
-		--nav-mark: var(--color-brand);
-		/* How far a branch's pages are inset from its rule. */
-		--nav-branch-inset: 8px;
-
+		/* Its colours are the nav-* tokens in theme.ts. */
 		position: fixed;
 		top: var(--header-height);
 		bottom: 0;
@@ -142,70 +88,36 @@
 		flex-direction: column;
 		width: var(--sidebar-width);
 		border-right: 1px solid var(--color-border);
-		background: var(--color-surface);
+		background: var(--nav-surface);
 		overflow: hidden;
 	}
 
-	/* The rows are sized to fit the column without a scrollbar. On a window
-	   too short even for that the list still moves under a wheel or a
-	   thumb, so nothing becomes unreachable, but it draws no bar and reserves
-	   no gutter for one. */
+	/* Groups a little apart, rows close together: the space says which rows
+	   belong with which heading, with no rules or boxes needed. The list
+	   scrolls on a window too short for it, with a thin bar that shows only
+	   while the pointer is over the column. */
 	nav {
 		display: flex;
 		flex: 1;
 		flex-direction: column;
-		gap: var(--space-1);
+		gap: var(--space-2);
 		padding: var(--space-2) var(--space-2) var(--space-3);
 		overflow-x: hidden;
 		overflow-y: auto;
-		overscroll-behavior: none;
-		scrollbar-width: none;
+		overscroll-behavior: contain;
+		scrollbar-width: thin;
+		scrollbar-color: transparent transparent;
 	}
 
-	nav::-webkit-scrollbar {
-		display: none;
-	}
-
-	/* Two named groups: Overview — its pages, and a rule under them — then
-	   Manage, the subjects. The labels are quiet: they organise the column
-	   without competing with the rows. */
-	.overview {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		padding-bottom: var(--space-2);
-		margin-bottom: 2px;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.group-label {
-		margin: 6px 10px 2px;
-		color: var(--color-text-hint);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		line-height: 16px;
-		text-transform: uppercase;
-	}
-
-	.overview ul {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	/* Folded, there is no room for a name: the icons and the rule stay. */
-	.collapsed .group-label {
-		display: none;
+	nav:hover {
+		scrollbar-color: var(--scrollbar-thumb) transparent;
 	}
 
 	/* Folded, the rows are icons and the column is narrow: the same inset
-	   on both sides keeps them centred under the header's mark. */
+	   on both sides keeps them centred under the header's mark, and the
+	   groups are held apart by their rules rather than by space. */
 	.collapsed nav {
-		gap: 1px;
+		gap: 0;
 		padding-inline: 8px;
 	}
 
@@ -224,8 +136,8 @@
 			transform: translateX(-100%);
 			visibility: hidden;
 			transition:
-				transform var(--speed-drawer) cubic-bezier(0.4, 0, 0.2, 1),
-				visibility var(--speed-drawer);
+				transform var(--speed-slow) cubic-bezier(0.4, 0, 0.2, 1),
+				visibility var(--speed-slow);
 		}
 
 		aside.open {
@@ -235,7 +147,7 @@
 
 		/* A panel has room for names, so it never draws itself as a rail. */
 		.collapsed nav {
-			gap: var(--space-1);
+			gap: var(--space-2);
 			padding-inline: var(--space-2);
 		}
 	}

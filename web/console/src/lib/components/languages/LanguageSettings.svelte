@@ -4,9 +4,9 @@
 	import type { Language, LanguageList, LocaleApp } from '$lib/api';
 	import { Button, Icon, SearchInput, ShowMore, Toolbar } from '$lib/components/ui';
 	import { firstPage, languagesOptions, LIST_PAGE_SIZE } from '$lib/query';
-	import LanguageDrawer from './LanguageDrawer.svelte';
+	import LanguageDialog from './LanguageDialog.svelte';
 	import LanguageTable from './LanguageTable.svelte';
-	import NewLanguageDrawer from './NewLanguageDrawer.svelte';
+	import NewLanguageDialog from './NewLanguageDialog.svelte';
 
 	type Props = {
 		/** What the server rendered, to seed the query with. */
@@ -41,14 +41,14 @@
 	const rows = $derived(visible.slice(0, shown));
 
 	let editing = $state<Language | null>(null);
-	let drawerTab = $state<'settings' | LocaleApp>('settings');
-	let drawerOpen = $state(false);
+	let dialogTab = $state<'settings' | LocaleApp>('settings');
+	let dialogOpen = $state(false);
 	let creating = $state(false);
 
 	function open(language: Language, tab: 'settings' | LocaleApp = 'settings') {
 		editing = language;
-		drawerTab = tab;
-		drawerOpen = true;
+		dialogTab = tab;
+		dialogOpen = true;
 	}
 
 	/** A language that was just added opens on its text, which is the next
@@ -93,9 +93,9 @@
 	{/if}
 </div>
 
-<LanguageDrawer bind:open={drawerOpen} language={editing} tab={drawerTab} {canWrite} />
+<LanguageDialog bind:open={dialogOpen} language={editing} tab={dialogTab} {canWrite} />
 
-<NewLanguageDrawer
+<NewLanguageDialog
 	bind:open={creating}
 	languages={list.data.languages}
 	shipped={list.data.shipped}

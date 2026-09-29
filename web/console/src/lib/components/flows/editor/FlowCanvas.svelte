@@ -264,7 +264,7 @@
 		--xy-controls-button-background-color-hover: var(--color-secondary);
 		--xy-controls-button-color: var(--color-text);
 		--xy-controls-button-border-color: var(--color-border);
-		--xy-node-border-radius: var(--radius-md);
+		--xy-node-border-radius: var(--radius-surface);
 		/* An edge's label is the + between two steps, a button that draws
 		   its own circle: the box Svelte Flow puts behind a label — white
 		   unless told the colour mode — has nothing to add. */

@@ -47,7 +47,7 @@
 		height: var(--control-height);
 		padding: 3px;
 		border: 1px solid var(--color-input-border);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-control);
 		background: var(--color-secondary);
 	}
 
@@ -57,7 +57,7 @@
 		height: 100%;
 		padding: 0 var(--space-3);
 		border: none;
-		border-radius: calc(var(--radius-sm) - 2px);
+		border-radius: var(--radius-control);
 		background: transparent;
 		color: var(--color-text-hint);
 		font: inherit;

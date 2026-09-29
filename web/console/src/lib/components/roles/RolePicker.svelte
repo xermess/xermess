@@ -113,7 +113,7 @@
 		padding: var(--space-1);
 		overflow-y: auto;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 	}
 
 	.group {

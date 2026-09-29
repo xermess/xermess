@@ -20,7 +20,7 @@
 		Thumb
 	} from '$lib/components/ui';
 	import { initials } from '$lib/utils/format';
-	import ProfileDrawer from '$lib/components/profile/ProfileDrawer.svelte';
+	import ProfileDialog from '$lib/components/profile/ProfileDialog.svelte';
 
 	type Props = { admin: Admin };
 
@@ -108,7 +108,7 @@
 	/>
 </DropdownMenu>
 
-<ProfileDrawer {admin} bind:open={accountOpen} />
+<ProfileDialog {admin} bind:open={accountOpen} />
 
 <ConfirmDialog
 	bind:open={confirmingSignOut}

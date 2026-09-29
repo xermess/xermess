@@ -21,7 +21,7 @@
 		justify-self: start;
 		height: 25px;
 		padding: 0 7px;
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-control);
 		font-size: var(--text-sm);
 		white-space: nowrap;
 	}

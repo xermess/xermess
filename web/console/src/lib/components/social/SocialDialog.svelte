@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { RiDeleteBinLine, RiExternalLinkLine } from 'svelte-remixicon';
+	import { RiExternalLinkLine } from 'svelte-remixicon';
 	import {
 		socialApi,
 		type SocialKind,
@@ -12,7 +12,8 @@
 	import {
 		Button,
 		ConfirmDialog,
-		Drawer,
+		DangerZone,
+		FullscreenDialog,
 		FieldGrid,
 		FormSection,
 		Icon,
@@ -207,7 +208,7 @@
 	}
 </script>
 
-<Drawer
+<FullscreenDialog
 	bind:open
 	title={editing ? provider!.name : 'Add a provider'}
 	description={editing
@@ -265,7 +266,10 @@
 		</FormSection>
 	{/if}
 
-	<FormSection title="Credentials" description="What the provider gave you when you registered.">
+	<FormSection
+		title="Credentials"
+		description="What the provider gave you when you registered, and what to ask it for."
+	>
 		<Input label="Client ID" bind:value={clientID} required copyable={editing} />
 
 		{#if signs}
@@ -290,6 +294,13 @@
 				bind:value={clientSecret}
 			/>
 		{/if}
+
+		<Input
+			label="Scopes"
+			bind:value={scopes}
+			placeholder="openid email profile"
+			hint="Separated by spaces."
+		/>
 	</FormSection>
 
 	{#if custom}
@@ -308,11 +319,10 @@
 		</FormSection>
 	{/if}
 
-	<FormSection title="Scopes" description="What to ask the provider for, separated by spaces.">
-		<Input label="Scopes" bind:value={scopes} placeholder="openid email profile" />
-	</FormSection>
-
-	<FormSection title="What it may do here">
+	<FormSection
+		title="What it may do here"
+		description="Whether it is offered, and what signing in with it can lead to."
+	>
 		<SwitchField
 			label="Offer this provider"
 			description="Show its button on the sign-in pages."
@@ -332,27 +342,21 @@
 		/>
 	</FormSection>
 
-	{#snippet footer()}
-		{#if editing}
-			<Button
-				colorPalette="danger"
-				variant="subtle"
-				size="sm"
-				onclick={() => (confirmingDelete = true)}
-			>
-				<Icon icon={RiDeleteBinLine} />
-				Remove
-			</Button>
-		{/if}
+	{#if editing}
+		<DangerZone
+			title="Remove this provider"
+			description="The accounts that signed in with it stay; this way in goes."
+			onclick={() => (confirmingDelete = true)}
+		/>
+	{/if}
 
-		<div class="actions">
-			<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
-			<Button type="submit" loading={saving} disabled={!ready || saving}>
-				{editing ? 'Save changes' : 'Add provider'}
-			</Button>
-		</div>
+	{#snippet actions()}
+		<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
+		<Button type="submit" loading={saving} disabled={!ready || saving}>
+			{editing ? 'Save changes' : 'Add provider'}
+		</Button>
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <ConfirmDialog
 	bind:open={confirmingDelete}
@@ -380,12 +384,5 @@
 
 	.note a:hover {
 		color: var(--color-text);
-	}
-
-	.actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		margin-left: auto;
 	}
 </style>

@@ -43,7 +43,9 @@
 
 <Tabs {tabs} bind:value={tab} label="Mail settings">
 	{#snippet panel(value)}
-		<PageContainer>
+		<!-- Each section puts what it is beside its fields, as the General
+		     page does, which needs more than a form's column. -->
+		<PageContainer size="lg">
 			{#if value === 'server'}
 				<MailServer settings={settings.data} />
 			{:else}

@@ -218,7 +218,7 @@
 
 	section {
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		transition: opacity var(--speed-fast);
 	}
 
@@ -327,7 +327,7 @@
 		gap: var(--space-3);
 		padding: var(--space-4);
 		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		color: var(--color-text-hint);
 	}
 

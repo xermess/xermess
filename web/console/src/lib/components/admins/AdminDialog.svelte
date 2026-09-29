@@ -14,7 +14,7 @@
 		Badge,
 		Button,
 		ConfirmDialog,
-		Drawer,
+		FullscreenDialog,
 		FormSection,
 		Icon,
 		IconButton,
@@ -241,10 +241,10 @@
 	}
 </script>
 
-<Drawer
+<FullscreenDialog
 	bind:open
-	title={editing ? 'Edit administrator' : 'New administrator'}
-	meta={isSelf ? 'you' : undefined}
+	title={admin ? admin.full_name.trim() || admin.email : 'New administrator'}
+	meta={admin ? (isSelf ? `${admin.email} · you` : admin.email) : undefined}
 	onsubmit={submit}
 >
 	<FormSection
@@ -408,16 +408,14 @@
 		</FormSection>
 	{/if}
 
-	{#snippet footer()}
-		<span class="spacer"></span>
-
+	{#snippet actions()}
 		<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>Cancel</Button>
 
 		<Button type="submit" loading={saving} disabled={!canSubmit}>
 			{saving ? 'Saving…' : editing ? 'Save changes' : 'Create administrator'}
 		</Button>
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <ConfirmDialog
 	bind:open={confirmingReset}
@@ -494,10 +492,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--space-1);
-	}
-
-	.spacer {
-		flex: 1;
 	}
 
 	@media (max-width: 30rem) {

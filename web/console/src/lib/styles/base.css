@@ -81,6 +81,19 @@ pre {
 	font-size: var(--text-sm);
 }
 
+/* Highlighted code (ui/highlight.svelte.ts), and the plain copy shown until
+   the colours arrive: the same box either way, so nothing moves. Each
+   component that draws one says only where it sits. */
+pre.shiki {
+	margin: 0;
+	color: var(--syntax-foreground);
+	tab-size: 2;
+}
+
+pre.shiki code {
+	font: inherit;
+}
+
 :focus-visible {
 	outline: 2px solid var(--color-info);
 	outline-offset: 1px;

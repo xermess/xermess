@@ -22,7 +22,7 @@
 		Toolbar,
 		notify
 	} from '$lib/components/ui';
-	import ApplicationDrawer from '$lib/components/applications/ApplicationDrawer.svelte';
+	import ApplicationDialog from '$lib/components/applications/ApplicationDialog.svelte';
 	import ApplicationTable from '$lib/components/applications/ApplicationTable.svelte';
 	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
@@ -46,7 +46,7 @@
 	let search = $derived(data.search);
 
 	let editing = $state<Application | null>(null);
-	let drawerOpen = $state(false);
+	let dialogOpen = $state(false);
 
 	let selected = $state<string[]>([]);
 	const visible = $derived(new Set(rows.map((app) => app.id)));
@@ -79,7 +79,7 @@
 
 	function openApplication(application: Application | null) {
 		editing = application;
-		drawerOpen = true;
+		dialogOpen = true;
 	}
 
 	let refreshing = $state(false);
@@ -217,9 +217,9 @@
 	}}
 />
 
-<ApplicationDrawer
+<ApplicationDialog
 	application={editing}
 	editable={editing ? can(data.admin, 'applications.write', editing.id) : canRegister}
 	admin={data.admin}
-	bind:open={drawerOpen}
+	bind:open={dialogOpen}
 />

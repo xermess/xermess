@@ -22,7 +22,7 @@
 		Badge,
 		Button,
 		ConfirmDialog,
-		Drawer,
+		FullscreenDialog,
 		FieldGrid,
 		FormSection,
 		Icon,
@@ -551,10 +551,24 @@
 	</fieldset>
 {/snippet}
 
-<Drawer
+{#snippet actions()}
+	<!-- A secret is shown once, so the way out after one is a plain
+	     "Done" rather than a Cancel that sounds like it undoes something. -->
+	{#if secret}
+		<Button onclick={() => (open = false)}>Done</Button>
+	{:else if editable && tab === 'settings'}
+		<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>Cancel</Button>
+		<Button type="submit" loading={saving} disabled={saving || form.name.trim() === ''}>
+			{saving ? 'Saving…' : editing ? 'Save changes' : 'Create application'}
+		</Button>
+	{/if}
+{/snippet}
+
+<FullscreenDialog
 	bind:open
-	title={editing ? (editable ? 'Edit application' : 'Application') : 'New application'}
-	meta={current?.name}
+	actions={secret || (editable && tab === 'settings') ? actions : undefined}
+	title={current ? current.name : 'New application'}
+	meta={current?.client_id}
 	onsubmit={submit}
 >
 	{#if secret && current}
@@ -566,8 +580,8 @@
 		<div class="summary">
 			<span class="mark"><Icon icon={kind.icon} size="1.25rem" /></span>
 			<div class="summary-text">
-				<strong>{current.name}</strong>
-				<span>{kind.label} · {kind.public ? 'Public client' : 'Confidential client'}</span>
+				<strong>{kind.label}</strong>
+				<span>{kind.public ? 'Public client' : 'Confidential client'}</span>
 			</div>
 			<Badge tone={current.is_enabled ? 'success' : 'neutral'}>
 				{current.is_enabled ? 'Enabled' : 'Disabled'}
@@ -598,21 +612,7 @@
 	{:else}
 		{@render settings()}
 	{/if}
-
-	{#snippet footer()}
-		<span class="spacer"></span>
-
-		<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>
-			{secret || !editable || tab !== 'settings' ? 'Close' : 'Cancel'}
-		</Button>
-
-		{#if editable && tab === 'settings'}
-			<Button type="submit" loading={saving} disabled={saving || form.name.trim() === ''}>
-				{saving ? 'Saving…' : editing ? 'Save changes' : 'Create application'}
-			</Button>
-		{/if}
-	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <ConfirmDialog
 	bind:open={confirmingRotate}
@@ -640,7 +640,7 @@
 		margin-bottom: var(--space-5);
 		padding: var(--space-3);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 	}
 
 	.mark {
@@ -736,10 +736,6 @@
 
 	.link:hover {
 		text-decoration: underline;
-	}
-
-	.spacer {
-		flex: 1;
 	}
 
 	@media (max-width: 36rem) {

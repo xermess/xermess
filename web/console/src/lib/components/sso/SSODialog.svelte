@@ -2,7 +2,6 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import {
 		RiCheckLine,
-		RiDeleteBinLine,
 		RiDownload2Line,
 		RiFlaskLine,
 		RiGroupLine,
@@ -25,7 +24,8 @@
 		Alert,
 		Button,
 		ConfirmDialog,
-		Drawer,
+		DangerZone,
+		FullscreenDialog,
 		FieldGrid,
 		FormSection,
 		Icon,
@@ -63,7 +63,7 @@
 	const queryClient = useQueryClient();
 
 	/** The connection as it stands on the server: the one opened, or the one
-	    just made — which the drawer stays open on, since what comes next is
+	    just made — which the dialog stays open on, since what comes next is
 	    giving its provider the addresses on the Service provider tab. */
 	let current = $state<SSOConnection | null>(null);
 
@@ -364,8 +364,19 @@
 	{/if}
 {/snippet}
 
-<Drawer
+<!-- What still stands between the form and saving, said beside the button
+     and taking you to the tab it is on. -->
+{#snippet status()}
+	{#if missing}
+		<button type="button" class="missing" onclick={() => (tab = missing.tab)}>
+			{missing.text}
+		</button>
+	{/if}
+{/snippet}
+
+<FullscreenDialog
 	bind:open
+	status={canWrite && missing ? status : undefined}
 	title={current ? current.name : 'New connection'}
 	description={current
 		? 'Where it signs people in, for which domains, and what they become here.'
@@ -377,7 +388,10 @@
 		{#snippet panel(value)}
 			<div class="panel">
 				{#if value === 'connection'}
-					<FormSection title="Connection">
+					<FormSection
+						title="Connection"
+						description="What the sign-in page calls it, and whether it is on."
+					>
 						{#if !editing}
 							<Select label="Protocol" bind:value={protocol} options={protocols} />
 						{/if}
@@ -482,6 +496,14 @@
 							{@render testResult()}
 						</FormSection>
 					{/if}
+
+					{#if canWrite && current}
+						<DangerZone
+							title="Remove this connection"
+							description="The people who sign in through it keep their accounts, and sign in however else they can."
+							onclick={() => (confirmingDelete = true)}
+						/>
+					{/if}
 				{:else if value === 'provider'}
 					{#if !current}
 						<p class="note">Create the connection to get the addresses its provider needs.</p>
@@ -539,7 +561,10 @@
 						</FormSection>
 
 						{#if current.identity_provider}
-							<FormSection title="The identity provider">
+							<FormSection
+								title="The identity provider"
+								description="What its metadata says about it."
+							>
 								<dl class="facts">
 									<dt>Entity ID</dt>
 									<dd><code>{current.identity_provider.entity_id}</code></dd>
@@ -576,11 +601,14 @@
 						{/if}
 					{/if}
 				{:else if value === 'signin'}
-					<FormSection title="Domains">
+					<FormSection
+						title="Domains"
+						description="The addresses at these domains are sent to this provider."
+					>
 						<DomainsField bind:domains {readOnly} />
 					</FormSection>
 
-					<FormSection title="Sign-in">
+					<FormSection title="Sign-in" description="How people at those domains reach it.">
 						<SwitchField
 							label="Require SSO for these domains"
 							description={domains.length > 0
@@ -597,7 +625,10 @@
 						/>
 					</FormSection>
 				{:else}
-					<FormSection title="Provisioning">
+					<FormSection
+						title="Provisioning"
+						description="What happens to an account when somebody signs in through it."
+					>
 						<Select
 							label="An address that already has an account"
 							bind:value={matching}
@@ -667,35 +698,16 @@
 		{/snippet}
 	</Tabs>
 
-	{#snippet footer()}
-		{#if canWrite && current}
-			<Button
-				colorPalette="danger"
-				variant="subtle"
-				size="sm"
-				onclick={() => (confirmingDelete = true)}
-			>
-				<Icon icon={RiDeleteBinLine} />
-				Remove
+	{#snippet actions()}
+		<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
+		{#if canWrite}
+			<Button type="submit" loading={saving} disabled={missing !== null || saving}>
+				<Icon icon={RiCheckLine} />
+				{editing ? 'Save changes' : 'Create connection'}
 			</Button>
 		{/if}
-
-		<div class="actions">
-			{#if canWrite && missing}
-				<button type="button" class="missing" onclick={() => (tab = missing.tab)}>
-					{missing.text}
-				</button>
-			{/if}
-			<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
-			{#if canWrite}
-				<Button type="submit" loading={saving} disabled={missing !== null || saving}>
-					<Icon icon={RiCheckLine} />
-					{editing ? 'Save changes' : 'Create connection'}
-				</Button>
-			{/if}
-		</div>
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <ConfirmDialog
 	bind:open={confirmingDelete}
@@ -752,9 +764,6 @@
 	.missing {
 		all: unset;
 		cursor: pointer;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-		text-align: right;
 	}
 
 	.missing:hover {
@@ -766,12 +775,5 @@
 		outline: 2px solid var(--color-info);
 		outline-offset: 2px;
 		border-radius: var(--radius-sm);
-	}
-
-	.actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		margin-left: auto;
 	}
 </style>

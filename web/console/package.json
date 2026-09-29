@@ -45,6 +45,7 @@
 		"@ark-ui/svelte": "^5.24.1",
 		"@tanstack/svelte-query": "^6.1.48",
 		"@xyflow/svelte": "^1.6.6",
-		"qrcode": "^1.5.4"
+		"qrcode": "^1.5.4",
+		"shiki": "^4.4.3"
 	}
 }

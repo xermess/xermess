@@ -63,7 +63,7 @@
 
 <!-- A question in the middle of the window, asked before something that is
      hard to take back. It is an alert dialog, so a screen reader reads it out
-     as it opens, and it sits above a drawer, since that is where most of these
+     as it opens, and it sits above a full-window dialog, since that is where most of these
      questions are asked from.
 
      The card is the popovers' sheet — a select's list, a menu — grown to hold
@@ -112,55 +112,21 @@
 </Dialog.Root>
 
 <style>
-	/* The dialog's anatomy is styled once in styles/ark.css, for the drawer.
-	   These are one selector more specific: above a drawer, and centred. */
+	/* The card itself — centred, bordered, how it arrives — is every
+	dialog's, in styles/ark.css. A question is narrower, padded, and sits
+	above the dialog it is usually asked from. */
 	:global(.confirm-backdrop[data-scope='dialog'][data-part='backdrop']) {
 		z-index: 60;
 	}
 
 	:global(.confirm-positioner[data-scope='dialog'][data-part='positioner']) {
 		z-index: 65;
-		justify-content: center;
-		align-items: center;
-		padding: var(--space-4);
-		overflow-y: auto;
 	}
 
 	:global(.confirm-content[data-scope='dialog'][data-part='content']) {
-		width: min(26rem, 100%);
-		height: auto;
-		/* In the middle while it fits, and scrolled from its top when it
-		   does not, rather than cut off above the window. */
-		margin: auto;
+		--dialog-width: 26rem;
+
 		padding: var(--space-4);
-		border: 1px solid var(--color-border);
-		/* The popovers' corners, since it is the popovers' sheet. */
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-md);
-	}
-
-	/* It arrives a shade small and settles, the way a select's list opens.
-	   Two names, because Ark only waits for a leaving animation whose name
-	   changes (the note in ark.css). */
-	:global(.confirm-content[data-scope='dialog'][data-part='content'][data-state='open']) {
-		animation: confirm-in var(--speed) ease-out;
-	}
-
-	:global(.confirm-content[data-scope='dialog'][data-part='content'][data-state='closed']) {
-		animation: confirm-out var(--speed) ease-in forwards;
-	}
-
-	@keyframes -global-confirm-in {
-		from {
-			transform: scale(0.98) translateY(-4px);
-		}
-	}
-
-	@keyframes -global-confirm-out {
-		to {
-			transform: scale(0.98) translateY(-4px);
-		}
 	}
 
 	.head {
@@ -179,7 +145,7 @@
 		width: 34px;
 		height: 34px;
 		border: 1px solid var(--palette-border);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-control);
 		background: var(--palette-subtle);
 		color: var(--palette-fg);
 	}
@@ -224,13 +190,6 @@
 
 		.actions > :global(*) {
 			flex: 1;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		:global(.confirm-content[data-scope='dialog'][data-part='content'][data-state='open']),
-		:global(.confirm-content[data-scope='dialog'][data-part='content'][data-state='closed']) {
-			animation-duration: 1ms;
 		}
 	}
 </style>

@@ -34,7 +34,7 @@
 		gap: var(--space-2);
 		margin: 0;
 		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		font-size: var(--text-base);
 		line-height: 1.5;
 	}

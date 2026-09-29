@@ -7,7 +7,16 @@
 		type AdminPermissionName,
 		type AdminRole
 	} from '$lib/api';
-	import { Badge, Button, Drawer, FormSection, Input, Textarea, notify } from '$lib/components/ui';
+	import {
+		Alert,
+		Badge,
+		Button,
+		FullscreenDialog,
+		FormSection,
+		Input,
+		Textarea,
+		notify
+	} from '$lib/components/ui';
 	import Choice from '$lib/components/roles/Choice.svelte';
 	import { tidyName } from '$lib/components/roles/roles';
 	import { keys } from '$lib/query';
@@ -83,19 +92,29 @@
 	}
 </script>
 
-<Drawer
+{#snippet actions()}
+	<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>Cancel</Button>
+	<Button type="submit" loading={saving} disabled={saving || name.trim() === ''}>
+		{saving ? 'Saving…' : editing ? 'Save changes' : 'Create role'}
+	</Button>
+{/snippet}
+
+<FullscreenDialog
 	bind:open
-	title={locked ? 'Built-in role' : editing ? 'Edit admin role' : 'New admin role'}
+	actions={!locked ? actions : undefined}
+	title={role ? role.name : 'New admin role'}
 	meta={role
 		? `${role.admin_count} ${role.admin_count === 1 ? 'administrator' : 'administrators'}`
 		: undefined}
 	onsubmit={submit}
 >
 	{#if locked}
-		<p class="note">
-			super_admin grants every permission, and is the only role that can manage administrators and
-			admin roles. It cannot be changed or removed.
-		</p>
+		<div class="intro">
+			<Alert tone="info">
+				super_admin grants every permission, and is the only role that can manage administrators and
+				admin roles. It cannot be changed or removed.
+			</Alert>
+		</div>
 	{/if}
 
 	<fieldset disabled={locked}>
@@ -156,21 +175,7 @@
 			{/each}
 		</FormSection>
 	</fieldset>
-
-	{#snippet footer()}
-		<span class="spacer"></span>
-
-		<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>
-			{locked ? 'Close' : 'Cancel'}
-		</Button>
-
-		{#if !locked}
-			<Button type="submit" loading={saving} disabled={saving || name.trim() === ''}>
-				{saving ? 'Saving…' : editing ? 'Save changes' : 'Create role'}
-			</Button>
-		{/if}
-	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <style>
 	fieldset {
@@ -180,13 +185,8 @@
 		border: none;
 	}
 
-	.note {
-		margin: 0 0 var(--space-4);
-		padding: var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--surface-info);
-		font-size: var(--text-sm);
-		line-height: 1.4;
+	.intro {
+		margin-bottom: var(--space-4);
 	}
 
 	.group + .group {
@@ -209,9 +209,5 @@
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-	}
-
-	.spacer {
-		flex: 1;
 	}
 </style>

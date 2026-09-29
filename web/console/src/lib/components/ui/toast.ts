@@ -17,6 +17,9 @@ import { messageOf } from '$lib/api';
 
 export const toaster = createToaster({
 	placement: 'bottom',
+	// Clear of the window's bottom edge by more than Ark's 1rem, so a toast
+	// reads as floating over the page rather than resting on its edge.
+	offsets: '32px',
 	gap: 10,
 	max: 4,
 	duration: 5000,

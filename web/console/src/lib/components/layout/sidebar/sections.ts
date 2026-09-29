@@ -14,11 +14,9 @@ import {
 	RiLinksLine,
 	RiMailLine,
 	RiPulseLine,
-	RiSettings3Line,
 	RiShareLine,
 	RiShieldKeyholeLine,
-	RiShieldUserLine,
-	RiTeamLine
+	RiShieldUserLine
 } from 'svelte-remixicon';
 import type { Admin } from '$lib/api';
 import { can, canAnywhere } from '$lib/permissions';
@@ -42,43 +40,47 @@ export type SidebarItem = {
 	allowed?: (admin: Admin) => boolean;
 };
 
-/** A row that opens to reveal its pages. It leads nowhere itself: an
-    administrator who cannot see any of its children never sees it either. */
-export type SidebarBranch = {
-	/** A name the cookie can hold, so which branches are open survives a
-	    reload. It is not the label: renaming a section should not fold it. */
+/** A named group of pages. Its heading folds it away, and which are folded
+    is remembered; an administrator who cannot see any of its pages never
+    sees the group either. */
+export type SidebarGroup = {
+	/** A name the cookie can hold, so which groups are folded survives a
+	    reload. It is not the label: renaming a group should not unfold it. */
 	id: string;
 	label: string;
-	icon: ComponentType;
 	items: SidebarItem[];
 };
 
-/** The sidebar in order: the pages that answer "what is happening" on their
-    own in an Overview group at the top, and everything else under the
-    subject it belongs to.
-    A branch is a subject, not a bucket — which is why One-time codes sits
+/** The sidebar in order: what is happening first, then each subject the
+    panel manages, then the installation's own settings. Every group is the
+    same kind of thing — a heading and its pages — so the column reads as one
+    list, top to bottom.
+
+    A group is a subject, not a bucket — which is why One-time codes sits
     under Authentication, where it is read, rather than under Settings, where
     it merely lives. */
-export const overview: SidebarItem[] = [
+const groups: SidebarGroup[] = [
 	{
-		route: '/admin/(panel)/dashboard',
-		label: 'Activity',
-		icon: RiPulseLine,
-		allowed: (admin) => can(admin, 'activity.read')
+		id: 'overview',
+		label: 'Overview',
+		items: [
+			{
+				route: '/admin/(panel)/dashboard',
+				label: 'Activity',
+				icon: RiPulseLine,
+				allowed: (admin) => can(admin, 'activity.read')
+			},
+			{
+				route: '/admin/(panel)/dashboard/logs',
+				label: 'Logs',
+				icon: RiFileList3Line,
+				allowed: (admin) => can(admin, 'activity.read')
+			}
+		]
 	},
-	{
-		route: '/admin/(panel)/dashboard/logs',
-		label: 'Logs',
-		icon: RiFileList3Line,
-		allowed: (admin) => can(admin, 'activity.read')
-	}
-];
-
-export const branches: SidebarBranch[] = [
 	{
 		id: 'applications',
 		label: 'Applications',
-		icon: RiAppsLine,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/applications',
@@ -97,7 +99,6 @@ export const branches: SidebarBranch[] = [
 	{
 		id: 'authentication',
 		label: 'Authentication',
-		icon: RiShieldKeyholeLine,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/flows',
@@ -107,7 +108,7 @@ export const branches: SidebarBranch[] = [
 			},
 			{
 				route: '/admin/(panel)/dashboard/social',
-				label: 'Social',
+				label: 'Social sign-in',
 				icon: RiShareLine,
 				allowed: (admin) => can(admin, 'social.read')
 			},
@@ -127,8 +128,7 @@ export const branches: SidebarBranch[] = [
 	},
 	{
 		id: 'users',
-		label: 'Users',
-		icon: RiTeamLine,
+		label: 'User management',
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/users',
@@ -154,7 +154,6 @@ export const branches: SidebarBranch[] = [
 	{
 		id: 'administration',
 		label: 'Administration',
-		icon: RiAdminLine,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/admins',
@@ -173,7 +172,6 @@ export const branches: SidebarBranch[] = [
 	{
 		id: 'settings',
 		label: 'Settings',
-		icon: RiSettings3Line,
 		items: [
 			{
 				route: '/admin/(panel)/dashboard/settings',
@@ -211,29 +209,14 @@ export function isCurrentSection(route: Section, id: string | null | undefined):
 		: id === route || Boolean(id?.startsWith(`${route}/`));
 }
 
-/** What an administrator sees: the pages their roles allow, and a branch only
+/** What an administrator sees: the pages their roles allow, and a group only
     where it still has one. The page checks the permission again on the
     server; this only decides what is shown. */
-export function visibleOverview(admin: Admin | undefined): SidebarItem[] {
-	return overview.filter((item) => !item.allowed || (admin && item.allowed(admin)));
-}
-
-export function visibleBranches(admin: Admin | undefined): SidebarBranch[] {
-	return branches
-		.map((branch) => ({
-			...branch,
-			items: branch.items.filter((item) => !item.allowed || (admin && item.allowed(admin)))
+export function visibleGroups(admin: Admin | undefined): SidebarGroup[] {
+	return groups
+		.map((group) => ({
+			...group,
+			items: group.items.filter((item) => !item.allowed || (admin && item.allowed(admin)))
 		}))
-		.filter((branch) => branch.items.length > 0);
-}
-
-/** Every page the sidebar leads to, in the order it lists them — for the
-    command palette, which is one flat list however the column is grouped. */
-export function allSections(admin: Admin | undefined): { group: string; items: SidebarItem[] }[] {
-	const overviewItems = visibleOverview(admin);
-
-	return [
-		...(overviewItems.length > 0 ? [{ group: 'Dashboard', items: overviewItems }] : []),
-		...visibleBranches(admin).map((branch) => ({ group: branch.label, items: branch.items }))
-	];
+		.filter((group) => group.items.length > 0);
 }

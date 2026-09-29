@@ -41,8 +41,8 @@
 		Toolbar,
 		notify
 	} from '$lib/components/ui';
-	import FieldsDrawer from '$lib/components/users/FieldsDrawer.svelte';
-	import UserDrawer from '$lib/components/users/UserDrawer.svelte';
+	import FieldsDialog from '$lib/components/users/FieldsDialog.svelte';
+	import UserDialog from '$lib/components/users/UserDialog.svelte';
 	import UserTable from '$lib/components/users/UserTable.svelte';
 	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
@@ -317,7 +317,7 @@
 	}}
 />
 
-<UserDrawer
+<UserDialog
 	user={editing}
 	fields={fields.data}
 	applications={applications.data}
@@ -327,5 +327,5 @@
 	bind:open={userOpen}
 />
 {#if canEditFields}
-	<FieldsDrawer fields={fields.data} bind:open={fieldsOpen} />
+	<FieldsDialog fields={fields.data} bind:open={fieldsOpen} />
 {/if}

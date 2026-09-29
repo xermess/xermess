@@ -3,6 +3,7 @@
 	import {
 		RiAtLine,
 		RiLockLine,
+		RiMailCheckLine,
 		RiMailLine,
 		RiMailSendLine,
 		RiServerLine,
@@ -12,8 +13,9 @@
 	import {
 		Button,
 		FieldGrid,
+		FormSection,
 		Input,
-		Panel,
+		SaveBar,
 		Select,
 		SwitchField,
 		Tag,
@@ -171,7 +173,11 @@
 </script>
 
 <form onsubmit={submit}>
-	<Panel title="Sending" icon={RiMailSendLine}>
+	<FormSection
+		title="Sending"
+		description="Whether messages leave this server at all."
+		icon={RiMailSendLine}
+	>
 		{#snippet meta()}
 			{#if form.is_enabled}
 				<Tag tone="success" dot small>Sending</Tag>
@@ -185,21 +191,23 @@
 			description="Off, every message is written to the server's log instead — enough to follow a reset link while developing, and nothing anybody receives."
 			bind:checked={form.is_enabled}
 		/>
-	</Panel>
+	</FormSection>
 
-	<Panel title="Mail server" icon={RiServerLine}>
+	<FormSection
+		title="Mail server"
+		description="Where messages are handed over, and how the connection to it is protected."
+		icon={RiServerLine}
+	>
+		<Input
+			label="Host"
+			icon={RiServerLine}
+			bind:value={form.host}
+			maxlength={255}
+			placeholder="smtp.example.com"
+			hint="The host name on its own, with no scheme and no port."
+		/>
+
 		<FieldGrid spacing="comfortable">
-			<div class="full">
-				<Input
-					label="Host"
-					icon={RiServerLine}
-					bind:value={form.host}
-					maxlength={255}
-					placeholder="smtp.example.com"
-					hint="The host name on its own, with no scheme and no port."
-				/>
-			</div>
-
 			<Input
 				label="Port"
 				type="number"
@@ -235,25 +243,19 @@
 				placeholder={stored.has_password ? 'Stored — type to replace it' : ''}
 				hint="Sealed with the server's secret key, and never read back."
 			/>
-
-			{#if stored.has_password}
-				<div class="full">
-					<SwitchField
-						label="Forget the stored password"
-						description="For a server that takes no credentials. The password is removed when you save."
-						bind:checked={removePassword}
-						onChange={() => (password = '')}
-					/>
-				</div>
-			{/if}
 		</FieldGrid>
-	</Panel>
 
-	<Panel title="From" icon={RiMailLine}>
-		{#snippet meta()}
-			<Tag small>On every message</Tag>
-		{/snippet}
+		{#if stored.has_password}
+			<SwitchField
+				label="Forget the stored password"
+				description="For a server that takes no credentials. The password is removed when you save."
+				bind:checked={removePassword}
+				onChange={() => (password = '')}
+			/>
+		{/if}
+	</FormSection>
 
+	<FormSection title="From" description="Who every message says it comes from." icon={RiMailLine}>
 		<FieldGrid spacing="comfortable">
 			<Input
 				label="From address"
@@ -273,18 +275,13 @@
 				hint="What a mail client shows instead of the address."
 			/>
 		</FieldGrid>
-	</Panel>
+	</FormSection>
 
-	<Panel title="Try it" icon={RiMailSendLine}>
-		{#snippet meta()}
-			<Tag small>Sent with what is on this form</Tag>
-		{/snippet}
-
-		<p class="note">
-			Sends one message with the settings above, whether or not they have been saved — so a server
-			can be tried before anybody's sign-in depends on it. A password left blank is the stored one.
-		</p>
-
+	<FormSection
+		title="Send a test"
+		description="One message with the settings on this form, saved or not — so a server can be tried before anybody's sign-in depends on it. A password left blank is the stored one."
+		icon={RiMailCheckLine}
+	>
 		<div class="try">
 			<Input
 				label="Send a test message to"
@@ -296,6 +293,7 @@
 			/>
 
 			<Button
+				size="lg"
 				variant="outline"
 				onclick={sendTest}
 				loading={test.isPending}
@@ -304,73 +302,28 @@
 				{test.isPending ? 'Sending…' : 'Send'}
 			</Button>
 		</div>
-	</Panel>
+	</FormSection>
 
 	{#if dirty}
-		<!-- The bar appears only once something has been typed, and then stays
-		     at the foot of the window, so the buttons are within reach of
-		     whichever field is being edited. -->
-		<div class="actions">
-			<span class="pending">Unsaved changes</span>
-
-			<Button variant="subtle" onclick={discard} disabled={saving}>Discard</Button>
-			<Button type="submit" loading={saving} disabled={saving || !complete}>
-				{saving ? 'Saving…' : 'Save changes'}
-			</Button>
-		</div>
+		<SaveBar {saving} ready={complete} ondiscard={discard} />
 	{/if}
 </form>
 
 <style>
-	form {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
+	/* FormSection spaces the sections itself; the bar needs a gap above it. */
+	form > :global(.save-bar) {
+		margin-top: var(--space-5);
 	}
 
-	/* Two fields to a row, each as wide as the other, and a `wide` one across
-	   both: a host name is read in full rather than in half. */
-
-	/* The address and the button on one line, the button sitting on the
-	   field's baseline rather than on its label's. */
+	/* The address and the button on one line, centred on each other. */
 	.try {
 		display: flex;
-		align-items: flex-end;
-		gap: var(--space-3);
+		align-items: center;
+		gap: var(--space-2);
 	}
 
-	.try :global(> :first-child) {
+	.try > :global(:first-child) {
 		flex: 1;
 		min-width: 0;
-	}
-
-	.note {
-		margin: 0 0 var(--space-3);
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-		line-height: 1.5;
-	}
-
-	/* Opaque, and the width of the column: stuck to the foot of the window it
-	   passes over the panels, which it may not show through. */
-	.actions {
-		position: sticky;
-		bottom: 0;
-		z-index: 1;
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: var(--space-2);
-		margin-inline: calc(var(--space-4) * -1);
-		padding: var(--space-3) var(--space-4);
-		border-top: 1px solid var(--color-secondary-alt);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-panel);
-	}
-
-	.pending {
-		margin-right: auto;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 </style>

@@ -40,7 +40,7 @@
 		Toolbar,
 		notify
 	} from '$lib/components/ui';
-	import RoleDrawer from '$lib/components/roles/RoleDrawer.svelte';
+	import RoleDialog from '$lib/components/roles/RoleDialog.svelte';
 	import RoleTable from '$lib/components/roles/RoleTable.svelte';
 	import { countOf } from '$lib/utils/format';
 	import type { PageData } from './$types';
@@ -344,7 +344,7 @@
 	}}
 />
 
-<RoleDrawer
+<RoleDialog
 	role={editing}
 	initialScope={data.tab === 'application'
 		? data.application || (applications.data[0]?.id ?? null)

@@ -28,7 +28,7 @@
 	   their own — a table, a form and a heading all share this left edge.
 
 	   A page is a stack — heading, toolbar, table — and the frame spaces it,
-	   so every page has the same rhythm without saying so. A drawer or a
+	   so every page has the same rhythm without saying so. A dialog or a
 	   selection bar is portalled or fixed, and takes no part in it. */
 	.content {
 		grid-column: 2;

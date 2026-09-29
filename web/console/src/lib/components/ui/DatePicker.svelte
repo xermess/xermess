@@ -124,7 +124,7 @@
 		</ArkDatePicker.Control>
 	</div>
 
-	<!-- Portalled, as a select's list is, so a drawer that scrolls or a toolbar
+	<!-- Portalled, as a select's list is, so a dialog that scrolls or a toolbar
 	     that hides its overflow never cuts the calendar off. -->
 	<Portal>
 		<ArkDatePicker.Positioner>

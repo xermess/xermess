@@ -6,7 +6,7 @@
 	import {
 		Badge,
 		Button,
-		Drawer,
+		FullscreenDialog,
 		FormSection,
 		Icon,
 		IconButton,
@@ -254,9 +254,17 @@
 	}
 </script>
 
-<Drawer
+{#snippet actions()}
+	<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>Cancel</Button>
+	<Button type="submit" loading={saving} disabled={saving || !ready}>
+		{saving ? 'Saving…' : editing ? 'Save changes' : 'Create role'}
+	</Button>
+{/snippet}
+
+<FullscreenDialog
 	bind:open
-	title={editing ? (editable ? 'Edit role' : 'Role') : 'New role'}
+	actions={editable ? actions : undefined}
+	title={role ? role.name : 'New role'}
 	meta={role ? `${role.user_count} ${role.user_count === 1 ? 'user' : 'users'}` : undefined}
 	onsubmit={submit}
 >
@@ -502,21 +510,7 @@
 			</FormSection>
 		{/if}
 	</fieldset>
-
-	{#snippet footer()}
-		<span class="spacer"></span>
-
-		<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>
-			{editable ? 'Cancel' : 'Close'}
-		</Button>
-
-		{#if editable}
-			<Button type="submit" loading={saving} disabled={saving || !ready}>
-				{saving ? 'Saving…' : editing ? 'Save changes' : 'Create role'}
-			</Button>
-		{/if}
-	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <style>
 	fieldset {
@@ -532,7 +526,7 @@
 		gap: var(--space-3);
 		padding: var(--space-3);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		background: var(--color-surface);
 	}
 
@@ -547,7 +541,7 @@
 		padding: 0;
 		overflow: hidden;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		list-style: none;
 	}
 
@@ -584,7 +578,7 @@
 		margin: 0;
 		padding: var(--space-3);
 		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		text-align: center;
@@ -638,7 +632,7 @@
 	.grants {
 		overflow: hidden;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 	}
 
 	.grant-row {
@@ -708,10 +702,6 @@
 			grid-template-columns: 1fr;
 			gap: var(--space-2);
 		}
-	}
-
-	.spacer {
-		flex: 1;
 	}
 
 	@media (max-width: 30rem) {

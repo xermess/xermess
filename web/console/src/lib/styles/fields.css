@@ -11,7 +11,7 @@
 
    The box owns the border and nothing inside it paints a background, so no
    child can draw over the edge. Its fill is transparent, so it sits on
-   whatever it is drawn on: the page, a panel, a drawer or a menu.
+   whatever it is drawn on: the page, a panel, a dialog or a menu.
 
    The label floats inside the box. At rest, in an empty field, it sits
    exactly where the value is typed — same left edge, same line — and reads
@@ -54,7 +54,7 @@
 	display: block;
 	min-width: 0;
 	border: 1px solid var(--color-input-border);
-	border-radius: var(--radius-sm);
+	border-radius: var(--radius-field);
 	background: var(--color-input);
 	transition:
 		border-color var(--speed),

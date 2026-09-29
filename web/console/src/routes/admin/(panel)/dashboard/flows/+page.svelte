@@ -238,7 +238,7 @@
 		gap: var(--space-1);
 		padding: var(--space-4);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		background: var(--color-surface);
 		color: var(--color-text);
 		text-decoration: none;

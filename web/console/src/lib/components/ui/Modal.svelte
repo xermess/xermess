@@ -37,10 +37,10 @@
 	let heading = $state<HTMLElement | null>(null);
 </script>
 
-<!-- The other kind of dialog from a drawer: a card in the middle of the
-     window, for something that is not a record — a question to answer, the
-     account's own settings. It is built when it opens and taken down when it
-     has left, as a drawer is, so it always opens fresh. -->
+<!-- The other kind of dialog from a FullscreenDialog: a card in the middle
+     of the window, for something that is not a record — a question to
+     answer, a short choice. It is built when it opens and taken down when it
+     has left, as a full-window one is, so it always opens fresh. -->
 <Dialog.Root
 	{open}
 	onOpenChange={(details) => {
@@ -52,7 +52,7 @@
 >
 	<Portal>
 		<Dialog.Backdrop />
-		<Dialog.Positioner class="modal-positioner">
+		<Dialog.Positioner>
 			<Dialog.Content class="modal-content" data-size={size}>
 				<header bind:this={heading} tabindex="-1">
 					<div>
@@ -80,68 +80,22 @@
 </Dialog.Root>
 
 <style>
-	/* The dialog's anatomy is styled once in styles/ark.css, for the drawer.
-	   These are one selector more specific, and centre it instead — in both
-	   directions, as ConfirmDialog is, so every dialog that is not a drawer
-	   opens in the same place. */
-	:global(.modal-positioner[data-scope='dialog'][data-part='positioner']) {
-		justify-content: center;
-		align-items: center;
-		padding: var(--space-4);
-		overflow-y: auto;
-	}
-
+	/* The card itself — centred, bordered, how it arrives — is every
+	dialog's, in styles/ark.css. A modal says only how wide it is. */
 	:global(.modal-content[data-scope='dialog'][data-part='content']) {
-		--modal-width: 40rem;
-
-		width: min(var(--modal-width), 100%);
-		height: auto;
-		/* In the middle while it fits, and scrolled from its top when it does
-		   not, rather than cut off above the window. */
-		margin: auto;
-		max-height: calc(100dvh - 2 * var(--space-4));
-		border: 1px solid var(--color-border);
-		/* The popovers' corners, as ConfirmDialog has. */
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-md);
-		overflow: hidden;
+		--dialog-width: 40rem;
 	}
 
 	:global(.modal-content[data-scope='dialog'][data-part='content'][data-size='sm']) {
-		--modal-width: 26rem;
+		--dialog-width: 26rem;
 	}
 
 	/* A page of settings keeps one height whatever tab is open, so the card
 	   does not jump as its contents change; the body scrolls inside it. */
 	:global(.modal-content[data-scope='dialog'][data-part='content'][data-size='lg']) {
-		--modal-width: 48rem;
+		--dialog-width: 48rem;
 
 		height: min(42rem, calc(100dvh - 2 * var(--space-4)));
-	}
-
-	/* It arrives a shade small and settles, rather than sliding in from the
-	   side the way a drawer does. Two names, because Ark only waits for a
-	   leaving animation whose name changes (the note in ark.css). */
-	:global(.modal-content[data-scope='dialog'][data-part='content'][data-state='open']) {
-		animation: modal-in var(--speed) ease-out;
-	}
-
-	:global(.modal-content[data-scope='dialog'][data-part='content'][data-state='closed']) {
-		animation: modal-out var(--speed) ease-out forwards;
-	}
-
-	@keyframes -global-modal-in {
-		from {
-			opacity: 0;
-			transform: scale(0.98) translateY(-4px);
-		}
-	}
-
-	@keyframes -global-modal-out {
-		to {
-			opacity: 0;
-			transform: scale(0.98) translateY(-4px);
-		}
 	}
 
 	/* Without a body the header is the whole card above the buttons, so it
@@ -196,27 +150,12 @@
 	/* On a phone the card takes nearly the whole width, and a large one the
 	   whole height, so a page of settings is not a letterbox. */
 	@media (max-width: 34rem) {
-		:global(.modal-positioner[data-scope='dialog'][data-part='positioner']) {
-			padding: var(--space-2);
-		}
-
-		:global(.modal-content[data-scope='dialog'][data-part='content']) {
-			max-height: calc(100dvh - 2 * var(--space-2));
-		}
-
 		:global(.modal-content[data-scope='dialog'][data-part='content'][data-size='lg']) {
 			height: calc(100dvh - 2 * var(--space-2));
 		}
 
 		footer > :global(*) {
 			flex: 1;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		:global(.modal-content[data-scope='dialog'][data-part='content'][data-state='open']),
-		:global(.modal-content[data-scope='dialog'][data-part='content'][data-state='closed']) {
-			animation-duration: 1ms;
 		}
 	}
 </style>

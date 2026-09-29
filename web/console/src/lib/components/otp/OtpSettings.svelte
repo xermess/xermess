@@ -5,12 +5,12 @@
 	import { otpApi, type OTPResponse, type OTPSettingsInput } from '$lib/api';
 	import {
 		Alert,
-		Button,
 		FieldGrid,
 		Input,
 		List,
 		ListItem,
 		Panel,
+		SaveBar,
 		Tag,
 		Thumb,
 		notify
@@ -206,14 +206,7 @@
 	{/if}
 
 	{#if dirty}
-		<div class="actions">
-			<span class="pending">Unsaved changes</span>
-
-			<Button variant="subtle" onclick={discard} disabled={saving}>Discard</Button>
-			<Button type="submit" loading={saving} disabled={saving || !complete}>
-				{saving ? 'Saving…' : 'Save changes'}
-			</Button>
-		</div>
+		<SaveBar {saving} ready={complete} ondiscard={discard} />
 	{/if}
 </form>
 
@@ -229,26 +222,5 @@
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		line-height: 1.5;
-	}
-
-	.actions {
-		position: sticky;
-		bottom: 0;
-		z-index: 1;
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: var(--space-2);
-		margin-inline: calc(var(--space-4) * -1);
-		padding: var(--space-3) var(--space-4);
-		border-top: 1px solid var(--color-secondary-alt);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-panel);
-	}
-
-	.pending {
-		margin-right: auto;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 </style>

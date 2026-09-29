@@ -41,7 +41,7 @@
 		max-width: 100%;
 		min-height: 25px;
 		padding: 5px 7px;
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-control);
 		background: var(--color-secondary-alt);
 		color: var(--color-text);
 		font-size: var(--text-sm);

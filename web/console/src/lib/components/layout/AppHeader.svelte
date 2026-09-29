@@ -129,8 +129,11 @@
 		transition: border-color var(--speed);
 	}
 
+	/* On the dashboard it is the sidebar's top, so it wears the sidebar's
+	   tint as well as its edge. */
 	.brand-column.ruled {
 		border-right-color: var(--color-border);
+		background: var(--nav-surface);
 	}
 
 	/* The mark sits over the sidebar's icons, centred on the same line folded

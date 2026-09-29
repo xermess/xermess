@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RiSettings3Line, RiUserLine } from 'svelte-remixicon';
 	import type { Admin } from '$lib/api';
-	import { Button, Drawer, Tabs, Tag, Thumb } from '$lib/components/ui';
+	import { FullscreenDialog, Tabs, Tag, Thumb } from '$lib/components/ui';
 	import { initials } from '$lib/utils/format';
 	import AccountForms from './AccountForms.svelte';
 	import SecuritySettings from './SecuritySettings.svelte';
@@ -31,12 +31,12 @@
 </script>
 
 <!-- The signed-in administrator's own account, opened the way a record is:
-     a drawer against the right edge, a summary of who it is, and tabs under
-     it. The drawer's body is built when it opens and taken down when it
-     closes, and so is everything in it: every opening starts on the Account
+     the whole window, a summary of who it is, and tabs under it. The dialog's
+     body is built when it opens and taken down when it closes, and so is
+     everything in it: every opening starts on the Account
      tab with the forms as the account stands, and the settings are read the
      first time their tab is shown. -->
-<Drawer bind:open title="Your account" meta={admin.email}>
+<FullscreenDialog bind:open title="Your account">
 	<div class="summary">
 		<Thumb src={admin.avatar_url} text={initials(name)} size="md" shape="circle" tone="accent" />
 		<div class="summary-text">
@@ -55,12 +55,7 @@
 			{/if}
 		{/snippet}
 	</Tabs>
-
-	{#snippet footer()}
-		<span class="spacer"></span>
-		<Button variant="subtle" onclick={() => (open = false)}>Close</Button>
-	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <style>
 	.summary {
@@ -70,7 +65,7 @@
 		margin-bottom: var(--space-5);
 		padding: var(--space-3);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 	}
 
 	.summary-text {
@@ -91,9 +86,5 @@
 	.summary-text span {
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
-	}
-
-	.spacer {
-		flex: 1;
 	}
 </style>

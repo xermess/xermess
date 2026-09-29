@@ -126,8 +126,8 @@
 			transform: translateX(-100%);
 			visibility: hidden;
 			transition:
-				transform var(--speed-drawer) cubic-bezier(0.4, 0, 0.2, 1),
-				visibility var(--speed-drawer);
+				transform var(--speed-slow) cubic-bezier(0.4, 0, 0.2, 1),
+				visibility var(--speed-slow);
 		}
 
 		aside.open {

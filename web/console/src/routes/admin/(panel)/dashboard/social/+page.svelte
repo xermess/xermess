@@ -26,7 +26,7 @@
 		Toolbar,
 		notify
 	} from '$lib/components/ui';
-	import SocialDrawer from '$lib/components/social/SocialDrawer.svelte';
+	import SocialDialog from '$lib/components/social/SocialDialog.svelte';
 	import SocialTable from '$lib/components/social/SocialTable.svelte';
 	import { can } from '$lib/permissions';
 	import { firstPage, keys, LIST_PAGE_SIZE, socialProvidersOptions } from '$lib/query';
@@ -81,7 +81,7 @@
 	const rows = $derived(providers.slice(0, shown));
 
 	let editing = $state<SocialProvider | null>(null);
-	let drawerOpen = $state(false);
+	let dialogOpen = $state(false);
 
 	/** The rows that are ticked, by id, and the ones of those still on screen:
 	    a search can take a ticked row out of view, and acting on what nobody
@@ -129,7 +129,7 @@
 
 	function open(provider: SocialProvider | null) {
 		editing = provider;
-		drawerOpen = true;
+		dialogOpen = true;
 	}
 
 	let refreshing = $state(false);
@@ -308,4 +308,4 @@
 	onConfirm={() => run('remove')}
 />
 
-<SocialDrawer bind:open={drawerOpen} provider={editing} kinds={social.data.kinds} />
+<SocialDialog bind:open={dialogOpen} provider={editing} kinds={social.data.kinds} />

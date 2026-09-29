@@ -32,7 +32,7 @@
 		height: var(--control-height);
 		padding: 0 var(--space-3);
 		border: none;
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-control);
 		background: var(--surface-info);
 		color: var(--color-text);
 		font: inherit;

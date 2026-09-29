@@ -47,8 +47,9 @@ built this way, so they read as one family:
 (`href`, which opens a tab and marks itself); `MenuInfo` only tells, and takes
 no part in the arrow keys. `shape="avatar"` makes the button round.
 
-A record opens in a `Drawer`; everything else that needs a dialog — a
-question, the account's own settings — is a `Modal`, a card in the middle of
+A record, or anything else with a form to fill in, opens in a
+`FullscreenDialog`; everything else that needs a dialog — a question, a
+short choice — is a `Modal`, a card in the middle of
 the window in three widths (`sm`, `md`, `lg`). Its `footer` holds the buttons,
 `closable={false}` keeps it open while something it started is under way, and
 a large one keeps one height, so tabs inside it do not make it jump.
@@ -86,7 +87,7 @@ Give it objects instead when the rows should carry more:
 
 It is Ark UI's Select underneath, so it comes with the keyboard — arrows,
 home/end, and typing a few letters to jump to a row — and with a hidden native
-select for `name` and form submission. The panel is portalled, so a drawer
+select for `name` and form submission. The panel is portalled, so a dialog
 that scrolls or a cell that hides its overflow cannot clip it.
 
 `hint`, `error`, `required`, `disabled` and `readOnly` behave as they do on
@@ -160,7 +161,7 @@ by `bun run check`; everything below refers to the tokens they declare.
 | what `danger` or `success` means                                     | `styles/palettes.css`   |
 | buttons, icon buttons, link buttons                                  | `styles/controls.css`   |
 | inputs, text areas, passwords, selects, dates                        | `styles/fields.css`     |
-| switches, checkboxes, drawers, tooltips, menus, dropdowns, calendars | `styles/ark.css`        |
+| switches, checkboxes, dialogs, tooltips, menus, dropdowns, calendars | `styles/ark.css`        |
 | one component's own layout                                           | its own `<style>` block |
 
 `ark.css` styles Ark UI's parts through the `data-scope` / `data-part`
@@ -175,32 +176,73 @@ caller does not provide one; explicit names are preserved where a control
 supports native form values. This keeps browser autofill and form diagnostics
 able to identify the fields.
 
-## Drawers
+## Corners
 
-A record opens in a drawer, the way PocketBase opens one: a full-height panel
-against the right edge, over a washed-out page.
+Three kinds of corner, and a field, a control or a surface names one of them
+rather than a size:
+
+| Token              | What wears it                                              |
+| ------------------ | ---------------------------------------------------------- |
+| `--radius-field`   | a box to type in — inputs, text areas, selects, dates      |
+| `--radius-control` | something to press — buttons, chips, tags, filters: a pill |
+| `--radius-surface` | something that holds — cards, panels, tables, dialogs      |
+
+A field is the one thing with a tight corner, so a box to type in never reads
+as a button. The values are in `theme.ts`; changing how round the panel is,
+is changing those three. The sizes (`--radius-sm`, `-md`, `-lg`) are for the
+small parts inside them — a menu's row, a checkbox, a `Code` — which follow
+the thing they sit in rather than a kind of their own.
+
+## Full-window dialogs
+
+A record opens in a `FullscreenDialog`: the whole window, a few pixels in
+from its edges and rounded, over a dimmed page. A bar across the top holds
+the close button, the title and a tag beside it (`meta`, for an id or an
+address), and the actions at its right; the body scrolls under it, in one
+centred column.
 
 ```svelte
-<Drawer bind:open title="Edit user" meta={user.id} onsubmit={save}>
-	<FormSection title="Account">…</FormSection>
+<FullscreenDialog bind:open title={user.name} meta={user.email} onsubmit={save}>
+	<FormSection title="Account" description="Who they are.">…</FormSection>
 
-	{#snippet footer()}
+	<DangerZone
+		title="Delete this user"
+		description="This cannot be undone."
+		label="Delete"
+		onclick={ask}
+	/>
+
+	{#snippet actions()}
 		<Button variant="subtle" onclick={() => (open = false)}>Cancel</Button>
 		<Button type="submit" loading={saving}>Save changes</Button>
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 ```
 
-`onsubmit` makes the body a form, so the footer's submit button belongs to it
-and Enter saves. Without it the drawer is a plain container.
+`onsubmit` makes the body a form, so the submit button among the actions
+belongs to it and Enter saves. Without it the dialog is a plain container.
+The actions are Cancel and the button that saves, and nothing else: a dialog
+that only shows something has none — the close button, and Escape, are how it
+is left — and the one thing that cannot be taken back is a `DangerZone` at the
+foot of the form, never a button beside Save. `status` is a few words before
+the buttons — what is unsaved, what is still missing. Pass either only when
+there is something in it: an empty one still draws its bar. On a phone the
+actions move to a bar along the bottom.
+
+`FormSection` is what the body is built from, and what a settings page is
+built from too — there it takes an `icon` beside its title and `meta` tags
+under its description, saying where the values show. It lays itself out by its own
+width: in a dialog or on a settings page its title and description sit on the
+left and its fields in a card beside them; somewhere narrow — the flow
+editor's inspector — it is a title over its fields. Give every section a
+description; the left column is how a long form is scanned.
 
 It is built when it opens and taken down once it has finished leaving, so a
-drawer that opens always starts fresh — nothing scrolled, no tab still on the
+dialog that opens always starts fresh — nothing scrolled, no tab still on the
 one it was left on, no half-finished form from last time. A component inside
 one may assume it is mounted for a single visit.
 
-Arriving and leaving are 200ms, and the panel travels the last 30px rather
-than its whole width: PocketBase's motion, to the millisecond. Both are in
+Arriving and leaving are 200ms, a rise of 12px and a fade. Both are in
 `styles/ark.css`, and they are two named animations rather than one reversed
 on purpose — Ark waits for an exit animation only when it can see the
 animation _name_ change, and a reversed one never changes it.
@@ -308,8 +350,12 @@ settings and logs pages. Reach for these before writing a box of your own.
 | `Tag`           | A label in any palette; `dot` marks it with a coloured dot instead, `small` and `strong` size it.                                                          |
 | `Thumb`         | Also a picture — `src`, falling back to the icon or letters if it fails — `circle` for a person, `tone="accent"` for the brand mark.                       |
 | `Code`          | An id, a key, a code in the monospace face on a quiet tint; `tone="quiet"`, `truncate`.                                                                    |
+| `CodeBlock`     | A block of code — JSON — highlighted, with a copy button; `title` gives it a head. Colours are the `--syntax-*` tokens in `theme.ts`.                      |
+| `CodeEditor`    | A field for JSON: a text area over a highlighted copy of itself, so it edits like any field and reads like code.                                           |
 | `Kbd`           | A key on the keyboard, for writing a shortcut down.                                                                                                        |
 | `Note`          | The quiet sentence under a list or a form; brings no margin of its own.                                                                                    |
+| `DangerZone`    | The one action on a form that cannot be taken back, at its foot, ruled in the danger colour, with what it costs beside the button.                         |
+| `SaveBar`       | The Discard and Save buttons of a settings page that saves as a whole: shown once something changed, floating at the foot of the window.                   |
 | `FieldGrid`     | Fields side by side, one column when it is narrow (by its own width); a child with `class="full"` spans the row.                                           |
 | `Alert`         | A note about the page itself: what it shows or cannot show. Not the outcome of an action — that is `notify`.                                               |
 | `notify`        | What an action came to: `notify.success(title)`, `notify.error(err, fallback)`. A toast in the corner, drawn by `<Toaster />` in the root layout.          |

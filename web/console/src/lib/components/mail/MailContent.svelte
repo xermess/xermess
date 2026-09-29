@@ -7,7 +7,17 @@
 		type MailLanguageContent,
 		type MailMessageSpec
 	} from '$lib/api';
-	import { Button, Input, Panel, Select, Tag, Textarea, notify } from '$lib/components/ui';
+	import {
+		Button,
+		Code,
+		FormSection,
+		Input,
+		SaveBar,
+		Select,
+		Tag,
+		Textarea,
+		notify
+	} from '$lib/components/ui';
 	import { keys } from '$lib/query';
 
 	type Props = {
@@ -121,13 +131,11 @@
 </script>
 
 <form onsubmit={submit}>
-	<p class="lead">
-		What each email says. An email goes out in the reader's language, so these are that language's
-		words — the same rows the Languages page holds, shown here as the messages they make. A field
-		left empty falls back to the English this release ships, which is what the placeholder shows.
-	</p>
-
-	<Panel title="Language" icon={RiTranslate2}>
+	<FormSection
+		title="Language"
+		description="An email goes out in the reader's language. A field left empty falls back to the English this release ships, which is what its placeholder shows."
+		icon={RiTranslate2}
+	>
 		{#snippet meta()}
 			{#if language && !language.offered}
 				<Tag tone="warning" small>Not offered</Tag>
@@ -138,12 +146,12 @@
 			label="Writing in"
 			bind:value={code}
 			options={choices}
-			hint="Add and remove languages on the Languages page."
+			hint="The same text the Languages page holds. Add and remove languages there."
 		/>
-	</Panel>
+	</FormSection>
 
 	{#each content.messages as spec (spec.kind)}
-		<Panel title={spec.label} icon={RiFileTextLine}>
+		<FormSection title={spec.label} description={spec.description} icon={RiFileTextLine}>
 			{#snippet meta()}
 				{#if written(spec)}
 					<Tag tone="info" small>Written</Tag>
@@ -152,92 +160,47 @@
 				{/if}
 			{/snippet}
 
-			<p class="note">{spec.description}</p>
-
-			<div class="fields">
-				<Input
-					label="Subject"
-					bind:value={drafts[spec.subject_key]}
-					maxlength={200}
-					placeholder={shipped(spec.subject_key)}
-				/>
-
-				<Textarea
-					label="Body"
-					bind:value={drafts[spec.body_key]}
-					rows={8}
-					placeholder={shipped(spec.body_key)}
-				/>
-			</div>
-
-			<div class="foot">
-				<p class="params">
-					{#each spec.params as param (param.name)}
-						<code title={param.description}>{'{' + param.name + '}'}</code>
-					{/each}
-					<span>are filled in when the message is sent.</span>
-				</p>
-
+			{#snippet action()}
 				{#if written(spec)}
 					<Button size="sm" variant="subtle" onclick={() => revert(spec)}>
 						<RiRestartLine size="15" />
 						Use the shipped text
 					</Button>
 				{/if}
-			</div>
-		</Panel>
+			{/snippet}
+
+			<Input
+				label="Subject"
+				bind:value={drafts[spec.subject_key]}
+				maxlength={200}
+				placeholder={shipped(spec.subject_key)}
+			/>
+
+			<Textarea
+				label="Body"
+				bind:value={drafts[spec.body_key]}
+				rows={8}
+				placeholder={shipped(spec.body_key)}
+			/>
+
+			<p class="params">
+				{#each spec.params as param (param.name)}
+					<Code tone="quiet" title={param.description}>{'{' + param.name + '}'}</Code>
+				{/each}
+				<span>are filled in when the message is sent.</span>
+			</p>
+		</FormSection>
 	{/each}
 
 	{#if dirty}
-		<div class="actions">
-			<span class="pending">Unsaved changes</span>
-
-			<Button
-				variant="subtle"
-				onclick={() => (drafts = wordsOf(language))}
-				disabled={save.isPending}
-			>
-				Discard
-			</Button>
-			<Button type="submit" loading={save.isPending} disabled={save.isPending}>
-				{save.isPending ? 'Saving…' : 'Save changes'}
-			</Button>
-		</div>
+		<SaveBar saving={save.isPending} ondiscard={() => (drafts = wordsOf(language))} />
 	{/if}
 </form>
 
 <style>
-	form {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-
-	.lead,
-	.note {
-		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-		line-height: 1.5;
-	}
-
-	.note {
-		margin-bottom: var(--space-3);
-	}
-
-	.fields {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-	}
-
-	.foot {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-2);
-		margin-top: var(--space-3);
+	/* FormSection spaces the sections itself; the bar needs a gap above it. */
+	form > :global(.save-bar) {
+		margin-top: var(--space-5);
 	}
 
 	/* The placeholders a message may use, each readable on its own: a reader
@@ -246,36 +209,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-2);
+		gap: var(--space-1) var(--space-2);
 		margin: 0;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
-	}
-
-	.params code {
-		padding: 0.1rem 0.35rem;
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-alt);
-		font-size: var(--text-xs);
-	}
-
-	.actions {
-		position: sticky;
-		bottom: 0;
-		z-index: 1;
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: var(--space-2);
-		margin-inline: calc(var(--space-4) * -1);
-		padding: var(--space-3) var(--space-4);
-		border-top: 1px solid var(--color-secondary-alt);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-panel);
-	}
-
-	.pending {
-		margin-right: auto;
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 	}

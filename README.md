@@ -139,9 +139,9 @@ web/serve.js                   serves an app's build with its API paths in front
 
 web/console/src/lib/api/               the typed client for this API
 web/console/src/lib/query/             the query cache: its client, its keys, its options
-web/console/src/lib/components/ui/     the design system: Button, Drawer, DataTable, Panel, List, Tag…
+web/console/src/lib/components/ui/     the design system: Button, FullscreenDialog, DataTable, Panel, List, Tag…
 web/console/src/lib/components/layout/ the panel's frame: header, sidebar, account menu
-web/console/src/lib/components/users/  the users feature: table, drawers, field inputs
+web/console/src/lib/components/users/  the users feature: table, dialogs, field inputs
 web/console/src/lib/components/roles/  roles, their mappings and pickers
 web/console/src/lib/components/applications/ applications, their API access, token preview
 web/console/src/lib/components/apis/   APIs, their scopes and settings
@@ -192,7 +192,7 @@ that load returned then seeds a TanStack Query cache — `usersOptions(params,
 data.page)` — and everything after the first paint goes through the cache
 instead of through the page.
 
-That is what a save does: the drawer runs a `createMutation`, and on success
+That is what a save does: the dialog runs a `createMutation`, and on success
 invalidates `keys.users.all`. The list refills itself without a navigation,
 the URL does not change, and nothing else on the page is thrown away. The
 refresh button is the same invalidation by hand, and the cache refills on its
@@ -562,30 +562,30 @@ is, so a page added there needs nothing else to be reachable from it.
 Where to browse rather than jump is the dashboard's sidebar, whose column the
 header's logo block tops: the two are one width and fold together.
 
-It is a tree. The two pages that answer "what is happening" stand on their own
-at the top; everything else is under the subject it belongs to, and a section
-opens and closes with a click. Which are closed is a cookie, so the column
-arrives as it was left, and the section holding the page being read is named
-in full whether or not it is open.
+It is one list of groups, each a quiet heading over its pages: what is
+happening first, then each subject the panel manages, then the installation's
+own settings. A heading folds its group with a click. Which are folded is a
+cookie, so the column arrives as it was left, and a folded group holding the
+page being read carries a dot.
 
 ```
-Activity · Logs
-▾ Applications     Applications · APIs
-▾ Authentication   Login flows · Social · SSO integrations · One-time codes
-▾ Users            Users · Sessions · Roles
-▾ Administration   Administrators · Admin roles          (super admins only)
-▾ Settings         Organization · Mail · Languages
+Overview          Activity · Logs
+Applications      Applications · APIs
+Authentication    Login flows · Social sign-in · SSO integrations · One-time codes
+User management   Users · Sessions · Roles
+Administration    Administrators · Admin roles          (super admins only)
+Settings          General · Mail · Cache
 ```
 
-A section is a subject rather than a bucket, which is why One-time codes sits
+A group is a subject rather than a bucket, which is why One-time codes sits
 under Authentication — where it is read — rather than under Settings, where it
 merely lives. `sections.ts` is the one list, and the sidebar and the command
 palette both read it.
 
-The page being read is filled and marked down its left edge — on the row
-itself, or on the tree's rule where the page is under a section — so the eye
-finds it before it reads a word. Folded to icons, a section opens its pages
-beside it as a flyout, and the one holding the page being read carries a dot.
+The page being read is filled solid in the brand colour, its name and icon in
+the brand's text colour, so the eye finds it before it reads a word. Folded
+to icons, the column is every page's icon, the groups ruled apart, each name
+in a tooltip.
 
 Only the list scrolls; the column around it keeps the border and the
 background, so the bar is never against the column's edge and opening a
@@ -633,8 +633,8 @@ Searching matches the email or any stored value, because `data` is searched as
 text; the search and the verified filter live in the URL, so the server renders
 the result and a filtered list can be linked to.
 
-**Your account** opens from the header's account icon as a drawer, the way
-every other record does, and is built out of the same `Panel`, `List` and
+**Your account** opens from the header's account icon as a full-window dialog,
+the way every other record does, and is built out of the same `Panel`, `List` and
 `Tag` the pages are: the account itself, two-factor sign-in, and the sessions
 this account has. The menu's rows open it on the part they name. The theme is
 not among them — it is the toggle in the header, and one place to change it is
@@ -705,8 +705,8 @@ fields have no spinner buttons, and a text area grows with its text up to a
 screenful. All of it is in `lib/styles/fields.css`.
 
 What floats over the page is drawn from its own tokens: popovers — menus
-and a select's list — from `--popover-*`, dialogs — drawers and the command
-palette — from `--dialog-*`. In the light theme both are white, set apart by
+and a select's list — from `--popover-*`, dialogs — full-window ones, modals and the
+command palette — from `--dialog-*`. In the light theme both are white, set apart by
 a hairline and a shadow. In dark mode they are flat, with no shadow or glow:
 a dialog sits at `#090909`, while a popover takes the next step at `#0c0c0c`
 so a select or menu opened over a dialog remains distinct. Hairline borders
@@ -943,8 +943,8 @@ domains**.
   `state` is left there in a cookie as well as stored, so a finished sign-in
   cannot be walked through somebody else's browser.
 
-**Setting one up** is the SSO integrations page. A connection starts off; the
-drawer's **Test connection** reads the issuer's discovery or the metadata
+**Setting one up** is the SSO integrations page. A connection starts off; its
+dialog's **Test connection** reads the issuer's discovery or the metadata
 before anything is saved — and warns about a scope the provider does not
 list, which some providers, Keycloak among them, refuse a whole sign-in over
 — and once created its **Service provider** tab has
@@ -952,7 +952,7 @@ what to give the provider — the redirect URI for OIDC, and for SAML the ACS
 URL, the entity ID and a metadata URL (`/oauth2/sso/<slug>/metadata`) most
 providers can be set up from in one paste. A SAML provider's metadata can be
 read from its address and read again with **Refresh metadata** when it rolls
-its certificate over; the drawer warns a month before that certificate
+its certificate over; the dialog warns a month before that certificate
 expires. It takes `sso.read` to see the page and `sso.write` to change it, and
 every change is in the activity log, as is a role a sign-in added or took
 away (`user.roles_synced`). So is a sign-in that did not complete
@@ -1082,7 +1082,7 @@ User management · Sessions is everyone signed in right now — Keycloak's
 Sessions page: each browser session with its user, device, address, when it
 started and when it runs out, newest first. Search by the start of an
 address, or open one user's sessions from their name or from the Sessions
-link in their drawer.
+link in their dialog.
 
 **Sign out** ends one session: that browser has to sign in again, and the
 user's applications keep their tokens, as when the user ends a session
@@ -1174,7 +1174,7 @@ They are embedded in the binary (`i18n/i18n.go`) and have three jobs:
   cleared in the panel, in a language that ships, comes back on the next
   start — a shipped language can be reworded, and the way to empty one is to
   remove it. A removed language is never brought back by a start; the New
-  language drawer offers it back instead.
+  language dialog offers it back instead.
 - **`i18n/id/en/` is the contract.** The keys in its groups are the keys there
   are: coverage is counted against them, a key they do not have is dropped on
   save, and a key a language has no text for is sent in English — the
@@ -1187,7 +1187,7 @@ starts from nothing, from a copy of another one here, or from the shipped
 translation if the server has one. It starts off, so it can be translated
 before anybody is offered it, and opens on its first untranslated app.
 
-**Translating** is the language's drawer: a tab per app, every key with the
+**Translating** is the language's dialog: a tab per app, every key with the
 English beside a field for the translation, a search over keys and both
 texts, and a switch for only what is left. A translation that drops a
 `{parameter}` the English has is flagged under the field. **Export JSON**
@@ -1197,7 +1197,7 @@ can go to a translator and come back through **Import JSON**. An import is
 merged over what is there: keys it has text for are replaced, the rest are
 kept, and keys this version does not use are skipped and counted.
 
-The drawer's **Settings** tab renames a language, offers it on the sign-in
+The dialog's **Settings** tab renames a language, offers it on the sign-in
 pages, makes it the default — which takes the mark from whichever language
 had it — and sets its place in the picker. The default is always offered; the
 base language, English, is always offered and cannot be removed; and the

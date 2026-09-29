@@ -15,10 +15,11 @@
 	import { organizationApi, type Organization, type OrganizationSettings } from '$lib/api';
 	import {
 		Alert,
-		Button,
 		Code,
 		FieldGrid,
+		FormSection,
 		Input,
+		SaveBar,
 		Select,
 		Tag,
 		Thumb,
@@ -27,7 +28,6 @@
 	import { ADMIN_DEPENDENCY } from '$lib/constants';
 	import { keys, organizationOptions } from '$lib/query';
 	import { formatDate, initials } from '$lib/utils/format';
-	import SettingsSection from './SettingsSection.svelte';
 
 	type Props = {
 		/** What the server rendered, to seed the query with. */
@@ -217,7 +217,7 @@
 	{/if}
 
 	<fieldset disabled={!editable}>
-		<SettingsSection
+		<FormSection
 			title="Identity"
 			description="What the organization is called, and the mark the sign-in pages and this panel's header show."
 			icon={RiBuildingLine}
@@ -250,9 +250,9 @@
 					/>
 				</div>
 			</FieldGrid>
-		</SettingsSection>
+		</FormSection>
 
-		<SettingsSection
+		<FormSection
 			title="Region"
 			description="The zone dates are written in on a user's account pages, such as when the account was made."
 			icon={RiGlobalLine}
@@ -269,9 +269,9 @@
 				required
 				disabled={!editable}
 			/>
-		</SettingsSection>
+		</FormSection>
 
-		<SettingsSection
+		<FormSection
 			title="Support"
 			description="Where someone who cannot get in can ask for help."
 			icon={RiCustomerService2Line}
@@ -299,9 +299,9 @@
 					hint="In the form you want it dialled."
 				/>
 			</FieldGrid>
-		</SettingsSection>
+		</FormSection>
 
-		<SettingsSection
+		<FormSection
 			title="Agreements"
 			description="What users agree to. An application with links of its own shows those instead."
 			icon={RiFileTextLine}
@@ -328,21 +328,11 @@
 				placeholder="https://example.com/privacy"
 				hint="Published as op_policy_uri, and agreed to on registration."
 			/>
-		</SettingsSection>
+		</FormSection>
 	</fieldset>
 
 	{#if editable && dirty}
-		<!-- The bar appears only once something has been typed, and then stays
-		     at the foot of the window, so the buttons are within reach of
-		     whichever field is being edited. -->
-		<div class="actions">
-			<span class="pending">Unsaved changes</span>
-
-			<Button variant="subtle" onclick={discard} disabled={saving}>Discard</Button>
-			<Button type="submit" loading={saving} disabled={saving || !complete}>
-				{saving ? 'Saving…' : 'Save changes'}
-			</Button>
-		</div>
+		<SaveBar {saving} ready={complete} ondiscard={discard} />
 	{/if}
 </form>
 
@@ -353,11 +343,9 @@
 		gap: var(--space-5);
 	}
 
+	/* FormSection spaces the sections itself. */
 	fieldset {
-		display: flex;
-		flex-direction: column;
 		min-width: 0;
-		gap: var(--space-5);
 		margin: 0;
 		padding: 0;
 		border: none;
@@ -374,7 +362,7 @@
 		gap: var(--space-4);
 		padding: var(--space-4);
 		border: 1px solid var(--color-secondary-alt);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-surface);
 		background: var(--color-surface);
 		box-shadow: var(--shadow-panel);
 	}
@@ -458,29 +446,6 @@
 	.progress small {
 		color: var(--color-text-hint);
 		font-size: var(--text-xs);
-	}
-
-	/* Opaque, and the width of the column: stuck to the foot of the window it
-	   passes over the sections, which it may not show through. */
-	.actions {
-		position: sticky;
-		bottom: 0;
-		z-index: 1;
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: var(--space-2);
-		margin-inline: calc(var(--space-4) * -1);
-		padding: var(--space-3) var(--space-4);
-		border-top: 1px solid var(--color-secondary-alt);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-panel);
-	}
-
-	.pending {
-		margin-right: auto;
-		color: var(--color-text-hint);
-		font-size: var(--text-sm);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -11,7 +11,7 @@
 	    cookies, and re-reading them would undo a toggle. */
 	const shell = provideShell(
 		untrack(() => data.sidebar),
-		untrack(() => data.closedBranches)
+		untrack(() => data.closedGroups)
 	);
 </script>
 
@@ -38,7 +38,7 @@
 
 		height: 100dvh;
 		overflow: hidden;
-		transition: --sidebar-width var(--speed-drawer) cubic-bezier(0.4, 0, 0.2, 1);
+		transition: --sidebar-width var(--speed-slow) cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	/* Folded, the column is just wide enough for the icons. */

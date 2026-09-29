@@ -28,7 +28,7 @@
 	import type { Admin } from '$lib/api';
 	import { BRAND } from '$lib/brand';
 	import { Icon, IconButton, Kbd } from '$lib/components/ui';
-	import { allSections } from './sidebar/sections';
+	import { visibleGroups } from './sidebar/sections';
 
 	type Command = {
 		id: string;
@@ -51,11 +51,11 @@
 	/** Every page this administrator may open, then the two that are not
 	    pages of this installation at all. */
 	const commands = $derived<Command[]>([
-		...allSections(admin).flatMap((section) =>
-			section.items.map((item) => ({
+		...visibleGroups(admin).flatMap((group) =>
+			group.items.map((item) => ({
 				id: item.route,
 				label: item.label,
-				group: section.group,
+				group: group.label,
 				icon: item.icon,
 				href: resolve(item.route)
 			}))
@@ -292,63 +292,24 @@
 </Dialog.Root>
 
 <style>
-	/* The dialog's anatomy is styled once in styles/ark.css, and it is styled
-	   for the drawer: a full-height panel against the right edge. A palette
-	   is the other kind of dialog, so these three override it by being one
-	   selector more specific. */
-	:global(.palette-positioner[data-part='positioner']) {
-		display: flex;
-		justify-content: center;
+	/* The card itself — bordered, how it arrives — is every dialog's, in
+	styles/ark.css. The palette is anchored below the top of the window
+	rather than centred: the list grows downwards, so a centred palette would
+	move while being typed in. */
+	:global(.palette-positioner[data-scope='dialog'][data-part='positioner']) {
 		align-items: flex-start;
-		padding: var(--space-4);
-		/* Below the top of the window rather than centred: the list grows
-		   downwards, so a centred palette would move while being typed in. */
 		padding-top: 12vh;
-		overflow-y: auto;
 	}
 
-	:global(.palette-backdrop[data-part='backdrop']) {
+	:global(.palette-backdrop[data-scope='dialog'][data-part='backdrop']) {
 		backdrop-filter: blur(2px);
 	}
 
-	:global(.palette-content[data-part='content']) {
-		width: min(36rem, 100%);
-		height: auto;
+	:global(.palette-content[data-scope='dialog'][data-part='content']) {
+		--dialog-width: 36rem;
+
+		margin: 0 auto;
 		max-height: min(26rem, 70vh);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-md);
-		overflow: hidden;
-		animation: palette-in var(--speed) ease;
-	}
-
-	:global(.palette-content[data-part='content'][data-state='closed']) {
-		animation: palette-out var(--speed) ease forwards;
-	}
-
-	/* It arrives a shade small and settles, which reads as the palette coming
-	   forward rather than a box appearing. Two names, because Ark waits for a
-	   leaving animation only when the name changes — the note in ark.css
-	   beside the drawer's keyframes explains why. */
-	@keyframes palette-in {
-		from {
-			opacity: 0;
-			transform: scale(0.98) translateY(-4px);
-		}
-	}
-
-	@keyframes palette-out {
-		to {
-			opacity: 0;
-			transform: scale(0.98) translateY(-4px);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		:global(.palette-content[data-part='content']),
-		:global(.palette-content[data-part='content'][data-state='closed']) {
-			animation: none;
-		}
 	}
 
 	.field {

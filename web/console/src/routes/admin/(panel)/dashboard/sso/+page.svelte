@@ -12,7 +12,7 @@
 		ShowMore,
 		Toolbar
 	} from '$lib/components/ui';
-	import SSODrawer from '$lib/components/sso/SSODrawer.svelte';
+	import SSODialog from '$lib/components/sso/SSODialog.svelte';
 	import SSOTable from '$lib/components/sso/SSOTable.svelte';
 	import { can } from '$lib/permissions';
 	import { firstPage, keys, LIST_PAGE_SIZE, ssoOptions } from '$lib/query';
@@ -48,11 +48,11 @@
 	const rows = $derived(visible.slice(0, shown));
 
 	let editing = $state<SSOConnection | null>(null);
-	let drawerOpen = $state(false);
+	let dialogOpen = $state(false);
 
 	function open(connection: SSOConnection | null) {
 		editing = connection;
-		drawerOpen = true;
+		dialogOpen = true;
 	}
 
 	let refreshing = $state(false);
@@ -132,8 +132,8 @@
 	{/if}
 {/if}
 
-<SSODrawer
-	bind:open={drawerOpen}
+<SSODialog
+	bind:open={dialogOpen}
 	connection={editing}
 	roles={data.roles}
 	canReadRoles={data.mayReadRoles}
@@ -147,7 +147,7 @@
 		gap: var(--space-4);
 		padding: var(--space-5) var(--space-4);
 		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-lg);
+		border-radius: var(--radius-surface);
 	}
 
 	.empty h2 {

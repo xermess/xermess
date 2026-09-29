@@ -40,7 +40,7 @@
 	]);
 
 	/** The first characters of the id, which is all anyone reads of it. */
-	/** The mark for a provider is the panel's own, so a row and the drawer
+	/** The mark for a provider is the panel's own, so a row and the dialog
 	    show the same thing. */
 	function markFor(kind: SocialKind) {
 		return providerMark(kind);

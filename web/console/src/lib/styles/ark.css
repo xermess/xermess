@@ -12,7 +12,7 @@
 [data-scope='date-picker'][data-part='content'] {
 	padding: 4px;
 	border: 1px solid var(--color-border);
-	border-radius: var(--radius-md);
+	border-radius: var(--radius-surface);
 	background: var(--color-surface);
 	box-shadow: var(--shadow-md);
 }
@@ -23,7 +23,7 @@
 	outline: none;
 }
 
-/* A menu opens from the sticky header (10), below a drawer (40, 50). */
+/* A menu opens from the sticky header (10), below a dialog (40, 50). */
 [data-scope='menu'][data-part='content'] {
 	z-index: 30;
 	min-width: 12rem;
@@ -42,7 +42,7 @@
 	gap: var(--space-2);
 	min-height: 36px;
 	padding: 8px 10px;
-	border-radius: var(--radius-sm);
+	border-radius: var(--radius-md);
 	color: var(--palette-fg, var(--color-text));
 	font-size: var(--text-base);
 	font-weight: 500;
@@ -105,7 +105,7 @@
 [data-scope='tooltip'][data-part='content'] {
 	/* Named on the content, not the positioner: Zag writes the positioner's
 	   z-index inline, copied from the content's. Above everything else a
-	   tooltip can be opened from, a drawer and an open select included. */
+	   tooltip can be opened from, a dialog and an open select included. */
 	z-index: 80;
 	padding: 5px 9px;
 	border-radius: var(--radius-sm);
@@ -286,15 +286,17 @@
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-info), transparent 80%);
 }
 
-/* Dialog, opened as a drawer: a full-height panel against the right edge,
-   the way PocketBase opens a record. Every dialog in the panel is one of
-   these, so the anatomy is styled once here and Drawer.svelte only lays out
-   the head, body and foot inside it.
+/* Dialog. Every dialog is these parts, and by default a card in the middle
+   of the window over a dimmed page: a question (ConfirmDialog), a short form
+   (Modal), the command palette. Each of those says only how wide it is and,
+   for the palette, where it sits.
 
-   The motion is PocketBase's, to the millisecond: the panel fades in over
-   the last 30px of its way to the edge, in 200ms, and leaves the same way.
-   A panel that slides in from a screen's width away is a longer wait for
-   the same form. */
+   A record, or anything else with a long form, opts into the full-window
+   sheet with `.fullscreen` (FullscreenDialog): the whole window, stopping a
+   few pixels short of its edges and rounded, so a form has room to be laid
+   out as a page and still reads as something laid over one.
+
+   A card arrives a shade small and settles; the sheet rises a little. */
 
 [data-scope='dialog'][data-part='backdrop'] {
 	position: fixed;
@@ -304,11 +306,11 @@
 }
 
 [data-scope='dialog'][data-part='backdrop'][data-state='open'] {
-	animation: drawer-backdrop-in var(--speed-drawer);
+	animation: dialog-backdrop-in var(--speed-slow);
 }
 
 [data-scope='dialog'][data-part='backdrop'][data-state='closed'] {
-	animation: drawer-backdrop-out var(--speed-drawer) forwards;
+	animation: dialog-backdrop-out var(--speed-slow) forwards;
 }
 
 [data-scope='dialog'][data-part='positioner'] {
@@ -316,67 +318,98 @@
 	inset: 0;
 	z-index: 50;
 	display: flex;
-	justify-content: flex-end;
-	/* A panel on its way in or out sits beyond the right edge; clipping it
-	   here means that is never a scrollbar.
-
-	   Clip, not hidden: a box with overflow: hidden can still be scrolled
-	   from script, and a browser does exactly that to bring a focused field
-	   into view. Ticking a box inside the panel focused its hidden input,
-	   the browser scrolled this box to show it, and the whole panel slid off
-	   the screen. A clipped box cannot be scrolled at all. */
-	overflow: clip;
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-4);
+	overflow-y: auto;
 }
 
 [data-scope='dialog'][data-part='content'] {
 	display: flex;
 	flex-direction: column;
-	width: min(var(--drawer-width), 100%);
-	height: 100%;
+	width: min(var(--dialog-width, 40rem), 100%);
+	/* In the middle while it fits, and scrolled from its top when it does
+	   not, rather than cut off above the window. */
+	margin: auto;
+	max-height: calc(100dvh - 2 * var(--space-4));
+	overflow: hidden;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-surface);
 	background: var(--color-surface);
-	/* The border reserves the same geometry in both themes. Light leaves it
-	   transparent and draws the edge with a travelling shadow; dark colours it
-	   as a hairline. A visible border would travel with the panel, and for the
-	   30px it is still moving there would be nothing behind it to divide. */
-	border-left: 1px solid var(--drawer-border-color);
-	box-shadow: var(--shadow-drawer);
-	/* The panel is given its own layer for the length of the slide, so the
-	   text in it is not resampled frame by frame. */
-	backface-visibility: hidden;
+	box-shadow: var(--shadow-md);
 	/* Reaching the end of a long form does not then scroll the page behind. */
 	overscroll-behavior: none;
 }
 
 [data-scope='dialog'][data-part='content'][data-state='open'] {
-	animation: drawer-in var(--speed-drawer);
+	animation: dialog-card-in var(--speed) ease-out;
 }
 
 /* Leaving has its own keyframes rather than the same ones reversed, and it
-   has to.
-
-   Ark keeps a closing drawer in the page until its exit animation ends, and
-   it decides there is one to wait for by watching the animation *name*
-   change. Reversing `drawer-in` leaves the name exactly as it was, so
-   nothing looks changed, and the panel is taken out of the page in the frame
-   it was told to close — no leaving animation at all. Two names, and the
-   wait happens.
-
-   PocketBase writes the same motion as a transition, with @starting-style
-   and transition-behavior: allow-discrete, and needs no names for it. Ark's
-   presence machine watches animations and only animations, so here the two
-   are animations. */
+   has to. Ark keeps a closing dialog in the page until its exit animation
+   ends, and it decides there is one to wait for by watching the animation
+   *name* change. Reversing the arriving one leaves the name as it was, so
+   the dialog is taken out of the page in the frame it was told to close. */
 [data-scope='dialog'][data-part='content'][data-state='closed'] {
-	animation: drawer-out var(--speed-drawer) forwards;
+	animation: dialog-card-out var(--speed) ease-in forwards;
 }
 
-/* A drawer on its way out takes no clicks, and neither does one that never
+/* The full-window sheet. */
+.fullscreen[data-scope='dialog'][data-part='positioner'] {
+	align-items: stretch;
+	justify-content: stretch;
+	padding: var(--space-2);
+	/* Clip, not hidden: a box with overflow: hidden can still be scrolled
+	   from script, and a browser does exactly that to bring a focused field
+	   into view — which slid the whole sheet off the screen when a box inside
+	   it was ticked. A clipped box cannot be scrolled at all. */
+	overflow: clip;
+}
+
+.fullscreen[data-scope='dialog'][data-part='content'] {
+	width: 100%;
+	height: 100%;
+	max-height: none;
+	margin: 0;
+}
+
+.fullscreen[data-scope='dialog'][data-part='content'][data-state='open'] {
+	animation: dialog-sheet-in var(--speed-slow) ease-out;
+}
+
+.fullscreen[data-scope='dialog'][data-part='content'][data-state='closed'] {
+	animation: dialog-sheet-out var(--speed-slow) ease-in forwards;
+}
+
+/* On a phone a card nearly fills the width, and the sheet takes the window:
+   there is no page to see around it. */
+@media (max-width: 40rem) {
+	[data-scope='dialog'][data-part='positioner'] {
+		padding: var(--space-2);
+	}
+
+	[data-scope='dialog'][data-part='content'] {
+		max-height: calc(100dvh - 2 * var(--space-2));
+	}
+
+	.fullscreen[data-scope='dialog'][data-part='positioner'] {
+		padding: 0;
+	}
+
+	.fullscreen[data-scope='dialog'][data-part='content'] {
+		border: none;
+		border-radius: 0;
+	}
+}
+
+/* A dialog on its way out takes no clicks, and neither does one that never
    finished leaving.
 
-   Ark removes a closed drawer when its exit animation ends — and an animation
-   in a background tab never starts, so a drawer closed just before switching
-   tabs can still be in the page on the way back. Its backdrop covers
-   everything, which would leave the panel looking fine and ignoring every
-   click. Saying so here costs nothing and cannot be forgotten. */
+   Ark removes a closed dialog when its exit animation ends — and an
+   animation in a background tab never starts, so a dialog closed just
+   before switching tabs can still be in the page on the way back. Its
+   backdrop covers everything, which would leave the page looking fine and
+   ignoring every click. */
 [data-scope='dialog'][data-part='backdrop'][data-state='closed'],
 [data-scope='dialog'][data-part='positioner']:has([data-state='closed']),
 [data-scope='dialog'][data-part='content'][data-state='closed'] {
@@ -399,43 +432,55 @@
 	font-size: var(--text-sm);
 }
 
-/* Both ways on the browser's own `ease`, which is what PocketBase's
-   transition uses: it starts and ends gently, and over 200ms and 30px
-   nothing more shaped than that is visible anyway. */
-@keyframes drawer-backdrop-in {
+@keyframes dialog-backdrop-in {
 	from {
 		opacity: 0;
 	}
 }
 
-@keyframes drawer-backdrop-out {
+@keyframes dialog-backdrop-out {
 	to {
 		opacity: 0;
 	}
 }
 
-@keyframes drawer-in {
+@keyframes dialog-card-in {
 	from {
 		opacity: 0;
-		transform: translateX(30px);
+		transform: scale(0.98) translateY(-4px);
 	}
 }
 
-@keyframes drawer-out {
+@keyframes dialog-card-out {
 	to {
 		opacity: 0;
-		transform: translateX(30px);
+		transform: scale(0.98) translateY(-4px);
 	}
 }
 
-/* A drawer that slides is a nicety; one that appears is the same panel.
+@keyframes dialog-sheet-in {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.995);
+	}
+}
+
+@keyframes dialog-sheet-out {
+	to {
+		opacity: 0;
+		transform: translateY(12px) scale(0.995);
+	}
+}
+
+/* A dialog that moves is a nicety; one that appears is the same dialog.
 
    The duration is shortened rather than the animation removed: Ark waits for
-   the exit animation to end before taking the panel out of the page, and an
+   the exit animation to end before taking the dialog out of the page, and an
    animation that never runs is one that never ends. */
 @media (prefers-reduced-motion: reduce) {
-	[data-scope='dialog'][data-part='backdrop'],
-	[data-scope='dialog'][data-part='content'] {
+	/* As specific as the rules that set the animations, and after them. */
+	[data-scope='dialog'][data-part][data-state],
+	.fullscreen[data-scope='dialog'][data-part][data-state] {
 		animation-duration: 1ms;
 	}
 }
@@ -447,7 +492,7 @@
 
 [data-scope='select'][data-part='content'] {
 	/* It is portalled to the end of the document, so it has to name the layer
-	   it sits on: above the drawer (50) it is nearly always opened from. Zag
+	   it sits on: above the dialog (50) it is nearly always opened from. Zag
 	   copies this value onto the positioner that wraps it — the positioner's
 	   own z-index is written inline and cannot be styled from here. */
 	z-index: 70;
@@ -565,7 +610,7 @@
    without looking chosen. */
 
 [data-scope='date-picker'][data-part='content'] {
-	/* Above the drawer (50) it is often opened from, as a select's list is. */
+	/* Above the dialog (50) it is often opened from, as a select's list is. */
 	z-index: 70;
 	width: 18rem;
 	padding: var(--space-2);

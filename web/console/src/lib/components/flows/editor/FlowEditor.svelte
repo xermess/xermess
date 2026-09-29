@@ -346,7 +346,7 @@
 		height: calc(100dvh - var(--header-height) - 180px);
 		min-height: 560px;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		background: var(--color-surface);
 	}
 

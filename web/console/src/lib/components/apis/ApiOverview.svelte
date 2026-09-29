@@ -8,7 +8,7 @@
 		RiTimerLine
 	} from 'svelte-remixicon';
 	import type { API } from '$lib/api';
-	import { CopyButton, FormSection, Icon, Input } from '$lib/components/ui';
+	import { CodeBlock, FormSection, Icon, Input } from '$lib/components/ui';
 	import { lifetimeLabel } from './scopes';
 
 	type Props = {
@@ -162,10 +162,7 @@
 	title="Example access token"
 	description="A decoded token for this API. The scope claim holds what the application is allowed and, with role-based access, what the user's roles grant."
 >
-	<div class="code">
-		<span class="copy"><CopyButton value={example} label="example token" /></span>
-		<pre>{example}</pre>
-	</div>
+	<CodeBlock code={example} copy="example token" />
 </FormSection>
 
 <style>
@@ -183,7 +180,7 @@
 		min-width: 0;
 		padding: var(--space-3) var(--space-4);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		background: var(--color-surface);
 		color: var(--color-text);
 		font: inherit;
@@ -257,26 +254,6 @@
 		background: var(--surface-info);
 		font-size: var(--text-sm);
 		line-height: 1.5;
-	}
-
-	.code {
-		position: relative;
-		border-radius: var(--radius-md);
-		background: var(--color-secondary-alt);
-	}
-
-	.copy {
-		position: absolute;
-		top: 6px;
-		right: 6px;
-	}
-
-	pre {
-		overflow-x: auto;
-		margin: 0;
-		padding: var(--space-3) var(--space-4);
-		font-family: var(--font-mono);
-		font-size: var(--text-sm);
 	}
 
 	@media (max-width: 64rem) {

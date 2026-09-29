@@ -12,8 +12,9 @@
 		type UserRecord
 	} from '$lib/api';
 	import {
+		Alert,
 		Button,
-		Drawer,
+		FullscreenDialog,
 		FieldGrid,
 		FormSection,
 		Icon,
@@ -109,7 +110,7 @@
 			notify.success('Provider disconnected');
 			await queryClient.invalidateQueries({ queryKey: keys.users.all });
 
-			// The drawer is looking at the record it was given, so the
+			// The dialog is looking at the record it was given, so the
 			// provider goes from it here too rather than after a reopen.
 			current = {
 				...current,
@@ -152,7 +153,7 @@
 	const details = $derived(extras.filter((field) => field.type !== 'bool'));
 	const flags = $derived(extras.filter((field) => field.type === 'bool'));
 
-	/** Fill the form whenever the drawer is opened for a different user.
+	/** Fill the form whenever the dialog is opened for a different user.
 	    Dates are stored as timestamps and edited as days. */
 	$effect(() => {
 		// Closing puts the panel back on its first tab, so the next user opens
@@ -275,18 +276,26 @@
 	]);
 </script>
 
-<Drawer
+<FullscreenDialog
 	bind:open
-	title={editing ? (editable ? 'Edit user' : 'User') : 'New user'}
+	title={current
+		? `${current.first_name} ${current.last_name}`.trim() || current.email
+		: 'New user'}
 	meta={current?.email}
 	onsubmit={submit}
 >
-	{#if !editing}
-		<p class="note">Create the user first; roles are given on the Role mapping tab afterwards.</p>
-	{:else if created}
-		<p class="note success">
-			User created, with the default roles. Assign any others here, or close the panel.
-		</p>
+	{#if !editing || created}
+		<div class="intro">
+			{#if created}
+				<Alert tone="success">
+					User created, with the default roles. Assign any others here, or close this window.
+				</Alert>
+			{:else}
+				<Alert tone="info">
+					Create the user first; roles are given on the Role mapping tab afterwards.
+				</Alert>
+			{/if}
+		</div>
 	{/if}
 
 	<Tabs {tabs} bind:value={tab} label="User sections">
@@ -396,7 +405,10 @@
 						</FormSection>
 					{/if}
 
-					<FormSection title="Status">
+					<FormSection
+						title="Status"
+						description="Whether they can sign in, and whether their address is confirmed."
+					>
 						<div class="switches">
 							<SwitchField
 								label="Is Active"
@@ -436,12 +448,11 @@
 		{/snippet}
 	</Tabs>
 
-	{#snippet footer()}
+	{#snippet actions()}
 		{#if current}
 			<!-- Where they are signed in, and the way to sign them out. -->
 			<LinkButton
-				variant="subtle"
-				size="sm"
+				variant="ghost"
 				href={`${resolve('/admin/(panel)/dashboard/sessions')}?${new URLSearchParams({ user: current.id, email: current.email })}`}
 			>
 				<Icon icon={RiComputerLine} />
@@ -449,19 +460,16 @@
 			</LinkButton>
 		{/if}
 
-		<span class="spacer"></span>
-
-		<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>
-			{editable && tab === 'user' && !created ? 'Cancel' : 'Close'}
-		</Button>
-
 		{#if editable && tab === 'user'}
+			{#if !created}
+				<Button variant="subtle" onclick={() => (open = false)} disabled={saving}>Cancel</Button>
+			{/if}
 			<Button type="submit" loading={saving} disabled={!canSubmit}>
 				{saving ? 'Saving…' : editing ? 'Save changes' : 'Create user'}
 			</Button>
 		{/if}
 	{/snippet}
-</Drawer>
+</FullscreenDialog>
 
 <style>
 	fieldset {
@@ -471,16 +479,8 @@
 		border: none;
 	}
 
-	.note {
-		margin: 0 0 var(--space-4);
-		padding: var(--space-2) var(--space-3);
-		border-radius: var(--radius-sm);
-		background: var(--surface-info);
-		font-size: var(--text-sm);
-	}
-
-	.note.success {
-		background: var(--surface-success);
+	.intro {
+		margin-bottom: var(--space-4);
 	}
 
 	.mismatch {
@@ -500,9 +500,5 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
 		gap: var(--space-2) var(--space-4);
-	}
-
-	.spacer {
-		flex: 1;
 	}
 </style>

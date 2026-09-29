@@ -103,7 +103,7 @@
 	.table {
 		overflow: hidden;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 	}
 
 	.head,
@@ -143,7 +143,7 @@
 		height: 34px;
 		padding: 0 10px;
 		border: 1px solid var(--color-input-border);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-field);
 		background: var(--color-input);
 		color: var(--color-text);
 		font: inherit;
@@ -175,7 +175,7 @@
 		margin: 0;
 		padding: var(--space-3);
 		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-surface);
 		color: var(--color-text-hint);
 		font-size: var(--text-sm);
 		text-align: center;

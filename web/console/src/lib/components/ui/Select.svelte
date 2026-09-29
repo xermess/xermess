@@ -143,7 +143,7 @@
 		</ArkSelect.Control>
 	</div>
 
-	<!-- The panel is portalled so it is never clipped by a drawer that
+	<!-- The panel is portalled so it is never clipped by a dialog that
 	     scrolls or by a table cell that hides its overflow; it is placed
 	     against the control by Ark. -->
 	<Portal>

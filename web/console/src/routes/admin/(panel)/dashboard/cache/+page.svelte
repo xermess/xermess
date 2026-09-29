@@ -29,7 +29,7 @@
 		notify
 	} from '$lib/components/ui';
 	import CacheGroups from '$lib/components/cache/CacheGroups.svelte';
-	import CacheKeyDrawer from '$lib/components/cache/CacheKeyDrawer.svelte';
+	import CacheKeyDialog from '$lib/components/cache/CacheKeyDialog.svelte';
 	import CacheKeyTable from '$lib/components/cache/CacheKeyTable.svelte';
 	import CacheStats from '$lib/components/cache/CacheStats.svelte';
 	import { databases, kindFilters } from '$lib/components/cache/cache';
@@ -95,11 +95,11 @@
 	}
 
 	let opened = $state<CacheKey | null>(null);
-	let drawerOpen = $state(false);
+	let dialogOpen = $state(false);
 
 	function open(key: CacheKey) {
 		opened = key;
-		drawerOpen = true;
+		dialogOpen = true;
 	}
 
 	const clear = createMutation(() => ({
@@ -241,7 +241,7 @@
 		/>
 	{/if}
 
-	<CacheKeyDrawer database={data.database} key={opened} bind:open={drawerOpen} />
+	<CacheKeyDialog database={data.database} key={opened} bind:open={dialogOpen} />
 
 	<ConfirmDialog
 		bind:open={flushing}

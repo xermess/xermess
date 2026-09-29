@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
-import { rememberClosedBranches, rememberSidebar, type SidebarState } from './sidebar';
+import { rememberClosedGroups, rememberSidebar, type SidebarState } from './sidebar';
 
 /**
  * How the panel's own frame is left: how wide the sidebar is, and which of its
@@ -16,9 +16,9 @@ export type Shell = {
 	readonly collapsed: boolean;
 	toggle: () => void;
 
-	/** Whether a branch of the sidebar is showing its pages. */
+	/** Whether a group of the sidebar is showing its pages. */
 	isOpen: (id: string) => boolean;
-	toggleBranch: (id: string) => void;
+	toggleGroup: (id: string) => void;
 
 	/** Whether the sidebar is open as a panel over the page, which is what it
 	    is on a screen too narrow for a column beside one. It is not
@@ -31,12 +31,12 @@ export type Shell = {
 const key = Symbol('shell');
 
 /** Makes the shared state, starting as the cookies the server read say. */
-export function provideShell(initial: SidebarState, closedBranches: string[]): Shell {
+export function provideShell(initial: SidebarState, closedGroups: string[]): Shell {
 	let collapsed = $state(initial === 'mini');
 
 	// The closed ones are held, not the open ones, so a section a release adds
 	// arrives open rather than hidden from whoever had folded the others.
-	const closed = new SvelteSet(closedBranches);
+	const closed = new SvelteSet(closedGroups);
 
 	let menuOpen = $state(false);
 
@@ -54,14 +54,14 @@ export function provideShell(initial: SidebarState, closedBranches: string[]): S
 			return !closed.has(id);
 		},
 
-		toggleBranch(id: string) {
+		toggleGroup(id: string) {
 			if (closed.has(id)) {
 				closed.delete(id);
 			} else {
 				closed.add(id);
 			}
 
-			rememberClosedBranches([...closed]);
+			rememberClosedGroups([...closed]);
 		},
 
 		get menuOpen() {

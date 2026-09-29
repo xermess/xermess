@@ -47,7 +47,7 @@
 		min-width: 0;
 		padding: var(--space-2) var(--space-3);
 		border: 1px solid var(--color-secondary-alt);
-		border-radius: var(--radius-sm);
+		border-radius: var(--radius-surface);
 		background: var(--color-surface);
 		color: var(--color-text);
 		text-decoration: none;
