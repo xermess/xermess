@@ -1,13 +1,19 @@
 # Fonts
 
-Two families are bundled. `lib/styles/fonts.css` declares them, from the
+Three families are bundled. `lib/styles/fonts.css` declares them, from the
 faces in `lib/theme/theme.ts`; nothing else in the console refers to these
 files.
 
 ```
 chirp/             primary text              400, 500 and 700, Latin and Latin Extended
 google-sans-code/  code: ids, keys, JSON     400, 500 and 700, Latin and Latin Extended
+poppins/           display: the wordmark     600, Latin
 ```
+
+Poppins is `--font-display`, for the header's wordmark and nothing that runs
+to a sentence, so one weight in one alphabet is enough. It is an open font,
+under the SIL Open Font License 1.1 (`poppins/OFL.txt`); the file is from the
+`@fontsource/poppins` release.
 
 Google Sans Code is `--font-mono`, so everything the panel sets in the code
 face — a `Code`, a read-only id, a `CodeBlock` — is drawn in it.

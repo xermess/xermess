@@ -321,6 +321,16 @@ export const theme: Theme<ColorName> = {
 				subsets: ['latin-ext', 'latin'],
 				file: (subset, weight) =>
 					`google-sans-code/google-sans-code-${subset}-${weight}-normal.woff2`
+			},
+			// Poppins is the display face: the header's wordmark, and nothing
+			// that runs to a sentence. One weight in one alphabet is all a word
+			// in English needs. Open (SIL OFL 1.1), from @fontsource/poppins.
+			{
+				family: 'Poppins',
+				style: 'normal',
+				weights: [600],
+				subsets: ['latin'],
+				file: (subset, weight) => `poppins/poppins-${subset}-${weight}-normal.woff2`
 			}
 		]
 	},
@@ -332,7 +342,8 @@ export const theme: Theme<ColorName> = {
 				'system-sans': systemSans,
 				'system-mono': systemMono,
 				sans: "'Chirp', var(--font-system-sans)",
-				mono: "'Google Sans Code', var(--font-system-mono)"
+				mono: "'Google Sans Code', var(--font-system-mono)",
+				display: "'Poppins', var(--font-system-sans)"
 			}
 		},
 		{

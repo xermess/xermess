@@ -41,7 +41,7 @@
      A wide window has a sidebar column, and the logo block is its top: as
      wide, as tinted, folding with it, with the fold control beside it. A
      narrow one has none — the sections are a panel over the page — so the
-     control that opens the panel comes first and the logo and name follow
+     control that opens the panel comes first and the logo and the word follow
      it.
 
      Which of the two controls shows is the stylesheet's choice, not the
@@ -71,10 +71,7 @@
 				bare
 			/>
 
-			<span class="names">
-				<strong title={name}>{name}</strong>
-				<small>Console</small>
-			</span>
+			<span class="wordmark">Console</span>
 		</a>
 	</div>
 
@@ -141,8 +138,8 @@
 	}
 
 	/* The mark sits over the sidebar's icons, centred on the same line folded
-	   or not. Nothing moves sideways while the column folds; the names just
-	   run out of room and fade. */
+	   or not. Nothing moves sideways while the column folds; the word just
+	   runs out of room and fades. */
 	.brand {
 		display: flex;
 		align-items: center;
@@ -160,25 +157,17 @@
 		outline-offset: -4px;
 	}
 
-	/* The organisation, and underneath it, quieter, what this panel is. */
-	.names {
-		display: flex;
-		flex-direction: column;
-		min-width: 0;
-		line-height: 1.25;
-		transition: opacity var(--speed);
-	}
-
-	.names strong {
-		overflow: hidden;
-		font-size: var(--text-base);
+	/* What this is, in the display face so it reads as a mark rather than a
+	   label: Poppins' round, geometric letters, set tight. A line height of
+	   one keeps the box to the letters, so centring it beside the mark
+	   centres the word. */
+	.wordmark {
+		font-family: var(--font-display);
+		font-size: var(--text-xl);
 		font-weight: 600;
-		text-overflow: ellipsis;
-	}
-
-	.names small {
-		color: var(--color-text-hint);
-		font-size: var(--text-xs);
+		line-height: 1;
+		letter-spacing: -0.03em;
+		transition: opacity var(--speed);
 	}
 
 	.end {
@@ -205,7 +194,7 @@
 		}
 
 		/* Folded, the column is the mark alone. */
-		.mini .names {
+		.mini .wordmark {
 			opacity: 0;
 		}
 	}
@@ -222,8 +211,7 @@
 		}
 
 		/* No column to top: the logo block is only as wide as the mark and
-		   the name, on the header's own white, and the name gives way first
-		   when the row is short of room. */
+		   the word, on the header's own white. */
 		.brand-column,
 		.dashboard .brand-column {
 			width: auto;
@@ -239,14 +227,6 @@
 
 		.rule {
 			margin: 0 var(--space-1);
-		}
-	}
-
-	/* A small phone: the mark says whose panel it is; the name would crowd
-	   out the tools. */
-	@media (max-width: 24rem) {
-		.names small {
-			display: none;
 		}
 	}
 </style>
