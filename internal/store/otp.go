@@ -91,17 +91,38 @@ func (s *Store) LoginCodeByHash(ctx context.Context, hash string) (*model.LoginC
 	return &code, nil
 }
 
-// RecordLoginCodeAttempt counts one wrong code against the sign-in and
+// RecordLoginCodeAttempt counts one typed code against the sign-in and
 // answers how many have been counted, so the caller can say whether there are
 // any guesses left.
-func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCode) (int, error) {
-	code.Attempts++
+//
+// Every typed code takes its guess here before it is compared, the right one
+// included, and a sign-in with none left gives none: false, and nothing
+// counted. The count is added to in the database rather than read and
+// written back, and only while it is under `max`, so guesses sent at once
+// are each counted and no more than `max` of them are ever compared —
+// written back from the row each request loaded, twenty sent together would
+// count as one, and all twenty would be checked.
+func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCode, max int) (int, bool, error) {
+	var rows []struct {
+		Attempts int
+	}
 
-	err := translate(s.db.WithContext(ctx).
-		Model(code).
-		Update("attempts", code.Attempts).Error)
+	err := s.db.WithContext(ctx).Raw(
+		`UPDATE login_codes SET attempts = attempts + 1
+		WHERE id = ? AND used_at IS NULL AND attempts < ?
+		RETURNING attempts`,
+		code.ID, max,
+	).Scan(&rows).Error
+	if err != nil {
+		return 0, false, translate(err)
+	}
+	if len(rows) == 0 {
+		return code.Attempts, false, nil
+	}
 
-	return code.Attempts, err
+	code.Attempts = rows[0].Attempts
+
+	return code.Attempts, true, nil
 }
 
 // ConsumeLoginCode marks a code used. A code is used once, so the update is

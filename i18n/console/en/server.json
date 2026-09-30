@@ -56,6 +56,7 @@
 		"cache_ttl_invalid": "The time to live has to be between 0 and {max} seconds.",
 		"token_refused": "This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access.",
 		"system_api": "This API is part of the server and cannot be deleted.",
+		"system_api_access": "Only a super admin can give an application access to the server's own APIs.",
 		"system_application": "admin-cli is part of the server and cannot be deleted. Turn it off instead."
 	}
 }

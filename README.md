@@ -379,8 +379,9 @@ cookie their app sends, so other software can use them:
 
 - **The admin API**, as a service. Every installation has **admin-cli**, a
   machine-to-machine application made at startup (`store.EnsureSystemAPIs`),
-  like Keycloak's. An administrator allows it admin API scopes on its API
-  access tab and rotates its secret; its client credentials token for
+  like Keycloak's. A super admin allows it admin API scopes on its API
+  access tab — only a super admin may give any application access to either
+  system API — and rotates its secret; its client credentials token for
   `urn:<slug>:admin-api` then calls every permission-guarded admin route, the
   token's scopes standing in for roles (`session.RequireAny`,
   `model.ServiceAdmin`). Super-admin routes, and an administrator's own account

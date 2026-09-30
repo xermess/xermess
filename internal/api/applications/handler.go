@@ -246,6 +246,17 @@ func (h *Handler) AuthorizeAPI(c *gin.Context) {
 		return
 	}
 
+	// A system API's scopes are power over this server itself: the admin
+	// API's are the permission catalog, and the account API's act on any
+	// user who signs in to the application. Handing them to an application
+	// its administrator controls would give that administrator — who may
+	// hold applications.write for this one application alone — every
+	// permission in the panel, so only a super admin may.
+	if api.System != "" && !session.Admin(c).IsSuperAdmin() {
+		respond.Fail(c, systemAPIAccess)
+		return
+	}
+
 	var req authorizeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respond.Fail(c, respond.InvalidBody)
@@ -268,6 +279,10 @@ func (h *Handler) AuthorizeAPI(c *gin.Context) {
 
 	h.APIAccess(c)
 }
+
+// systemAPIAccess is the answer to authorising an application for one of the
+// server's own APIs without being a super admin.
+var systemAPIAccess = respond.Define(http.StatusForbidden, "system_api_access", respond.Admin)
 
 // RevokeAPI stops the application asking for tokens for an API.
 func (h *Handler) RevokeAPI(c *gin.Context) {

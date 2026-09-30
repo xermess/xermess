@@ -112,8 +112,8 @@ func (s *Service) sendLoginCode(
 
 // SubmitLoginCode finishes a sign-in that was waiting for a code.
 //
-// A wrong code is counted before it is refused, and the count is the row's
-// rather than the address's: whoever is guessing has to hold the handle, and
+// Every code typed is counted before it is compared, and the count is the
+// row's rather than the address's: whoever is guessing has to hold the handle, and
 // the sign-in they hold it for is the one that runs out of guesses.
 func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, client Client) (*SignInResult, error) {
 	waiting, err := s.waitingCode(ctx, handle)
@@ -126,12 +126,17 @@ func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, cli
 		return nil, ErrInvalidCredentials
 	}
 
-	if !waiting.code.MatchesOTP(typed) {
-		attempts, err := s.store.RecordLoginCodeAttempt(ctx, waiting.code)
-		if err != nil {
-			return nil, err
-		}
+	// The guess is taken before the code is looked at, so of several typed
+	// at once only as many as the sign-in has left are ever compared.
+	attempts, ok, err := s.store.RecordLoginCodeAttempt(ctx, waiting.code, waiting.settings.MaxAttempts)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrCodeAttemptsUsed
+	}
 
+	if !waiting.code.MatchesOTP(typed) {
 		s.record(ctx, user, user.Email, "user.login_code_failed", client, map[string]any{
 			"attempts": attempts, "of": waiting.settings.MaxAttempts,
 		})

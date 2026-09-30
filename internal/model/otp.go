@@ -138,7 +138,8 @@ type LoginCode struct {
 	// depend on where the code arrived.
 	RememberMe bool `gorm:"not null"`
 
-	// Attempts is how many wrong codes have been typed.
+	// Attempts is how many codes have been typed: every one is counted before
+	// it is compared, the right one included.
 	Attempts int `gorm:"not null"`
 
 	// SentAt is when the last message went out, which is what the wait

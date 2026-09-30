@@ -7509,6 +7509,13 @@
                       "code": "forbidden",
                       "error": "You do not have permission to do that."
                     }
+                  },
+                  "system_api_access": {
+                    "summary": "Only a super admin can give an application access to the server's own APIs.",
+                    "value": {
+                      "code": "system_api_access",
+                      "error": "Only a super admin can give an application access to the server's own APIs."
+                    }
                   }
                 },
                 "schema": {
@@ -7516,7 +7523,7 @@
                 }
               }
             },
-            "description": "Forbidden: `cross_origin`, `forbidden`"
+            "description": "Forbidden: `cross_origin`, `forbidden`, `system_api_access`"
           }
         },
         "security": [
