@@ -11,7 +11,16 @@ import (
 )
 
 // WriteAudit adds one line to the activity log.
+//
+// What a caller sent is made to fit its column first. The log is written
+// after the fact and its error only logged, so a User-Agent of 300 bytes, or
+// one with a byte that is not UTF-8, would otherwise be a way to keep a
+// failed sign-in — or anything done with that header — out of the log.
 func (s *Store) WriteAudit(ctx context.Context, entry *model.AuditLog) error {
+	entry.UserAgent = model.Truncate(entry.UserAgent, 255)
+	entry.ActorEmail = model.Truncate(entry.ActorEmail, 255)
+	entry.IP = model.Truncate(entry.IP, 45)
+
 	return s.db.WithContext(ctx).Create(entry).Error
 }
 

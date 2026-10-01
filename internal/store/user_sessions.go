@@ -99,7 +99,7 @@ func (s *Store) SignOutUser(ctx context.Context, user uuid.UUID, at time.Time) (
 		}
 		tokens = result.RowsAffected
 
-		return nil
+		return tx.Exec(pendingEmailChangesUsed, map[string]any{"at": at, "user": user}).Error
 	})
 	if err == nil {
 		s.putUserSessions(ctx, ended...)

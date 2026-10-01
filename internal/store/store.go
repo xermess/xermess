@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -64,7 +65,12 @@ func (s *Store) in(group string) *cache.Cache {
 // error from `load` is returned and nothing is kept.
 func cached[T any](ctx context.Context, s *Store, group, field string, load func() (T, error)) (T, error) {
 	var value T
-	if s.in(group).Get(ctx, group, field, &value) {
+	// The generation read here is the one the value is written back into, so a
+	// write that forgets the group while `load` runs moves the group on and
+	// leaves this value in a generation nobody reads — rather than putting a
+	// stale principal back after the write cleared it.
+	generation, ok := s.in(group).GetAt(ctx, group, field, &value)
+	if ok {
 		return value, nil
 	}
 
@@ -73,7 +79,7 @@ func cached[T any](ctx context.Context, s *Store, group, field string, load func
 		return value, err
 	}
 
-	s.in(group).Set(ctx, group, field, value)
+	s.in(group).SetAt(ctx, group, field, value, generation)
 
 	return value, nil
 }
@@ -82,9 +88,27 @@ func cached[T any](ctx context.Context, s *Store, group, field string, load func
 // the write has committed: forgetting earlier would let a reader put the old
 // row back before the new one is there.
 func (s *Store) forget(ctx context.Context, groups ...string) {
+	ctx, cancel := afterCommit(ctx)
+	defer cancel()
+
 	for _, group := range groups {
 		s.in(group).Forget(ctx, group)
 	}
+}
+
+// afterCommitTimeout is how long telling the cache about a committed write
+// may take.
+const afterCommitTimeout = 2 * time.Second
+
+// afterCommit is the context for telling the cache what a write changed. The
+// write has committed, so the news has to reach Redis whether or not the
+// request that made it is still there: a caller that hung up a moment after
+// the commit would otherwise leave every other process reading the old row
+// — the old client secret, the roles that were taken away, the session that
+// was revoked — until the cache's TTL ran out. The request's values stay; its
+// cancellation does not, and a short timeout of its own stands in for it.
+func afterCommit(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), afterCommitTimeout)
 }
 
 // forgetting is forget for a write that may have failed: it forgets once the

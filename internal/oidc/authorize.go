@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"loginer/internal/model"
 	"loginer/internal/store"
@@ -28,6 +29,47 @@ type AuthorizeParams struct {
 	MaxAge              string
 	LoginHint           string
 	ResponseMode        string
+}
+
+// The most of each parameter an authorization request may carry. OAuth puts
+// no size on any of them; these are generous for what each is for — a state
+// is a nonce or a serialised return address, a scope a list of words — and
+// small beside the megabyte a request body may be.
+const (
+	maxState     = 1024
+	maxNonce     = 256
+	maxScope     = 1024
+	maxLoginHint = 255
+	maxMethod    = 8
+	maxAudience  = 255
+)
+
+// oversized says what is wrong with the size or encoding of the parameters
+// that are stored, or "" when nothing is.
+func (p AuthorizeParams) oversized() string {
+	limits := []struct {
+		name  string
+		value string
+		max   int
+	}{
+		{"state", p.State, maxState},
+		{"nonce", p.Nonce, maxNonce},
+		{"scope", p.Scope, maxScope},
+		{"login_hint", p.LoginHint, maxLoginHint},
+		{"code_challenge_method", p.CodeChallengeMethod, maxMethod},
+		{"audience", p.Audience, maxAudience},
+	}
+
+	for _, limit := range limits {
+		switch {
+		case len(limit.value) > limit.max:
+			return limit.name + " is longer than " + strconv.Itoa(limit.max) + " bytes"
+		case !utf8.ValidString(limit.value) || strings.ContainsRune(limit.value, 0):
+			return limit.name + " is not valid UTF-8"
+		}
+	}
+
+	return ""
 }
 
 // Authorize handles an authorization request and returns where to send the
@@ -56,6 +98,16 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 	}
 	if !slices.Contains(app.RedirectURIs, p.RedirectURI) {
 		return s.errorPage(ErrInvalidRequest, "redirect_uri is not registered for this application; it has to match exactly"), nil
+	}
+
+	// What is stored has a size. The columns do not — and a megabyte of
+	// state per anonymous request is a way to fill the disk — so the sizes
+	// are these, and what Postgres would refuse (a byte that is not UTF-8,
+	// a NUL) is refused here as a bad request rather than a server error.
+	// The error page rather than a redirect: an oversized state is not
+	// echoed back to anyone.
+	if reason := p.oversized(); reason != "" {
+		return s.errorPage(ErrInvalidRequest, reason), nil
 	}
 
 	back := func(code, description string) (string, error) {
@@ -121,6 +173,23 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 		}
 	}
 
+	// A session also has to satisfy this application's flow. It was made by
+	// whichever flow the person signed in through — the default one, when
+	// they signed in with no application waiting — and that flow may be
+	// looser than this one: the rules a flow puts on signing in are applied
+	// where the session is made (startSession), so a stricter application
+	// would otherwise be entered on a session that never met them. One that
+	// does not meet them is sent to the sign-in page, which runs this flow.
+	if session != nil {
+		flow, err := s.store.EffectiveLoginFlow(ctx, app)
+		if err != nil {
+			return "", err
+		}
+		if !sessionSatisfies(flow, session, now) {
+			session = nil
+		}
+	}
+
 	if session == nil && slices.Contains(prompts, "none") {
 		return back(ErrLoginRequired, "the user is not signed in")
 	}
@@ -154,6 +223,32 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 	}
 
 	return withQuery(s.accountURL+PageLogin, url.Values{"request": {handle}}), nil
+}
+
+// sessionSatisfies reports whether a session, made by whichever flow signed
+// the person in, would have been made by this flow: signing in is open, the
+// address is verified where the flow insists on it, and the session is no
+// older than the flow lets a session live.
+//
+// A session does not record which flow made it or which steps it passed, so
+// a flow that holds sign-ins for an emailed code is taken not to have been
+// met: the person signs in again, code and all, each time an application on
+// such a flow sends them here. That gives up single sign-on between those
+// applications for the certainty that the code was typed; recording the
+// steps a session passed is how to have both.
+func sessionSatisfies(flow *model.LoginFlow, session *Session, now time.Time) bool {
+	switch {
+	case !flow.AllowSignIn:
+		return false
+	case flow.RequireVerifiedEmail && !session.User.IsEmailVerified:
+		return false
+	case now.Sub(session.Record.AuthenticatedAt) > time.Duration(flow.SessionLifetimeHours)*time.Hour:
+		return false
+	case flow.Offers(model.StepEmailCode):
+		return false
+	}
+
+	return true
 }
 
 // PendingRequest is what the sign-in page shows about a sign-in under way.
@@ -210,6 +305,19 @@ func (s *Service) Continue(ctx context.Context, handle string, session *Session)
 // the application, or an error when the user may not have tokens for it.
 func (s *Service) finish(ctx context.Context, req *model.AuthorizationRequest, user *model.User, session *model.UserSession) (string, error) {
 	app := req.Application
+
+	// The application's redirect URIs and PKCE rule are re-checked here, not
+	// only when the request was made: an administrator may have removed the
+	// redirect URI, or turned PKCE on, in between. A redirect URI that is no
+	// longer registered cannot be redirected to at all, so the sign-in app's
+	// error page says so; PKCE missing is sent back as an error, since that
+	// redirect URI is still good.
+	if !slices.Contains(app.RedirectURIs, req.RedirectURI) {
+		return s.errorPage(ErrInvalidRequest, "redirect_uri is no longer registered for this application"), nil
+	}
+	if app.RequirePKCE && req.CodeChallenge == "" {
+		return s.redirectError(req.RedirectURI, req.State, ErrInvalidRequest, "this application now requires PKCE; start the sign-in again"), nil
+	}
 
 	// The same evaluation the token endpoint runs, now, so a user who may not
 	// sign in to the application — inactive, or without a required role —

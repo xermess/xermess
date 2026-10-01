@@ -113,6 +113,51 @@ func (r *Redis) Close() error {
 	return errors.Join(r.Cache.Close(), r.Sessions.Close())
 }
 
+// settleRetryInterval is how often a process retries the invalidations it
+// could not deliver while Redis was away.
+const settleRetryInterval = 30 * time.Second
+
+// KeepSettling retries, on a timer until ctx ends, the group and session
+// invalidations a write could not deliver because Redis was unreachable at the
+// moment it committed. Without it those sit in memory until the next request
+// happens to touch the cache; a process that goes idle, or is about to be
+// restarted, would otherwise leave other processes serving a stale value.
+func (r *Redis) KeepSettling(ctx context.Context) {
+	if r == nil {
+		return
+	}
+
+	ticker := time.NewTicker(settleRetryInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			for _, c := range r.Databases() {
+				if c != nil && c.available() {
+					c.settle(ctx)
+				}
+			}
+		}
+	}
+}
+
+// BumpAuthorityGroups moves the session-database groups on by one generation.
+// It runs at startup: a process that forgot one of these groups but died
+// before Redis took the invalidation would otherwise leave every process
+// serving a stale principal, client secret or security setting until the TTL
+// ran out, and a restart would not clear it. Discarding a generation only ever
+// throws cached values away, which is always safe, so this is cheap insurance.
+func (r *Redis) BumpAuthorityGroups(ctx context.Context) error {
+	if r == nil || r.Sessions == nil {
+		return nil
+	}
+
+	return r.Sessions.incr(ctx, []string{Admins, Clients, AdminSecurity})
+}
+
 // Cache is one Redis database, and the prefix every key starts with.
 type Cache struct {
 	client *redis.Client

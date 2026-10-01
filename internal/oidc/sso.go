@@ -417,6 +417,14 @@ func (s *Service) signInThroughSSO(
 	now := s.now()
 	email := strings.ToLower(strings.TrimSpace(person.Email))
 
+	// Closed means closed before anything happens: without this check the
+	// account would be made, the identity linked and the roles synced, and
+	// only startSession at the end would refuse — leaving those side effects
+	// behind for a sign-in nobody was let through.
+	if !flow.AllowSignIn {
+		return nil, ErrSignInClosed
+	}
+
 	switch {
 	case person.Subject == "":
 		return nil, refused(ErrSSONoEmail, "the provider named nobody: no subject")

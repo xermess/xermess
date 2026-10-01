@@ -175,10 +175,10 @@ func (h *Handler) Export(c *gin.Context) {
 				targetType, targetID, target = row.Target.Type, row.Target.ID, row.Target.Name
 			}
 
-			_ = out.Write([]string{
+			_ = out.Write(csvSafe([]string{
 				event.CreatedAt.UTC().Format(time.RFC3339), row.Actor, row.Action,
 				targetType, targetID, target, row.Detail, row.IP, event.UserAgent,
-			})
+			}))
 			written++
 		}
 
@@ -190,6 +190,21 @@ func (h *Handler) Export(c *gin.Context) {
 	}
 
 	out.Flush()
+}
+
+// csvSafe guards a row against spreadsheet formula injection: a cell that a
+// spreadsheet would read as a formula — it begins with =, +, -, @, or a
+// control character it strips to reach one — is prefixed with a quote, so
+// Excel or LibreOffice shows the text instead of running it. The values come
+// from a sign-in's User-Agent and email, which anybody can set.
+func csvSafe(row []string) []string {
+	for i, cell := range row {
+		if cell != "" && strings.ContainsRune("=+-@\t\r", rune(cell[0])) {
+			row[i] = "'" + cell
+		}
+	}
+
+	return row
 }
 
 // describe turns log entries into what the panel shows: each with its target

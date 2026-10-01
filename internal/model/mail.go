@@ -245,6 +245,18 @@ func MailMessageKeys() []string {
 	return keys
 }
 
+// MailTextPrefix is the group every key an email is built from is under —
+// the messages themselves, and the words put into them, such as the name an
+// account is called when the application has none.
+const MailTextPrefix = "email."
+
+// IsMailTextKey reports whether a key is part of an email at all: wider than
+// IsMailMessageKey, it is what keeps a translator's save off the Mail page's
+// text, where a reset link — a live token — is placed wherever {link} is put.
+func IsMailTextKey(key string) bool {
+	return strings.HasPrefix(key, MailTextPrefix)
+}
+
 // IsMailMessageKey reports whether a key is one of them, so a write to the
 // Mail page cannot reach the rest of a language's text.
 func IsMailMessageKey(key string) bool {

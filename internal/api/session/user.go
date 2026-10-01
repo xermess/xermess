@@ -84,10 +84,30 @@ func ClearSignInState(c *gin.Context, secure bool) {
 }
 
 // SignInState is what the browser carries, or "" for a browser that started
-// no sign-in.
+// no sign-in. Two cookies of the same name — which a neighbouring subdomain
+// can set, with a Domain and a longer path, so the browser sends both — are
+// treated as none: which one would be read is not ours to decide, so the
+// sign-in fails closed rather than on an attacker's state.
 func SignInState(c *gin.Context) string {
-	value, _ := c.Cookie(SignInStateCookie)
-	return value
+	return single(c, SignInStateCookie)
+}
+
+// UserToken is the session cookie a user signs in with, or "" when there is
+// none — or when there is more than one of that name, which only a
+// neighbouring subdomain could arrange and which is read as none, so a
+// planted session cannot stand in for the browser's own.
+func UserToken(c *gin.Context) string {
+	return single(c, UserCookie)
+}
+
+// single reads a cookie only when exactly one of that name was sent.
+func single(c *gin.Context, name string) string {
+	named := c.Request.CookiesNamed(name)
+	if len(named) != 1 {
+		return ""
+	}
+
+	return named[0].Value
 }
 
 func writeSignInState(c *gin.Context, value string, maxAge int, secure bool) {

@@ -71,9 +71,14 @@ services:
   redis:
     <<: *hardened
     image: redis:8-alpine
-    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    # A password, because what is in here decides who is signed in: a
+    # session put here is believed. Anything else on the network that was
+    # taken over — a page renderer, the proxy — could otherwise write one.
+    command: ["sh", "-c", "exec redis-server --save '' --appendonly no --maxmemory 256mb --maxmemory-policy volatile-lru --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in deploy/.env}
     healthcheck:
-      test: redis-cli ping
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 2s
       retries: 30
     networks: [internal]
@@ -102,6 +107,7 @@ services:
       LOGINER_DB_DSN: postgres://loginer:${POSTGRES_PASSWORD}@postgres:5432/loginer?sslmode=disable
       LOGINER_REDIS_HOST: redis
       LOGINER_REDIS_PORT: 6379
+      LOGINER_REDIS_PASSWORD: ${REDIS_PASSWORD}
       # A second factor for every administrator. The server's own default is
       # optional, so that a fresh installation can be got into at all; a
       # deployment that is going to face the internet starts the other way.

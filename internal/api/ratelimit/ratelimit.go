@@ -13,6 +13,7 @@ package ratelimit
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -117,6 +118,20 @@ func (l *Limiter) allowLocally(key string) (bool, time.Duration) {
 	return true, 0
 }
 
+// bucketFor is the bucket a client address shares. An IPv4 address is a
+// bucket of its own; an IPv6 address shares one with its /64, because that is
+// what a client is given — a home connection, a server, a cloud instance
+// each hold a whole /64 and can send from a different address in it every
+// time, which would make a per-address limit no limit at all.
+func bucketFor(address string) string {
+	ip := net.ParseIP(address)
+	if ip == nil || ip.To4() != nil {
+		return address
+	}
+
+	return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
+}
+
 // sweep forgets addresses whose bucket has refilled, so the map does not grow
 // with every address that ever called. It runs at most once a minute.
 func (l *Limiter) sweep(now time.Time) {
@@ -138,7 +153,7 @@ func (l *Limiter) sweep(now time.Time) {
 // name it — otherwise every client shares the proxy's one budget.
 func (l *Limiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ok, wait := l.Allow(c.Request.Context(), c.ClientIP())
+		ok, wait := l.Allow(c.Request.Context(), bucketFor(c.ClientIP()))
 		if !ok {
 			seconds := int(wait/time.Second) + 1
 			c.Header("Retry-After", strconv.Itoa(seconds))

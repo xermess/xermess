@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -16,6 +17,7 @@ import (
 // holds nothing that can sign a token.
 type Sealer struct {
 	aead cipher.AEAD
+	key  [sha256.Size]byte
 }
 
 // NewSealer derives the encryption key from `secret`. The secret is already
@@ -33,7 +35,21 @@ func NewSealer(secret string) (*Sealer, error) {
 		return nil, err
 	}
 
-	return &Sealer{aead: aead}, nil
+	return &Sealer{aead: aead, key: sum}, nil
+}
+
+// Tag is a keyed hash of `data` under the same secret, for a value that is
+// compared rather than read back — a recovery code — and too short for a
+// bare hash to protect against a database dump. `purpose` names the use, so
+// a tag made for one kind of value is no tag for another: the key is the
+// secret's hash and the purpose, hashed together, and never the sealing key
+// itself.
+func (s *Sealer) Tag(purpose string, data []byte) []byte {
+	key := sha256.Sum256(append(append([]byte{}, s.key[:]...), []byte(purpose)...))
+	mac := hmac.New(sha256.New, key[:])
+	mac.Write(data)
+
+	return mac.Sum(nil)
 }
 
 // Seal encodes a private key and encrypts it.

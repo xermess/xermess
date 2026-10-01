@@ -120,6 +120,22 @@ func Origin(raw string) string {
 // `openssl rand -base64 32` comfortably exceeds.
 const minSecretKeyLength = 32
 
+// SecretKeyLooksWeak reports whether the secret key does not look like at least
+// 32 random bytes — base64 of 32 bytes is 43–44 characters, hex is 64, and
+// random text of either uses many distinct characters. It is advisory only,
+// logged at startup: the key still only has to pass minSecretKeyLength, but a
+// short or low-variety key (a human-chosen passphrase) is worth a warning,
+// because everything the server seals is only as hard to recover from a
+// database dump as the key is to guess.
+func SecretKeyLooksWeak(key string) bool {
+	distinct := map[rune]struct{}{}
+	for _, r := range key {
+		distinct[r] = struct{}{}
+	}
+
+	return len(key) < 43 || len(distinct) < 16
+}
+
 // Mail is how email is sent. With no host, nothing is sent: each message is
 // written to the log instead, which is enough to follow a reset link while
 // developing.
@@ -213,7 +229,12 @@ func Load() (Config, error) {
 	}
 
 	v.SetDefault(env("ADDR"), ":8080")
-	v.SetDefault(env("ADMIN_ADDR"), ":8081")
+	// Loopback by default: the admin listener carries the panel, administrator
+	// sign-in and the first-super-admin setup, so it is not exposed to every
+	// interface unless an installation says so. The container image overrides
+	// this (deploy/docker/api.Dockerfile), and the compose deployment reaches
+	// it only over the internal network.
+	v.SetDefault(env("ADMIN_ADDR"), "127.0.0.1:8081")
 	v.SetDefault(env("CORS_ORIGINS"), "")
 	v.SetDefault(env("TRUSTED_PROXIES"), "")
 	v.SetDefault(env("RATE_LIMIT"), 20)

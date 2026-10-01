@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import { signIn, type PublicLanguage } from '$lib/api';
 import { COOKIES, LANGUAGE_DEPENDENCY } from '$lib/brand';
 import { BASE, chooseLanguage, type Messages } from '$lib/i18n';
+import { safeNext } from '$lib/utils/next';
 import type { LayoutServerLoad } from './$types';
 
 /**
@@ -54,7 +55,11 @@ export const load: LayoutServerLoad = async ({ cookies, depends, fetch, locals, 
 		const clean = new URL(url);
 		clean.searchParams.delete('lang');
 
-		redirect(303, `${clean.pathname}${clean.search}`);
+		// Through safeNext, not the raw pathname: this load runs for a
+		// path no route matches too, and a path that begins "//" would make
+		// the Location protocol-relative — an open redirect on a sign-in
+		// page, without an account or a sign-in.
+		redirect(303, safeNext(`${clean.pathname}${clean.search}`));
 	}
 
 	const messages: Messages = offered.languages.length

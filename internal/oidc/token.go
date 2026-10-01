@@ -141,6 +141,12 @@ func (s *Service) exchangeCode(ctx context.Context, app *model.Application, p To
 		return nil, oauthError(ErrInvalidGrant, "the authorization code has expired")
 	case p.RedirectURI != code.RedirectURI:
 		return nil, oauthError(ErrInvalidGrant, "redirect_uri does not match the authorization request")
+	case !slices.Contains(app.RedirectURIs, code.RedirectURI):
+		// Removed from the application after the code was issued.
+		return nil, oauthError(ErrInvalidGrant, "redirect_uri is no longer registered for this application")
+	case app.RequirePKCE && code.CodeChallenge == "":
+		// PKCE turned on after a code was issued without a challenge.
+		return nil, oauthError(ErrInvalidGrant, "this application now requires PKCE")
 	case code.CodeChallenge != "" && !model.VerifyPKCE(code.CodeChallenge, p.CodeVerifier):
 		return nil, oauthError(ErrInvalidGrant, "code_verifier does not match the code_challenge")
 	case code.CodeChallenge == "" && p.CodeVerifier != "":
@@ -153,6 +159,24 @@ func (s *Service) exchangeCode(ctx context.Context, app *model.Application, p To
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	// The session the code was made in has to be alive still. A reset
+	// password, "sign out everywhere" and a disconnected application end
+	// the sessions and the refresh tokens, and a code minted a moment before
+	// is the one thing that would otherwise outlive them: exchanged after
+	// the reset, it would start a fresh refresh token family for whoever the
+	// reset was meant to shut out.
+	if code.SessionID != nil {
+		session, err := s.store.UserSession(ctx, *code.SessionID)
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			return nil, oauthError(ErrInvalidGrant, "the session the code was issued in has ended")
+		case err != nil:
+			return nil, err
+		case !session.Active(now):
+			return nil, oauthError(ErrInvalidGrant, "the session the code was issued in has ended")
+		}
 	}
 
 	return s.issue(ctx, grant{
@@ -567,6 +591,12 @@ func (s *Service) Introspect(ctx context.Context, client ClientAuth, token strin
 
 	// A refresh token is only ever described to the client that holds it.
 	if refresh.ApplicationID != app.ID || !refresh.Usable(s.now()) {
+		return inactive, nil
+	}
+
+	// A token for a user who has since been turned off is spent, not live:
+	// the refresh grant itself would refuse it, so introspection says so too.
+	if user, err := s.store.User(ctx, refresh.UserID); err != nil || !user.IsActive {
 		return inactive, nil
 	}
 

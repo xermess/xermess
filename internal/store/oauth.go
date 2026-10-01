@@ -153,9 +153,52 @@ func (s *Store) MarkUserSignedIn(ctx context.Context, user *model.User, at time.
 	}).Error
 }
 
+// ReserveUserLogin counts one sign-in attempt against a user before the
+// password is checked, and reports whether the check may go ahead: no when
+// the account is already locked.
+//
+// Counting before the check, atomically, is what makes the lock hold under
+// load: counting after lets a burst of parallel attempts all read the same
+// unlocked row and all go through. The `max`th reservation sets the lock in
+// the statement that counts it, and every one after is refused until it
+// lifts; a right password clears the count through MarkUserSignedIn.
+func (s *Store) ReserveUserLogin(ctx context.Context, user *model.User, at time.Time, max int, lockFor time.Duration) (bool, error) {
+	var rows []struct {
+		LockedUntil *time.Time
+	}
+
+	// The WHERE refuses a locked account by matching no row, so nothing is
+	// counted while it is locked; otherwise this attempt is counted, and the
+	// `max`th one locks the account.
+	err := s.db.WithContext(ctx).Raw(`
+		UPDATE users SET
+			locked_until = CASE WHEN failed_login_count + 1 >= @max THEN @until ELSE locked_until END,
+			failed_login_count = CASE WHEN failed_login_count + 1 >= @max THEN 0 ELSE failed_login_count + 1 END
+		WHERE id = @id AND (locked_until IS NULL OR locked_until <= @now)
+		RETURNING locked_until`,
+		map[string]any{"max": max, "until": at.Add(lockFor), "id": user.ID, "now": at},
+	).Scan(&rows).Error
+	if err != nil {
+		return false, err
+	}
+
+	return len(rows) > 0, nil
+}
+
+// ClearUserFailedLogins gives back the attempts a right password took, for a
+// sign-in that is not finished yet — one held for an emailed code.
+func (s *Store) ClearUserFailedLogins(ctx context.Context, user *model.User, at time.Time) error {
+	return s.db.WithContext(ctx).Model(user).Omit(clause.Associations).Updates(map[string]any{
+		"failed_login_count": 0,
+		"locked_until":       nil,
+	}).Error
+}
+
 // RecordUserFailedLogin counts a wrong password against a user and, at the
 // `max`th in a row, locks the account until `lockFor` from now. It reports
-// whether this attempt locked it. It is RecordFailedLogin for users.
+// whether this attempt locked it. It is the after-the-check counterpart used
+// where the password is already known to be the account's — changing it —
+// rather than guessed; the sign-in path reserves before the check instead.
 func (s *Store) RecordUserFailedLogin(ctx context.Context, user *model.User, at time.Time, max int, lockFor time.Duration) (bool, error) {
 	var row struct {
 		LockedUntil *time.Time
@@ -358,9 +401,57 @@ func (s *Store) RevokeUserSessionsFor(ctx context.Context, user uuid.UUID, at ti
 
 // ---- Password resets ------------------------------------------------------
 
+// pendingEmailChangesUsed uses up every link that would move the user's
+// account to another address. It runs wherever the ways into an account are
+// ended — a reset, a change of password, signing out everywhere — because a
+// move that was asked for before is the one way those leave open: whoever
+// asked for it opens the link afterwards, and the account is theirs again.
+const pendingEmailChangesUsed = "UPDATE email_verifications SET used_at = @at " +
+	"WHERE user_id = @user AND used_at IS NULL AND new_email <> ''"
+
 // CreatePasswordReset stores a reset link that is about to be sent.
 func (s *Store) CreatePasswordReset(ctx context.Context, reset *model.PasswordReset) error {
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(reset).Error)
+}
+
+// passwordResetsPerHour is the most reset links one account may be sent in an
+// hour, however many times forgot-password is asked for it.
+const passwordResetsPerHour = 5
+
+// CreatePasswordResetThrottled stores a reset link only if the account has not
+// been sent one in the last minute and not more than passwordResetsPerHour in
+// the last hour, and reports whether it did. It holds a per-account advisory
+// lock so a burst of requests at once cannot each pass the check before any of
+// them has inserted — a plain count-then-insert would let all of them through.
+func (s *Store) CreatePasswordResetThrottled(ctx context.Context, reset *model.PasswordReset, now time.Time) (bool, error) {
+	created := false
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", reset.UserID.String()).Error; err != nil {
+			return translate(err)
+		}
+
+		var lastMinute, lastHour int64
+		if err := tx.Model(&model.PasswordReset{}).
+			Where("user_id = ? AND created_at > ?", reset.UserID, now.Add(-time.Minute)).
+			Count(&lastMinute).Error; err != nil {
+			return translate(err)
+		}
+		if err := tx.Model(&model.PasswordReset{}).
+			Where("user_id = ? AND created_at > ?", reset.UserID, now.Add(-time.Hour)).
+			Count(&lastHour).Error; err != nil {
+			return translate(err)
+		}
+		if lastMinute > 0 || lastHour >= passwordResetsPerHour {
+			return nil
+		}
+
+		created = true
+
+		return translate(tx.Omit(clause.Associations).Create(reset).Error)
+	})
+
+	return created, err
 }
 
 // PasswordResetByHash returns a reset link.
@@ -390,15 +481,21 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 			return ErrAlreadyUsed
 		}
 
-		// The link was opened from the address's own inbox, which is as much
-		// proof the address is theirs as a verification link would be.
-		err := tx.Model(user).Updates(map[string]any{
+		changes := map[string]any{
 			"password_hash":         user.PasswordHash,
 			"is_password_temporary": false,
 			"failed_login_count":    0,
 			"locked_until":          nil,
-			"is_email_verified":     true,
-		}).Error
+		}
+		// A link that was emailed was opened from the address's own inbox,
+		// which is as much proof the address is theirs as a verification
+		// link would be. The link a temporary password hands out at sign-in
+		// was not emailed to anyone — whoever knew the password holds it —
+		// so it proves nothing about the address.
+		if !user.IsPasswordTemporary {
+			changes["is_email_verified"] = true
+		}
+		err := tx.Model(user).Updates(changes).Error
 		if err != nil {
 			return err
 		}
@@ -411,6 +508,10 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 			"UPDATE refresh_tokens SET revoked_at = @at WHERE user_id = @user AND revoked_at IS NULL",
 			// Any other link sent to the same address stops working too.
 			"UPDATE password_resets SET used_at = @at WHERE user_id = @user AND used_at IS NULL",
+			// And so does a pending move to another address: it was asked for
+			// by whoever held the account before the reset, and a reset is
+			// how an account is taken back.
+			pendingEmailChangesUsed,
 		}
 		for _, statement := range statements {
 			if err := tx.Exec(statement, map[string]any{"at": at, "user": user.ID}).Error; err != nil {
@@ -463,6 +564,10 @@ func (s *Store) ChangeUserPassword(ctx context.Context, user *model.User, keep u
 
 		statements := []string{
 			"UPDATE refresh_tokens SET revoked_at = @at WHERE user_id = @user AND revoked_at IS NULL",
+			// A reset link in the inbox, and a move to another address asked
+			// for before the password changed, end with the other ways in.
+			"UPDATE password_resets SET used_at = @at WHERE user_id = @user AND used_at IS NULL",
+			pendingEmailChangesUsed,
 		}
 		for _, statement := range statements {
 			if err := tx.Exec(statement, map[string]any{"at": at, "user": user.ID, "keep": keep}).Error; err != nil {

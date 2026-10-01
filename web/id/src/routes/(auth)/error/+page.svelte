@@ -9,7 +9,12 @@
 	const t = useTranslator();
 
 	const code = $derived(page.url.searchParams.get('error') ?? 'server_error');
-	const description = $derived(page.url.searchParams.get('error_description') ?? '');
+
+	/** The server's own words, for whoever has to debug. It comes off the URL,
+	    so anybody can put anything in it; Svelte escapes it, so it cannot run,
+	    and it is capped so it cannot be turned into a page of fake instructions
+	    ("call this number…") wearing the provider's address. */
+	const description = $derived((page.url.searchParams.get('error_description') ?? '').slice(0, 200));
 
 	/** A failed sign-in elsewhere names its reason with the same code the API
 	    answers with, so it is said the same way, in the reader's language. */

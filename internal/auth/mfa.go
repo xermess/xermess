@@ -178,7 +178,7 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.Admin, token, co
 		return nil, ErrInvalidCode
 	}
 
-	codes, hashes, err := newRecoveryCodes()
+	codes, hashes, err := s.newRecoveryCodes()
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +204,20 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.Admin, token, co
 		action = "admin.mfa_replaced"
 	}
 	s.record(ctx, &admin.ID, admin.Username, action, req, "")
+
+	// Every other session ends. A session opened with the password alone,
+	// before a second factor was required or set up, would otherwise be
+	// signed in by this — the factor exists now, so Session no longer sends
+	// it to set one up — without ever having shown the factor; and if it
+	// was not the administrator's, they have just locked themselves out
+	// behind somebody else's authenticator.
+	if waiting != nil {
+		if _, err := s.store.RevokeOtherSessionsFor(ctx, admin.ID, waiting.ID, now); err != nil {
+			return nil, err
+		}
+	} else if err := s.store.RevokeSessionsFor(ctx, admin.ID, now); err != nil {
+		return nil, err
+	}
 
 	// A session that was waiting for this is signed in by it.
 	if enrolling && !waiting.IsMFAPassed {
@@ -261,7 +275,7 @@ func (s *Service) RegenerateRecoveryCodes(ctx context.Context, admin *model.Admi
 		return nil, err
 	}
 
-	codes, hashes, err := newRecoveryCodes()
+	codes, hashes, err := s.newRecoveryCodes()
 	if err != nil {
 		return nil, err
 	}
@@ -288,10 +302,28 @@ func (s *Service) ResetMFA(ctx context.Context, target *model.Admin) error {
 func (s *Service) check(ctx context.Context, admin *model.Admin, factor *model.MFA, code string, req Request) (string, error) {
 	now := time.Now()
 
+	// The guess is counted before the code is looked at, so of twenty sent
+	// at once only as many as the lockout leaves are ever compared; a right
+	// code gives the count back (signedIn, through MarkAdminSignedIn).
+	allowed, err := s.store.ReserveAdminLogin(ctx, admin, now, MaxFailedLogins, LockoutDuration)
+	if err != nil {
+		return "", err
+	}
+	if !allowed {
+		s.record(ctx, &admin.ID, admin.Username, "admin.mfa_failed", req, "locked after too many attempts")
+		return "", ErrInvalidCode
+	}
+
 	if isRecoveryCode(code) {
-		ok, err := s.store.ConsumeRecoveryCode(ctx, factor.ID, hashRecoveryCode(code))
+		ok, err := s.store.ConsumeRecoveryCode(ctx, factor.ID, s.hashRecoveryCode(code))
 		if err != nil {
 			return "", err
+		}
+		if !ok {
+			// Codes handed out before they were keyed are still good once.
+			if ok, err = s.store.ConsumeRecoveryCode(ctx, factor.ID, legacyHashRecoveryCode(code)); err != nil {
+				return "", err
+			}
 		}
 		if ok {
 			return "recovery_code", nil
@@ -320,16 +352,9 @@ func (s *Service) check(ctx context.Context, admin *model.Admin, factor *model.M
 	return "totp", nil
 }
 
-// failed counts a wrong code against the administrator and logs it.
+// failed logs a wrong code. It was counted against the administrator before
+// it was compared, in check.
 func (s *Service) failed(ctx context.Context, admin *model.Admin, req Request, reason string) error {
-	locked, err := s.store.RecordFailedLogin(ctx, admin, time.Now(), MaxFailedLogins, LockoutDuration)
-	if err != nil {
-		return err
-	}
-	if locked {
-		reason += "; locked after too many attempts"
-	}
-
 	s.record(ctx, &admin.ID, admin.Username, "admin.mfa_failed", req, reason)
 
 	return ErrInvalidCode
@@ -373,7 +398,7 @@ const (
 	recoveryCodeLetters = 10
 )
 
-func newRecoveryCodes() (codes, hashes []string, err error) {
+func (s *Service) newRecoveryCodes() (codes, hashes []string, err error) {
 	for range recoveryCodeCount {
 		code, err := newRecoveryCode()
 		if err != nil {
@@ -381,7 +406,7 @@ func newRecoveryCodes() (codes, hashes []string, err error) {
 		}
 
 		codes = append(codes, code)
-		hashes = append(hashes, hashRecoveryCode(code))
+		hashes = append(hashes, s.hashRecoveryCode(code))
 	}
 
 	return codes, hashes, nil
@@ -435,7 +460,24 @@ func isRecoveryCode(code string) bool {
 	return len(normaliseRecoveryCode(code)) == recoveryCodeLetters
 }
 
-func hashRecoveryCode(code string) string {
+// hashRecoveryCode is how a recovery code is stored: keyed with the server's
+// secret, not a bare hash. A code is ten letters of a 31-letter alphabet —
+// a little under fifty bits — which a bare SHA-256 of a database dump gives
+// up to a GPU in hours, for every administrator in one pass. Keyed, the
+// dump is as useless for it as it is for the TOTP seeds, which are sealed
+// with the same secret.
+func (s *Service) hashRecoveryCode(code string) string {
+	return hex.EncodeToString(s.sealer.Tag(recoveryCodePurpose, []byte(normaliseRecoveryCode(code))))
+}
+
+// recoveryCodePurpose keeps the recovery codes' key apart from any other use
+// of the secret.
+const recoveryCodePurpose = "admin recovery code"
+
+// legacyHashRecoveryCode is how codes were stored before they were keyed. A
+// code that was handed out then is accepted by it once, so administrators
+// keep the codes on their paper; codes made from now on are keyed.
+func legacyHashRecoveryCode(code string) string {
 	sum := sha256.Sum256([]byte(normaliseRecoveryCode(code)))
 	return hex.EncodeToString(sum[:])
 }

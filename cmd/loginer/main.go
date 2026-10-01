@@ -52,6 +52,10 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
+	if config.SecretKeyLooksWeak(cfg.SecretKey) {
+		log.Warn("LOGINER_SECRET_KEY does not look like 32 random bytes; a low-entropy key can be brute-forced against a database dump to recover sealed secrets — generate one with: openssl rand -base64 32")
+	}
+
 	db, err := database.Open(cfg.DB)
 	if err != nil {
 		return err
@@ -78,6 +82,13 @@ func run(log *slog.Logger) error {
 	defer shared.Close()
 
 	if shared != nil {
+		// Discard any principal, client or security value a process that died
+		// mid-invalidation may have left current, so no stale one survives a
+		// restart.
+		if err := shared.BumpAuthorityGroups(context.Background()); err != nil {
+			log.Warn("could not bump the cache's authority groups at startup", "error", err)
+		}
+
 		log.Info("redis connected", "addr", cfg.Redis.Addr(), "cache_db", cfg.Redis.CacheDB,
 			"session_db", cfg.Redis.SessionDB, "prefix", cfg.Redis.Prefix)
 	} else {
@@ -156,6 +167,7 @@ func run(log *slog.Logger) error {
 	defer stop()
 	go provider.MaintainKeys(ctx)
 	go st.KeepSwept(ctx, cfg.AuditRetention, log)
+	go shared.KeepSettling(ctx)
 
 	return serve(ctx, log, []*http.Server{
 		listener(cfg.Addr, public),

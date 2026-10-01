@@ -47,7 +47,10 @@ func (s *Service) UpdateProfile(ctx context.Context, session *Session, p Profile
 	user.FirstName = strings.TrimSpace(p.FirstName)
 	user.LastName = strings.TrimSpace(p.LastName)
 
-	if err := s.store.SaveUser(ctx, user); err != nil {
+	// Only the name is written: the row otherwise carries a snapshot from the
+	// start of the request, and writing it whole would roll back a password
+	// reset, a lock or a deactivation that committed meanwhile.
+	if err := s.store.SaveUserProfile(ctx, user); err != nil {
 		return nil, err
 	}
 

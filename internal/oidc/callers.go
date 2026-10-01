@@ -81,9 +81,21 @@ type AccountCaller struct {
 // to be for the account API and issued for a user, who still exists and may
 // still sign in.
 func (s *Service) AccountCaller(ctx context.Context, token string) (*AccountCaller, error) {
-	claims, _, err := s.caller(ctx, token, brand.AccountAPIIdentifier)
+	claims, app, err := s.caller(ctx, token, brand.AccountAPIIdentifier)
 	if err != nil {
 		return nil, err
+	}
+
+	// The application still has to be allowed the account API, and may use
+	// only the scopes it is still allowed — rechecked on every call, as the
+	// admin API does, so revoking the access or narrowing the scopes takes
+	// effect at once rather than at the token's expiry.
+	audience, err := s.store.AudienceFor(ctx, app.ID, brand.AccountAPIIdentifier)
+	if err != nil {
+		return nil, err
+	}
+	if !audience.Authorized {
+		return nil, ErrTokenRefused
 	}
 
 	id, err := uuid.Parse(claims.Subject)
@@ -98,13 +110,15 @@ func (s *Service) AccountCaller(ctx context.Context, token string) (*AccountCall
 	if err != nil {
 		return nil, err
 	}
-	if !user.CanSignIn(s.now()) {
+	// Active, and not unlocked: a token was issued to a signed-in user, and
+	// the lock after wrong passwords is on signing in (see SessionFor).
+	if !user.IsActive {
 		return nil, ErrTokenRefused
 	}
 
 	scopes := []string{}
 	for _, scope := range strings.Fields(claims.Scope) {
-		if scope == model.ScopeAccountRead || scope == model.ScopeAccountWrite {
+		if (scope == model.ScopeAccountRead || scope == model.ScopeAccountWrite) && slices.Contains(audience.Allowed, scope) {
 			scopes = append(scopes, scope)
 		}
 	}

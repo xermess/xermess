@@ -17,6 +17,7 @@ import (
 
 	"loginer/internal/api/audit"
 	"loginer/internal/api/respond"
+	"loginer/internal/brand"
 	"loginer/internal/api/session"
 	"loginer/internal/model"
 	"loginer/internal/store"
@@ -122,6 +123,9 @@ func (h *Handler) Update(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if !h.changeable(c, app) {
+		return
+	}
 
 	var req applicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -162,6 +166,9 @@ func (h *Handler) Update(c *gin.Context) {
 func (h *Handler) RotateSecret(c *gin.Context) {
 	app, ok := h.find(c, model.PermApplicationsWrite)
 	if !ok {
+		return
+	}
+	if !h.changeable(c, app) {
 		return
 	}
 
@@ -213,6 +220,42 @@ func (h *Handler) Delete(c *gin.Context) {
 // systemApplication is the answer to deleting admin-cli.
 var systemApplication = respond.Define(http.StatusConflict, "system_application", respond.Admin)
 
+// changeable says whether the administrator may change this application or
+// rotate its secret, answering the request itself when they may not.
+//
+// Only a super admin may authorise an application for the admin API
+// (AuthorizeAPI) — but the power is in the secret, not in the authorisation.
+// Whoever holds the secret of an application the admin API trusts gets a
+// client credentials token carrying every scope it was allowed, and with it
+// every permission a super admin ever gave it, so rotating that secret, or
+// turning the application back on, re-adding a grant and lengthening its
+// tokens, has to be a super admin's too. Anything else about such an
+// application is a super admin's to change as well: the panel's own
+// `applications.write` is a permission over ordinary applications.
+func (h *Handler) changeable(c *gin.Context, app *model.Application) bool {
+	if session.Admin(c).IsSuperAdmin() {
+		return true
+	}
+
+	audience, err := h.store.AudienceFor(c.Request.Context(), app.ID, brand.AdminAPIIdentifier)
+	if err != nil {
+		// The admin API is made at startup, so not finding it is as much a
+		// fault as any other — and the safe answer to a fault is no.
+		respond.Failure(c, h.log, err, "checking an application's access to the admin API failed")
+		return false
+	}
+	if audience.Authorized {
+		respond.Fail(c, systemApplicationChange)
+		return false
+	}
+
+	return true
+}
+
+// systemApplicationChange is the answer to changing an application the admin
+// API trusts, or rotating its secret, without being a super admin.
+var systemApplicationChange = respond.Define(http.StatusForbidden, "system_application_change", respond.Admin)
+
 // APIAccess lists every API with what the application may do with it:
 // whether it is authorised to ask for tokens for it, and which scopes.
 func (h *Handler) APIAccess(c *gin.Context) {
@@ -246,6 +289,17 @@ func (h *Handler) AuthorizeAPI(c *gin.Context) {
 		return
 	}
 
+	// A system API's scopes are power over this server itself: the admin
+	// API's are the permission catalog, and the account API's act on any
+	// user who signs in to the application. Handing them to an application
+	// its administrator controls would give that administrator — who may
+	// hold applications.write for this one application alone — every
+	// permission in the panel, so only a super admin may.
+	if api.System != "" && !session.Admin(c).IsSuperAdmin() {
+		respond.Fail(c, systemAPIAccess)
+		return
+	}
+
 	var req authorizeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respond.Fail(c, respond.InvalidBody)
@@ -269,6 +323,10 @@ func (h *Handler) AuthorizeAPI(c *gin.Context) {
 	h.APIAccess(c)
 }
 
+// systemAPIAccess is the answer to giving or taking an application's access to
+// one of the server's own APIs without being a super admin.
+var systemAPIAccess = respond.Define(http.StatusForbidden, "system_api_access", respond.Admin)
+
 // RevokeAPI stops the application asking for tokens for an API.
 func (h *Handler) RevokeAPI(c *gin.Context) {
 	app, ok := h.find(c, model.PermApplicationsWrite)
@@ -278,6 +336,14 @@ func (h *Handler) RevokeAPI(c *gin.Context) {
 
 	api, ok := h.findAPI(c)
 	if !ok {
+		return
+	}
+
+	// The same lock as on giving the access: an administrator of one
+	// application should not be able to cut admin-cli off from the admin API
+	// when only a super admin could give it back.
+	if api.System != "" && !session.Admin(c).IsSuperAdmin() {
+		respond.Fail(c, systemAPIAccess)
 		return
 	}
 

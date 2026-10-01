@@ -63,10 +63,30 @@ func (s *Store) SaveOTPSettings(ctx context.Context, settings *model.OTPSettings
 // useless, so a message somebody has already read cannot be typed back.
 func (s *Store) CreateLoginCode(ctx context.Context, code *model.LoginCode) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Unscoped().
+		// One sign-in at a time per user, so two started at once leave one
+		// live code rather than two.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", code.UserID.String()).Error; err != nil {
+			return translate(err)
+		}
+
+		// A code still waiting carries its guess count into the new one, so
+		// starting the sign-in over does not hand out a fresh five guesses and
+		// a used-up challenge stays used up. Only a live one — expiry already
+		// bounds how long guessing may go on — so an expired code is a clean
+		// slate.
+		var prior model.LoginCode
+		err := tx.Where("user_id = ? AND used_at IS NULL AND expires_at > ?", code.UserID, code.SentAt).
+			Order("created_at DESC").First(&prior).Error
+		switch {
+		case err == nil:
+			code.Attempts = prior.Attempts
+		case !errors.Is(err, gorm.ErrRecordNotFound):
+			return translate(err)
+		}
+
+		if err := tx.Unscoped().
 			Where("user_id = ? AND used_at IS NULL", code.UserID).
-			Delete(&model.LoginCode{}).Error
-		if err != nil {
+			Delete(&model.LoginCode{}).Error; err != nil {
 			return translate(err)
 		}
 
@@ -91,17 +111,38 @@ func (s *Store) LoginCodeByHash(ctx context.Context, hash string) (*model.LoginC
 	return &code, nil
 }
 
-// RecordLoginCodeAttempt counts one wrong code against the sign-in and
+// RecordLoginCodeAttempt counts one typed code against the sign-in and
 // answers how many have been counted, so the caller can say whether there are
 // any guesses left.
-func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCode) (int, error) {
-	code.Attempts++
+//
+// Every typed code takes its guess here before it is compared, the right one
+// included, and a sign-in with none left gives none: false, and nothing
+// counted. The count is added to in the database rather than read and
+// written back, and only while it is under `max`, so guesses sent at once
+// are each counted and no more than `max` of them are ever compared —
+// written back from the row each request loaded, twenty sent together would
+// count as one, and all twenty would be checked.
+func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCode, max int) (int, bool, error) {
+	var rows []struct {
+		Attempts int
+	}
 
-	err := translate(s.db.WithContext(ctx).
-		Model(code).
-		Update("attempts", code.Attempts).Error)
+	err := s.db.WithContext(ctx).Raw(
+		`UPDATE login_codes SET attempts = attempts + 1
+		WHERE id = ? AND used_at IS NULL AND attempts < ?
+		RETURNING attempts`,
+		code.ID, max,
+	).Scan(&rows).Error
+	if err != nil {
+		return 0, false, translate(err)
+	}
+	if len(rows) == 0 {
+		return code.Attempts, false, nil
+	}
 
-	return code.Attempts, err
+	code.Attempts = rows[0].Attempts
+
+	return code.Attempts, true, nil
 }
 
 // ConsumeLoginCode marks a code used. A code is used once, so the update is
@@ -130,10 +171,13 @@ func (s *Store) ConsumeLoginCode(ctx context.Context, code *model.LoginCode, now
 // the guesses already spent stay spent — asking for another message is not a
 // way to start the count over.
 func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash string, sentAt, expiresAt time.Time) error {
+	// expires_at is left as it was: resending sends the same sign-in a new
+	// code, it does not start the clock over — a sign-in that keeps asking
+	// for codes should still run out when it was always going to.
+	_ = expiresAt
 	err := translate(s.db.WithContext(ctx).Model(code).Updates(map[string]any{
-		"code_hash":  hash,
-		"sent_at":    sentAt,
-		"expires_at": expiresAt,
+		"code_hash": hash,
+		"sent_at":   sentAt,
 	}).Error)
 	if err != nil {
 		return err
@@ -141,7 +185,6 @@ func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash
 
 	code.CodeHash = hash
 	code.SentAt = sentAt
-	code.ExpiresAt = expiresAt
 
 	return nil
 }

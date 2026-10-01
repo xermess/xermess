@@ -52,8 +52,16 @@ admin-id.mywebsite.com {
 	# no public DNS at all and reach it over a VPN (WireGuard, Tailscale) or an
 	# identity-aware proxy (Cloudflare Access, Pomerium), and keep this list as
 	# a second lock.
+	#
+	# This has to be a `handle`, and has to come first: Caddy runs directives
+	# in its own order, in which every `handle` precedes a bare `respond`, so
+	# `respond @outsiders` would be sorted after the two handles below and
+	# never reached — the admin API would be open to the internet. Handles
+	# with a matcher keep the order they are written in.
 	@outsiders not remote_ip 10.8.0.0/24 203.0.113.10/32
-	respond @outsiders "Not found" 404
+	handle @outsiders {
+		respond "Not found" 404
+	}
 
 	@api path /api/v1/admin/*
 	handle @api {
