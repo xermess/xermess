@@ -148,29 +148,38 @@ func (s *Service) Login(ctx context.Context, username, password string, req Requ
 		return "", nil, StateNone, err
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password)); err != nil {
-		locked, err := s.store.RecordFailedLogin(ctx, admin, time.Now(), MaxFailedLogins, LockoutDuration)
-		if err != nil {
-			return "", nil, StateNone, err
-		}
-
-		reason := "wrong password"
-		if locked {
-			reason = "wrong password; locked after too many attempts"
-		}
-		s.record(ctx, &admin.ID, admin.Username, "admin.login_failed", req, reason)
+	// The attempt is taken before the password is compared, so a locked
+	// account is refused however many attempts arrive at once — and takes
+	// the same time to refuse as a wrong password would.
+	now := time.Now()
+	allowed, err := s.store.ReserveAdminLogin(ctx, admin, now, MaxFailedLogins, LockoutDuration)
+	if err != nil {
+		return "", nil, StateNone, err
+	}
+	if !allowed {
+		_ = bcrypt.CompareHashAndPassword(dummyHash(), []byte(password))
+		s.record(ctx, &admin.ID, admin.Username, "admin.login_blocked", req, "locked")
 
 		return "", nil, StateNone, ErrInvalidCredentials
 	}
 
-	if !admin.CanSignIn(time.Now()) {
-		reason := string(admin.Status)
-		if admin.Status == model.StatusActive {
-			reason = "locked"
-		}
-		s.record(ctx, &admin.ID, admin.Username, "admin.login_blocked", req, reason)
+	if err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password)); err != nil {
+		s.record(ctx, &admin.ID, admin.Username, "admin.login_failed", req, "wrong password")
 
 		return "", nil, StateNone, ErrInvalidCredentials
+	}
+
+	if admin.Status != model.StatusActive {
+		s.record(ctx, &admin.ID, admin.Username, "admin.login_blocked", req, string(admin.Status))
+
+		return "", nil, StateNone, ErrInvalidCredentials
+	}
+
+	// The right password gives the attempt back now rather than when the
+	// sign-in finishes: a second factor may still be to come, and five right
+	// passwords without the phone to hand should not lock anybody out.
+	if err := s.store.ClearAdminFailedLogins(ctx, admin); err != nil {
+		return "", nil, StateNone, err
 	}
 
 	state, lifetime := StateSignedIn, SessionLifetime
@@ -191,8 +200,8 @@ func (s *Service) Login(ctx context.Context, username, password string, req Requ
 		TokenHash:   hashToken(token),
 		ExpiresAt:   time.Now().Add(lifetime),
 		IsMFAPassed: state == StateSignedIn,
-		UserAgent:   req.UserAgent,
-		IP:          req.IP,
+		UserAgent:   model.Truncate(req.UserAgent, 255),
+		IP:          model.Truncate(req.IP, 45),
 	}
 	if err := s.store.CreateSession(ctx, &session); err != nil {
 		return "", nil, StateNone, err
@@ -241,8 +250,14 @@ func (s *Service) Session(ctx context.Context, token string) (*model.Admin, *mod
 
 	// The administrator as the session database keeps them: the roles and
 	// factors, without the password — nothing here checks or writes one.
+	//
+	// Active is all a session needs. The lock after wrong passwords is on
+	// signing in — Login and VerifySignIn check it — not on sessions already
+	// open: anybody who knew an administrator's address could otherwise
+	// sign them out of the panel every fifteen minutes with five wrong
+	// passwords, and every administrator at once with five each.
 	admin, err := s.store.AdminPrincipal(ctx, session.AdminID)
-	if err != nil || !admin.CanSignIn(now) {
+	if err != nil || admin.Status != model.StatusActive {
 		return nil, nil, StateNone, ErrNoSession
 	}
 

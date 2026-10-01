@@ -280,7 +280,12 @@ that (`internal/auth/mfa.go`, `internal/totp`). Token signing keys rotate every
 `LOGINER_KEY_ROTATION_DAYS`, a new one published a day before it signs.
 
 **Nobody is asked to allow an application.** A user already signed in here is
-sent straight back to the application that asked, with a code, and every
+sent straight back to the application that asked, with a code — provided
+their session meets that application's [login flow](#login-flows): sign-ins
+open, the address verified where the flow insists, the session no older than
+the flow lets one live, and no emailed code to type, which a session cannot
+show it did (`oidc.sessionSatisfies`); otherwise they sign in again, through
+that flow. Every
 application registered in the panel can have tokens for them. That is the
 right default for the server an organisation runs for its own applications —
 Keycloak does the same with consent off — and it is the whole reason
@@ -381,7 +386,10 @@ cookie their app sends, so other software can use them:
   machine-to-machine application made at startup (`store.EnsureSystemAPIs`),
   like Keycloak's. A super admin allows it admin API scopes on its API
   access tab — only a super admin may give any application access to either
-  system API — and rotates its secret; its client credentials token for
+  system API, or take it away — and rotates its secret; an application the
+  admin API trusts is changed, and its secret rotated, by a super admin alone,
+  since whoever holds that secret holds every scope it was allowed. Its
+  client credentials token for
   `urn:<slug>:admin-api` then calls every permission-guarded admin route, the
   token's scopes standing in for roles (`session.RequireAny`,
   `model.ServiceAdmin`). Super-admin routes, and an administrator's own account
@@ -916,7 +924,7 @@ domains**.
 | Setting | What it does |
 | --- | --- |
 | Domains | The addresses it signs people in for. It signs in nobody else: an address the provider vouches for outside them is refused (`sso_domain_mismatch`), so a misconfigured provider cannot sign in as anyone elsewhere. A domain belongs to one connection. Domains are optional: without any, the provider is trusted with every address, as authentik and Keycloak trust a source, and since no address leads to it, it has to show its button and cannot be required (`sso_unreachable`). |
-| Require SSO | Makes it the only way in for its domains: their password sign-in, registration and reset are refused with `sso_required`, which names the connection, and the sign-in page sends them there with the address as `login_hint`. |
+| Require SSO | Makes it the only way in for its domains: their password sign-in, registration and reset are refused with `sso_required`, which names the connection, and the sign-in page sends them there with the address as `login_hint`. Signing in with another account ([Social](#signing-in-with-another-account)) is refused for them too (`social_sso_required`) — an identity linked before the connection was required included, and the account's own address decides, not the one the provider gives. |
 | Button on the sign-in page | "Continue with *name*". Off, people reach it through **Sign in with SSO**, which finds the connection from their work address. |
 | Existing accounts | *Link* signs an address that already has an account in to it — the provider owns the domain, so it is the same person — or *Refuse* (`sso_link_refused`). An account that never verified its address is not linked, since whoever registered it would keep its password. Pointing a connection at another provider (a new issuer, or metadata with a new entity ID) forgets its identities, because a subject is only unique within its provider; the accounts link again on their next sign-in. authentik's email_link and email_deny. Without domains, *Link* trusts the provider with every account there is, so choose it only for a provider you would trust with them. |
 | Create accounts | Just-in-time provisioning: somebody new gets an account on first sign-in, verified, with the default roles. Off, only existing accounts sign in (`sso_no_account`). |
@@ -1017,9 +1025,10 @@ provider:
   and registering, which ends in a session like the rest. It is checked in
   `oidc.startSession`, where they all end, so nothing gets in by a road
   somebody forgot to close. Sessions already made are left alone: closing the
-  door does not turn anybody out. The sign-in page draws a closed card rather
-  than a form nobody could use. It is not **On**, which says whether an
-  application may be pointed at this flow at all;
+  door does not turn anybody out of their account — but no application on a
+  closed flow accepts one at `/oauth2/authorize` (below). The sign-in page
+  draws a closed card rather than a form nobody could use. It is not **On**,
+  which says whether an application may be pointed at this flow at all;
 - a flow without **Password** refuses a password before looking at it
   (`password_not_offered`), makes no accounts with one, and sends no reset
   links; the sign-in page shows the provider buttons alone;

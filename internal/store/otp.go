@@ -63,10 +63,30 @@ func (s *Store) SaveOTPSettings(ctx context.Context, settings *model.OTPSettings
 // useless, so a message somebody has already read cannot be typed back.
 func (s *Store) CreateLoginCode(ctx context.Context, code *model.LoginCode) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Unscoped().
+		// One sign-in at a time per user, so two started at once leave one
+		// live code rather than two.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", code.UserID.String()).Error; err != nil {
+			return translate(err)
+		}
+
+		// A code still waiting carries its guess count into the new one, so
+		// starting the sign-in over does not hand out a fresh five guesses and
+		// a used-up challenge stays used up. Only a live one — expiry already
+		// bounds how long guessing may go on — so an expired code is a clean
+		// slate.
+		var prior model.LoginCode
+		err := tx.Where("user_id = ? AND used_at IS NULL AND expires_at > ?", code.UserID, code.SentAt).
+			Order("created_at DESC").First(&prior).Error
+		switch {
+		case err == nil:
+			code.Attempts = prior.Attempts
+		case !errors.Is(err, gorm.ErrRecordNotFound):
+			return translate(err)
+		}
+
+		if err := tx.Unscoped().
 			Where("user_id = ? AND used_at IS NULL", code.UserID).
-			Delete(&model.LoginCode{}).Error
-		if err != nil {
+			Delete(&model.LoginCode{}).Error; err != nil {
 			return translate(err)
 		}
 
@@ -151,10 +171,13 @@ func (s *Store) ConsumeLoginCode(ctx context.Context, code *model.LoginCode, now
 // the guesses already spent stay spent — asking for another message is not a
 // way to start the count over.
 func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash string, sentAt, expiresAt time.Time) error {
+	// expires_at is left as it was: resending sends the same sign-in a new
+	// code, it does not start the clock over — a sign-in that keeps asking
+	// for codes should still run out when it was always going to.
+	_ = expiresAt
 	err := translate(s.db.WithContext(ctx).Model(code).Updates(map[string]any{
-		"code_hash":  hash,
-		"sent_at":    sentAt,
-		"expires_at": expiresAt,
+		"code_hash": hash,
+		"sent_at":   sentAt,
 	}).Error)
 	if err != nil {
 		return err
@@ -162,7 +185,6 @@ func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash
 
 	code.CodeHash = hash
 	code.SentAt = sentAt
-	code.ExpiresAt = expiresAt
 
 	return nil
 }

@@ -153,6 +153,10 @@ var (
 	// ErrSocialRegistrationClosed is a provider, or an application, that does
 	// not make accounts this way.
 	ErrSocialRegistrationClosed = problem("social_registration_closed", "the provider cannot create accounts here")
+	// ErrSocialSSORequired is a provider sign-in for an address whose domain
+	// has to use its organisation's connection — the same door ErrSSORequired
+	// shuts on a password, shut on a provider's button too.
+	ErrSocialSSORequired = problem("social_sso_required", "the address has to sign in through single sign-on")
 	// ErrSocialBlocked is an account found through a provider that may not
 	// sign in.
 	ErrSocialBlocked = problem("social_blocked", "the account may not sign in")

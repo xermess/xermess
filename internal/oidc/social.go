@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/sha256"
@@ -437,7 +438,7 @@ func (s *Service) idTokenClaims(provider *model.SocialProvider, idToken string) 
 	}
 
 	var claims map[string]any
-	if err := json.Unmarshal(payload, &claims); err != nil {
+	if err := decodeClaims(payload, &claims); err != nil {
 		return nil, ErrSocialUpstream
 	}
 
@@ -494,12 +495,24 @@ func (s *Service) fetchSocialProfile(ctx context.Context, provider *model.Social
 	}
 
 	var claims map[string]any
-	if err := json.Unmarshal(body, &claims); err != nil {
+	if err := decodeClaims(body, &claims); err != nil {
 		s.log.Error("a social provider's profile was not JSON", "provider", provider.Slug, "error", err)
 		return nil, ErrSocialUpstream
 	}
 
 	return claims, nil
+}
+
+// decodeClaims reads a provider's JSON with its numbers kept as written.
+// Decoded as float64, an id above 2^53 — a snowflake, a Java long — loses
+// its last digits, and every id within the same few hundred rounds to one
+// string: the first person to sign in would own that subject, and the rest
+// would be signed in as them. As json.Number, claimString gets the literal.
+func decodeClaims(payload []byte, claims *map[string]any) error {
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	decoder.UseNumber()
+
+	return decoder.Decode(claims)
 }
 
 // callProvider makes one request to a provider and reads the answer. What
@@ -508,7 +521,7 @@ func (s *Service) fetchSocialProfile(ctx context.Context, provider *model.Social
 func (s *Service) callProvider(request *http.Request, provider *model.SocialProvider, what string) ([]byte, error) {
 	client := s.social
 	if client == nil {
-		client = &http.Client{Timeout: socialTimeout}
+		client = newFederationClient(socialTimeout)
 	}
 
 	response, err := client.Do(request)
@@ -554,12 +567,24 @@ func (s *Service) signInWithIdentity(
 		return nil, err
 	}
 
+	// Closed means closed before any account is made, identity linked or role
+	// synced — startSession would refuse at the end, but only after those.
+	if !flow.AllowSignIn {
+		return nil, ErrSignInClosed
+	}
+
 	// Someone who has signed in with this provider before.
 	identity, err := s.store.SocialIdentity(ctx, provider.ID, who.Subject)
 	switch {
 	case err == nil:
 		user, err := s.store.User(ctx, identity.UserID)
 		if err != nil {
+			return nil, err
+		}
+		// The account's own address decides, not the one the provider gave:
+		// a provider may give none, or one that has since changed, and the
+		// organisation's rule is about the account it owns.
+		if err := s.socialSSORequired(ctx, user.Email); err != nil {
 			return nil, err
 		}
 		if !user.CanSignIn(now) {
@@ -580,6 +605,13 @@ func (s *Service) signInWithIdentity(
 
 	if email == "" {
 		return nil, ErrSocialNoEmail
+	}
+
+	// An address whose organisation signs in through its own identity
+	// provider is not linked or registered here either: "the only way in" has
+	// to hold for a provider's button as much as for a password.
+	if err := s.socialSSORequired(ctx, email); err != nil {
+		return nil, err
 	}
 
 	// An account with that address already: the provider has to have proved
@@ -611,7 +643,7 @@ func (s *Service) signInWithIdentity(
 
 	// Nobody yet: make an account, if this provider and this application make
 	// accounts at all.
-	if !provider.AllowRegistration {
+	if !provider.AllowRegistration || !flow.AllowRegistration {
 		return nil, ErrSocialRegistrationClosed
 	}
 	if err := s.socialRegistrationAllowed(ctx, request); err != nil {
@@ -647,6 +679,20 @@ func (s *Service) signInWithIdentity(
 	s.record(ctx, user, user.Email, "user.registered", client, map[string]any{"provider": provider.Name})
 
 	return s.startSocialSession(ctx, user, provider, flow, request, client)
+}
+
+// socialSSORequired is ssoRequiredFor on the social way in: the same refusal,
+// as one of the sign-in failures the error page has a sentence for. The page
+// cannot name the connection, so the problem carries nothing.
+func (s *Service) socialSSORequired(ctx context.Context, email string) error {
+	err := s.ssoRequiredFor(ctx, email)
+
+	var required *SSORequired
+	if errors.As(err, &required) {
+		return ErrSocialSSORequired
+	}
+
+	return err
 }
 
 // socialRegistrationAllowed refuses to make an account for a sign-in to an
@@ -838,11 +884,30 @@ func (s *Service) SocialLanding(ctx context.Context, result *SocialResult) strin
 // its own `next`: anything else would make this server a way to send someone
 // wherever the link said.
 func (s *Service) accountLanding(next string) string {
-	if strings.HasPrefix(next, "/") && !strings.HasPrefix(next, "//") && !strings.HasPrefix(next, `/\`) {
+	if safePath(next) {
 		return s.accountURL + next
 	}
 
 	return s.accountURL + "/"
+}
+
+// safePath reports whether `next` is a path on the account app and nothing
+// else, by the same rule as the app's own safeNext: it starts with one slash,
+// and carries neither a second slash or a backslash where a browser would
+// read a host, nor a control character — a browser drops tabs and newlines
+// before it parses, so "/\t/evil.example" is "//evil.example" to it.
+func safePath(next string) bool {
+	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.HasPrefix(next, `/\`) {
+		return false
+	}
+
+	for _, r := range next {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+
+	return true
 }
 
 // SocialErrorPage is the sign-in app's error page, saying what went wrong in
@@ -890,6 +955,7 @@ func IsSocialFailure(err error) bool {
 		ErrSocialNoEmail,
 		ErrSocialLinkRefused,
 		ErrSocialRegistrationClosed,
+		ErrSocialSSORequired,
 		ErrInvalidCredentials,
 	} {
 		if errors.Is(err, known) {

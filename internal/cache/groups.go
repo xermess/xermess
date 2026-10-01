@@ -165,12 +165,80 @@ func (c *Cache) generationKey(group string) string {
 	return c.key("cache", group, "generation")
 }
 
-// entryKey is where an entry of a group lives in the current generation.
-func (c *Cache) entryKey(ctx context.Context, group, entry string) (string, error) {
+// generation reads which generation of a group is current. A group nobody has
+// forgotten yet has no counter, which is generation zero.
+func (c *Cache) generation(ctx context.Context, group string) (int64, error) {
 	generation, err := c.client.Get(ctx, c.generationKey(group)).Int64()
 	if err != nil && !errors.Is(err, redis.Nil) {
+		return 0, err
+	}
+
+	return generation, nil
+}
+
+// keyAt is where an entry of a group lives in a named generation.
+func (c *Cache) keyAt(group string, generation int64, entry string) string {
+	return c.key("cache", group, "v"+strconv.FormatInt(generation, 10), entry)
+}
+
+// entryKey is where an entry of a group lives in the current generation.
+func (c *Cache) entryKey(ctx context.Context, group, entry string) (string, error) {
+	generation, err := c.generation(ctx, group)
+	if err != nil {
 		return "", err
 	}
 
-	return c.key("cache", group, "v"+strconv.FormatInt(generation, 10), entry), nil
+	return c.keyAt(group, generation, entry), nil
+}
+
+// GetAt reads an entry into dst and returns the generation it read under, so a
+// caller that misses and loads from the database can write the value back into
+// that same generation (SetAt) rather than whatever the generation has become
+// in between. Without pinning, a write that forgets the group between the read
+// and the write would otherwise have its invalidation undone: the stale value
+// would land in the new generation and be served.
+func (c *Cache) GetAt(ctx context.Context, group, entry string, dst any) (int64, bool) {
+	if c == nil || !c.available() || !c.settle(ctx) {
+		return 0, false
+	}
+
+	generation, err := c.generation(ctx, group)
+	if err != nil {
+		c.failed(err)
+		return 0, false
+	}
+
+	raw, err := c.client.Get(ctx, c.keyAt(group, generation, entry)).Bytes()
+	switch {
+	case errors.Is(err, redis.Nil):
+		c.recovered()
+		return generation, false
+	case err != nil:
+		c.failed(err)
+		return 0, false
+	}
+
+	c.recovered()
+
+	return generation, json.Unmarshal(raw, dst) == nil
+}
+
+// SetAt caches an entry in a named generation — the one GetAt read. A value
+// pinned to a generation that a concurrent write has already moved past lands
+// in a generation nobody reads, so it is harmlessly forgotten rather than
+// served as though it were current.
+func (c *Cache) SetAt(ctx context.Context, group, entry string, value any, generation int64) {
+	if c == nil || !c.available() || !c.settle(ctx) {
+		return
+	}
+
+	raw, err := json.Marshal(value)
+	if err != nil {
+		c.log.Error("cache: a value would not encode", "group", group, "entry", entry, "error", err)
+		return
+	}
+
+	if err := c.client.Set(ctx, c.keyAt(group, generation, entry), raw, TTL).Err(); err != nil {
+		c.failed(err)
+	}
 }

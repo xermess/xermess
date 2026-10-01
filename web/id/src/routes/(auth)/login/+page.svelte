@@ -71,8 +71,11 @@
 			// A temporary password: the user chooses their own before going on.
 			let query = `token=${encodeURIComponent(result.reset_token)}&reason=temporary`;
 			if (data.request) query += `&request=${encodeURIComponent(data.request)}`;
+			// replaceState so the reset token does not stay in the browser's
+			// history: this entry replaces the sign-in page rather than stacking
+			// on it, and Back does not return to a URL carrying a live token.
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved, with a query
-			await goto(`${resolve('/reset-password')}?${query}`);
+			await goto(`${resolve('/reset-password')}?${query}`, { replaceState: true });
 			return;
 		}
 

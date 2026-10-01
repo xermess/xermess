@@ -382,8 +382,7 @@ func noStore(c *gin.Context) {
 }
 
 func cookie(c *gin.Context) string {
-	value, _ := c.Cookie(session.UserCookie)
-	return value
+	return session.UserToken(c)
 }
 
 func client(c *gin.Context) oidc.Client {

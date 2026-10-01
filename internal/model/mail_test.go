@@ -135,3 +135,34 @@ func TestMailMessageSpecsNameRealKeys(t *testing.T) {
 		t.Errorf("MailMessageKeys() has %d keys, want %d — a subject and a body each", got, want)
 	}
 }
+
+// Every key an email is built from is email text — the messages the Mail page
+// edits and the words put into them alike — and nothing else is.
+func TestIsMailTextKey(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		want bool
+	}{
+		{name: "the reset email's body, which carries the link", key: "email.reset.body", want: true},
+		{name: "a message's subject", key: "email.code.subject", want: true},
+		{name: "a word put into a message", key: "email.reset.your_account", want: true},
+		{name: "the sign-in page's text", key: "action.sign_in", want: false},
+		{name: "a key that merely starts with the word", key: "email_change.title", want: false},
+		{name: "the language's own name", key: "$name", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsMailTextKey(tt.key); got != tt.want {
+				t.Errorf("IsMailTextKey(%q) = %v, want %v", tt.key, got, tt.want)
+			}
+		})
+	}
+
+	for _, key := range MailMessageKeys() {
+		if !IsMailTextKey(key) {
+			t.Errorf("%s is a Mail page key but not email text", key)
+		}
+	}
+}

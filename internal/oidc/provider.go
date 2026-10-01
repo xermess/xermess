@@ -96,7 +96,7 @@ func New(ctx context.Context, cfg config.Config, st *store.Store, mailer mail.Se
 		issuer:     cfg.Issuer,
 		accountURL: cfg.AccountURL,
 		sealer:     sealer,
-		social:     &http.Client{Timeout: socialTimeout},
+		social:     newFederationClient(socialTimeout),
 		now:        time.Now,
 	}, nil
 }

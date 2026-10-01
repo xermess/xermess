@@ -29,7 +29,17 @@ func (c *Cache) available() bool {
 
 // failed notes a Redis that did not answer: the cache leaves it alone for the
 // cooldown, and says so once per outage.
+//
+// A context that ended is the caller's — a browser that went away, a request
+// out of time — and says nothing about Redis, so it starts no cooldown: one
+// would send every process's reads to the database for five seconds, and
+// leave any write in those seconds unable to tell the other processes what
+// it changed.
 func (c *Cache) failed(err error) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

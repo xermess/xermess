@@ -173,6 +173,52 @@ func (s *Store) MarkAdminSignedIn(ctx context.Context, admin *model.Admin, at ti
 	return err
 }
 
+// ReserveAdminLogin takes one attempt at signing in — a password or a code
+// — before it is checked, and reports whether there was one to take: false
+// when the account is locked. The `max`th attempt in a row locks the account
+// until `lockFor` from now; a right password or code gives the attempts
+// back (MarkAdminSignedIn, ClearAdminFailedLogins).
+//
+// Counting before the check, and in the database, is what makes the lockout
+// hold against attempts sent at once: counted after, each of twenty sent
+// together would read the account as open, be compared, and count as one.
+func (s *Store) ReserveAdminLogin(ctx context.Context, admin *model.Admin, at time.Time, max int, lockFor time.Duration) (bool, error) {
+	var rows []struct {
+		LockedUntil *time.Time
+	}
+
+	err := s.db.WithContext(ctx).Raw(`
+		UPDATE admins SET
+			locked_until = CASE WHEN failed_login_count + 1 >= @max THEN @until ELSE locked_until END,
+			failed_login_count = CASE WHEN failed_login_count + 1 >= @max THEN 0 ELSE failed_login_count + 1 END
+		WHERE id = @id AND (locked_until IS NULL OR locked_until <= @now)
+		RETURNING locked_until`,
+		map[string]any{"max": max, "until": at.Add(lockFor), "id": admin.ID, "now": at},
+	).Scan(&rows).Error
+	if err != nil {
+		return false, err
+	}
+
+	// Sign-ins half way through read the account from the session database.
+	s.forget(ctx, cache.Admins)
+
+	return len(rows) > 0, nil
+}
+
+// ClearAdminFailedLogins gives back the attempts a right password took, for
+// a sign-in that is not finished yet — one waiting for a code.
+func (s *Store) ClearAdminFailedLogins(ctx context.Context, admin *model.Admin) error {
+	err := s.db.WithContext(ctx).Model(admin).Updates(map[string]any{
+		"failed_login_count": 0,
+		"locked_until":       nil,
+	}).Error
+	if err == nil {
+		s.forget(ctx, cache.Admins)
+	}
+
+	return err
+}
+
 // RecordFailedLogin counts a wrong password against an administrator and, at
 // the `max`th in a row, locks the account until `lockFor` from now and starts
 // counting again. It reports whether this attempt locked the account.

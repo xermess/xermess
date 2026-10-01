@@ -3,12 +3,28 @@ package auth
 import (
 	"strings"
 	"testing"
+
+	"loginer/internal/jose"
 )
+
+// testService is a Service with only what the recovery-code helpers need: a
+// sealer to key the hashes with.
+func testService(t *testing.T) *Service {
+	t.Helper()
+
+	sealer, err := jose.NewSealer("test-secret-at-least-32-bytes-long!!")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return &Service{sealer: sealer}
+}
 
 // The shape a code is read off paper in, and the shape check that tells one
 // from an authenticator's six digits.
 func TestNewRecoveryCodesAreTheShapeTheyAreReadIn(t *testing.T) {
-	codes, hashes, err := newRecoveryCodes()
+	s := testService(t)
+	codes, hashes, err := s.newRecoveryCodes()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +57,7 @@ func TestNewRecoveryCodesAreTheShapeTheyAreReadIn(t *testing.T) {
 		}
 		seen[code] = true
 
-		if hashes[i] != hashRecoveryCode(code) {
+		if hashes[i] != s.hashRecoveryCode(code) {
 			t.Errorf("the hash stored for %q is not its own", code)
 		}
 	}
@@ -59,6 +75,8 @@ func TestNewRecoveryCodesAreTheShapeTheyAreReadIn(t *testing.T) {
 // the bound below is nearly six, which an even spread will not cross in the
 // life of this repository.
 func TestRecoveryCodeLettersAreEvenlySpread(t *testing.T) {
+	s := testService(t)
+
 	const (
 		rounds   = 1000
 		favoured = 256 % len(recoveryAlphabet) // 8: the letters a modulo would repeat
@@ -69,7 +87,7 @@ func TestRecoveryCodeLettersAreEvenlySpread(t *testing.T) {
 	letters, hits := 0, 0
 
 	for range rounds {
-		codes, _, err := newRecoveryCodes()
+		codes, _, err := s.newRecoveryCodes()
 		if err != nil {
 			t.Fatal(err)
 		}

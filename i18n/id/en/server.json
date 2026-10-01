@@ -47,6 +47,7 @@
 		"social_link_refused": "An account with this email already exists. Sign in with your password, then connect this provider from your account.",
 		"social_registration_closed": "This provider cannot create new accounts here.",
 		"social_blocked": "This account cannot sign in.",
+		"social_sso_required": "Your organisation signs you in through single sign-on. Go back to the sign-in page and use it.",
 		"sso_unknown": "That single sign-on connection is not available.",
 		"sso_expired": "This sign-in took too long or has already been used. Start again.",
 		"sso_upstream": "Your organisation's identity provider could not complete this sign-in. Try again, or contact your IT team.",

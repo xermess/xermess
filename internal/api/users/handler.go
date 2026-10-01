@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -209,7 +210,18 @@ func (h *Handler) Update(c *gin.Context) {
 
 	h.audit.Record(c, "user.updated", targetType, user.ID.String())
 	if req.Password != "" {
-		h.audit.Record(c, "user.password_changed", targetType, user.ID.String())
+		// A new password is the usual answer to an account being taken, so
+		// whoever holds a session or a refresh token on the old one loses
+		// it — as a reset link and the user's own change of password do.
+		sessions, tokens, err := h.store.SignOutUser(c.Request.Context(), user.ID, time.Now())
+		if err != nil {
+			respond.Failure(c, h.log, err, "ending the user's sessions failed")
+			return
+		}
+
+		h.audit.RecordWith(c, "user.password_changed", targetType, user.ID.String(), map[string]any{
+			"sessions": sessions, "tokens": tokens,
+		})
 	}
 
 	visibleRoles(c, user)
@@ -436,8 +448,18 @@ func (h *Handler) build(c *gin.Context, req *userRequest, into *model.User) (*mo
 		user = &model.User{IsActive: true}
 	}
 
+	// A changed address has not been proved to be the account's, whatever the
+	// form carried: the dialog sends the current flag back unchanged, so the
+	// confirmed state would otherwise ride along to an address nobody proved,
+	// which a later social or SSO link would then trust. Changing it resets
+	// it; a fresh account the administrator marks verified keeps that.
+	changedEmail := into != nil && req.Email != user.Email
+
 	user.Email = req.Email
 	user.IsEmailVerified = validate.Flag(req.IsEmailVerified, user.IsEmailVerified)
+	if changedEmail {
+		user.IsEmailVerified = false
+	}
 	user.FirstName = req.FirstName
 	user.LastName = req.LastName
 	user.IsActive = validate.Flag(req.IsActive, user.IsActive)

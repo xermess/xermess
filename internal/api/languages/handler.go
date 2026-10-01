@@ -24,6 +24,7 @@ import (
 	"loginer/i18n"
 	"loginer/internal/api/audit"
 	"loginer/internal/api/respond"
+	"loginer/internal/api/session"
 	"loginer/internal/api/validate"
 	"loginer/internal/model"
 	"loginer/internal/store"
@@ -299,6 +300,30 @@ func (h *Handler) SaveTranslation(c *gin.Context) {
 	}
 
 	messages, ignored := i18n.Known(app, req.Messages)
+
+	// The emails are the Mail page's, a super admin's: the reset email puts
+	// a live reset link wherever its body says {link}, so whoever may word it
+	// may send that link to themselves. A translator's save keeps the email
+	// text as it is stored — kept rather than refused, because the editor
+	// sends the whole draft, stored email text included, and a refusal would
+	// stop a translator saving anything at all.
+	if !session.Admin(c).IsSuperAdmin() {
+		stored, err := h.store.Translation(c.Request.Context(), language.ID, string(app))
+		if err != nil {
+			respond.Failure(c, h.log, err, "loading a translation failed")
+			return
+		}
+		for key := range messages {
+			if !model.IsMailTextKey(key) {
+				continue
+			}
+			if value, ok := stored[key]; ok {
+				messages[key] = value
+			} else {
+				delete(messages, key)
+			}
+		}
+	}
 
 	if key := model.TooLongMessage(messages); key != "" {
 		respond.Fail(c, translationTooLong, "key", key, "max", model.MaxMessageLength)

@@ -100,10 +100,12 @@ func (m *Mailer) Send(ctx context.Context, msg Message) error {
 	}
 
 	if !settings.Enabled || settings.Host == "" {
-		// Body included: this is only reached where no mail server is
-		// configured, which is to say while developing.
-		m.log.Info("email not sent: sending is off on the Mail page",
-			"to", msg.To, "subject", msg.Subject, "body", msg.Body)
+		// The subject only. The body of a reset email is a live reset link,
+		// and of a sign-in email a one-time code: written to the log, they
+		// would be a way into any account for whoever reads the logs — and
+		// sending is off on every fresh installation, not only in
+		// development. The address is personal data and stays out too.
+		m.log.Info("email not sent: sending is off on the Mail page", "subject", msg.Subject)
 
 		return nil
 	}
@@ -147,6 +149,12 @@ func Deliver(ctx context.Context, settings Settings, msg Message) error {
 // own write timeout.
 const dialTimeout = 15 * time.Second
 
+// sendTimeout bounds the whole exchange after the connection is made. The dial
+// timeout covers only the connect; a relay that accepts the connection and
+// then stalls at the banner, EHLO, AUTH or DATA would otherwise hold the
+// goroutine open with no limit.
+const sendTimeout = 60 * time.Second
+
 // deliver opens the connection the settings ask for and posts the message.
 //
 // smtp.SendMail would do this in a line, but only one of the three ways: it
@@ -158,6 +166,10 @@ func deliver(settings Settings, from, to *mail.Address, body []byte) error {
 	if err != nil {
 		return fmt.Errorf("mail: connect to %s: %w", settings.Address(), err)
 	}
+
+	// Every read and write that follows shares one deadline, so no step of the
+	// exchange can hang on a server that goes quiet.
+	_ = conn.SetDeadline(time.Now().Add(sendTimeout))
 
 	client, err := smtp.NewClient(conn, settings.Host)
 	if err != nil {

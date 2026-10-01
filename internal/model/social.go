@@ -377,11 +377,14 @@ var SocialSpecs = []SocialSpec{
 			FullName:  "real_name",
 		},
 		// Yandex reads its own scheme rather than Bearer.
-		UserInfoScheme:      "OAuth",
-		PKCE:                true,
-		AssumeEmailVerified: true,
-		TokenAuth:           SocialTokenAuthPost,
-		Docs:                "https://oauth.yandex.ru/client/new",
+		UserInfoScheme: "OAuth",
+		PKCE:           true,
+		// No AssumeEmailVerified, unlike Facebook: Yandex's answer does not say
+		// the address was confirmed, and it may be a login rather than a proven
+		// mailbox. So its address is good enough to make a new (unconfirmed)
+		// account with, but not to link onto an account somebody else owns.
+		TokenAuth: SocialTokenAuthPost,
+		Docs:      "https://oauth.yandex.ru/client/new",
 	},
 	{
 		Kind:         SocialVK,
@@ -402,9 +405,11 @@ var SocialSpecs = []SocialSpec{
 		// VK sends the address back with the access token, not in the profile.
 		EmailInTokenResponse: true,
 		AuthorizeParams:      map[string]string{"v": "5.131"},
-		AssumeEmailVerified:  true,
-		TokenAuth:            SocialTokenAuthPost,
-		Docs:                 "https://vk.com/editapp?act=create",
+		// No AssumeEmailVerified, unlike Facebook: VK's token response carries
+		// no proof the address was confirmed, so it makes a new (unconfirmed)
+		// account but is not trusted to link onto someone else's account.
+		TokenAuth: SocialTokenAuthPost,
+		Docs:      "https://vk.com/editapp?act=create",
 	},
 	{
 		Kind:  SocialOIDC,
@@ -562,18 +567,21 @@ func (p SocialProvider) Validate() error {
 	}
 
 	if spec.Custom {
-		for _, endpoint := range []struct{ field, value string }{
-			{"authorize_url", p.AuthorizeURL},
-			{"token_url", p.TokenURL},
-		} {
-			if err := socialEndpoint(endpoint.field, endpoint.value, true); err != nil {
-				return err
-			}
+		// authorize_url is only ever a redirect the browser follows, so plain
+		// http is allowed there; token_url and userinfo_url the server fetches
+		// itself, carrying the client secret and reading back the identity, so
+		// they have to be https — except on localhost, where a provider tried
+		// out on this machine has no certificate.
+		if err := socialEndpoint("authorize_url", p.AuthorizeURL, true, false); err != nil {
+			return err
+		}
+		if err := socialEndpoint("token_url", p.TokenURL, true, true); err != nil {
+			return err
 		}
 
 		// OpenID Connect can answer with an id_token instead; plain OAuth 2.0
 		// has nowhere else to read a profile from.
-		if err := socialEndpoint("userinfo_url", p.UserinfoURL, p.Kind == SocialOAuth2); err != nil {
+		if err := socialEndpoint("userinfo_url", p.UserinfoURL, p.Kind == SocialOAuth2, true); err != nil {
 			return err
 		}
 	}
@@ -594,7 +602,7 @@ func (p SocialProvider) Validate() error {
 // socialEndpoint checks one address. An endpoint is http(s) and absolute;
 // http is allowed because a provider on the same network as this server in a
 // test or on an internal deployment has no certificate of its own.
-func socialEndpoint(field, value string, required bool) error {
+func socialEndpoint(field, value string, required, secure bool) error {
 	if value == "" {
 		if required {
 			return fmt.Errorf("%s is required for this kind of provider", field)
@@ -609,6 +617,13 @@ func socialEndpoint(field, value string, required bool) error {
 	parsed, err := url.Parse(value)
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return fmt.Errorf("%s must be a full address starting with http:// or https://", field)
+	}
+
+	// An endpoint the server fetches has to be https, so the secret it sends
+	// and the identity it reads back are not exposed to the network. Plain
+	// http is allowed only on this machine, where a provider is tried out.
+	if secure && parsed.Scheme == "http" && !isLocalhost(parsed) {
+		return fmt.Errorf("%s must use https", field)
 	}
 
 	return nil

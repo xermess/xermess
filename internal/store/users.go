@@ -91,6 +91,17 @@ func (s *Store) SaveUser(ctx context.Context, user *model.User) error {
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Save(user).Error)
 }
 
+// SaveUserProfile writes only the name — what a user may change about
+// themselves. Writing the whole row from a snapshot taken at the start of the
+// request would let a flurry of profile edits roll back a password reset or a
+// deactivation that committed in between.
+func (s *Store) SaveUserProfile(ctx context.Context, user *model.User) error {
+	return translate(s.db.WithContext(ctx).Model(user).Updates(map[string]any{
+		"first_name": user.FirstName,
+		"last_name":  user.LastName,
+	}).Error)
+}
+
 // DeleteUser removes a user for good rather than marking it deleted: an
 // account someone asked to have removed should not stay in the table. The
 // roles it held are let go first.

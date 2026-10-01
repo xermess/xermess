@@ -68,7 +68,10 @@ func (h *Handler) Create(c *gin.Context) {
 		LastName:  strings.TrimSpace(req.LastName),
 		Status:    model.StatusActive,
 	}
-	if err := admin.SetPassword(req.Password); err != nil {
+	if err := admin.SetPassword(req.Password); errors.Is(err, model.ErrPasswordTooLong) {
+		respond.BadRequest(c, "password is too long")
+		return
+	} else if err != nil {
 		respond.Failure(c, h.log, err, "hashing the password failed")
 		return
 	}

@@ -248,8 +248,11 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	// library finds them from there.
 	r.GET(oidc.PathDiscovery, h.oauth.Discovery)
 	r.GET(oidc.PathJWKS, h.oauth.JWKS)
-	r.GET(oidc.PathAuthorize, h.oauth.Authorize)
-	r.POST(oidc.PathAuthorize, h.oauth.Authorize)
+	// Authorize writes a row for anybody who names a client, so it shares the
+	// loose per-address limit of the token endpoints below rather than go
+	// without one; a browser signing in asks for it once.
+	r.GET(oidc.PathAuthorize, h.tokens, h.oauth.Authorize)
+	r.POST(oidc.PathAuthorize, h.tokens, h.oauth.Authorize)
 	// The three that take a client's credentials, or a token, are limited per
 	// address: each one reads the database, and nothing else stops a caller
 	// asking for ever. The limit is its own, and a loose one — see
@@ -271,7 +274,8 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	// as well, because Apple posts its answer rather than redirecting with
 	// it; it is outside the CSRF group for the same reason — the form comes
 	// from Apple, not from this server's own app.
-	r.GET(oidc.PathSocialStart, h.oauth.SocialStart)
+	// Starting writes a sign-in for anybody, like the SSO start below.
+	r.GET(oidc.PathSocialStart, h.limit, h.oauth.SocialStart)
 	r.GET(oidc.PathSocialCallback, h.oauth.SocialCallback)
 	r.POST(oidc.PathSocialCallback, h.oauth.SocialCallback)
 

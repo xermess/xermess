@@ -403,7 +403,7 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 
 // Logout signs the user out of this server in this browser.
 func (h *Handler) Logout(c *gin.Context) {
-	token, _ := c.Cookie(session.UserCookie)
+	token := session.UserToken(c)
 
 	if err := h.provider.SignOut(c.Request.Context(), token, client(c)); err != nil {
 		h.log.Error("signing a user out failed", "error", err)
@@ -438,7 +438,7 @@ func (h *Handler) RequireSession(c *gin.Context) {
 		return
 	}
 
-	token, _ := c.Cookie(session.UserCookie)
+	token := session.UserToken(c)
 
 	current, err := h.provider.SessionFor(c.Request.Context(), token)
 	if err != nil {

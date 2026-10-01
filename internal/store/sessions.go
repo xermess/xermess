@@ -122,6 +122,9 @@ func revokeAdminSessionsIn(tx *gorm.DB, at time.Time, condition string, args ...
 
 // putAdminSessions puts sessions in the session database as they are now.
 func (s *Store) putAdminSessions(ctx context.Context, sessions ...model.AdminSession) {
+	ctx, cancel := afterCommit(ctx)
+	defer cancel()
+
 	for _, session := range sessions {
 		s.sessions.PutSession(ctx, cache.AdminSession, session.TokenHash, session, session.ExpiresAt)
 	}
@@ -188,6 +191,9 @@ func revokeUserSessionsIn(tx *gorm.DB, at time.Time, condition string, args ...a
 
 // putUserSessions puts sessions in the session database as they are now.
 func (s *Store) putUserSessions(ctx context.Context, sessions ...model.UserSession) {
+	ctx, cancel := afterCommit(ctx)
+	defer cancel()
+
 	for _, session := range sessions {
 		s.sessions.PutSession(ctx, cache.UserSession, session.TokenHash, newUserSession(session), session.ExpiresAt)
 	}

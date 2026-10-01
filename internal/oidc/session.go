@@ -91,7 +91,12 @@ func (s *Service) SessionFor(ctx context.Context, token string) (*Session, error
 		return nil, err
 	}
 
-	if !user.CanSignIn(now) {
+	// Active, and no more: the lock after wrong passwords is on signing in
+	// with a password, not on sessions already made. Were it on those too,
+	// five wrong passwords from anybody who knew the address would sign the
+	// user out of every browser, every fifteen minutes, for as long as they
+	// cared to keep it up.
+	if !user.IsActive {
 		return nil, nil
 	}
 
@@ -130,34 +135,43 @@ func (s *Service) SignIn(ctx context.Context, email, password, request string, r
 		return nil, err
 	}
 
+	// Count this attempt before the password is compared, so a burst of
+	// parallel guesses cannot each read the same unlocked row and slip past
+	// the lock. A locked account is refused here, after a dummy hash so the
+	// timing is the same as a wrong password's.
+	allowed, err := s.store.ReserveUserLogin(ctx, user, now, maxFailedLogins, lockoutDuration)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		_ = bcrypt.CompareHashAndPassword(dummyHash(), []byte(password))
+		s.record(ctx, user, user.Email, "user.login_blocked", client, map[string]any{"reason": "locked"})
+		return nil, ErrInvalidCredentials
+	}
+
 	// A user an administrator made without a password has none to match.
 	if user.PasswordHash == "" || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		if user.PasswordHash == "" {
 			_ = bcrypt.CompareHashAndPassword(dummyHash(), []byte(password))
 		}
 
-		locked, err := s.store.RecordUserFailedLogin(ctx, user, now, maxFailedLogins, lockoutDuration)
-		if err != nil {
-			return nil, err
-		}
-
-		reason := "wrong password"
-		if locked {
-			reason = "wrong password; locked after too many attempts"
-		}
-		s.record(ctx, user, user.Email, "user.login_failed", client, map[string]any{"reason": reason})
+		s.record(ctx, user, user.Email, "user.login_failed", client, map[string]any{"reason": "wrong password"})
 
 		return nil, ErrInvalidCredentials
 	}
 
-	if !user.CanSignIn(now) {
-		reason := "inactive"
-		if user.IsActive {
-			reason = "locked"
-		}
-		s.record(ctx, user, user.Email, "user.login_blocked", client, map[string]any{"reason": reason})
+	// Inactive is refused here; the lock is already handled by the reservation.
+	if !user.IsActive {
+		s.record(ctx, user, user.Email, "user.login_blocked", client, map[string]any{"reason": "inactive"})
 
 		return nil, ErrInvalidCredentials
+	}
+
+	// The right password gives the attempt back now rather than when the
+	// sign-in finishes: an emailed code may still be to come, and a correct
+	// password should not count toward the lock.
+	if err := s.store.ClearUserFailedLogins(ctx, user, now); err != nil {
+		return nil, err
 	}
 
 	if user.IsPasswordTemporary {
@@ -430,9 +444,24 @@ func (s *Service) ForgotPassword(ctx context.Context, email, request, language s
 		return nil
 	}
 
-	token, err := s.newReset(ctx, user)
+	token, hash, err := model.NewSecret()
 	if err != nil {
 		return err
+	}
+	reset := &model.PasswordReset{
+		TokenHash: hash,
+		UserID:    user.ID,
+		ExpiresAt: s.now().Add(model.PasswordResetLifetime),
+	}
+	created, err := s.store.CreatePasswordResetThrottled(ctx, reset, s.now())
+	if err != nil {
+		return err
+	}
+	if !created {
+		// A link went out to this account recently, so another is not sent
+		// and the inbox cannot be flooded. The answer stays the same — still
+		// a quiet success — so this tells nobody whether the address exists.
+		return nil
 	}
 
 	text := s.textIn(ctx, language)
@@ -639,6 +668,19 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) 
 		return ErrVerificationInvalid
 	}
 
+	// A link that moves the account to another address cannot take one whose
+	// domain must sign in through its identity provider off that domain — even
+	// a link made before the domain was enforced.
+	if verification.IsChange() {
+		owner, err := s.store.User(ctx, verification.UserID)
+		if err != nil {
+			return err
+		}
+		if err := s.ssoRequiredFor(ctx, owner.Email); err != nil {
+			return err
+		}
+	}
+
 	err = s.store.VerifyEmail(ctx, verification, s.now())
 	switch {
 	case errors.Is(err, store.ErrAlreadyUsed):
@@ -679,6 +721,14 @@ func (s *Service) RequestEmailChange(ctx context.Context, session *Session, emai
 	}
 	if !flow.AllowEmailChange {
 		return ErrEmailChangeNotOffered
+	}
+
+	// An account on a domain that has to sign in through its identity provider
+	// cannot be moved off that domain here: changing the address to a personal
+	// one and then resetting a password would be a way around "the only way
+	// in". The address decides, so the account's own is what is checked.
+	if err := s.ssoRequiredFor(ctx, session.User.Email); err != nil {
+		return err
 	}
 
 	email = model.NormalizeEmail(email)

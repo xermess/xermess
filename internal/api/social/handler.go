@@ -127,9 +127,30 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
+	before := identityNamespace(provider)
+
 	if err := req.applyTo(provider, h.sealer, false); err != nil {
 		respond.Failure(c, h.log, err, "validating a social provider failed")
 		return
+	}
+
+	// Pointing a provider at a different upstream — new endpoints, a new
+	// client, a new Apple team — changes whose subjects its stored identities
+	// name. A stranger at the new upstream whose subject matched would sign
+	// in as the old owner. SSO forgets its identities in this case; the social
+	// identities of most kinds cannot re-link (their address is never proven),
+	// so here the change is refused while any identity still hangs on it, and
+	// the administrator registers a new provider instead.
+	if identityNamespace(provider) != before {
+		counts, err := h.store.SocialIdentityCounts(c.Request.Context())
+		if err != nil {
+			respond.Failure(c, h.log, err, "counting social identities failed")
+			return
+		}
+		if counts[provider.ID] > 0 {
+			respond.Fail(c, providerRepointed)
+			return
+		}
 	}
 
 	if err := h.store.SaveSocialProvider(c.Request.Context(), provider); err != nil {
@@ -142,6 +163,33 @@ func (h *Handler) Update(c *gin.Context) {
 	})
 
 	h.answer(c, http.StatusOK, provider)
+}
+
+// providerRepointed is the answer to changing where a provider with linked
+// identities signs people in from.
+var providerRepointed = respond.Define(http.StatusConflict, "social_provider_repointed", respond.Admin)
+
+// identityNamespace is what decides whether two settings of a provider name
+// the same people: the part of a provider a subject is only unique within. A
+// change to it means a stored subject now belongs to a different person.
+//
+// For a custom kind that is the upstream itself — its token and userinfo
+// endpoints and the client. Apple scopes its subject to the team; Facebook to
+// the app. Google, Yandex and VK keep a subject stable across the app
+// registration, so rotating their client id strands nobody.
+func identityNamespace(p *model.SocialProvider) string {
+	_, token, userInfo := p.Endpoints()
+
+	switch p.Kind {
+	case model.SocialOAuth2, model.SocialOIDC:
+		return "custom\x00" + token + "\x00" + userInfo + "\x00" + p.ClientID
+	case model.SocialApple:
+		return "apple\x00" + p.TeamID
+	case model.SocialFacebook:
+		return "facebook\x00" + p.ClientID
+	default:
+		return ""
+	}
 }
 
 // Secret answers with the client secret itself, for an administrator who has
