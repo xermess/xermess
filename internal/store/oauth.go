@@ -495,7 +495,8 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 		if !user.IsPasswordTemporary {
 			changes["is_email_verified"] = true
 		}
-		if err := tx.Model(user).Updates(changes).Error; err != nil {
+		err := tx.Model(user).Updates(changes).Error
+		if err != nil {
 			return err
 		}
 
