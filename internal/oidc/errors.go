@@ -45,16 +45,10 @@ func oauthError(code, description string) *Error {
 	return &Error{Code: code, Description: description, Status: status}
 }
 
-// Problem is something a person did that this service refuses: a wrong
-// password, a link that has expired. Its code is what the sign-in pages show
-// the reader, in their language — the API answers with it, and the page looks
-// up `error.<code>` — so the sentence is the pages' to say. The one here is
-// for the log.
-//
-// Every problem is a value of its own, declared below, so a caller asks
-// errors.Is(err, ErrEmailTaken) and the API layer finds the code with
-// errors.As. Problems lists them all, which is how the tests hold the API's
-// definitions and the catalogs to this list.
+// Problem is something a person did that the service refuses. Its code is what
+// the apps translate (`error.<code>`); the sentence here is for the log. Each
+// problem is its own value for errors.Is, and Problems lists them all for the
+// catalog tests.
 type Problem struct {
 	Code    string
 	message string
@@ -117,10 +111,8 @@ var (
 	// login flow does not allow it.
 	ErrEmailChangeNotOffered = problem("email_change_not_offered", "this sign-in does not allow changing the address")
 
-	// The errors of the emailed code step. A code that is simply wrong is
-	// told apart from a sign-in that is over, because the page does
-	// different things with them: the first is typed again, the second is
-	// started again.
+	// Emailed code errors: a wrong code is retyped, a finished sign-in is
+	// restarted.
 
 	// ErrCodeInvalid is a wrong code, with guesses left.
 	ErrCodeInvalid = problem("code_invalid", "that code is not the one that was sent")
@@ -153,9 +145,8 @@ var (
 	// ErrSocialRegistrationClosed is a provider, or an application, that does
 	// not make accounts this way.
 	ErrSocialRegistrationClosed = problem("social_registration_closed", "the provider cannot create accounts here")
-	// ErrSocialSSORequired is a provider sign-in for an address whose domain
-	// has to use its organisation's connection — the same door ErrSSORequired
-	// shuts on a password, shut on a provider's button too.
+	// ErrSocialSSORequired refuses a provider sign-in for a domain that must
+	// use its organisation's SSO.
 	ErrSocialSSORequired = problem("social_sso_required", "the address has to sign in through single sign-on")
 	// ErrSocialBlocked is an account found through a provider that may not
 	// sign in.

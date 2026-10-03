@@ -8,9 +8,8 @@ import (
 	"loginer/internal/model"
 )
 
-// adminResponse is an administrator as the browser sees it. It is built by
-// hand rather than returning the model, so a column added later cannot
-// accidentally start being published.
+// adminResponse is built by hand so new columns are never published by
+// accident.
 type adminResponse struct {
 	ID        string     `json:"id"`
 	Username  string     `json:"username"`
@@ -25,10 +24,8 @@ type adminResponse struct {
 	// Roles are the names of the roles held for the whole panel.
 	Roles []string `json:"roles"`
 
-	// Permissions are what those roles allow, ScopedPermissions what roles
-	// held for one application add there, and IsSuperAdmin whether they may
-	// manage administrators. The panel shows and hides its controls by
-	// these; the server checks them regardless.
+	// Permissions, per-application ScopedPermissions and IsSuperAdmin drive
+	// what the panel shows; the server checks them regardless.
 	Permissions       []string               `json:"permissions"`
 	ScopedPermissions map[uuid.UUID][]string `json:"scoped_permissions"`
 	IsSuperAdmin      bool                   `json:"is_super_admin"`
@@ -96,9 +93,8 @@ func newSessionResponses(sessions []model.AdminSession, current uuid.UUID) []ses
 	return out
 }
 
-// organizationBrand is the part of the organisation the panel's header
-// shows: what it is called, and its logo. Only what the sign-in pages already
-// publish to anyone belongs in it.
+// organizationBrand is the header's name and logo, already public on the
+// sign-in pages.
 type organizationBrand struct {
 	Name    string `json:"name"`
 	LogoURL string `json:"logo_url"`

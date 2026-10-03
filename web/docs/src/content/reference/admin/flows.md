@@ -172,9 +172,7 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 ## POST /api/v1/admin/login-flows {#post-api-v1-admin-login-flows}
 
-Adds a flow.
-
-A new one is off until an administrator turns it on: pointing an application at a half-written sign-in is not something a save should be able to do by accident.
+Adds a flow, disabled until an administrator enables it.
 
 | | |
 | --- | --- |

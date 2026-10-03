@@ -1,20 +1,13 @@
-// Package csrf stops another site from changing anything with a signed-in
-// user's or administrator's cookie.
+// Package csrf stops other sites changing anything with a signed-in cookie.
+// SameSite=Lax is not enough: any subdomain counts as the same site, and a
+// text/plain form reaches JSON endpoints without a preflight.
 //
-// The session cookies are SameSite=Lax, which keeps other sites' requests from
-// carrying them — but "site" means the registrable domain, so any subdomain of
-// it counts as the same site: a blog on blog.mywebsite.com, a user's page on
-// a shared host. And the JSON endpoints bind any body as JSON, so a plain
-// HTML form posting text/plain would reach them without a CORS preflight.
+// On every state-changing request:
 //
-// Two checks close that, on every request that can change something:
-//
-//   - a body has to be application/json, which a form cannot send;
-//   - a browser has to say it came from an origin that is allowed: the Origin
-//     header, or failing that Sec-Fetch-Site. A request with neither is not a
-//     browser's — a script, curl, another server — and carries no victim's
-//     cookie, so it is let through to authenticate like any other. Nor is a
-//     request with a Bearer token: see New.
+//   - a body must be application/json, which a form cannot send;
+//   - the browser's Origin (or Sec-Fetch-Site) must be allowed. A request with
+//     neither is not a browser's and carries no victim's cookie, and Bearer
+//     requests are exempt (see New).
 package csrf
 
 import (
@@ -36,8 +29,7 @@ var (
 )
 
 // New guards the routes it is mounted on. `origins` are the exact origins
-// allowed to make changes: the app served on them, and any CORS origin
-// configured.
+// allowed to make changes.
 func New(origins []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		switch c.Request.Method {
@@ -54,10 +46,9 @@ func New(origins []string) gin.HandlerFunc {
 			}
 		}
 
-		// A request authenticated by an access token rather than a cookie
-		// carries no victim's session, and the routes that take a token judge
-		// it by the token alone. No form can send an Authorization header, and
-		// a page on another origin can only send one that CORS allowed.
+		// Bearer-token requests carry no victim's cookie and are judged by the
+		// token; forms cannot send Authorization, and other origins only can if
+		// CORS allows.
 		if hasBearer(c.Request) {
 			c.Next()
 			return

@@ -4,9 +4,8 @@ import { apiGet } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * Both calls are independent, so they go out together. The overview is only
- * asked for when the administrator's roles allow reading activity: this is
- * everyone's landing page, so it shows what it can rather than refusing.
+ * Both calls go out together. The overview is fetched only if the administrator may read
+ * activity; this is everyone's landing page.
  */
 export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const { admin } = await parent();

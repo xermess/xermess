@@ -22,14 +22,10 @@
 		align-items: start;
 	}
 
-	/* The frame every page is drawn in: inset by the gutter on every side,
-	   and centred once the window is wider than the frame, so a wide monitor
-	   gets even margins instead of stretched fields. Pages add no padding of
-	   their own — a table, a form and a heading all share this left edge.
-
-	   A page is a stack — heading, toolbar, table — and the frame spaces it,
-	   so every page has the same rhythm without saying so. A dialog or a
-	   selection bar is portalled or fixed, and takes no part in it. */
+	/*
+	 * The frame every page sits in: inset by the gutter and centred on wide screens. Pages add no
+	 * padding of their own, and the frame spaces their stack of heading, toolbar and table.
+	 */
 	.content {
 		grid-column: 2;
 		box-sizing: border-box;

@@ -1,15 +1,9 @@
 <!--
-  @component
-  Draws the toasts of $lib/toast.svelte.ts: pills, centred at the bottom of
-  the screen, in the theme turned over — dark on the light page, white on
-  the dark — so a result is noticed without a colour shouting. The icon is
-  the brand's colour whatever the toast says; its shape tells a success from
-  a failure. A second line
-  of detail runs on after the title, keeping the pill one line tall when it
-  fits. Mounted once, in the root layout.
+	@component
+	Draws the toasts of $lib/toast.svelte.ts as pills centred at the bottom, inverted against the
+	theme. The icon's shape tells success from failure. Mounted once, in the root layout.
 
-  The region is always in the page and polite, so a screen reader reads each
-  toast as it arrives; an error is also an alert, which is read at once.
+	The region is always present and polite; errors are alerts, read at once.
 -->
 <script lang="ts">
 	import { fly } from 'svelte/transition';

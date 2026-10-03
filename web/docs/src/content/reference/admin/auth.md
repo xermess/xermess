@@ -94,9 +94,9 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/auth/session {#get-api-v1-admin-auth-session}
 
-Says how far the session this browser carries has got, so the sign-in page knows whether to ask for a password, a code, or to set up an authenticator.
+Reports how far this browser's session has got (password, code, enrolment).
 
-It needs no session: saying there is none is an answer.
+It needs no session.
 
 | | |
 | --- | --- |
@@ -303,9 +303,9 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/me {#get-api-v1-admin-me}
 
-Returns the signed-in administrator, and is what the browser calls to find out whether it still has a session.
+Returns the signed-in administrator, and tells the browser whether its session is still alive.
 
-The organisation's name and logo come with it, because every page of the panel draws them in its header. They are what the sign-in pages show any stranger, so no permission is needed to see them here — reading the rest of the organisation's settings still takes organization.read.
+The organisation's public name and logo come with it for the panel's header.
 
 | | |
 | --- | --- |
@@ -390,9 +390,7 @@ response.raise_for_status()
 
 ## PATCH /api/v1/admin/me {#patch-api-v1-admin-me}
 
-Changes the caller's own name and address.
-
-It reaches nothing else about the account — not the roles, not the status — so every administrator may use it, whatever their roles allow.
+Changes the caller's own name and address, nothing else, so every administrator may use it.
 
 | | |
 | --- | --- |
@@ -674,9 +672,9 @@ response.raise_for_status()
 
 ## DELETE /api/v1/admin/sessions/:id {#delete-api-v1-admin-sessions-id}
 
-Signs the administrator out of one of their other browsers.
+Signs one of the administrator's other browsers out.
 
-The one the request came from is not ended here — that is signing out, which also clears the cookie — and a session that is not theirs is answered as one that does not exist.
+Another administrator's session is answered as not found.
 
 | | |
 | --- | --- |

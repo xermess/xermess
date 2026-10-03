@@ -1,16 +1,7 @@
 <script lang="ts">
 	/**
-	 * Everywhere the panel can go, in one list, over the page.
-	 *
-	 * The sidebar is the map; this is the shortcut for somebody who already
-	 * knows where they are going. It is built from the same `sections`
-	 * catalog, so a page added there is in here with its permission check and
-	 * its translated name already done, and there is no second list to keep
-	 * in step.
-	 *
-	 * The matching is deliberately loose — the letters of the query in order,
-	 * not in a row — so "adro" finds "Admin roles". That is what every
-	 * palette does, and it is what makes typing three letters enough.
+	 * Every page in one searchable list, built from the same `sections` catalog as the sidebar.
+	 * Matching is fuzzy (letters in order), so "adro" finds "Admin roles".
 	 */
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';

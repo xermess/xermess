@@ -23,7 +23,13 @@ describe('safeNext', () => {
 	it('refuses what a browser would read as another host', () => {
 		// A browser drops tabs and newlines before parsing, and reads a
 		// backslash as a slash: each of these is //host to it.
-		for (const next of ['/\t/evil.example', '/\n/evil.example', '/\r/evil.example', '/\\/evil.example', '/%09/x']) {
+		for (const next of [
+			'/\t/evil.example',
+			'/\n/evil.example',
+			'/\r/evil.example',
+			'/\\/evil.example',
+			'/%09/x'
+		]) {
 			expect(new URL(next.replace(/%09/g, '\t'), 'https://id.example.com/login').origin).not.toBe(
 				'https://id.example.com'
 			);

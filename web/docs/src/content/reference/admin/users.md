@@ -9,9 +9,7 @@ generated: true
 
 ## GET /api/v1/admin/users {#get-api-v1-admin-users}
 
-Returns a page of users, newest first.
-
-`search` matches the email or any text the user-defined fields hold, so one box covers the whole record rather than one column.
+Returns a page of users, newest first. `search` matches the email and any field text.
 
 | | |
 | --- | --- |
@@ -281,9 +279,7 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/users/:id/roles {#get-api-v1-admin-users-id-roles}
 
-Returns the roles a user holds as a token would carry them: the global roles, and for each application its roles — each as the ones given directly and every role those include.
-
-The client_id query parameter narrows the applications to one. Applications the administrator cannot see are left out.
+Returns the roles a user holds as a token would carry them: global roles and each application's, direct and inherited. `client_id` narrows to one application; applications the administrator cannot see are left out.
 
 | | |
 | --- | --- |
@@ -377,9 +373,9 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/users/:id/role-mappings {#get-api-v1-admin-users-id-role-mappings}
 
-Returns every role a user holds, Keycloak's role mapping: the roles given directly, and the roles that come to the user through them, each with what it comes through.
+Returns every role a user holds, direct and inherited, with what each comes through.
 
-Roles of applications the administrator cannot see are left out.
+Roles of invisible applications are left out.
 
 | | |
 | --- | --- |
@@ -537,7 +533,7 @@ response.raise_for_status()
 | `is_active` | boolean or null |  |
 | `password` | string | `password` is required when creating a user. When updating one it is optional: left empty, the password the user has is kept. At most 72 characters. |
 | `confirm_password` | string | The same as `password`. |
-| `is_password_temporary` | boolean or null | `is_password_temporary` marks the password as one the user has to replace. Left out, a new user's password is not temporary and an existing user's keeps what it was. |
+| `is_password_temporary` | boolean or null | `is_password_temporary` forces the user to replace the password. Left out: false for a new user, unchanged otherwise. |
 | `data` | map of any |  |
 
 #### Response
@@ -697,7 +693,7 @@ response.raise_for_status()
 | `is_active` | boolean or null |  |
 | `password` | string | `password` is required when creating a user. When updating one it is optional: left empty, the password the user has is kept. At most 72 characters. |
 | `confirm_password` | string | The same as `password`. |
-| `is_password_temporary` | boolean or null | `is_password_temporary` marks the password as one the user has to replace. Left out, a new user's password is not temporary and an existing user's keeps what it was. |
+| `is_password_temporary` | boolean or null | `is_password_temporary` forces the user to replace the password. Left out: false for a new user, unchanged otherwise. |
 | `data` | map of any |  |
 
 #### Response
@@ -847,9 +843,7 @@ response.raise_for_status()
 
 ## DELETE /api/v1/admin/users/:id/social-accounts/:identity {#delete-api-v1-admin-users-id-social-accounts-identity}
 
-Takes away a provider a user signs in with: an account of theirs somewhere else that should no longer reach this one.
-
-Their account stays, and so does every other way into it.
+Removes a provider a user signs in with; their account and other ways in remain.
 
 | | |
 | --- | --- |
@@ -915,9 +909,9 @@ response.raise_for_status()
 
 ## POST /api/v1/admin/users/:id/role-mappings {#post-api-v1-admin-users-id-role-mappings}
 
-Gives a user roles directly, global and application roles alike, leaving what they already hold as it is.
+Gives a user roles directly, keeping existing ones.
 
-Each role is allowed by its scope: role_assignments.write for its application, or for the whole panel when it is global. One refused role refuses the whole request.
+Each needs role_assignments.write for its scope; one refusal refuses the request.
 
 | | |
 | --- | --- |
@@ -1033,9 +1027,7 @@ response.raise_for_status()
 
 ## DELETE /api/v1/admin/users/:id/role-mappings/:role {#delete-api-v1-admin-users-id-role-mappings-role}
 
-Takes away a role the user was given directly.
-
-A role that only comes to the user through another cannot be taken away on its own: the role it comes through has to go.
+Removes a directly held role; an inherited one is removed by removing what it comes through.
 
 | | |
 | --- | --- |

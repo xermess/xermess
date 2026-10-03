@@ -13,11 +13,10 @@
 	let { children, columns = 2, spacing = 'compact' }: Props = $props();
 </script>
 
-<!-- Fields side by side, each as wide as the others. A field that should be
-     read in full — an address, a URL — spans the row: give its wrapper
-     class="full". The grid goes to one column when it has no room for two,
-     measured on itself rather than the window, so it behaves the same in a
-     dialog, a card and a page. -->
+<!--
+	Equal-width fields side by side; give a wrapper class="full" to span the row. It drops to one
+	column based on its own width (a container query).
+-->
 <div class="frame">
 	<div class="field-grid {spacing}" style:--columns={columns}>
 		{@render children()}

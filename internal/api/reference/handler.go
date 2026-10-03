@@ -1,10 +1,5 @@
-// Package reference serves each server's OpenAPI document, so an
-// application's developers can point their tooling at the server itself:
-// import it into Postman or Insomnia, or generate a client from it.
-//
-// The documents are written by `make docs` (internal/apidoc) from the route
-// table and the handlers, and embedded here; what the server adds at startup
-// is its own address, which only it knows.
+// Package reference serves each server's embedded OpenAPI document (written by
+// `make docs`) with the server's own address added.
 package reference
 
 import (

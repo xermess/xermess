@@ -1,15 +1,11 @@
-// Package account answers the endpoints behind the id app, the users' app:
-// signing in, creating an account and resetting a forgotten password, and —
-// once signed in — managing the account itself.
+// Package account serves the id app: signing in, registering and resetting a
+// password, then managing one's own account.
 //
-// The first half is the JSON side of the authorization endpoint. That
-// endpoint sends a browser to the sign-in page with a handle for the sign-in
-// under way; the page asks here what to show, and posts what the user typed.
-// Once the user is signed in, the answer says where to send the browser next —
-// back to the application, with a code.
-//
-// The second half sits behind RequireSession, and only ever reaches the
-// account whose session cookie the request carries.
+// The sign-in half is the JSON side of the authorization endpoint: the page
+// asks what to show for a sign-in handle, posts what the user typed, and is
+// told where to send the browser next. The account half sits behind
+// RequireSession and only reaches the account whose session the request
+// carries.
 package account
 
 import (
@@ -70,10 +66,8 @@ func (h *Handler) Application(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"application": app})
 }
 
-// Organization describes the organisation these pages sign users in for: who
-// the account belongs to, where to ask for help, and the agreements accepted
-// by making one. Every sign-in page asks for it, with or without a sign-in
-// under way, so it needs no session and names nothing about the caller.
+// Organization describes the organisation the sign-in pages speak for. Public,
+// so it needs no session.
 func (h *Handler) Organization(c *gin.Context) {
 	organization, err := h.provider.Organization(c.Request.Context())
 	if err != nil {
@@ -84,10 +78,8 @@ func (h *Handler) Organization(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"organization": organization})
 }
 
-// LoginOptions says what these pages may offer: the options of the login flow
-// the sign-in belongs to. `request` is the handle of a sign-in under way,
-// which names the application whose flow applies; without one, or with one
-// that has expired, it is the installation's default flow.
+// LoginOptions returns the options of the login flow for the sign-in handle
+// `request`, or the default flow.
 func (h *Handler) LoginOptions(c *gin.Context) {
 	options, err := h.provider.LoginOptions(c.Request.Context(), c.Query("request"))
 	if err != nil {
@@ -110,9 +102,8 @@ func (h *Handler) Languages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"languages": languages, "default": fallback})
 }
 
-// LanguageText is the text of these pages in one offered language, every key
-// filled in. The pages ask for it while rendering, so a language added or
-// reworded in the panel is on the next page anybody opens.
+// LanguageText returns the sign-in pages' text in one offered language with
+// every key filled in.
 func (h *Handler) LanguageText(c *gin.Context) {
 	language, messages, err := h.provider.LanguageText(c.Request.Context(), c.Param("code"))
 	if errors.Is(err, store.ErrNotFound) {
@@ -127,9 +118,7 @@ func (h *Handler) LanguageText(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"language": language, "messages": messages})
 }
 
-// SocialProviders lists the accounts elsewhere that users may sign in with,
-// as the buttons on the sign-in pages. It says nothing about any of them
-// beyond what the button needs.
+// SocialProviders lists the sign-in buttons, with only what a button needs.
 func (h *Handler) SocialProviders(c *gin.Context) {
 	providers, err := h.provider.SocialButtons(c.Request.Context())
 	if err != nil {
@@ -302,9 +291,8 @@ func (h *Handler) ResendCode(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": challenge})
 }
 
-// ChangeEmail starts moving the signed-in user to another sign-in address. It
-// answers the same whether or not the address is already somebody else's, so
-// this cannot be used to find out which addresses have accounts.
+// ChangeEmail starts moving the signed-in user to another address. It answers
+// the same whether or not the address is taken.
 func (h *Handler) ChangeEmail(c *gin.Context) {
 	var req emailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -379,9 +367,8 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "reset"})
 }
 
-// VerifyEmail uses a link sent to prove an address. It is a POST the page
-// makes when the person presses the button, not the link itself: a mail
-// scanner that follows every link in an inbox would otherwise use it up.
+// VerifyEmail uses a verification link. It is a POST made when the person
+// presses the button, so mail scanners that follow links cannot spend it.
 func (h *Handler) VerifyEmail(c *gin.Context) {
 	var req verifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -424,14 +411,10 @@ var (
 	accountScopeMissing = respond.Define(http.StatusForbidden, "account_scope_missing", respond.Public)
 )
 
-// RequireSession refuses the request unless it carries a user's session, and
-// hands the session to the handlers behind it.
-//
-// The session is the sign-in app's cookie, or an access token for the account
-// API that an application got for the user. A token has to carry
-// account.read to read and account.write to change anything; with a token
-// there is no browser session, so none of the user's sessions is the
-// current one. A request carrying a token is judged by the token alone.
+// RequireSession requires a user's session: the id app's cookie, or an account
+// API access token with account.read (account.write to change anything). A
+// request with a token is judged by the token alone and has no current browser
+// session.
 func (h *Handler) RequireSession(c *gin.Context) {
 	if bearer := session.Bearer(c); bearer != "" {
 		h.requireToken(c, bearer)

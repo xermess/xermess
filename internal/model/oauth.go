@@ -12,14 +12,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// The tables below are the provider's memory between requests: the keys
-// tokens are signed with, a sign-in that is under way, the code it ends with,
-// the refresh tokens and sessions that outlive it, and password resets.
-//
-// Every secret that is handed to a browser or a client — a code, a refresh
-// token, a session cookie, a reset link — is stored as a SHA-256 hash only, so
-// a copy of the database cannot be replayed. They are 256 random bits, which
-// is why a fast hash is right, as it is for the admin sessions.
+// The provider's state between requests. Every secret given to a browser or
+// client (code, refresh token, session cookie, reset link) is 256 random bits
+// stored only as a SHA-256 hash, so a database copy cannot be replayed.
 
 // Lifetimes of what the provider hands out that is not configured per
 // application.
@@ -32,9 +27,8 @@ const (
 	AuthorizationCodeLifetime = 2 * time.Minute
 	// PasswordResetLifetime is how long a reset link works.
 	PasswordResetLifetime = time.Hour
-	// EmailVerificationLifetime is how long a link confirming an address
-	// works. Longer than a reset: nobody is locked out while it waits, and it
-	// is often opened on another device, later.
+	// EmailVerificationLifetime is longer than a reset's: nothing is locked
+	// while it waits, and it is often opened later on another device.
 	EmailVerificationLifetime = 24 * time.Hour
 )
 
@@ -46,9 +40,8 @@ type SigningKey struct {
 	Algorithm  string    `gorm:"size:16;not null;index"`
 	PrivateKey []byte    `gorm:"not null"`
 	CreatedAt  time.Time `gorm:"not null"`
-	// RetiredAt is set when a newer key replaces this one. A retired key
-	// still verifies, and is still published, so tokens it signed stay valid
-	// until they expire.
+	// RetiredAt is set when a newer key takes over; a retired key is still
+	// published, so its tokens verify until they expire.
 	RetiredAt *time.Time
 }
 
@@ -57,9 +50,8 @@ func (SigningKey) TableName() string {
 	return "signing_keys"
 }
 
-// AuthorizationRequest is a sign-in under way: what an application asked the
-// authorization endpoint for, kept while the user signs in on the login page.
-// The page knows it by an opaque handle, whose hash is the row's key.
+// AuthorizationRequest is a sign-in under way, kept while the user signs in.
+// The page knows it by an opaque handle whose hash is the key.
 type AuthorizationRequest struct {
 	Base
 
@@ -113,9 +105,8 @@ type AuthorizationCode struct {
 	AuthenticatedAt     time.Time `gorm:"not null"`
 
 	ExpiresAt time.Time `gorm:"not null;index"`
-	// UsedAt is set when the code is exchanged. A code presented a second
-	// time is refused, and the tokens the first exchange issued are revoked
-	// (RFC 6749 section 4.1.2): the second presenter may be the thief.
+	// UsedAt is set on exchange. A second presentation is refused and revokes
+	// what the first issued (RFC 6749 4.1.2).
 	UsedAt *time.Time
 }
 
@@ -124,9 +115,8 @@ func (AuthorizationCode) TableName() string {
 	return "authorization_codes"
 }
 
-// RefreshToken is a refresh token. Using one replaces it with a new one in the
-// same family; presenting a replaced one again revokes the whole family, since
-// only a copy could still be holding it (RFC 9700 section 4.14.2).
+// RefreshToken rotates on use; presenting a replaced one revokes the whole
+// family (RFC 9700 4.14.2).
 type RefreshToken struct {
 	Base
 
@@ -160,9 +150,8 @@ func (t RefreshToken) Usable(now time.Time) bool {
 	return t.RevokedAt == nil && now.Before(t.ExpiresAt)
 }
 
-// UserSession is a user being signed in at this server, in the browser that
-// holds its cookie. It is what lets the authorization endpoint skip the login
-// page for someone who signed in a moment ago.
+// UserSession is a user signed in in one browser, letting the authorization
+// endpoint skip the login page.
 type UserSession struct {
 	Base
 
@@ -207,16 +196,9 @@ func (r PasswordReset) Usable(now time.Time) bool {
 	return r.UsedAt == nil && now.Before(r.ExpiresAt)
 }
 
-// EmailVerification is a link sent to an address to prove it belongs to
-// whoever signs in with it: what a login flow that requires a verified
-// address sends an account that has not proved its own, and what a new
-// account is sent where the flow says to.
-//
-// It is also how an address is changed. NewEmail set makes the link a pending
-// change rather than a confirmation: the link goes to the address somebody
-// typed, and only using it moves the account there. That way round nobody can
-// take an account by typing an address they cannot read, and nobody loses one
-// by typing an address they meant to spell differently.
+// EmailVerification is a link proving an address. With NewEmail set it is a
+// pending change of address: the account moves only when the new inbox uses the
+// link.
 type EmailVerification struct {
 	Base
 
@@ -226,9 +208,7 @@ type EmailVerification struct {
 	ExpiresAt time.Time `gorm:"not null;index"`
 	UsedAt    *time.Time
 
-	// NewEmail is the address to move the account to, for a link that is a
-	// change. Empty is a link that only confirms the address the account
-	// already has.
+	// NewEmail is the address to move to; empty confirms the current address.
 	NewEmail string `gorm:"size:255"`
 }
 
@@ -247,9 +227,8 @@ func (v EmailVerification) Usable(now time.Time) bool {
 	return v.UsedAt == nil && now.Before(v.ExpiresAt)
 }
 
-// NewSecret returns a secret to hand out — a code, a token, a handle — and the
-// hash to store for it: 256 random bits, base64url encoded so it is safe in a
-// URL as it is.
+// NewSecret returns a 256-bit URL-safe secret to hand out and the hash to
+// store.
 func NewSecret() (secret, hash string, err error) {
 	var b [32]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -271,9 +250,8 @@ func HashSecret(secret string) string {
 // attacker who can read the authorization request (RFC 9700 section 2.1.1).
 const PKCES256 = "S256"
 
-// VerifyPKCE reports whether a code verifier matches the challenge sent with
-// the authorization request. The verifier has to be 43 to 128 characters of
-// the unreserved set (RFC 7636 section 4.1).
+// VerifyPKCE checks a verifier (43 to 128 unreserved characters, RFC 7636 4.1)
+// against the S256 challenge.
 func VerifyPKCE(challenge, verifier string) bool {
 	if len(verifier) < 43 || len(verifier) > 128 {
 		return false

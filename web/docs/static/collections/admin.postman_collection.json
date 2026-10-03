@@ -103,7 +103,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Says whether the panel still has to be set up.\n\nThe panel asks before showing its sign-in page, and sends whoever is there to the setup form instead when the answer is yes.",
+            "description": "Says whether the panel still needs its first administrator.",
             "method": "GET",
             "url": {
               "host": [
@@ -208,7 +208,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Says how far the session this browser carries has got, so the sign-in page knows whether to ask for a password, a code, or to set up an authenticator.\n\nIt needs no session: saying there is none is an answer.",
+            "description": "Reports how far this browser's session has got (password, code, enrolment).\n\nIt needs no session.",
             "method": "GET",
             "url": {
               "host": [
@@ -293,7 +293,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Returns the signed-in administrator, and is what the browser calls to find out whether it still has a session.\n\nThe organisation's name and logo come with it, because every page of the panel draws them in its header. They are what the sign-in pages show any stranger, so no permission is needed to see them here — reading the rest of the organisation's settings still takes organization.read.",
+            "description": "Returns the signed-in administrator, and tells the browser whether its session is still alive.\n\nThe organisation's public name and logo come with it for the panel's header.",
             "header": [
               {
                 "key": "Cookie",
@@ -331,7 +331,7 @@
               },
               "raw": "{\n  \"first_name\": \"Ada\",\n  \"email\": \"ada@example.com\"\n}"
             },
-            "description": "Changes the caller's own name and address.\n\nIt reaches nothing else about the account — not the roles, not the status — so every administrator may use it, whatever their roles allow.",
+            "description": "Changes the caller's own name and address, nothing else, so every administrator may use it.",
             "header": [
               {
                 "key": "Cookie",
@@ -438,7 +438,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Signs the administrator out of one of their other browsers.\n\nThe one the request came from is not ended here — that is signing out, which also clears the cookie — and a session that is not theirs is answered as one that does not exist.",
+            "description": "Signs one of the administrator's other browsers out.\n\nAnother administrator's session is answered as not found.",
             "header": [
               {
                 "key": "Cookie",
@@ -764,7 +764,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Is the admin panel's front page over a range of days: how much of everything there is, how signing in has gone, what each day looked like, who has been busiest, and the latest entries.\n\nThe five reads do not depend on each other, so they run at once: the page waits for the slowest of them rather than for all of them in a row.",
+            "description": "Is the panel's front page for a range of days: totals, sign-in outcomes, daily activity, the busiest people and the latest entries.\n\nIts five reads run concurrently.",
             "method": "GET",
             "url": {
               "host": [
@@ -860,7 +860,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Writes the entries the filters match as a CSV file, newest first, up to exportLimit of them.\n\nEach row says what the logs page would: the same names hidden, the same detail left out, for the same administrator.",
+            "description": "Writes matching entries as CSV, newest first, up to exportLimit, hiding exactly what the logs page hides.",
             "method": "GET",
             "url": {
               "host": [
@@ -934,7 +934,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Returns a page of users, newest first.\n\n`search` matches the email or any text the user-defined fields hold, so one box covers the whole record rather than one column.",
+            "description": "Returns a page of users, newest first. `search` matches the email and any field text.",
             "method": "GET",
             "url": {
               "host": [
@@ -1014,7 +1014,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Returns the roles a user holds as a token would carry them: the global roles, and for each application its roles — each as the ones given directly and every role those include.\n\nThe client_id query parameter narrows the applications to one. Applications the administrator cannot see are left out.",
+            "description": "Returns the roles a user holds as a token would carry them: global roles and each application's, direct and inherited. `client_id` narrows to one application; applications the administrator cannot see are left out.",
             "method": "GET",
             "url": {
               "host": [
@@ -1060,7 +1060,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Returns every role a user holds, Keycloak's role mapping: the roles given directly, and the roles that come to the user through them, each with what it comes through.\n\nRoles of applications the administrator cannot see are left out.",
+            "description": "Returns every role a user holds, direct and inherited, with what each comes through.\n\nRoles of invisible applications are left out.",
             "method": "GET",
             "url": {
               "host": [
@@ -1233,7 +1233,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Takes away a provider a user signs in with: an account of theirs somewhere else that should no longer reach this one.\n\nTheir account stays, and so does every other way into it.",
+            "description": "Removes a provider a user signs in with; their account and other ways in remain.",
             "method": "DELETE",
             "url": {
               "host": [
@@ -1286,7 +1286,7 @@
               },
               "raw": "{\n  \"roles\": [\n    \"0199a3c2-7f10-7c1e-9b0e-3f1d2a4b5c6d\"\n  ]\n}"
             },
-            "description": "Gives a user roles directly, global and application roles alike, leaving what they already hold as it is.\n\nEach role is allowed by its scope: role_assignments.write for its application, or for the whole panel when it is global. One refused role refuses the whole request.",
+            "description": "Gives a user roles directly, keeping existing ones.\n\nEach needs role_assignments.write for its scope; one refusal refuses the request.",
             "header": [
               {
                 "key": "Content-Type",
@@ -1331,7 +1331,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Takes away a role the user was given directly.\n\nA role that only comes to the user through another cannot be taken away on its own: the role it comes through has to go.",
+            "description": "Removes a directly held role; an inherited one is removed by removing what it comes through.",
             "method": "DELETE",
             "url": {
               "host": [
@@ -1464,7 +1464,7 @@
               },
               "raw": "{}"
             },
-            "description": "Changes what a field expects.\n\nIts name and its type stay as they are: records already hold values under that name and in that shape, and changing either here would leave them behind.",
+            "description": "Changes a field's rules.\n\nName and type never change, since records hold values under them.",
             "header": [
               {
                 "key": "Content-Type",
@@ -1508,7 +1508,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Removes a field.\n\nThe values already stored under its name stay in the user records until those are next saved, at which point they are dropped: nothing is destroyed by removing a column from the panel.",
+            "description": "Removes a field; stored values are dropped when each user is next saved.",
             "method": "DELETE",
             "url": {
               "host": [
@@ -1825,7 +1825,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Answers with the client secret itself, for an administrator who has to check what is configured against the provider's console.\n\nIt is stored encrypted rather than hashed, so it can be read back — which makes reading it an event worth recording. It takes the permission that could replace it anyway, and every reading is written to the log with who asked.",
+            "description": "Returns the stored client secret so it can be checked against the provider's console.\n\nIt requires the permission that could replace it, and every read is written to the activity log.",
             "method": "GET",
             "url": {
               "host": [
@@ -1872,7 +1872,7 @@
               },
               "raw": "{}"
             },
-            "description": "Registers a provider.\n\nIt is not reachable by anyone signing in until somebody has signed in with it once — the credentials are only ever proved right by the provider itself.",
+            "description": "Registers a provider.\n\nIts credentials are proved only by a first sign-in.",
             "header": [
               {
                 "key": "Content-Type",
@@ -1917,7 +1917,7 @@
               },
               "raw": "{}"
             },
-            "description": "Changes a provider's settings.\n\nIts kind and its identifier are not among them: both are in the address registered with the provider, and a sign-in that comes back to an address nobody answers is a worse failure than having to register a second provider.",
+            "description": "Changes a provider's settings.\n\nKind and slug are fixed, since they form the registered callback address.",
             "header": [
               {
                 "key": "Content-Type",
@@ -1961,7 +1961,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Removes a provider, and every identity held at it.\n\nThe accounts stay — a user who had no password keeps one way in fewer, which is why the panel says how many people that is before it asks.",
+            "description": "Removes a provider and its identities; the accounts stay, though some may lose their only way in.",
             "method": "DELETE",
             "url": {
               "host": [
@@ -2079,7 +2079,7 @@
               },
               "raw": "{}"
             },
-            "description": "Adds a connection.\n\nA SAML one is given its own key and certificate to sign requests with, which its provider is shown.\n\nA new connection starts off: nobody signs in through it until an administrator has tried it and turned it on.",
+            "description": "Adds a connection, disabled until an administrator turns it on.\n\nA SAML connection gets its own signing key and certificate.",
             "header": [
               {
                 "key": "Content-Type",
@@ -2370,7 +2370,7 @@
               },
               "raw": "{}"
             },
-            "description": "Adds a flow.\n\nA new one is off until an administrator turns it on: pointing an application at a half-written sign-in is not something a save should be able to do by accident.",
+            "description": "Adds a flow, disabled until an administrator enables it.",
             "header": [
               {
                 "key": "Content-Type",
@@ -2719,7 +2719,7 @@
               },
               "raw": "{\n  \"messages\": {}\n}"
             },
-            "description": "Replaces one language's text for one app.\n\nKeys the app does not look up are dropped and counted rather than refused, so a file from an older release still imports.",
+            "description": "Replaces one language's text for one app.\n\nUnknown keys are dropped and counted, so older files still import.",
             "header": [
               {
                 "key": "Content-Type",
@@ -2994,7 +2994,7 @@
               },
               "raw": "{\n  \"scopes\": [\n    \"0199a3c2-7f10-7c1e-9b0e-3f1d2a4b5c6d\"\n  ]\n}"
             },
-            "description": "Lets the application ask for tokens for an API, and replaces the API scopes it may ask for with the ones named.\n\nThose scopes are the ceiling on every token the application gets for the API.",
+            "description": "Lets the application request tokens for an API and replaces the scopes it may ask for: the ceiling on its tokens.",
             "header": [
               {
                 "key": "Content-Type",
@@ -3098,7 +3098,7 @@
               },
               "raw": "{\n  \"user_id\": \"0199a3c2-7f10-7c1e-9b0e-3f1d2a4b5c6d\",\n  \"audience\": \"string\",\n  \"scope\": \"openid profile email\"\n}"
             },
-            "description": "Shows what a token request would amount to — whether a token is issued, the decision on every scope, and the claims each token carries — without issuing anything.\n\nIt runs the same evaluation the token endpoint will, so what it shows is what an application will get.",
+            "description": "Runs the token endpoint's evaluation without issuing anything: whether a token is issued, each scope decision, and the claims.",
             "header": [
               {
                 "key": "Content-Type",
@@ -3231,7 +3231,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Returns a page of roles, sorted by name, each with how many users hold it and every role it includes once inheritance is followed.\n\nTwo query parameters say which roles. scope is \"global\" for the global roles, \"application\" for the roles of every application the administrator can see, and empty for both. application narrows to one application's roles, whatever scope says.",
+            "description": "Returns a page of roles sorted by name, each with its member count and every role it includes. `scope` is \"global\", \"application\" or empty for both; `application` narrows to one application.",
             "method": "GET",
             "url": {
               "host": [
@@ -3371,7 +3371,7 @@
               },
               "raw": "{\n  \"name\": \"Example\"\n}"
             },
-            "description": "Replaces a role's name, description, default flag and what it includes.\n\nIts scope stays as it is: a role does not move between global and an application, or between applications.",
+            "description": "Replaces a role's name, description, default flag and inheritance.\n\nIts scope never changes.",
             "header": [
               {
                 "key": "Content-Type",
@@ -3532,7 +3532,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Lists the applications the administrator can see, with what each may do with the API.\n\nGranting and revoking access goes through the application's own endpoints, which check the administrator may change it.",
+            "description": "Lists visible applications with their access to the API.\n\nAccess is changed through the application's endpoints.",
             "method": "GET",
             "url": {
               "host": [
@@ -3570,7 +3570,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Lists what has happened to or involving the API, newest first: changes to it, and applications gaining or losing access.\n\nToken requests join these once the token endpoint issues tokens.",
+            "description": "Lists changes to the API and applications gaining or losing access, newest first.",
             "method": "GET",
             "url": {
               "host": [
@@ -3662,7 +3662,7 @@
               },
               "raw": "{\n  \"name\": \"Example\"\n}"
             },
-            "description": "Replaces an API's name, description, role enforcement and scopes.\n\nIts identifier stays as it is: every service checking tokens compares against it.",
+            "description": "Replaces an API's name, description, role enforcement and scopes.\n\nThe identifier never changes.",
             "header": [
               {
                 "key": "Content-Type",
@@ -3706,7 +3706,7 @@
               ],
               "type": "bearer"
             },
-            "description": "Removes an API, its scopes, every application's authorisation for it and every role's grant of its scopes.\n\nTokens already issued for it stay valid until they expire.",
+            "description": "Removes an API with its scopes, application authorisations and role grants.\n\nIssued tokens stay valid until they expire.",
             "method": "DELETE",
             "url": {
               "host": [
@@ -3742,7 +3742,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Answers how administrators are made to sign in, and how many of them have an authenticator, so the panel can say what turning it on would mean for the people who have not set one up.",
+            "description": "Returns the administrators' sign-in settings and how many have an authenticator.",
             "header": [
               {
                 "key": "Cookie",
@@ -3780,7 +3780,7 @@
               },
               "raw": "{\n  \"require_mfa\": true\n}"
             },
-            "description": "Changes those settings.\n\nRequiring a second factor takes effect at once: an administrator without one can do nothing but set one up the next time they load a page.",
+            "description": "Changes those settings.\n\nRequiring a second factor applies on each administrator's next page load.",
             "header": [
               {
                 "key": "Cookie",
@@ -3952,7 +3952,7 @@
               },
               "raw": "{\n  \"email\": \"ada@example.com\",\n  \"first_name\": \"Ada\",\n  \"status\": \"active\"\n}"
             },
-            "description": "Replaces an administrator's details, status and roles, and their password when a new one is given.\n\nA new password or an account that may no longer sign in ends every session the administrator has open.",
+            "description": "Replaces an administrator's details, status, roles and optionally password.\n\nA new password, or losing the right to sign in, ends their sessions.",
             "header": [
               {
                 "key": "Cookie",
@@ -4031,7 +4031,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Removes another administrator's second factor and signs them out everywhere, for someone who lost both their phone and their recovery codes.\n\nYour own is managed from your profile, with a code: resetting it here would be a way round needing one.",
+            "description": "Removes another administrator's second factor and signs them out everywhere.\n\nYour own is managed from your profile with a code.",
             "header": [
               {
                 "key": "Cookie",
@@ -4113,7 +4113,7 @@
               },
               "raw": "{}"
             },
-            "description": "Changes the settings.\n\nWhat a request leaves out is left as it is, so a client that knows about one field does not clear the rest — and the password is left as it is unless one was typed, since nothing ever reads the stored one back to send it here again.",
+            "description": "Changes the settings; omitted fields stay, including the password unless a new one is typed.",
             "header": [
               {
                 "key": "Cookie",
@@ -4156,7 +4156,7 @@
               },
               "raw": "{}"
             },
-            "description": "Sends one message, to find out whether the settings work before anybody's sign-in depends on them.\n\nIt sends with what the form holds rather than with what is stored, since the point is to try a server before saving it — except for the password, which the form only holds when one has just been typed. Left out, the stored one is used, so a working server can be tested again without typing its password each time.",
+            "description": "Sends one message with the form's settings, so a server can be tried before saving.\n\nWithout a typed password the stored one is used.",
             "header": [
               {
                 "key": "Cookie",
@@ -4191,7 +4191,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Returns the words of every email the server sends, for each language the sign-in pages are offered in: what the language says, and what English says underneath it.",
+            "description": "Returns every email's text in each offered language, with English beside it.",
             "header": [
               {
                 "key": "Cookie",
@@ -4230,7 +4230,7 @@
               },
               "raw": "{\n  \"messages\": {}\n}"
             },
-            "description": "Writes one language's words for the emails.\n\nOnly the keys the messages are made of: this page holds a handful of a language's text and has the rest nowhere, so it merges rather than replacing (store.SaveTranslationKeys), and a key that is not an email's is refused rather than quietly dropped — a page sending one is a page with a bug, not an old file being imported.",
+            "description": "Writes one language's email text, merging only the email keys.\n\nAny other key is refused as a client bug.",
             "header": [
               {
                 "key": "Cookie",
@@ -4279,7 +4279,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Returns the settings, and which login flows ask for a code — so the page can say whether any of this is being used, and lead to the flow that uses it.",
+            "description": "Returns the settings and the login flows that use emailed codes.",
             "header": [
               {
                 "key": "Cookie",
@@ -4716,7 +4716,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Removes every key this server keeps in one database.\n\nFlushing the session database signs nobody out — the sessions are read from the database again — but it does start every rate limit afresh.",
+            "description": "Removes every key this server keeps in one database.\n\nFlushing sessions signs nobody out, but resets every rate limit.",
             "header": [
               {
                 "key": "Cookie",

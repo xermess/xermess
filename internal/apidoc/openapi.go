@@ -10,12 +10,9 @@ import (
 	"loginer/internal/brand"
 )
 
-// openAPI writes one server's OpenAPI 3.1 document. It has no `servers`: the
-// server that serves it knows its own address, and adds it (see
-// internal/api/reference).
-//
-// Maps marshal with their keys sorted, which is what keeps the file the same
-// from one run to the next and lets the test compare it byte for byte.
+// openAPI writes one server's OpenAPI 3.1 document, without `servers` (the
+// serving server adds its own address). Sorted map keys keep the output
+// byte-for-byte stable.
 func (b *built) openAPI(server Server) ([]byte, error) {
 	s := b.schemas[server.Key]
 

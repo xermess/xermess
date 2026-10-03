@@ -9,9 +9,8 @@ export const SESSIONS_PAGE_SIZE = 50;
 export type SessionListParams = { search: string; user: string };
 
 /**
- * The active sessions as pages, seeded with the first one the server
- * rendered. "Show more" asks for the page after the last session shown —
- * there is no page count to jump to, because there is no total.
+ * Active sessions as keyset pages, seeded with the server-rendered first page. There is no
+ * total, so no page count.
  */
 export function sessionsOptions(params: SessionListParams, first: UserSessionPage) {
 	return infiniteQueryOptions({

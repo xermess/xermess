@@ -1,7 +1,5 @@
-// Package applications answers the endpoints for the apps and services that
-// sign their users in through this server with OAuth 2.0 and OpenID Connect:
-// registering them, changing how they may authenticate, and rotating their
-// secrets.
+// Package applications manages OAuth clients: registration, authentication
+// methods, API access and secrets.
 package applications
 
 import (
@@ -17,8 +15,8 @@ import (
 
 	"loginer/internal/api/audit"
 	"loginer/internal/api/respond"
-	"loginer/internal/brand"
 	"loginer/internal/api/session"
+	"loginer/internal/brand"
 	"loginer/internal/model"
 	"loginer/internal/store"
 )
@@ -220,18 +218,10 @@ func (h *Handler) Delete(c *gin.Context) {
 // systemApplication is the answer to deleting admin-cli.
 var systemApplication = respond.Define(http.StatusConflict, "system_application", respond.Admin)
 
-// changeable says whether the administrator may change this application or
-// rotate its secret, answering the request itself when they may not.
-//
-// Only a super admin may authorise an application for the admin API
-// (AuthorizeAPI) — but the power is in the secret, not in the authorisation.
-// Whoever holds the secret of an application the admin API trusts gets a
-// client credentials token carrying every scope it was allowed, and with it
-// every permission a super admin ever gave it, so rotating that secret, or
-// turning the application back on, re-adding a grant and lengthening its
-// tokens, has to be a super admin's too. Anything else about such an
-// application is a super admin's to change as well: the panel's own
-// `applications.write` is a permission over ordinary applications.
+// changeable reports whether the administrator may change this application or
+// rotate its secret, answering the request when not. For an application the
+// admin API trusts, its secret carries every permission a super admin granted
+// it, so only a super admin may change it.
 func (h *Handler) changeable(c *gin.Context, app *model.Application) bool {
 	if session.Admin(c).IsSuperAdmin() {
 		return true
@@ -273,9 +263,8 @@ func (h *Handler) APIAccess(c *gin.Context) {
 	c.JSON(http.StatusOK, newAccessResponse(access))
 }
 
-// AuthorizeAPI lets the application ask for tokens for an API, and replaces
-// the API scopes it may ask for with the ones named. Those scopes are the
-// ceiling on every token the application gets for the API.
+// AuthorizeAPI lets the application request tokens for an API and replaces the
+// scopes it may ask for: the ceiling on its tokens.
 func (h *Handler) AuthorizeAPI(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -289,12 +278,8 @@ func (h *Handler) AuthorizeAPI(c *gin.Context) {
 		return
 	}
 
-	// A system API's scopes are power over this server itself: the admin
-	// API's are the permission catalog, and the account API's act on any
-	// user who signs in to the application. Handing them to an application
-	// its administrator controls would give that administrator — who may
-	// hold applications.write for this one application alone — every
-	// permission in the panel, so only a super admin may.
+	// System API scopes are power over this server itself, so only a super
+	// admin may grant them to an application.
 	if api.System != "" && !session.Admin(c).IsSuperAdmin() {
 		respond.Fail(c, systemAPIAccess)
 		return
@@ -339,9 +324,8 @@ func (h *Handler) RevokeAPI(c *gin.Context) {
 		return
 	}
 
-	// The same lock as on giving the access: an administrator of one
-	// application should not be able to cut admin-cli off from the admin API
-	// when only a super admin could give it back.
+	// Revoking system API access is super-admin only too, so admin-cli cannot
+	// be cut off by someone who could not restore it.
 	if api.System != "" && !session.Admin(c).IsSuperAdmin() {
 		respond.Fail(c, systemAPIAccess)
 		return
@@ -357,10 +341,8 @@ func (h *Handler) RevokeAPI(c *gin.Context) {
 	h.APIAccess(c)
 }
 
-// TokenPreview shows what a token request would amount to — whether a token
-// is issued, the decision on every scope, and the claims each token carries —
-// without issuing anything. It runs the same evaluation the token endpoint
-// will, so what it shows is what an application will get.
+// TokenPreview runs the token endpoint's evaluation without issuing anything:
+// whether a token is issued, each scope decision, and the claims.
 func (h *Handler) TokenPreview(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -471,10 +453,8 @@ func (h *Handler) withCount(c *gin.Context, app *model.Application) applicationR
 	return newApplicationResponse(*app, counts[app.ID])
 }
 
-// find loads the application named in the path and checks the administrator
-// holds `permission` for it, answering the request itself otherwise. An
-// application they cannot read is not found, rather than forbidden, so its
-// existence is not given away.
+// find loads the application in the path and checks `permission` for it. One
+// the administrator cannot read is not found rather than forbidden.
 func (h *Handler) find(c *gin.Context, permission string) (*model.Application, bool) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

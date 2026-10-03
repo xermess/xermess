@@ -33,23 +33,17 @@ type SignInResult struct {
 	Session *Session
 	// Token is the session cookie's value. It is the only copy.
 	Token string
-	// ResetToken is set, instead of a session, when the user signed in with a
-	// temporary password an administrator chose: they have to replace it
-	// before they are let in, and this is the reset link that lets them.
+	// ResetToken replaces the session when the user signed in with a temporary
+	// password and must choose a new one.
 	ResetToken string
-	// Code is set, instead of a session, when the login flow has the emailed
-	// code step: the sign-in is held until the code in the message is typed
-	// back (SubmitLoginCode).
+	// Code replaces the session when the flow requires the emailed code
+	// (SubmitLoginCode).
 	Code *CodeChallenge
-	// Request is the sign-in under way this belongs to, for the callers that
-	// did not start it and so do not have it: typing a code back names the
-	// sign-in by its own handle, and the application to go on to is the one
-	// the sign-in was held for.
+	// Request is the sign-in this belongs to, for callers that did not start
+	// it.
 	Request string
-	// Remember says the cookie should outlive the browser window. The
-	// session itself lasts as long as the flow says either way; this is only
-	// how long the browser keeps hold of it, so a shared machine forgets
-	// whoever used it last when its window closes.
+	// Remember makes the cookie outlive the browser window; the session's own
+	// lifetime is the flow's.
 	Remember bool
 }
 
@@ -91,11 +85,8 @@ func (s *Service) SessionFor(ctx context.Context, token string) (*Session, error
 		return nil, err
 	}
 
-	// Active, and no more: the lock after wrong passwords is on signing in
-	// with a password, not on sessions already made. Were it on those too,
-	// five wrong passwords from anybody who knew the address would sign the
-	// user out of every browser, every fifteen minutes, for as long as they
-	// cared to keep it up.
+	// The lockout is on password sign-in, not on existing sessions; otherwise
+	// anyone could sign a user out with wrong passwords.
 	if !user.IsActive {
 		return nil, nil
 	}
@@ -108,9 +99,8 @@ func (s *Service) SessionFor(ctx context.Context, token string) (*Session, error
 func (s *Service) SignIn(ctx context.Context, email, password, request string, remember bool, client Client) (*SignInResult, error) {
 	now := s.now()
 
-	// A domain that has to sign in through its identity provider has no
-	// password to try: it is refused before one is looked at, so the answer
-	// says nothing about the account.
+	// Domains that must use SSO are refused before any password check,
+	// revealing nothing about the account.
 	if err := s.ssoRequiredFor(ctx, email); err != nil {
 		return nil, err
 	}
@@ -135,10 +125,8 @@ func (s *Service) SignIn(ctx context.Context, email, password, request string, r
 		return nil, err
 	}
 
-	// Count this attempt before the password is compared, so a burst of
-	// parallel guesses cannot each read the same unlocked row and slip past
-	// the lock. A locked account is refused here, after a dummy hash so the
-	// timing is the same as a wrong password's.
+	// Reserve the attempt before comparing, so parallel guesses cannot pass the
+	// lock; a locked account still pays a dummy hash for equal timing.
 	allowed, err := s.store.ReserveUserLogin(ctx, user, now, maxFailedLogins, lockoutDuration)
 	if err != nil {
 		return nil, err
@@ -167,9 +155,7 @@ func (s *Service) SignIn(ctx context.Context, email, password, request string, r
 		return nil, ErrInvalidCredentials
 	}
 
-	// The right password gives the attempt back now rather than when the
-	// sign-in finishes: an emailed code may still be to come, and a correct
-	// password should not count toward the lock.
+	// A right password returns the attempt now, before any emailed code.
 	if err := s.store.ClearUserFailedLogins(ctx, user, now); err != nil {
 		return nil, err
 	}
@@ -186,13 +172,9 @@ func (s *Service) SignIn(ctx context.Context, email, password, request string, r
 	return s.finishSignIn(ctx, user, flow, request, remember, client, "user.login")
 }
 
-// finishSignIn is the end of the ways in that the sign-in page itself drives
-// — a password, a registration. A flow with the emailed code step holds them
-// here and asks for the code; every other flow goes straight to a session.
-//
-// The ways in a provider drove — a social sign-in, an organisation's identity
-// provider — call startSession instead: see internal/oidc/logincode.go for
-// why a code would prove nothing there.
+// finishSignIn ends a password or registration sign-in, holding it for the
+// emailed code when the flow asks. Provider sign-ins call startSession
+// directly.
 func (s *Service) finishSignIn(
 	ctx context.Context,
 	user *model.User,
@@ -215,10 +197,8 @@ func (s *Service) finishSignIn(
 	return s.sendLoginCode(ctx, user, request, remember, client)
 }
 
-// startSession signs a user in under a login flow's rules: an address it
-// requires verified is sent a link to verify it instead, and the session lasts
-// as long as the flow says. Every way in ends here, so the rules hold however
-// somebody arrived.
+// startSession signs a user in under the flow's rules (verified address,
+// session length). Every way in ends here.
 func (s *Service) startSession(
 	ctx context.Context,
 	user *model.User,
@@ -230,10 +210,7 @@ func (s *Service) startSession(
 ) (*SignInResult, error) {
 	now := s.now()
 
-	// A closed flow is checked here rather than at each way in, because here
-	// is where they all end: a password, a provider, an organisation's
-	// identity provider, a code, and registering, which finishes with a
-	// session like the rest.
+	// A closed flow is checked here because every way in ends here.
 	if !flow.AllowSignIn {
 		s.record(ctx, user, user.Email, "user.login_blocked", client, map[string]any{"reason": "sign-in is closed"})
 
@@ -330,12 +307,8 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 		return nil, ErrRegistrationClosed
 	}
 
-	// The login flow has to allow it too. The application says whether it
-	// wants new accounts; the flow says whether this installation takes them
-	// at all, so a flow with registration turned off closes the door rather
-	// than only hiding the link to it.
-	// A flow without a password step makes accounts through the providers it
-	// offers, not with a password typed here.
+	// The flow decides whether the installation takes new accounts at all, and
+	// a flow without a password step only creates them through its providers.
 	flow, err := s.store.EffectiveLoginFlow(ctx, app)
 	if err != nil {
 		return nil, err
@@ -388,11 +361,9 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 
 	s.record(ctx, user, user.Email, "user.registered", client, map[string]any{"application": app.Name})
 
-	// A link to confirm the address, where the flow asks for one. It does not
-	// hold the account back — RequireVerifiedEmail is what does that, and
-	// startSession below applies it — so a failure to send is logged rather
-	// than refused: the account exists either way, and the link can be sent
-	// again from the sign-in page.
+	// The verification email does not hold the account back
+	// (RequireVerifiedEmail does), so a send failure is logged and the link can
+	// be resent.
 	if flow.VerifyEmailOnRegister && !user.IsEmailVerified {
 		if err := s.sendVerification(ctx, user, r.Request, client); err != nil {
 			s.log.Error("sending a verification email failed", "error", err, "user", user.ID)
@@ -402,23 +373,16 @@ func (s *Service) Register(ctx context.Context, r Registration, client Client) (
 	return s.finishSignIn(ctx, user, flow, r.Request, r.Remember, client, "user.login")
 }
 
-// ForgotPassword sends a reset link to the address, if it has an account that
-// may sign in. It says nothing either way, so the page cannot be used to find
-// out which addresses have accounts; the email is sent in the background for
-// the same reason, since sending takes a noticeable time.
-//
-// `language` is the one the page was shown in, and the email is written in
-// it: somebody who asked in Uzbek is answered in Uzbek.
+// ForgotPassword sends a reset link if the address has an account that may sign
+// in, in the page's language. It answers the same either way and sends in the
+// background, so timing cannot reveal which addresses exist.
 func (s *Service) ForgotPassword(ctx context.Context, email, request, language string, client Client) error {
 	// A domain its identity provider owns keeps its passwords there.
 	if err := s.ssoRequiredFor(ctx, email); err != nil {
 		return err
 	}
 
-	// A flow that does not offer password resets does not send one. It says
-	// nothing about it either: the answer is the same whatever happened here,
-	// which is what keeps this page from telling anybody which addresses have
-	// accounts.
+	// A flow without password reset sends nothing, with the same answer.
 	var app *model.Application
 	if pending, err := s.pending(ctx, request); err == nil {
 		app = pending.Application
@@ -458,9 +422,7 @@ func (s *Service) ForgotPassword(ctx context.Context, email, request, language s
 		return err
 	}
 	if !created {
-		// A link went out to this account recently, so another is not sent
-		// and the inbox cannot be flooded. The answer stays the same — still
-		// a quiet success — so this tells nobody whether the address exists.
+		// Throttled: no new link, same quiet success.
 		return nil
 	}
 
@@ -544,9 +506,8 @@ func (s *Service) reset(ctx context.Context, token string) (*model.PasswordReset
 	return reset, nil
 }
 
-// ResetPassword sets a new password through a reset link. Every session and
-// refresh token the user had ends: whoever made the reset necessary is signed
-// out with everyone else.
+// ResetPassword sets a new password from a reset link and ends every session
+// and refresh token.
 func (s *Service) ResetPassword(ctx context.Context, token, password string, client Client) error {
 	reset, err := s.reset(ctx, token)
 	if err != nil {
@@ -578,18 +539,14 @@ func (s *Service) ResetPassword(ctx context.Context, token, password string, cli
 	return nil
 }
 
-// sendVerification sends a link that proves the address is the user's, in the
-// language the pages were shown in. It is sent while the person waits, unlike
-// a reset: they are told it has gone, and a link that failed to go should say
-// so rather than leave them watching an empty inbox.
+// sendVerification sends a verification link while the person waits, so a send
+// failure is reported.
 func (s *Service) sendVerification(ctx context.Context, user *model.User, request string, client Client) error {
 	return s.mailVerification(ctx, user, "", request, client)
 }
 
-// mailVerification sends one verification link. `newEmail` empty confirms the
-// address the account already has; set, the link is a pending change and goes
-// to that address instead — nobody is sent a link to an address they did not
-// type, and nothing moves until the link is used.
+// mailVerification sends one link: to the current address, or with `newEmail`
+// to that address as a pending change.
 func (s *Service) mailVerification(
 	ctx context.Context,
 	user *model.User,
@@ -668,9 +625,8 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) 
 		return ErrVerificationInvalid
 	}
 
-	// A link that moves the account to another address cannot take one whose
-	// domain must sign in through its identity provider off that domain — even
-	// a link made before the domain was enforced.
+	// A change of address may not move an account off a domain that must use
+	// SSO, even with an older link.
 	if verification.IsChange() {
 		owner, err := s.store.User(ctx, verification.UserID)
 		if err != nil {
@@ -706,14 +662,9 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, client Client) 
 	return nil
 }
 
-// RequestEmailChange starts moving a user to another sign-in address: the
-// link goes to the address they typed, and the account only moves when it is
-// used. Nothing is written to the account here.
-//
-// It answers the same whether or not the address is already somebody else's,
-// so the account page cannot be used to find out which addresses have
-// accounts. An address that is taken is caught when the link is used, where
-// the person holding it has already proved they read that inbox.
+// RequestEmailChange emails a link to the new address; the account moves only
+// when it is used. It answers the same whether or not the address is taken, so
+// it cannot be used to discover accounts.
 func (s *Service) RequestEmailChange(ctx context.Context, session *Session, email string, client Client) error {
 	flow, err := s.flowFor(ctx, "")
 	if err != nil {
@@ -723,10 +674,8 @@ func (s *Service) RequestEmailChange(ctx context.Context, session *Session, emai
 		return ErrEmailChangeNotOffered
 	}
 
-	// An account on a domain that has to sign in through its identity provider
-	// cannot be moved off that domain here: changing the address to a personal
-	// one and then resetting a password would be a way around "the only way
-	// in". The address decides, so the account's own is what is checked.
+	// An account on an SSO-only domain cannot move to another address here;
+	// that plus a password reset would bypass SSO.
 	if err := s.ssoRequiredFor(ctx, session.User.Email); err != nil {
 		return err
 	}
@@ -753,21 +702,9 @@ func (s *Service) RequestEmailChange(ctx context.Context, session *Session, emai
 	return nil
 }
 
-// truncate is a value cut to fit a column, in bytes, and left as text a
-// database will take.
-//
-// Two things have to be true of what comes out. It has to be valid UTF-8:
-// what goes through here is a name a provider gave and a User-Agent header,
-// neither of which this server writes, and Postgres refuses a string with a
-// byte sequence that is not UTF-8 — which would fail the sign-in itself,
-// rather than the name it was carrying. And the cut has to land between
-// runes: cutting a 100-byte limit through the middle of a two-byte letter
-// leaves exactly such a sequence, which is how a long enough name in Cyrillic
-// or Japanese would otherwise stop somebody signing in at all.
-//
-// The limit is in bytes while the column counts characters, so this is
-// conservative rather than exact: it can shorten more than it has to, never
-// less.
+// truncate cuts a value to `max` bytes on a rune boundary and drops invalid
+// UTF-8, which Postgres would refuse and fail the whole sign-in over (e.g. a
+// long Cyrillic name or User-Agent).
 func truncate(value string, max int) string {
 	value = strings.ToValidUTF8(value, "")
 	if len(value) <= max {

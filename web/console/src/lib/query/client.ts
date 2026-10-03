@@ -2,18 +2,9 @@ import { browser } from '$app/environment';
 import { QueryClient } from '@tanstack/svelte-query';
 
 /**
- * A query client for one visitor.
- *
- * It is built in the root layout, which means a new one per request while
- * rendering on the server: a client is a cache, and one shared between
- * requests would be one visitor's data shown to another.
- *
- * The defaults suit an admin panel. Pages arrive already rendered by the
- * server, so what is on screen is as fresh as the request that drew it —
- * asking again straight away would be a second request for the same rows.
- * After half a minute it is worth checking, and worth checking again when
- * someone comes back to the tab, since the data is shared with whoever else
- * is signed in.
+ * A query client per visitor, created in the root layout (per request on the server, so caches
+ * are never shared). Pages arrive server-rendered, so data is considered fresh for 30 seconds
+ * and refetched on tab focus after that.
  */
 export function createQueryClient(): QueryClient {
 	return new QueryClient({

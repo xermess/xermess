@@ -2,6 +2,7 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { RiDownload2Line, RiErrorWarningLine, RiUpload2Line } from 'svelte-remixicon';
 	import type { LocaleApp } from '$lib/api';
+	import { countOf } from '$lib/utils/format';
 	import { Alert, Button, Icon, SearchInput, Switch, notify } from '$lib/components/ui';
 	import { nest } from './flatten';
 	import { translationOptions } from '$lib/query';
@@ -104,9 +105,9 @@
 		draft = { ...draft, ...result.messages };
 
 		notify.success(
-			`${Object.keys(result.messages).length} texts imported from ${file.name}`,
+			`${countOf(Object.keys(result.messages).length, 'text')} imported from ${file.name}`,
 			result.skipped > 0
-				? `Save to keep them. ${result.skipped} keys this version does not use were skipped.`
+				? `Save to keep them. Skipped ${countOf(result.skipped, 'key')} this version does not use.`
 				: 'Save to keep them.'
 		);
 	}

@@ -15,9 +15,7 @@ import (
 	"loginer/internal/model"
 )
 
-// ErrProtectedLanguage is returned for removing the base language, or the
-// default one: the first is what every missing translation falls back to, and
-// the second is what somebody sees before they have chosen.
+// ErrProtectedLanguage protects the base and default languages from removal.
 var ErrProtectedLanguage = errors.New("this language cannot be removed")
 
 // Languages returns every language, in the order the picker lists them.
@@ -42,12 +40,8 @@ func (s *Store) Language(ctx context.Context, code string) (*model.Language, err
 	})
 }
 
-// DefaultLanguage returns the language somebody sees before they have chosen
-// one.
-//
-// A database holding none gets the base language written for it, as the
-// organisation does: every sign-in page asks for this, and an installation
-// whose row was removed by hand should still draw itself in something.
+// DefaultLanguage returns the language shown before anyone chooses, writing the
+// base language if none exists.
 func (s *Store) DefaultLanguage(ctx context.Context) (*model.Language, error) {
 	var found model.Language
 	if s.cache.Get(ctx, cache.Languages, "default", &found) {
@@ -143,9 +137,7 @@ func (s *Store) DeleteLanguage(ctx context.Context, language *model.Language) er
 	}
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Unscoped, like every delete here: the code is unique, and a
-		// soft-deleted row would keep the code taken from a language added
-		// again under it.
+		// Hard delete: a soft-deleted row would keep the unique code taken.
 		if err := tx.Unscoped().Where("language_id = ?", language.ID).Delete(&model.Translation{}).Error; err != nil {
 			return translate(err)
 		}
@@ -161,12 +153,7 @@ func (s *Store) DeleteLanguage(ctx context.Context, language *model.Language) er
 	return nil
 }
 
-// demoteOtherLanguages keeps exactly one language marked as the default:
-// whichever was just written wins, and any other holding the mark loses it.
-//
-// Making the newest one win is what lets the panel offer a plain switch, as
-// it does for login flows. The alternative — refusing a second default —
-// would mean unmarking the old one first, for a rule the server can keep.
+// demoteOtherLanguages keeps exactly one default: the one just written wins.
 func demoteOtherLanguages(tx *gorm.DB, language *model.Language) error {
 	if !language.IsDefault {
 		return nil
@@ -224,13 +211,9 @@ func (s *Store) Translation(ctx context.Context, language uuid.UUID, app string)
 	return row.Messages, nil
 }
 
-// ResolvedTranslation is what an app is sent for one language: every key it
-// looks up, from the language's own text, then the base language's as the
-// database holds it, then the shipped base file (i18n.Resolve).
-//
-// It is the largest thing the pages ask for — every key of an app, on every
-// render — and the one worth caching most: it is kept whole, per language and
-// app, until any language's text changes.
+// ResolvedTranslation is every key an app looks up in one language, falling
+// back to the base language in the database, then the shipped file. It is
+// cached whole per language and app.
 func (s *Store) ResolvedTranslation(ctx context.Context, language *model.Language, app i18n.App) (map[string]string, error) {
 	return cached(ctx, s, cache.Languages, "text:"+language.Code+":"+string(app), func() (map[string]string, error) {
 		return s.resolveTranslation(ctx, language, app)
@@ -264,10 +247,8 @@ func (s *Store) resolveTranslation(ctx context.Context, language *model.Language
 	return i18n.Resolve(app, own, english), nil
 }
 
-// SaveTranslation replaces one language's text for one app.
-//
-// It also moves the language's updated_at, which is the version the apps key
-// their copy of the text by: a save is seen on the next page anybody opens.
+// SaveTranslation replaces one language's text for one app and bumps
+// updated_at, the version apps cache it by.
 func (s *Store) SaveTranslation(ctx context.Context, language *model.Language, app string, messages map[string]string) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := saveTranslation(tx, language.ID, app, messages); err != nil {
@@ -287,15 +268,9 @@ func (s *Store) SaveTranslation(ctx context.Context, language *model.Language, a
 	return nil
 }
 
-// SaveTranslationKeys changes some of one language's text for one app and
-// leaves the rest as it was.
-//
-// SaveTranslation is a whole file: the Languages page holds every key, so
-// what it sends is what the language says. A page that edits a handful of
-// keys — the Mail page and its email.* ones — has the rest nowhere, and
-// sending what it holds would clear them. This merges instead: a key with an
-// empty value is removed rather than stored blank, so clearing an override in
-// the panel puts the shipped text back.
+// SaveTranslationKeys merges some keys into one language's text for one app,
+// for pages that edit only a few (the Mail page). An empty value removes the
+// override, bringing the shipped text back.
 func (s *Store) SaveTranslationKeys(ctx context.Context, language *model.Language, app string, messages map[string]string) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var row model.Translation
@@ -349,20 +324,13 @@ func saveTranslation(tx *gorm.DB, language uuid.UUID, app string, messages map[s
 	return translate(err)
 }
 
-// EnsureLanguages brings the database's languages up to date with the ones
-// the server ships with.
+// EnsureLanguages syncs the database with the shipped languages. The first
+// start imports them all, enabled only for the base language. Later starts only
+// add keys a release introduced, never overwriting text or restoring a removed
+// language.
 //
-// On the first start — no text in the database at all — every shipped
-// language is imported: a row for each, off unless it is the base language,
-// and all of its text. After that the database is the panel's, and a start
-// only adds what a release brought: a key a shipped group has that the
-// database's copy of that language does not. It never changes a message that
-// is there, and never brings back a language somebody removed.
-//
-// The one thing that follows from that: a message cleared in the panel, in a
-// language that ships, is a key the database no longer has — so the next
-// start puts the shipped text back. A shipped language can be reworded; the
-// way to empty it is to remove it.
+// So a message cleared in a shipped language comes back on the next start; to
+// empty a language, remove it.
 func (s *Store) EnsureLanguages(ctx context.Context, shipped []i18n.File) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := dropPanelText(tx); err != nil {
@@ -382,9 +350,8 @@ func (s *Store) EnsureLanguages(ctx context.Context, shipped []i18n.File) error 
 			err := translate(tx.First(&language, "code = ?", file.Code).Error)
 			switch {
 			case errors.Is(err, ErrNotFound) && !first:
-				// Removed on purpose, or never imported because it shipped
-				// later than this installation started. Either way it is the
-				// panel's to add.
+				// Removed on purpose or shipped after this installation
+				// started; the panel adds it.
 				continue
 			case errors.Is(err, ErrNotFound):
 				language = model.Language{
@@ -424,12 +391,8 @@ func (s *Store) EnsureLanguages(ctx context.Context, shipped []i18n.File) error 
 	return nil
 }
 
-// dropPanelText removes the panel's text from every language.
-//
-// The panel is written in English, in its own markup, and is not translated:
-// nothing reads these rows, and an installation that started while it was
-// still translated has them. Every start clears them, so one that is stepped
-// forward comes out the same as a fresh one.
+// dropPanelText removes the panel's text, left over from when it was
+// translated, so an upgraded database matches a fresh one.
 func dropPanelText(tx *gorm.DB) error {
 	err := tx.Unscoped().
 		Where("app = ?", string(i18n.Console)).

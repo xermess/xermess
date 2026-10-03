@@ -42,9 +42,8 @@ func (s *Store) SSOConnectionBySlug(ctx context.Context, slug string) (*model.SS
 	return &connection, nil
 }
 
-// SSOConnectionForEmail returns the enabled connection that owns an address's
-// domain, or ErrNotFound. A domain belongs to one connection at most, which
-// the panel keeps true (SSODomainsTaken).
+// SSOConnectionForEmail returns the enabled connection owning an address's
+// domain, or ErrNotFound.
 func (s *Store) SSOConnectionForEmail(ctx context.Context, email string) (*model.SSOConnection, error) {
 	_, domain, ok := strings.Cut(strings.ToLower(strings.TrimSpace(email)), "@")
 	if !ok || domain == "" {
@@ -76,9 +75,8 @@ func (s *Store) SSOButtons(ctx context.Context) ([]model.SSOConnection, error) {
 	})
 }
 
-// AnySSOConnectionEnabled reports whether an address can lead to a
-// connection — an enabled one with domains — so the sign-in page offers "Sign
-// in with SSO" only where it leads somewhere.
+// AnySSOConnectionEnabled reports whether an enabled connection with domains
+// exists, so "Sign in with SSO" only shows when useful.
 func (s *Store) AnySSOConnectionEnabled(ctx context.Context) (bool, error) {
 	return cached(ctx, s, cache.SSOButtons, "available", func() (bool, error) {
 		var count int64
@@ -117,11 +115,9 @@ func (s *Store) CreateSSOConnection(ctx context.Context, connection *model.SSOCo
 	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Create(connection).Error), cache.SSOButtons)
 }
 
-// SaveSSOConnection writes a connection back. `newProvider` drops the
-// identities held at it as well, in the same transaction: a subject is only
-// unique within the provider that issued it, so one from a provider the
-// connection has been pointed away from could name somebody else at the new
-// one. Their accounts stay, and link again by address on the next sign-in.
+// SaveSSOConnection writes a connection back; with `newProvider` it also drops
+// its identities, since a subject is only unique within the provider that
+// issued it. Accounts stay and re-link by address.
 func (s *Store) SaveSSOConnection(ctx context.Context, connection *model.SSOConnection, newProvider bool) error {
 	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if newProvider {
@@ -135,9 +131,8 @@ func (s *Store) SaveSSOConnection(ctx context.Context, connection *model.SSOConn
 	}), cache.SSOButtons)
 }
 
-// DeleteSSOConnection removes a connection, the identities held at it and any
-// sign-in to it under way. The accounts themselves stay: they can still sign
-// in however else they can, or be given a password.
+// DeleteSSOConnection removes a connection, its identities and pending
+// sign-ins; the accounts stay.
 func (s *Store) DeleteSSOConnection(ctx context.Context, connection *model.SSOConnection) error {
 	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, child := range []any{&model.SSOIdentity{}, &model.SSOLogin{}} {
@@ -205,9 +200,8 @@ func (s *Store) CreateSSOLogin(ctx context.Context, login *model.SSOLogin) error
 	return translate(s.db.WithContext(ctx).Create(login).Error)
 }
 
-// TakeSSOLogin returns the sign-in a state belongs to and deletes it, so a
-// provider's answer is only ever accepted once. A state that is not there, or
-// has expired, is ErrNotFound.
+// TakeSSOLogin returns and deletes the sign-in a state belongs to, so an answer
+// is accepted once. Missing or expired is ErrNotFound.
 func (s *Store) TakeSSOLogin(ctx context.Context, stateHash string, now time.Time) (*model.SSOLogin, error) {
 	var login model.SSOLogin
 

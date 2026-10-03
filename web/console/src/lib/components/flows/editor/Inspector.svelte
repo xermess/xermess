@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { RiDeleteBinLine } from 'svelte-remixicon';
 	import type { LoginStep, LoginStepSpec } from '$lib/api';
+	import { countOf } from '$lib/utils/format';
 	import {
 		Alert,
 		Button,
@@ -23,11 +24,7 @@
 	} from '../steps';
 
 	/**
-	 * The settings of whatever is selected on the canvas. A flow's options sit
-	 * on the node they govern: making an account and a verified address on the
-	 * step that asks who is signing in, the reset link on the password, the
-	 * session's length on the end the flow arrives at, and the flow's own name
-	 * on its start.
+	 * Settings for whatever is selected on the canvas; each option sits on the node it governs.
 	 */
 	type Props = {
 		draft: FlowDraft;
@@ -150,7 +147,7 @@
 			<Note>
 				{draft.is_default
 					? `The default: used by every application without its own flow, and named by ${applications} more.`
-					: `Named by ${applications} applications.`}
+					: `Named by ${countOf(applications, 'application')}.`}
 			</Note>
 		</FormSection>
 	{:else if selected === 'end'}

@@ -1,22 +1,7 @@
-// Package validate checks that a request says what it has to say, before a
-// handler acts on it.
-//
-// The rules are struct tags, read by go-playground/validator:
-//
-//	type loginRequest struct {
-//		Username string `json:"username" validate:"required"`
-//	}
-//
-// What this package adds is the answer. A failed rule comes back as a
-// respond.Fault carrying a 400 and the problem `validation.<rule>`, with the
-// field named the way the request named it and whatever the rule was held
-// to —
+// Package validate checks requests against go-playground/validator struct tags
+// and turns a failure into a translatable 400:
 //
 //	{"code": "validation.max", "params": {"field": "first_name", "max": "100"}}
-//
-// — which an app says in the reader's language ("{field} must be at most
-// {max} characters"), and the English beside it says for everyone else. Not
-// "Key: 'Email' Error:Field validation for 'Email' failed on the 'email' tag".
 package validate
 
 import (
@@ -68,13 +53,9 @@ func newValidator() *validator.Validate {
 	return v
 }
 
-// Register adds a rule of our own, for something the library cannot know
-// about — what a field name may look like, which types exist. Breaking it is
-// the problem `validation.<tag>`, which the panel's catalog has to say: the
-// rules registered this way are the admin API's.
-//
-// Call it from the init of the package whose rule it is, so the rule and the
-// thing it describes stay together.
+// Register adds a custom rule; failing it is the problem `validation.<tag>`,
+// which the panel's catalog must define. Call it from the init of the package
+// that owns the rule.
 func Register(tag string, valid func(value string) bool) {
 	if err := instance.RegisterValidation(tag, func(fl validator.FieldLevel) bool {
 		return valid(fl.Field().String())
@@ -150,14 +131,9 @@ func toSnake(name string) string {
 	return b.String()
 }
 
-// The four below read one field of a PATCH: the value sent, or `current` when
-// none was — the record's own value on an update, and the default on a
-// create. A plain value cannot tell "false", "" or 0 from "not sent", so a
-// request carries pointers and these turn them back into values.
-//
-// They live here rather than beside each handler because every subject that
-// takes a PATCH needs the same four, and six copies of "if sent == nil" is
-// six places for one of them to start behaving differently.
+// These read one PATCH field: the value sent, or `current` when it was not.
+// Requests carry pointers because a plain value cannot tell false, "" or 0 from
+// "not sent".
 
 // Flag reads an on-or-off field. An API client that omits a flag should not
 // switch it off.

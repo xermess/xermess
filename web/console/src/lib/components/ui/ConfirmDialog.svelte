@@ -61,15 +61,10 @@
 	let actions = $state<HTMLElement | null>(null);
 </script>
 
-<!-- A question in the middle of the window, asked before something that is
-     hard to take back. It is an alert dialog, so a screen reader reads it out
-     as it opens, and it sits above a full-window dialog, since that is where most of these
-     questions are asked from.
-
-     The card is the popovers' sheet — a select's list, a menu — grown to hold
-     a sentence: the same hairline border, the same shadow, on the same
-     surface, so a question reads as part of the panel rather than the
-     browser's. -->
+<!--
+	A confirmation before something hard to undo. It is an alert dialog (announced on open),
+	stacked above full-window dialogs, and styled like the popovers.
+-->
 <Dialog.Root
 	{open}
 	role="alertdialog"

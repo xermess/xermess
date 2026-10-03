@@ -27,9 +27,8 @@ type ClientAuth struct {
 	Method model.AuthMethod
 }
 
-// authenticate finds the application a client claims to be and holds it to
-// the method it was registered with: a confidential client proves itself with
-// its secret, the way it said it would; a public client sends no secret at all.
+// authenticate finds the client and holds it to its registered method:
+// confidential clients prove their secret that way; public clients send none.
 func (s *Service) authenticate(ctx context.Context, auth ClientAuth) (*model.Application, error) {
 	if auth.ID == "" {
 		return nil, oauthError(ErrInvalidClient, "client authentication is required")
@@ -118,11 +117,9 @@ func (s *Service) exchangeCode(ctx context.Context, app *model.Application, p To
 	case errors.Is(err, store.ErrNotFound):
 		return nil, oauthError(ErrInvalidGrant, "the authorization code is not valid")
 	case errors.Is(err, store.ErrAlreadyUsed):
-		// The code was found but not claimed. Either it belongs to another
-		// client — and it is left as it is, so the client it was issued to can
-		// still spend it — or this client has already used it, and only this
-		// client should ever have held it: whoever sent it again got it some
-		// other way, so what the first exchange issued goes.
+		// Found but not claimed: another client's code is left alone so its
+		// owner can still spend it; this client's own code presented twice
+		// means it leaked, so what the first exchange issued is revoked.
 		if code.ApplicationID != app.ID {
 			return nil, oauthError(ErrInvalidGrant, "the authorization code was issued to another client")
 		}
@@ -161,12 +158,9 @@ func (s *Service) exchangeCode(ctx context.Context, app *model.Application, p To
 		return nil, err
 	}
 
-	// The session the code was made in has to be alive still. A reset
-	// password, "sign out everywhere" and a disconnected application end
-	// the sessions and the refresh tokens, and a code minted a moment before
-	// is the one thing that would otherwise outlive them: exchanged after
-	// the reset, it would start a fresh refresh token family for whoever the
-	// reset was meant to shut out.
+	// The session the code came from must still be alive, or a code minted just
+	// before a password reset would start a fresh refresh-token family for
+	// whoever the reset shut out.
 	if code.SessionID != nil {
 		session, err := s.store.UserSession(ctx, *code.SessionID)
 		switch {
@@ -242,9 +236,8 @@ func (s *Service) refresh(ctx context.Context, app *model.Application, p TokenPa
 		return nil, err
 	}
 
-	// Roles, scopes and the user's state are evaluated again, so a role taken
-	// away or a user deactivated since the sign-in takes effect at the next
-	// refresh, not when the refresh token expires.
+	// Roles, scopes and user state are evaluated again, so changes apply at the
+	// next refresh.
 	return s.issue(ctx, grant{
 		app:      app,
 		user:     user,
@@ -287,12 +280,6 @@ type grant struct {
 
 // issue evaluates a grant and signs what it amounts to.
 func (s *Service) issue(ctx context.Context, g grant) (*TokenResponse, error) {
-	if g.audience != "" {
-		if _, err := s.store.AudienceFor(ctx, g.app.ID, g.audience); errors.Is(err, store.ErrNotFound) {
-			return nil, oauthError(ErrInvalidRequest, "audience: no API has this identifier")
-		}
-	}
-
 	evaluated, err := s.evaluate(ctx, g.app, g.user, g.scopes, g.audience)
 	if err != nil {
 		return nil, err
@@ -356,12 +343,9 @@ func (s *Service) issue(ctx context.Context, g grant) (*TokenResponse, error) {
 		}
 	}
 
-	// A refresh rotates whatever it was given, whether or not offline_access
-	// survived the request's scope: the token presented has been spent, and
-	// leaving it usable would let a stolen one be presented again and again —
-	// each time for a fresh access token, and never once reaching the reuse
-	// detection in refresh, which is what the family is for. A grant that is
-	// not a refresh gets a refresh token only when offline_access was granted.
+	// A refresh always rotates, even if offline_access was narrowed away, so a
+	// stolen token cannot be replayed without reaching reuse detection. Other
+	// grants get a refresh token only with offline_access.
 	if g.user != nil && (g.replaces != nil || slices.Contains(strings.Fields(granted), model.ScopeOfflineAccess)) {
 		token, err := s.newRefreshToken(ctx, g, granted)
 		if err != nil {
@@ -494,9 +478,8 @@ func (s *Service) UserInfo(ctx context.Context, accessToken string) (map[string]
 		return nil, err
 	}
 
-	// The ID token the application would get now, for the scopes it was
-	// granted: the same claims, filtered the same way, from the current
-	// record. API scopes are irrelevant here, so no audience is loaded.
+	// Claims as the ID token would carry them now, from the current record; no
+	// audience is needed.
 	evaluated, err := s.evaluate(ctx, app, user, scopes, "")
 	if err != nil {
 		return nil, err
@@ -513,10 +496,9 @@ func (s *Service) UserInfo(ctx context.Context, accessToken string) (map[string]
 	return info, nil
 }
 
-// Revoke revokes a refresh token, and the rest of its family (RFC 7009). An
-// access token is a signed JWT that APIs check on their own, so it cannot be
-// revoked and simply expires; asking to revoke one, or a token that does not
-// exist, is still a success, as the RFC requires.
+// Revoke revokes a refresh token and its family (RFC 7009). Access tokens are
+// self-contained JWTs and simply expire; revoking one, or an unknown token,
+// still succeeds as the RFC requires.
 func (s *Service) Revoke(ctx context.Context, client ClientAuth, token string) error {
 	app, err := s.authenticate(ctx, client)
 	if err != nil {
@@ -544,11 +526,9 @@ func (s *Service) Revoke(ctx context.Context, client ClientAuth, token string) e
 	return s.store.RevokeRefreshFamily(ctx, refresh.FamilyID, s.now())
 }
 
-// Introspect says whether a token is active and what it carries (RFC 7662).
-// Only confidential clients may ask: introspection tells whoever asks about a
-// user's tokens, so the caller has to prove who it is — and it is only ever
-// told about its own. A token issued to another client reads as inactive,
-// access token and refresh token alike.
+// Introspect reports whether a token is active (RFC 7662). Only confidential
+// clients may ask, and only about their own tokens; any other client's token
+// reads as inactive.
 func (s *Service) Introspect(ctx context.Context, client ClientAuth, token string) (map[string]any, error) {
 	app, err := s.authenticate(ctx, client)
 	if err != nil {
@@ -564,12 +544,8 @@ func (s *Service) Introspect(ctx context.Context, client ClientAuth, token strin
 	}
 
 	if claims, raw, err := s.verifyAccessToken(ctx, token); err == nil {
-		// Whose token it is, the same question the refresh token below is
-		// held to. RFC 7662 section 2.1 leaves the server to decide that a
-		// token is the caller's to ask about, and the answer here carries the
-		// subject, the scope and the user's roles — which is not something
-		// any client that happens to hold a secret may read out of another
-		// client's token.
+		// Another client's token reads as inactive: the answer carries the
+		// subject, scope and roles.
 		if claims.ClientID != app.ClientID {
 			return inactive, nil
 		}

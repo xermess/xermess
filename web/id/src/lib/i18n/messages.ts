@@ -1,16 +1,7 @@
 /**
- * The one language this app is built with: the base, as the server ships it.
- *
- * Every other language — and the base language's own current wording — is in
- * the database and arrives with the page (the root layout asks for it), so a
- * language added or reworded in the admin panel needs no build. This copy is
- * only what is left when that request fails: the sign-in pages have to draw
- * themselves in something when nothing else works.
- *
- * The shipped catalog is split into semantic groups so a translator can work
- * on related text together. The groups are merged here into the dotted keys
- * that the app and `svelte-i18n` use. `vite.config.ts` allows the directory to
- * be read in development.
+ * The base language as shipped, merged from its groups. Real text comes from the database with
+ * the page; this copy is only the fallback when that request fails. vite.config.ts allows
+ * reading the directory in development.
  */
 import { flatten, type Messages } from './flatten';
 

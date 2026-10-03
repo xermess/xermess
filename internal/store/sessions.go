@@ -12,12 +12,9 @@ import (
 	"loginer/internal/model"
 )
 
-// An administrator's session is read on every request the panel makes, so
-// it is kept in the session database by the hash of its token. Every write
-// below puts the sessions it changed there once it has committed — a revoked
-// session included, which stays there as revoked — so the next request sees
-// the change; see internal/cache/sessions.go for why a reader in flight cannot
-// undo that.
+// Administrator sessions are cached by token hash. Every write puts the changed
+// sessions (revoked ones included) after commit; see internal/cache/sessions.go
+// for why an in-flight reader cannot undo that.
 
 // CreateSession starts a session.
 func (s *Store) CreateSession(ctx context.Context, session *model.AdminSession) error {
@@ -68,27 +65,22 @@ func (s *Store) SessionsFor(ctx context.Context, adminID uuid.UUID, limit int) (
 	return sessions, err
 }
 
-// RevokeSessionsFor ends every open session an administrator has, so a
-// changed password or a suspended account takes effect at once rather than
-// when the sessions expire.
+// RevokeSessionsFor ends every open session of an administrator, so a password
+// change or suspension applies at once.
 func (s *Store) RevokeSessionsFor(ctx context.Context, adminID uuid.UUID, at time.Time) error {
 	_, err := s.revokeAdminSessions(ctx, at, "admin_id = ?", adminID)
 	return err
 }
 
-// RevokeOtherSessionsFor ends every open session an administrator has but
-// one: the one they changed their password from, which would otherwise sign
-// them out of the page they were using.
-//
-// It says how many it ended, for the activity log.
+// RevokeOtherSessionsFor ends every session but `keep` and returns how many it
+// ended.
 func (s *Store) RevokeOtherSessionsFor(ctx context.Context, adminID, keep uuid.UUID, at time.Time) (int64, error) {
 	ended, err := s.revokeAdminSessions(ctx, at, "admin_id = ? AND id <> ?", adminID, keep)
 	return int64(len(ended)), err
 }
 
-// RevokeOwnSession ends one session, only if it is the administrator's own
-// and still open. It says whether there was such a session: an id that is
-// someone else's is answered exactly as one that does not exist.
+// RevokeOwnSession ends one of the administrator's own open sessions. Someone
+// else's id is answered as if it did not exist.
 func (s *Store) RevokeOwnSession(ctx context.Context, adminID, id uuid.UUID, at time.Time) (bool, error) {
 	ended, err := s.revokeAdminSessions(ctx, at, "id = ? AND admin_id = ?", id, adminID)
 	return len(ended) > 0, err
@@ -130,11 +122,8 @@ func (s *Store) putAdminSessions(ctx context.Context, sessions ...model.AdminSes
 	}
 }
 
-// ---- User sessions ----------------------------------------------------------
-
-// userSession is how a user's session is kept in the session database: what
-// deciding whether a cookie still signs somebody in needs, and no more. The
-// token's hash is the key, and is not repeated inside.
+// userSession is a user session as cached: only what checking a cookie needs.
+// The token hash is the key.
 type userSession struct {
 	ID              uuid.UUID  `json:"id"`
 	CreatedAt       time.Time  `json:"created_at"`
@@ -175,9 +164,8 @@ func (u userSession) model(hash string) model.UserSession {
 	return session
 }
 
-// revokeUserSessionsIn ends the open sessions the condition picks, inside a
-// transaction, and answers them as they now are for the caller to put once
-// it has committed.
+// revokeUserSessionsIn ends the matching open sessions in a transaction and
+// returns them to be cached after commit.
 func revokeUserSessionsIn(tx *gorm.DB, at time.Time, condition string, args ...any) ([]model.UserSession, error) {
 	var ended []model.UserSession
 	err := tx.Model(&ended).

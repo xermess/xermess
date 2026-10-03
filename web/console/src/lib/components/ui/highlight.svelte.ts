@@ -1,13 +1,7 @@
 /**
- * Code, highlighted: one Shiki highlighter for the whole panel, built the
- * first time a block of code is drawn and shared after that.
- *
- * Shiki is imported only then, so it is a chunk of its own that a page
- * without code never downloads. It is Shiki's core with the JSON grammar and
- * the JavaScript regex engine — no WebAssembly, and no grammar the panel does
- * not show. The theme is Shiki's CSS-variables one: every token is coloured
- * with a `--syntax-*` variable, and those are in lib/theme/theme.ts with the
- * rest of the palette, light and dark.
+ * One shared Shiki highlighter, loaded lazily so pages without code never download it. It uses
+ * Shiki core with JSON only and the JavaScript regex engine (no WebAssembly); colours are
+ * `--syntax-*` tokens from lib/theme/theme.ts.
  */
 import type { HighlighterCore } from 'shiki/core';
 
@@ -38,13 +32,9 @@ async function highlight(code: string): Promise<string> {
 }
 
 /**
- * The highlighted markup of `source()`, kept up to date as it changes. Call
- * it while a component initialises.
- *
- * Changes are coalesced to one highlight per frame, so a burst of them — a
- * field being typed in — costs one pass rather than one per change, and a
- * result that arrives after a newer change is dropped. Until the first
- * result, and on the server, `html` is '': the caller shows the code plain.
+ * The highlighted markup of `source()`, updated as it changes; call during component init.
+ * Updates are coalesced to one per frame and stale results dropped. `html` is '' until the
+ * first result and on the server.
  */
 export function highlighted(source: () => string): { readonly html: string } {
 	let html = $state('');

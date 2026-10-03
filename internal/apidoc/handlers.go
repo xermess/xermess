@@ -9,10 +9,8 @@ import (
 	"strings"
 )
 
-// maxCallDepth is how far into a handler's own package a read follows calls:
-// far enough to reach the helper that reads a token request's form and the
-// one that checks a client's credentials, not so far that one handler takes
-// on another's answers.
+// maxCallDepth is how deep a handler's own package calls are followed when
+// reading it.
 const maxCallDepth = 3
 
 // handlerReading is what one handler's body, and the functions of its own
@@ -256,9 +254,8 @@ func (r *handlerReading) queryStruct(t types.Type) {
 	}
 }
 
-// respond records an answer. A status that is not a constant — an OAuth
-// error answering with its own — is the default answer. The server's own
-// failures are left to the errors page: any route can have one.
+// respond records an answer; a non-constant status is the default answer.
+// Server failures are left to the errors page.
 func (r *handlerReading) respond(status int, contentType string, t types.Type, expr ast.Expr, info *types.Info) {
 	if status >= http.StatusInternalServerError {
 		return

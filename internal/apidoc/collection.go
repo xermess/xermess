@@ -9,16 +9,9 @@ import (
 	"loginer/internal/brand"
 )
 
-// A Postman Collection (v2.1) for each server: every endpoint as a request
-// ready to send, in the reference's sections, with the parts a reader fills
-// in as collection variables. Bruno imports the same file, so one format
-// covers both.
-//
-// Requests authenticate the way software calls them: admin routes that take
-// an admin-cli token with {{admin_token}}, the account API with a user's
-// {{access_token}}, the provider's endpoints with the client's credentials.
-// The admin collection starts with a request that gets admin-cli's token and
-// stores it, so the rest work once the secret is filled in.
+// A Postman Collection (v2.1), which Bruno also imports, for each server.
+// Requests authenticate the way software calls them, and the admin collection
+// starts with a request that stores admin-cli's token.
 
 const postmanSchema = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 
@@ -197,9 +190,8 @@ func collectionURL(host, path string, op *Operation) map[string]any {
 	return url
 }
 
-// collectionAuth sends what a caller would: a token where one is taken,
-// the client's credentials at the provider's endpoints, nothing elsewhere.
-// Routes only a session reaches send their cookie as a header instead.
+// collectionAuth authenticates a request the way software would: a token,
+// client credentials, or a session cookie header.
 func collectionAuth(op Operation) map[string]any {
 	bearer := func(token string) map[string]any {
 		return map[string]any{"type": "bearer", "bearer": []any{

@@ -82,6 +82,7 @@ The provider's own endpoints — token, userinfo, revocation, introspection — 
 | 429 | <span id="rate_limited"></span>`rate_limited` | Too many attempts. Try again in {seconds} seconds. |
 | 503 | <span id="redis_not_configured"></span>`redis_not_configured` | This server runs without Redis, so there is no cache to look after. |
 | 404 | <span id="session_not_found"></span>`session_not_found` | That session has ended or never existed. |
+| 409 | <span id="social_provider_repointed"></span>`social_provider_repointed` | This provider already has linked accounts, so it cannot be pointed at a different one. Register a new provider instead. |
 | 404 | <span id="sso_connection_not_found"></span>`sso_connection_not_found` | There is no such connection. |
 | 400 | <span id="sso_discovery_failed"></span>`sso_discovery_failed` | The issuer's discovery document could not be read: {reason} |
 | 400 | <span id="sso_domain_invalid"></span>`sso_domain_invalid` | {domain} is not a domain. |
@@ -94,7 +95,9 @@ The provider's own endpoints — token, userinfo, revocation, introspection — 
 | 400 | <span id="sso_unreachable"></span>`sso_unreachable` | A connection without domains has to show its button on the sign-in page, and cannot be required: no address leads to it. |
 | 403 | <span id="super_admin_only"></span>`super_admin_only` | Only a super admin can do that. |
 | 409 | <span id="system_api"></span>`system_api` | This API is part of the server and cannot be deleted. |
+| 403 | <span id="system_api_access"></span>`system_api_access` | Only a super admin can give an application access to the server's own APIs, or take it away. |
 | 409 | <span id="system_application"></span>`system_application` | admin-cli is part of the server and cannot be deleted. Turn it off instead. |
+| 403 | <span id="system_application_change"></span>`system_application_change` | Only a super admin can change an application that has access to the admin API, or rotate its secret. |
 | 401 | <span id="token_refused"></span>`token_refused` | This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access. |
 | 404 | <span id="translation_app_not_found"></span>`translation_app_not_found` | There is no such part of the product to translate. |
 | 400 | <span id="translation_too_long"></span>`translation_too_long` | The text of {key} must be at most {max} characters. |

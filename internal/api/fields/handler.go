@@ -1,6 +1,5 @@
-// Package fields answers the endpoints that describe what a user record is
-// made of: the columns an organisation adds to its users, and the rules the
-// values keep.
+// Package fields manages the additional fields of a user record and the rules
+// their values keep.
 package fields
 
 import (
@@ -74,9 +73,8 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"field": newFieldResponse(*field)})
 }
 
-// Update changes what a field expects. Its name and its type stay as they
-// are: records already hold values under that name and in that shape, and
-// changing either here would leave them behind.
+// Update changes a field's rules. Name and type never change, since records
+// hold values under them.
 func (h *Handler) Update(c *gin.Context) {
 	field, ok := h.find(c)
 	if !ok {
@@ -104,9 +102,8 @@ func (h *Handler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"field": newFieldResponse(*field)})
 }
 
-// Delete removes a field. The values already stored under its name stay in
-// the user records until those are next saved, at which point they are
-// dropped: nothing is destroyed by removing a column from the panel.
+// Delete removes a field; stored values are dropped when each user is next
+// saved.
 func (h *Handler) Delete(c *gin.Context) {
 	field, ok := h.find(c)
 	if !ok {

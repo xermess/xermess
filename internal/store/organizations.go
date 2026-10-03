@@ -8,15 +8,8 @@ import (
 	"loginer/internal/model"
 )
 
-// Organization returns the organisation this installation belongs to.
-//
-// There is one, so it is read by nothing but its age: the oldest row is the
-// one the migration seeded. A database that somehow holds none gets the
-// default written for it, which is what keeps the settings page working on an
-// installation whose row was removed by hand rather than answering 404 for
-// something that cannot be created from the panel.
-//
-// Every sign-in page asks for it, so it is read through the cache.
+// Organization returns the oldest (seeded) row, writing the default if none
+// exists, through the cache since every sign-in page asks.
 func (s *Store) Organization(ctx context.Context) (*model.Organization, error) {
 	var organization model.Organization
 	if s.cache.Get(ctx, cache.Organization, "settings", &organization) {
@@ -33,10 +26,8 @@ func (s *Store) Organization(ctx context.Context) (*model.Organization, error) {
 	return loaded, nil
 }
 
-// OrganizationForUpdate reads the organisation from the database, never from
-// the cache: what is about to be changed and written back has to be the row
-// as it is, or a stale copy — one cached before the database was reset, or
-// by another server sharing the Redis — is saved over it.
+// OrganizationForUpdate reads the database, never the cache, so a stale cached
+// copy is never written back over the row.
 func (s *Store) OrganizationForUpdate(ctx context.Context) (*model.Organization, error) {
 	var organization model.Organization
 
@@ -58,11 +49,8 @@ func (s *Store) OrganizationForUpdate(ctx context.Context) (*model.Organization,
 	return &organization, nil
 }
 
-// SaveOrganization writes the organisation back.
-//
-// It updates the row it was read from and nothing else. GORM's Save would
-// insert a second organisation when that row is not there; this says so
-// instead, as ErrNotFound.
+// SaveOrganization updates the existing row only; unlike GORM's Save it never
+// inserts a second one, answering ErrNotFound instead.
 func (s *Store) SaveOrganization(ctx context.Context, organization *model.Organization) error {
 	result := s.db.WithContext(ctx).Model(organization).Select("*").Omit("created_at").Updates(organization)
 	if err := translate(result.Error); err != nil {

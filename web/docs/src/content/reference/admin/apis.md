@@ -203,9 +203,9 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/apis/:id/applications {#get-api-v1-admin-apis-id-applications}
 
-Lists the applications the administrator can see, with what each may do with the API.
+Lists visible applications with their access to the API.
 
-Granting and revoking access goes through the application's own endpoints, which check the administrator may change it.
+Access is changed through the application's endpoints.
 
 | | |
 | --- | --- |
@@ -269,9 +269,7 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/apis/:id/logs {#get-api-v1-admin-apis-id-logs}
 
-Lists what has happened to or involving the API, newest first: changes to it, and applications gaining or losing access.
-
-Token requests join these once the token endpoint issues tokens.
+Lists changes to the API and applications gaining or losing access, newest first.
 
 | | |
 | --- | --- |
@@ -428,7 +426,7 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 Replaces an API's name, description, role enforcement and scopes.
 
-Its identifier stays as it is: every service checking tokens compares against it.
+The identifier never changes.
 
 | | |
 | --- | --- |
@@ -525,9 +523,9 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 ## DELETE /api/v1/admin/apis/:id {#delete-api-v1-admin-apis-id}
 
-Removes an API, its scopes, every application's authorisation for it and every role's grant of its scopes.
+Removes an API with its scopes, application authorisations and role grants.
 
-Tokens already issued for it stay valid until they expire.
+Issued tokens stay valid until they expire.
 
 | | |
 | --- | --- |

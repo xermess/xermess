@@ -17,9 +17,8 @@ const targetType = "api"
 // maxScopes caps how many scopes one API may have.
 const maxScopes = 200
 
-// apiRequest is the body of the create and update endpoints. The scopes
-// replace the API's: a scope sent with its id is kept, with every allowance
-// and grant of it; one sent without is new; one left out is removed.
+// apiRequest is the create and update body. Scopes replace the API's: sent with
+// an id they are kept, without one they are new, left out they are removed.
 type apiRequest struct {
 	Name        string `json:"name" validate:"required,max=100"`
 	Identifier  string `json:"identifier" validate:"max=255"`

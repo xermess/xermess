@@ -59,12 +59,10 @@
 		form = formOf(stored);
 	}
 
-	/** What the form holds, as the API takes it. A host name and an address
-	    are dialled and compared rather than read, so they go lower case.
-
-	    Its shape is inferred rather than declared: every key here is one of
-	    the stored record's, which is what lets `dirty` below compare the two
-	    without naming a field. */
+	/**
+	 * The form as the API takes it, with host and address lower-cased. Its keys mirror the stored
+	 * record so `dirty` can compare the two generically.
+	 */
 	const input = $derived({
 		is_enabled: form.is_enabled,
 		host: form.host.trim().toLowerCase(),
@@ -146,8 +144,6 @@
 		saving = true;
 		save.mutate();
 	}
-
-	// ---- Sending a test message -------------------------------------------
 
 	let testTo = $state('');
 

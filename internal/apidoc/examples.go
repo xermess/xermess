@@ -13,11 +13,8 @@ import (
 	"loginer/internal/model"
 )
 
-// The examples every endpoint carries: cURL first, which is what a reader
-// sees until they choose, then Java's java.net.http, Go's net/http and
-// Python's requests. Each is the request and nothing else — no framework, no
-// generated client — so it reads the same whatever a reader builds with. The
-// docs draw them as tabs.
+// Every endpoint's examples: cURL, Java, Go and Python, each the bare request
+// with no framework or generated client.
 
 // sample is one request in one language.
 type sample struct {
@@ -27,9 +24,8 @@ type sample struct {
 // request is what the three examples are written from.
 type request struct {
 	method string
-	// base and token are the variables the server's address and the bearer
-	// token are in, as shell, Java and Python name them — ISSUER, ADMIN_TOKEN;
-	// goName gives Go's spelling.
+	// Variable names for the server address and bearer token in examples
+	// (goName gives Go's spelling).
 	base     string
 	segments []segment
 	query    [][2]string
@@ -118,10 +114,8 @@ func requestOf(server Server, op Operation) request {
 	return r
 }
 
-// codeExchange is what the token endpoint reads for the authorization code
-// grant. The endpoint reads every grant's parameters, and an example sending
-// all of them at once — a code and a refresh token together — is one no
-// reader could use; the guides show the other grants.
+// codeExchange is the authorization code grant's parameters; the example shows
+// only these, and the guides show the other grants.
 var codeExchange = map[string]bool{"grant_type": true, "code": true, "redirect_uri": true, "code_verifier": true}
 
 // oneGrant narrows a token request's form to one grant's parameters.

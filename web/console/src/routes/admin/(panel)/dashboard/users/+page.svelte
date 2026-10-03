@@ -87,12 +87,10 @@
 	/** The rows that are ticked, by id. */
 	let selected = $state<string[]>([]);
 
-	/** The ticked rows that are actually on screen.
-	
-	    A search or a filter can take a ticked row out of view, and deleting
-	    what nobody can see is not something a panel should offer. Everything
-	    the bar says and does goes through this rather than through the raw
-	    list, so what is counted is what is shown. */
+	/**
+	 * Ticked rows that are actually on screen; the bulk bar acts only on these, never on rows a
+	 * filter hid.
+	 */
 	const visible = $derived(new Set(rows.map((user) => user.id)));
 	const chosen = $derived(selected.filter((id) => visible.has(id)));
 	let confirmingDelete = $state(false);
@@ -136,12 +134,10 @@
 
 	let refreshing = $state(false);
 
-	/** Asks for the rows again, so a record someone else changed shows up
-	    without leaving the page.
-
-	    The spin is held for a moment even when the answer comes back at once:
-	    a button that does something invisible in 20ms reads as a button that
-	    did nothing. */
+	/**
+	 * Refetches the rows. The spinner is held briefly so an instant answer still shows the button
+	 * did something.
+	 */
 	async function refresh() {
 		refreshing = true;
 

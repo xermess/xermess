@@ -8,13 +8,9 @@ import (
 	"loginer/internal/model"
 )
 
-// AdminSecurity returns how administrators are made to sign in.
-//
-// A database that holds no row has not been configured, and gets the default
-// — which is what the server writes on its first start anyway. A database
-// that cannot be read is a different thing, and is an error: the caller
-// decides what to do when the answer is unknown, and internal/auth fails
-// closed there.
+// AdminSecurity returns the administrators' sign-in settings, or the default
+// when no row exists. A read failure is an error, and internal/auth fails
+// closed on it.
 func (s *Store) AdminSecurity(ctx context.Context) (*model.AdminSecurity, error) {
 	security, err := cached(ctx, s, cache.AdminSecurity, "settings", func() (model.AdminSecurity, error) {
 		var security model.AdminSecurity
@@ -36,9 +32,8 @@ func (s *Store) AdminSecurity(ctx context.Context) (*model.AdminSecurity, error)
 	return &security, nil
 }
 
-// EnsureAdminSecurity writes the row a fresh installation starts with, from
-// the configuration, and leaves an installation that already has one alone:
-// after the first start the setting is the panel's, not the file's.
+// EnsureAdminSecurity seeds the row from configuration on a fresh installation
+// and leaves an existing one alone.
 func (s *Store) EnsureAdminSecurity(ctx context.Context, mfaRequired bool) error {
 	var count int64
 	if err := s.db.WithContext(ctx).Model(&model.AdminSecurity{}).Count(&count).Error; err != nil {
@@ -58,9 +53,8 @@ func (s *Store) SaveAdminSecurity(ctx context.Context, security *model.AdminSecu
 	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Save(security).Error), cache.AdminSecurity)
 }
 
-// AdminMFACounts is how many administrators there are, and how many of them
-// have an authenticator confirmed, for the panel to say what requiring one
-// would mean.
+// AdminMFACounts returns how many administrators exist and how many have a
+// confirmed authenticator.
 func (s *Store) AdminMFACounts(ctx context.Context) (total, withMFA int64, err error) {
 	if err = s.db.WithContext(ctx).Model(&model.Admin{}).Count(&total).Error; err != nil {
 		return 0, 0, err

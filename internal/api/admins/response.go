@@ -36,9 +36,8 @@ type adminResponse struct {
 	Status    string    `json:"status"`
 
 	Assignments []assignmentResponse `json:"assignments"`
-	// Permissions are what the whole-panel roles add up to, ScopedPermissions
-	// what the scoped ones add for each application, and IsSuperAdmin whether
-	// one of the whole-panel roles is super_admin.
+	// Permissions come from panel-wide roles, ScopedPermissions from roles held
+	// per application, and IsSuperAdmin from holding super_admin panel-wide.
 	Permissions       []string               `json:"permissions"`
 	ScopedPermissions map[uuid.UUID][]string `json:"scoped_permissions"`
 	IsSuperAdmin      bool                   `json:"is_super_admin"`
@@ -102,9 +101,8 @@ func newPageResponse(admins []model.Admin, total int64, query store.AdminQuery) 
 	return pageResponse{Admins: out, Total: total, Limit: query.Limit, Offset: query.Offset}
 }
 
-// securityResponse is how administrators are made to sign in, and what that
-// means for the ones there are: the panel says how many would be asked to set
-// an authenticator up before it turns the requirement on.
+// securityResponse is the administrators' sign-in settings and how many would
+// have to enrol if a second factor were required.
 type securityResponse struct {
 	RequireMFA bool `json:"require_mfa"`
 	// Administrators is how many there are, and WithMFA how many of those

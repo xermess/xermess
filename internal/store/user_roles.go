@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -137,33 +138,34 @@ func (s *Store) AddUserRoles(ctx context.Context, userID uuid.UUID, roles []mode
 	})
 }
 
-// RemoveUserRole takes away a role the user was given directly. The roles it
-// included stop coming to the user through it; any that another held role
-// still includes stay.
+// RemoveUserRole removes a directly held role; roles still implied by another
+// held role stay.
 func (s *Store) RemoveUserRole(ctx context.Context, userID, roleID uuid.UUID) error {
 	return s.db.WithContext(ctx).
 		Exec("DELETE FROM user_role_members WHERE user_id = ? AND user_role_id = ?", userID, roleID).
 		Error
 }
 
-// RoleGraph loads every role with the roles it inherits, which is what
-// resolving inheritance and refusing a cycle need.
+// RoleGraph loads every role with its inheritance and scopes, through the
+// session cache, since every user token needs it.
 func (s *Store) RoleGraph(ctx context.Context) (model.RoleGraph, error) {
-	var roles []model.UserRole
-	err := s.db.WithContext(ctx).
-		Preload("Inherits", byName).
-		Preload("APIScopes", scopesByName).
-		Find(&roles).Error
-	if err != nil {
-		return nil, err
-	}
+	return cached(ctx, s, cache.Grants, "role_graph", func() (model.RoleGraph, error) {
+		var roles []model.UserRole
+		err := s.db.WithContext(ctx).
+			Preload("Inherits", byName).
+			Preload("APIScopes", scopesByName).
+			Find(&roles).Error
+		if err != nil {
+			return nil, err
+		}
 
-	graph := make(model.RoleGraph, len(roles))
-	for _, role := range roles {
-		graph[role.ID] = role
-	}
+		graph := make(model.RoleGraph, len(roles))
+		for _, role := range roles {
+			graph[role.ID] = role
+		}
 
-	return graph, nil
+		return graph, nil
+	})
 }
 
 // RoleMemberCounts says how many users hold each of these roles directly, by
@@ -179,14 +181,13 @@ func (s *Store) RoleMemberCounts(ctx context.Context, ids []uuid.UUID) (map[uuid
 // CreateUserRole writes a new role with its inheritance. The inherited roles
 // already exist, so only the joins are written.
 func (s *Store) CreateUserRole(ctx context.Context, role *model.UserRole) error {
-	return translate(s.db.WithContext(ctx).Omit("Inherits.*", "APIScopes.*").Create(role).Error)
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Omit("Inherits.*", "APIScopes.*").Create(role).Error), cache.Grants)
 }
 
-// SaveUserRole writes a role back, replacing what it inherits and the API
-// scopes it grants with the ones it carries. It is one transaction, so a role
-// is never left with half of an edit.
+// SaveUserRole writes a role and replaces its inheritance and scopes in one
+// transaction.
 func (s *Store) SaveUserRole(ctx context.Context, role *model.UserRole) error {
-	return translate(s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Omit(clause.Associations).Save(role).Error; err != nil {
 			return err
 		}
@@ -196,15 +197,13 @@ func (s *Store) SaveUserRole(ctx context.Context, role *model.UserRole) error {
 		}
 
 		return tx.Model(role).Association("APIScopes").Replace(role.APIScopes)
-	}))
+	})), cache.Grants)
 }
 
-// DeleteUserRole removes a role for good, along with every inheritance to or
-// from it, every user's hold on it, and the API scopes it grants. The joins
-// are removed by hand rather than left to the foreign keys, so this does not
-// depend on how those constraints were created.
+// DeleteUserRole removes a role with its inheritance, memberships and scope
+// grants, deleting joins explicitly rather than relying on FK constraints.
 func (s *Store) DeleteUserRole(ctx context.Context, role *model.UserRole) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		statements := []string{
 			"DELETE FROM user_role_inherits WHERE role_id = @id OR inherited_role_id = @id",
 			"DELETE FROM user_role_members WHERE user_role_id = @id",
@@ -218,7 +217,7 @@ func (s *Store) DeleteUserRole(ctx context.Context, role *model.UserRole) error 
 		}
 
 		return tx.Unscoped().Delete(role).Error
-	})
+	}), cache.Grants)
 }
 
 // byID loads the rows with these ids into `into`, sorted by name, and says

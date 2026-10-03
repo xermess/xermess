@@ -8,11 +8,10 @@
 
 	const shell = useShell();
 
-	/** Below this there is no room for a column beside the page, so the
-	    sidebar becomes a panel over it — the same rows, slid in from the edge
-	    and dismissed when one is chosen. The width is the styles' too; it is
-	    here as well because the choice is which component to draw, not only
-	    how to draw it. */
+	/**
+	 * Below this width the sidebar becomes a slide-in panel; it is a script decision because it
+	 * changes which component is drawn.
+	 */
 	const narrow = new MediaQuery('max-width: 55rem');
 
 	/** Folded to icons: only the column does that. A panel has the width for
@@ -135,14 +134,10 @@
 		padding-inline: 8px;
 	}
 
-	/* ---- As a panel, on a screen too narrow for a column ------------------
-	   The same rows, slid in from the edge over a dimmed page, rather than a
-	   row of icons above it: a list that reads top to bottom is a list
-	   somebody can use with a thumb.
-
-	   It is a media query and not only the class the script adds, so a narrow
-	   screen is served a panel that is already off the edge. Waiting for the
-	   script would show the column first and take it away. */
+	/*
+	 * On narrow screens the sidebar is a slide-in panel over a dimmed page. It is a media query,
+	 * not only a class, so the server-rendered page is already right.
+	 */
 	@media (max-width: 55rem) {
 		aside {
 			width: min(17rem, 82vw);

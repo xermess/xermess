@@ -105,12 +105,7 @@
 		}))
 	]);
 
-	/**
-	 * Saves whatever changed: the settings, then each app's text. They are
-	 * separate requests because they are separate things — renaming a
-	 * language is not rewriting it — but they are one button, because
-	 * somebody who has changed both means to keep both.
-	 */
+	/** Saves the settings, then each app's text, as separate requests behind one button. */
 	const save = createMutation(() => ({
 		mutationFn: async () => {
 			const code = language!.code;

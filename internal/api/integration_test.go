@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"loginer/i18n"
 	"loginer/internal/brand"
@@ -59,6 +60,8 @@ type liveServer struct {
 	// cache is the Redis the server reads through, or nil when the tests
 	// have none.
 	cache *cache.Redis
+	db    *gorm.DB
+	cfg   config.Config
 }
 
 // testAccountURL is where the provider sends browsers to sign in. Nothing is
@@ -181,10 +184,29 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 		t.Fatalf("migrate %s: %v", name, err)
 	}
 
+	return startNode(t, db, cfg, cachetest.Open(t), &mailbox{}, "", change, true)
+}
+
+// replica starts a second server on the same database and Redis, under the
+// same issuer: what a load balancer in front of two instances looks like.
+func (s *liveServer) replica() *liveServer {
+	s.t.Helper()
+	return startNode(s.t, s.db, s.cfg.DB, s.cache, s.mail, s.cfg.Issuer, func(cfg *config.Config) {
+		*cfg = s.cfg
+	}, false)
+}
+
+// startNode serves the public and admin APIs on their own listeners. The
+// issuer is the public listener's address unless one is given. The first node
+// seeds the database the way main does on a fresh installation.
+func startNode(t *testing.T, db *gorm.DB, dbCfg config.DB, shared *cache.Redis, mailer *mailbox, issuer string, change func(*config.Config), first bool) *liveServer {
+	t.Helper()
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
 	// The issuer has to be the address the server answers on, which is only
 	// known once it has a listener: so the listeners come first, and the
-	// routers are built to fit them. Like the real process, it is two
-	// servers: the public one, and the admin one.
+	// routers are built to fit them.
 	var publicRouter, adminRouter http.Handler
 	publicServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		publicRouter.ServeHTTP(w, r)
@@ -194,11 +216,13 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	}))
 	root := "http://" + publicServer.Listener.Addr().String()
 	adminRoot := "http://" + adminServer.Listener.Addr().String()
+	if issuer == "" {
+		issuer = root
+	}
 
-	mailer := &mailbox{}
 	serverCfg := config.Config{
-		DB:         cfg,
-		Issuer:     root,
+		DB:         dbCfg,
+		Issuer:     issuer,
 		AccountURL: testAccountURL,
 		AdminURL:   "http://admin.test",
 		SecretKey:  "integration-test-secret-key-0123456789",
@@ -208,32 +232,15 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	// With LOGINER_TEST_REDIS the whole server runs with its cache, under a
 	// prefix of its own, so every test here also proves that a write is seen
 	// by the next read through the cache.
-	shared := cachetest.Open(t)
 	st := store.New(db).WithCache(shared)
-
-	// What main does on a fresh installation: write the settings for
-	// administrators' sign-ins from the configuration, so these servers
-	// behave the way a started one does.
-	if err := st.EnsureAdminSecurity(context.Background(), serverCfg.AdminMFARequired); err != nil {
-		t.Fatal(err)
-	}
-
-	shipped, err := i18n.Shipped()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := st.EnsureLanguages(context.Background(), shipped); err != nil {
-		t.Fatal(err)
-	}
-	if err := st.EnsureSystemAPIs(context.Background()); err != nil {
-		t.Fatal(err)
+	if first {
+		seed(t, st, serverCfg)
 	}
 
 	provider, err := oidc.New(context.Background(), serverCfg, st, mailer, log)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	publicEngine, err := NewPublic(serverCfg, log, provider, shared)
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +256,31 @@ func newLiveServerWith(t *testing.T, change func(*config.Config)) *liveServer {
 	t.Cleanup(publicServer.Close)
 	t.Cleanup(adminServer.Close)
 
-	return &liveServer{t: t, url: adminRoot + "/api/v1/admin", root: root, adminRoot: adminRoot, mail: mailer, store: st, cache: shared}
+	return &liveServer{
+		t: t, url: adminRoot + "/api/v1/admin", root: root, adminRoot: adminRoot,
+		mail: mailer, store: st, cache: shared, db: db, cfg: serverCfg,
+	}
+}
+
+// seed writes what main writes before serving: the administrators' sign-in
+// settings, the shipped languages and the server's own APIs.
+func seed(t *testing.T, st *store.Store, cfg config.Config) {
+	t.Helper()
+
+	ctx := context.Background()
+	if err := st.EnsureAdminSecurity(ctx, cfg.AdminMFARequired); err != nil {
+		t.Fatal(err)
+	}
+	shipped, err := i18n.Shipped()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.EnsureLanguages(ctx, shipped); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.EnsureSystemAPIs(ctx); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // client is one browser: it keeps its own session cookie.

@@ -3,9 +3,7 @@ package fields
 // targetType is what these rows are called in the activity log.
 const targetType = "user_field"
 
-// rulesRequest is what an update sends: what a field expects of its values.
-// Its name and its type are not here, because neither may change once records
-// hold values under them.
+// rulesRequest is a field's rules; name and type cannot change.
 type rulesRequest struct {
 	Label      string   `json:"label" validate:"max=100"`
 	IsRequired bool     `json:"is_required"`

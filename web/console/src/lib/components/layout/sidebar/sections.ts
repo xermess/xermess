@@ -51,14 +51,10 @@ export type SidebarGroup = {
 	items: SidebarItem[];
 };
 
-/** The sidebar in order: what is happening first, then each subject the
-    panel manages, then the installation's own settings. Every group is the
-    same kind of thing — a heading and its pages — so the column reads as one
-    list, top to bottom.
-
-    A group is a subject, not a bucket — which is why One-time codes sits
-    under Authentication, where it is read, rather than under Settings, where
-    it merely lives. */
+/**
+ * The sidebar in order: activity, then each subject the panel manages, then settings. Pages are
+ * grouped by subject rather than by kind.
+ */
 const groups: SidebarGroup[] = [
 	{
 		id: 'overview',
@@ -195,14 +191,11 @@ const groups: SidebarGroup[] = [
 	}
 ];
 
-/** Whether a page is the one being read. `id` is the route id of the page being
-    read — `/admin/(panel)/dashboard/users` — and the route is one of the same
-    shape, so the two are compared as they are rather than through `resolve`.
-    That answers a path, and SvelteKit has answered those relatively since 2.0,
-    so a resolved path never equals the pathname and no row is ever marked.
-    Activity is the dashboard's own page, so it only matches exactly; the
-    others also match anything below them. The sidebar and the header ask the
-    same question the same way. */
+/**
+ * Whether `route` is the page being read, compared by route id (resolved paths are relative
+ * since SvelteKit 2 and never match the pathname). Activity matches only exactly; others also
+ * match pages below them.
+ */
 export function isCurrentSection(route: Section, id: string | null | undefined): boolean {
 	return route === '/admin/(panel)/dashboard'
 		? id === route

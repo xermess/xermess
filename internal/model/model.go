@@ -9,11 +9,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// Base carries the columns every table has. Embed it in each model.
-//
-// DeletedAt makes GORM's queries skip soft-deleted rows, but nothing here
-// soft-deletes — every delete is a hard one — so it is always null, and has
-// no index: none could ever narrow a query.
+// Base carries the columns every table has. Nothing soft-deletes, so DeletedAt
+// is always null and unindexed.
 type Base struct {
 	ID        uuid.UUID      `gorm:"type:uuid;primarykey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -43,9 +40,8 @@ func newID() (uuid.UUID, error) {
 	return uuid.NewV7()
 }
 
-// All returns every model, in the order they should be migrated: a model must
-// come after anything it references. Add new models here, or they will not get
-// a table.
+// All returns every model in migration order (referenced tables first). New
+// models must be added here.
 func All() []any {
 	return []any{
 		&Organization{},

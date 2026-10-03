@@ -44,12 +44,10 @@
 	let sheet = $state<HTMLElement | null>(null);
 </script>
 
-<!-- The sheet is built when it opens and taken down once it has finished
-     leaving: a dialog that opens is one that starts fresh — nothing scrolled,
-     no tab still on the one it was left on, no half-finished form from last
-     time. That is what `lazyMount` and `unmountOnExit` say together, and Ark
-     only honours the second if it can see a leaving animation to wait for
-     (the note in styles/ark.css). The sheet is a form when it saves one. -->
+<!--
+	lazyMount with unmountOnExit rebuilds the sheet on every opening, so it always starts fresh.
+	Ark only honours unmountOnExit with a leaving animation to wait for (see styles/ark.css).
+-->
 <Dialog.Root bind:open lazyMount unmountOnExit initialFocusEl={() => sheet}>
 	<Portal>
 		<Dialog.Backdrop />

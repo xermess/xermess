@@ -1,6 +1,5 @@
-// Package auth signs administrators in and out — with a password and, when
-// they have one or it is required, a second factor — and keeps the record of
-// what they did.
+// Package auth signs administrators in and out, with a password and an optional
+// or required second factor.
 package auth
 
 import (
@@ -26,18 +25,16 @@ import (
 // sign in again.
 const SessionLifetime = 12 * time.Hour
 
-// MaxFailedLogins wrong passwords in a row lock an account for LockoutDuration.
-// The lock is short on purpose: long enough to make guessing hopeless, not so
-// long that someone else's guessing keeps an administrator out for good.
+// MaxFailedLogins wrong passwords in a row lock an account for LockoutDuration:
+// long enough to stop guessing, short enough that an attacker cannot keep an
+// administrator out.
 const (
 	MaxFailedLogins = 5
 	LockoutDuration = 15 * time.Minute
 )
 
-// dummyHash is compared against when a username does not exist, so that an
-// unknown username takes as long to refuse as a wrong password. It has to be
-// a real hash at the real cost: a malformed one is refused before any hashing
-// is done, which would answer unknown usernames measurably faster.
+// dummyHash is compared for unknown usernames so they take as long as a wrong
+// password. It must be a real hash at full cost.
 var dummyHash = sync.OnceValue(func() []byte {
 	hash, err := bcrypt.GenerateFromPassword([]byte("not a password anyone has"), bcrypt.DefaultCost)
 	if err != nil {
@@ -47,9 +44,8 @@ var dummyHash = sync.OnceValue(func() []byte {
 	return hash
 })
 
-// ErrInvalidCredentials is returned for a username that does not exist, a
-// wrong password, and an account that may not sign in. They are one error on
-// purpose: telling them apart tells an attacker which usernames are real.
+// ErrInvalidCredentials covers an unknown user, a wrong password and a disabled
+// account alike, so usernames cannot be probed.
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
 // ErrNoSession is returned when a request carries no usable session.
@@ -66,23 +62,18 @@ const (
 	// StateMFA is a session whose password was right, waiting for a code
 	// from the administrator's authenticator. It can do nothing but give one.
 	StateMFA State = "mfa"
-	// StateEnroll is a session whose password was right, for an
-	// administrator who has to set up two-factor sign-in before anything
-	// else. It can do nothing but that.
+	// StateEnroll is a password-verified session that must set up a second
+	// factor before anything else.
 	StateEnroll State = "enroll"
 )
 
-// How long a session may wait half signed in. Long enough to find a phone, or
-// to set an authenticator up; not so long that a password alone keeps a door
-// ajar.
+// How long a session may wait half signed in.
 const (
 	challengeLifetime = 10 * time.Minute
 	enrolmentLifetime = 30 * time.Minute
 )
 
-// Service signs administrators in and out. Every query it makes goes through
-// the store, so this file is about what signing in means rather than about
-// how the rows are fetched.
+// Service signs administrators in and out.
 type Service struct {
 	store  *store.Store
 	sealer *jose.Sealer
@@ -92,24 +83,15 @@ type Service struct {
 	issuer string
 }
 
-// New returns a Service backed by the given store. `sealer` encrypts TOTP
-// secrets; `issuer` is what authenticator apps list the account under; `log`
-// reports what cannot be returned, such as a failed audit write.
-//
-// Whether a second factor is compulsory is not passed in: it is a setting a
-// super admin changes in the panel, read from the database each time it
-// matters, so turning it on takes effect on the next sign-in rather than on
-// the next restart.
+// New returns a Service. `sealer` encrypts TOTP secrets and `issuer` is what
+// authenticator apps list the account under. Whether MFA is required is read
+// from the database each time, so a change applies on the next sign-in.
 func New(st *store.Store, sealer *jose.Sealer, log *slog.Logger, issuer string) *Service {
 	return &Service{store: st, sealer: sealer, log: log, issuer: issuer}
 }
 
 // MFARequired reports whether every administrator must use a second factor.
-//
-// An installation that has not said starts with no — see
-// model.DefaultAdminSecurity. A database that cannot be *read* is not the
-// same thing: the answer is unknown, and an unknown answer to "must this
-// person prove who they are twice" is yes.
+// When the setting cannot be read the answer is yes.
 func (s *Service) MFARequired(ctx context.Context) bool {
 	security, err := s.store.AdminSecurity(ctx)
 	if err != nil {
@@ -127,13 +109,10 @@ type Request struct {
 	UserAgent string
 }
 
-// Login checks the credentials and starts a session. The token it returns is
-// the only copy: the database keeps a hash of it, so a leaked database cannot
-// be used to sign in.
-//
-// A right password is not always a finished sign-in. An administrator with a
-// second factor gets a session in StateMFA, and one who must set a factor up
-// gets StateEnroll; either can do nothing else until that step is done.
+// Login checks the credentials and starts a session. The returned token is the
+// only copy; the database keeps its hash. An administrator who still owes a
+// second factor gets a session in StateMFA or StateEnroll that can do nothing
+// else.
 func (s *Service) Login(ctx context.Context, username, password string, req Request) (string, *model.Admin, State, error) {
 	admin, err := s.store.AdminByUsername(ctx, username)
 
@@ -148,9 +127,8 @@ func (s *Service) Login(ctx context.Context, username, password string, req Requ
 		return "", nil, StateNone, err
 	}
 
-	// The attempt is taken before the password is compared, so a locked
-	// account is refused however many attempts arrive at once — and takes
-	// the same time to refuse as a wrong password would.
+	// The attempt is reserved before comparing, so parallel guesses cannot pass
+	// a lock, and a locked account takes as long to refuse as a wrong password.
 	now := time.Now()
 	allowed, err := s.store.ReserveAdminLogin(ctx, admin, now, MaxFailedLogins, LockoutDuration)
 	if err != nil {
@@ -175,9 +153,8 @@ func (s *Service) Login(ctx context.Context, username, password string, req Requ
 		return "", nil, StateNone, ErrInvalidCredentials
 	}
 
-	// The right password gives the attempt back now rather than when the
-	// sign-in finishes: a second factor may still be to come, and five right
-	// passwords without the phone to hand should not lock anybody out.
+	// A right password returns the attempt now, so right passwords waiting on a
+	// second factor never lock anyone out.
 	if err := s.store.ClearAdminFailedLogins(ctx, admin); err != nil {
 		return "", nil, StateNone, err
 	}
@@ -248,14 +225,8 @@ func (s *Service) Session(ctx context.Context, token string) (*model.Admin, *mod
 		return nil, nil, StateNone, ErrNoSession
 	}
 
-	// The administrator as the session database keeps them: the roles and
-	// factors, without the password — nothing here checks or writes one.
-	//
-	// Active is all a session needs. The lock after wrong passwords is on
-	// signing in — Login and VerifySignIn check it — not on sessions already
-	// open: anybody who knew an administrator's address could otherwise
-	// sign them out of the panel every fifteen minutes with five wrong
-	// passwords, and every administrator at once with five each.
+	// The lockout applies to signing in, not to open sessions; otherwise five
+	// wrong passwords from anyone would sign an administrator out.
 	admin, err := s.store.AdminPrincipal(ctx, session.AdminID)
 	if err != nil || admin.Status != model.StatusActive {
 		return nil, nil, StateNone, ErrNoSession
@@ -279,9 +250,8 @@ func (s *Service) Session(ctx context.Context, token string) (*model.Admin, *mod
 	}
 }
 
-// Authenticate returns the administrator a fully signed-in session belongs
-// to, and the session. It is what the middleware calls on every request to
-// the panel's API; a session half way through signing in is no session here.
+// Authenticate returns the administrator and session for a fully signed-in
+// token; a half-signed-in session is refused.
 func (s *Service) Authenticate(ctx context.Context, token string) (*model.Admin, *model.AdminSession, error) {
 	admin, session, state, err := s.Session(ctx, token)
 	if err != nil {
@@ -321,9 +291,8 @@ func (s *Service) Logout(ctx context.Context, token string, req Request) error {
 	return nil
 }
 
-// record writes one line to the activity log. A failure to write the log must
-// not fail the request that caused it, so the error is swallowed on purpose;
-// the caller has already done the thing being recorded.
+// record writes to the activity log; a failure is logged but never fails the
+// request.
 func (s *Service) record(ctx context.Context, adminID *uuid.UUID, actor, action string, req Request, note string) {
 	var metadata map[string]any
 	if note != "" {

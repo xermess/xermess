@@ -12,11 +12,10 @@ export type Application = {
 	allow_registration: boolean;
 };
 
-/** The organisation this server signs users in for: who the account belongs
-    to, where to ask for help, and the agreements accepted by making one. An
-    application's own name, logo and links come first where it has them; these
-    are what is shown for one that has none. Any of it may be empty, and what
-    is empty is left out rather than shown blank. */
+/**
+ * The organisation the server signs users in for, shown when an application has no name, logo
+ * or links of its own. Empty values are omitted.
+ */
 export type Organization = {
 	name: string;
 	logo_url: string;
@@ -33,12 +32,10 @@ export type Organization = {
 export type LoginStep =
 	'identifier' | 'password' | 'social' | 'email_code' | 'totp' | 'terms' | 'consent';
 
-/** What these pages may offer, from the login flow the sign-in belongs to:
-    the application's own flow where it names one, and the installation's
-    default otherwise.
-
-    It says what is allowed, never how anything is checked — the server
-    refuses what it refuses whatever a page shows. */
+/**
+ * What these pages may offer, from the application's login flow or the default. The server
+ * enforces it regardless.
+ */
 export type LoginOptions = {
 	steps: LoginStep[];
 	/** False is a closed door: the pages say so rather than asking for

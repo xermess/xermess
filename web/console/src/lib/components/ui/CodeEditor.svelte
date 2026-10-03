@@ -31,11 +31,10 @@
 	}
 </script>
 
-<!-- A field for code: a text area whose own letters are transparent, over a
-     highlighted copy of what it holds. The caret, the selection and every
-     key are the text area's, so it edits like any other field; the colours
-     are the copy's. Both are drawn in the same face, size, line and padding,
-     and neither wraps, so a letter in one is exactly over its twin. -->
+<!--
+	A code field: a transparent textarea over a highlighted copy, sharing font, size and padding
+	with no wrapping, so editing is native and the colours line up.
+-->
 <Field {label} {error} {readOnly} filled>
 	<div class="code-editor" style:--rows={rows}>
 		<div class="mirror" bind:this={mirror} aria-hidden="true">

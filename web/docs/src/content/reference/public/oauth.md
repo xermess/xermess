@@ -176,6 +176,7 @@ Starts a sign-in for an application, and redirects: to the sign-in page, or stra
 | | |
 | --- | --- |
 | Auth | None |
+| Rate limit | Per IP address, ten times looser than the sign-in pages |
 
 ```bash title="cURL"
 curl "$ISSUER/oauth2/authorize?client_id=shop-web&redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback&response_type=code"
@@ -240,6 +241,12 @@ response.raise_for_status()
 
 `400 Bad Request`
 
+#### Errors
+
+| Status | Code | Means |
+| --- | --- | --- |
+| 429 | [`rate_limited`](/reference/errors#rate_limited) | Too many attempts. Try again in {seconds} seconds. |
+
 ## POST /oauth2/authorize {#post-oauth2-authorize}
 
 Starts a sign-in for an application, and redirects: to the sign-in page, or straight back with a code for a user already signed in.
@@ -247,6 +254,7 @@ Starts a sign-in for an application, and redirects: to the sign-in page, or stra
 | | |
 | --- | --- |
 | Auth | None |
+| Rate limit | Per IP address, ten times looser than the sign-in pages |
 
 ```bash title="cURL"
 curl -X POST "$ISSUER/oauth2/authorize" \
@@ -363,6 +371,12 @@ response.raise_for_status()
 `302` — redirects the browser; see the `Location` header.
 
 `400 Bad Request`
+
+#### Errors
+
+| Status | Code | Means |
+| --- | --- | --- |
+| 429 | [`rate_limited`](/reference/errors#rate_limited) | Too many attempts. Try again in {seconds} seconds. |
 
 ## POST /oauth2/token {#post-oauth2-token}
 
@@ -887,11 +901,12 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 ## GET /oauth2/social/:slug/start {#get-oauth2-social-slug-start}
 
-Sends the browser to a provider to sign in there, leaving the sign-in's state with the browser so the callback can tell this browser's answer from one somebody else's sign-in produced.
+Sends the browser to a provider and leaves the state in a cookie, binding the callback to this browser.
 
 | | |
 | --- | --- |
 | Auth | None |
+| Rate limit | Per IP address |
 
 ```bash title="cURL"
 curl "$ISSUER/oauth2/social/$SLUG/start?request=value&next=value"
@@ -943,11 +958,17 @@ response.raise_for_status()
 
 `302` — redirects the browser; see the `Location` header.
 
+#### Errors
+
+| Status | Code | Means |
+| --- | --- | --- |
+| 429 | [`rate_limited`](/reference/errors#rate_limited) | Too many attempts. Try again in {seconds} seconds. |
+
 ## GET /oauth2/social/:slug/callback {#get-oauth2-social-slug-callback}
 
-Is where the provider sends the browser back to.
+Is where the provider sends the browser back.
 
-It answers GET and POST: nearly every provider redirects with the code in the query, and Apple posts it as a form when a name or an address was asked for.
+It answers GET and POST, since Apple posts its answer.
 
 | | |
 | --- | --- |
@@ -1008,9 +1029,9 @@ response.raise_for_status()
 
 ## POST /oauth2/social/:slug/callback {#post-oauth2-social-slug-callback}
 
-Is where the provider sends the browser back to.
+Is where the provider sends the browser back.
 
-It answers GET and POST: nearly every provider redirects with the code in the query, and Apple posts it as a form when a name or an address was asked for.
+It answers GET and POST, since Apple posts its answer.
 
 | | |
 | --- | --- |
@@ -1082,9 +1103,7 @@ response.raise_for_status()
 
 ## GET /oauth2/sso/:slug/start {#get-oauth2-sso-slug-start}
 
-Sends the browser to a connection's identity provider.
-
-The address typed on the sign-in page comes along as `login_hint`, so it is not asked for twice.
+Sends the browser to a connection's identity provider, passing the typed address as `login_hint`.
 
 | | |
 | --- | --- |

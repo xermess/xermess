@@ -15,11 +15,9 @@ import (
 	"loginer/internal/totp"
 )
 
-// Two-factor sign-in for administrators: a TOTP authenticator app, with
-// recovery codes for a lost phone. The secret is stored encrypted with the
-// server's secret key, since the server has to read it back to check a code;
-// the recovery codes are stored as hashes, since it only has to recognise
-// them.
+// Two-factor sign-in for administrators: a TOTP app plus recovery codes. The
+// TOTP secret is sealed because it must be read back; recovery codes are stored
+// hashed.
 
 // recoveryCodeCount is how many recovery codes a factor comes with.
 const recoveryCodeCount = 10
@@ -74,9 +72,8 @@ func (s *Service) Status(ctx context.Context, admin *model.Admin) (MFAStatus, er
 	return status, nil
 }
 
-// VerifySignIn finishes a sign-in waiting for a code: a code from the
-// authenticator, or a recovery code. A wrong one counts toward the lockout,
-// the same as a wrong password.
+// VerifySignIn finishes a sign-in with a TOTP or recovery code. A wrong one
+// counts toward the lockout.
 func (s *Service) VerifySignIn(ctx context.Context, token, code string, req Request) (*model.Admin, error) {
 	admin, session, state, err := s.Session(ctx, token)
 	if err != nil {
@@ -107,10 +104,8 @@ func (s *Service) VerifySignIn(ctx context.Context, token, code string, req Requ
 	return admin, nil
 }
 
-// BeginTOTP starts setting up an authenticator app. Replacing one that is
-// already on takes a code from it — or a recovery code — so a session that
-// has the password but not the phone cannot swap in an authenticator of its
-// own.
+// BeginTOTP starts authenticator setup. Replacing an active one needs a code
+// from it, so the password alone cannot swap it.
 func (s *Service) BeginTOTP(ctx context.Context, admin *model.Admin, currentCode string, req Request) (*Enrolment, error) {
 	if current, err := s.confirmedFactor(ctx, admin); err == nil {
 		if strings.TrimSpace(currentCode) == "" {
@@ -146,10 +141,9 @@ func (s *Service) BeginTOTP(ctx context.Context, admin *model.Admin, currentCode
 	return &Enrolment{Secret: secret, URI: totp.URI(s.issuer, admin.Email, secret)}, nil
 }
 
-// ConfirmTOTP finishes setting up an authenticator with a code from it, and
-// returns the recovery codes: the only time they exist in the clear. An
-// administrator who was only half signed in, waiting to set a factor up, is
-// signed in by it.
+// ConfirmTOTP finishes setup with a code and returns the recovery codes, the
+// only time they are in the clear. A session waiting to enrol becomes fully
+// signed in.
 func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.Admin, token, code string, req Request) ([]string, error) {
 	factors, err := s.store.MFAFactors(ctx, admin.ID, model.MFAMethodTOTP)
 	if err != nil {
@@ -186,9 +180,8 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.Admin, token, co
 	usedAt := time.Unix(step*int64(totp.Period/time.Second), 0)
 	replaced := admin.HasMFA()
 
-	// Whether this request's session is the one waiting to set a factor up
-	// has to be read before the factor is saved: afterwards the same session
-	// looks like one waiting for a code.
+	// Read before saving the factor: afterwards this session would look like
+	// one waiting for a code.
 	_, waiting, state, err := s.Session(ctx, token)
 	enrolling := err == nil && state == StateEnroll && waiting.AdminID == admin.ID
 
@@ -205,12 +198,8 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.Admin, token, co
 	}
 	s.record(ctx, &admin.ID, admin.Username, action, req, "")
 
-	// Every other session ends. A session opened with the password alone,
-	// before a second factor was required or set up, would otherwise be
-	// signed in by this — the factor exists now, so Session no longer sends
-	// it to set one up — without ever having shown the factor; and if it
-	// was not the administrator's, they have just locked themselves out
-	// behind somebody else's authenticator.
+	// Every other session ends: one opened with only the password must not
+	// become fully signed in now that a factor exists.
 	if waiting != nil {
 		if _, err := s.store.RevokeOtherSessionsFor(ctx, admin.ID, waiting.ID, now); err != nil {
 			return nil, err
@@ -232,9 +221,8 @@ func (s *Service) ConfirmTOTP(ctx context.Context, admin *model.Admin, token, co
 	return codes, nil
 }
 
-// DisableTOTP turns two-factor sign-in off, with a code to prove it is the
-// administrator asking. Every other session they have ends. Where a second
-// factor is required it cannot be turned off.
+// DisableTOTP turns the second factor off given a code, ending every other
+// session. It is refused where a factor is required.
 func (s *Service) DisableTOTP(ctx context.Context, admin *model.Admin, token, code string, req Request) error {
 	if s.MFARequired(ctx) {
 		return ErrMFARequired
@@ -290,9 +278,8 @@ func (s *Service) RegenerateRecoveryCodes(ctx context.Context, admin *model.Admi
 	return codes, nil
 }
 
-// ResetMFA removes another administrator's second factor and signs them out
-// everywhere: a super admin's answer to a lost phone and lost recovery codes.
-// Where a factor is required, they set up a new one at their next sign-in.
+// ResetMFA removes another administrator's factor and signs them out
+// everywhere, for a lost phone and lost recovery codes.
 func (s *Service) ResetMFA(ctx context.Context, target *model.Admin) error {
 	return s.store.RemoveMFA(ctx, target.ID, nil, time.Now())
 }
@@ -302,9 +289,8 @@ func (s *Service) ResetMFA(ctx context.Context, target *model.Admin) error {
 func (s *Service) check(ctx context.Context, admin *model.Admin, factor *model.MFA, code string, req Request) (string, error) {
 	now := time.Now()
 
-	// The guess is counted before the code is looked at, so of twenty sent
-	// at once only as many as the lockout leaves are ever compared; a right
-	// code gives the count back (signedIn, through MarkAdminSignedIn).
+	// Reserved before comparing, so parallel guesses are bounded by the
+	// lockout.
 	allowed, err := s.store.ReserveAdminLogin(ctx, admin, now, MaxFailedLogins, LockoutDuration)
 	if err != nil {
 		return "", err
@@ -412,15 +398,8 @@ func (s *Service) newRecoveryCodes() (codes, hashes []string, err error) {
 	return codes, hashes, nil
 }
 
-// newRecoveryCode is one code, every letter as likely as every other.
-//
-// Taking a random byte modulo the alphabet would not be: 256 is not a whole
-// number of alphabets, it is eight of them and eight bytes over, so those
-// eight bytes would fall on the first eight letters and make them a ninth
-// more common than the rest. That is not much — it takes a fraction of a bit
-// off a code worth about fifty — but it is free to do without, and a biased
-// alphabet is the kind of thing that is copied into somewhere it does matter.
-// Bytes past the last whole alphabet are thrown away and another asked for.
+// newRecoveryCode draws each letter uniformly, rejecting bytes past the last
+// whole alphabet rather than taking a biased modulo.
 func newRecoveryCode() (string, error) {
 	// 248: the last byte value that divides into whole alphabets.
 	const whole = 256 - 256%len(recoveryAlphabet)
@@ -460,12 +439,8 @@ func isRecoveryCode(code string) bool {
 	return len(normaliseRecoveryCode(code)) == recoveryCodeLetters
 }
 
-// hashRecoveryCode is how a recovery code is stored: keyed with the server's
-// secret, not a bare hash. A code is ten letters of a 31-letter alphabet —
-// a little under fifty bits — which a bare SHA-256 of a database dump gives
-// up to a GPU in hours, for every administrator in one pass. Keyed, the
-// dump is as useless for it as it is for the TOTP seeds, which are sealed
-// with the same secret.
+// hashRecoveryCode keys the hash with the server's secret: a code has under
+// fifty bits, which a bare SHA-256 from a database dump would give up quickly.
 func (s *Service) hashRecoveryCode(code string) string {
 	return hex.EncodeToString(s.sealer.Tag(recoveryCodePurpose, []byte(normaliseRecoveryCode(code))))
 }
@@ -474,9 +449,8 @@ func (s *Service) hashRecoveryCode(code string) string {
 // of the secret.
 const recoveryCodePurpose = "admin recovery code"
 
-// legacyHashRecoveryCode is how codes were stored before they were keyed. A
-// code that was handed out then is accepted by it once, so administrators
-// keep the codes on their paper; codes made from now on are keyed.
+// legacyHashRecoveryCode accepts codes issued before they were keyed, so
+// existing paper codes still work.
 func legacyHashRecoveryCode(code string) string {
 	sum := sha256.Sum256([]byte(normaliseRecoveryCode(code)))
 	return hex.EncodeToString(sum[:])

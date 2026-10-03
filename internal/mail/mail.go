@@ -1,12 +1,6 @@
-// Package mail sends the emails this server sends: a password reset link, a
-// link that confirms an address, a one-time code.
-//
-// Which server they go through is not read from the configuration at startup
-// but asked for per message (Settings), because the mail settings are the
-// panel's after the first start: a password corrected on the Mail page takes
-// effect on the next email rather than the next restart. With sending turned
-// off, a message is written to the log instead, so a developer can follow a
-// reset link without a mail server.
+// Package mail sends this server's emails. The SMTP settings are read per
+// message, so a change on the Mail page applies to the next email. With sending
+// off, only the subject is logged.
 package mail
 
 import (
@@ -36,9 +30,8 @@ type Sender interface {
 	Send(ctx context.Context, msg Message) error
 }
 
-// Encryption is how the connection to the mail server is protected. The
-// values are model.MailEncryption's, which is where they are described; the
-// package does not import the models for three strings.
+// Encryption is how the SMTP connection is protected; values mirror
+// model.MailEncryption.
 type Encryption string
 
 const (
@@ -75,9 +68,8 @@ func (s Settings) From() *mail.Address {
 	return &mail.Address{Name: s.FromName, Address: s.FromAddress}
 }
 
-// Source gives the settings to send the next message with. It is asked once
-// per message, so a change in the panel is picked up without anything being
-// told about it.
+// Source gives the settings for the next message, asked per message so panel
+// changes apply at once.
 type Source func(ctx context.Context) (Settings, error)
 
 // New returns the sender the settings of the moment ask for.
@@ -100,11 +92,8 @@ func (m *Mailer) Send(ctx context.Context, msg Message) error {
 	}
 
 	if !settings.Enabled || settings.Host == "" {
-		// The subject only. The body of a reset email is a live reset link,
-		// and of a sign-in email a one-time code: written to the log, they
-		// would be a way into any account for whoever reads the logs — and
-		// sending is off on every fresh installation, not only in
-		// development. The address is personal data and stays out too.
+		// Only the subject: the body holds a live reset link or sign-in code,
+		// and the address is personal data.
 		m.log.Info("email not sent: sending is off on the Mail page", "subject", msg.Subject)
 
 		return nil
@@ -113,10 +102,8 @@ func (m *Mailer) Send(ctx context.Context, msg Message) error {
 	return Deliver(ctx, settings, msg)
 }
 
-// Deliver hands one message to one mail server. It is what Send does once it
-// knows where to send, and what the panel's "send a test email" calls with
-// the settings on the form — which may not be the stored ones, since the
-// point of the test is to try them before they are saved.
+// Deliver sends one message with the given settings: Send's last step, and the
+// panel's test send with unsaved settings.
 func Deliver(ctx context.Context, settings Settings, msg Message) error {
 	from := settings.From()
 	if _, err := mail.ParseAddress(from.Address); err != nil {
@@ -143,24 +130,16 @@ func Deliver(ctx context.Context, settings Settings, msg Message) error {
 	}
 }
 
-// dialTimeout is how long connecting to the mail server is given. Without it
-// a host that accepts connections and says nothing holds the send — and, for
-// a verification email, the request that asked for it — until the server's
-// own write timeout.
+// dialTimeout bounds connecting, so a silent host cannot hold the request that
+// is sending.
 const dialTimeout = 15 * time.Second
 
-// sendTimeout bounds the whole exchange after the connection is made. The dial
-// timeout covers only the connect; a relay that accepts the connection and
-// then stalls at the banner, EHLO, AUTH or DATA would otherwise hold the
-// goroutine open with no limit.
+// sendTimeout bounds the whole SMTP exchange, so a relay that stalls after
+// connecting cannot hold a goroutine forever.
 const sendTimeout = 60 * time.Second
 
-// deliver opens the connection the settings ask for and posts the message.
-//
-// smtp.SendMail would do this in a line, but only one of the three ways: it
-// connects in the clear and upgrades if the server offers it. A server on 465
-// expects TLS from the first byte and answers nothing to a plaintext hello,
-// so the connection is made here and handed to smtp.NewClient.
+// deliver connects itself rather than using smtp.SendMail, which cannot speak
+// implicit TLS on port 465.
 func deliver(settings Settings, from, to *mail.Address, body []byte) error {
 	conn, err := dial(settings)
 	if err != nil {
@@ -187,9 +166,8 @@ func deliver(settings Settings, from, to *mail.Address, body []byte) error {
 		}
 	}
 
-	// A server that takes no credentials is given none: a relay on the same
-	// host is the usual reason, and offering it an empty password is not the
-	// same as offering it nothing.
+	// No credentials configured means no AUTH at all, which is not the same as
+	// an empty password.
 	if settings.Username != "" {
 		auth := smtp.PlainAuth("", settings.Username, settings.Password, settings.Host)
 		if err := client.Auth(auth); err != nil {

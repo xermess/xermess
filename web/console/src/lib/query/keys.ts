@@ -3,11 +3,8 @@ import type { CacheKeyParams } from './cache';
 import type { RoleListParams } from './roles';
 
 /**
- * The names the cache knows things by.
- *
- * Keys are built here rather than written out at each call, so invalidating
- * "the users" after a write cannot miss a spelling. A key is a list read
- * left to right: everything under `users.all` goes when a user changes.
+ * Query keys, built in one place so invalidation cannot miss a spelling. Everything under
+ * `users.all` is invalidated when a user changes.
  */
 export const keys = {
 	/** The signed-in administrator's own account. */

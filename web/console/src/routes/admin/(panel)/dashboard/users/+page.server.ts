@@ -5,13 +5,8 @@ import { apiGet, requirePermission } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * The search and the filter live in the URL, so the server can render the
- * result directly, the browser's back button works, and a filtered list can
- * be linked to.
- *
- * The roles the administrator can see are loaded too — the global roles, and
- * the roles of any application their roles reach — with those applications:
- * the table names each role's scope, and the role mapping offers the roles.
+ * Search and filter live in the URL. The roles the administrator can see load too, with their
+ * applications, for the table and the role mapping.
  */
 export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const { admin } = await parent();

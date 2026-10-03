@@ -13,8 +13,6 @@ import (
 	"loginer/internal/model"
 )
 
-// ---- Second factors -------------------------------------------------------
-
 // MFAFactors returns an administrator's factors of one method, confirmed and
 // not, newest first.
 func (s *Store) MFAFactors(ctx context.Context, admin uuid.UUID, method model.MFAMethod) ([]model.MFA, error) {
@@ -47,9 +45,8 @@ func (s *Store) StartMFA(ctx context.Context, factor *model.MFA) error {
 	return err
 }
 
-// ConfirmMFA marks a factor confirmed with its recovery codes, and removes every
-// other factor of the same method: confirming a new authenticator replaces the
-// old one.
+// ConfirmMFA confirms a factor with its recovery codes and removes other
+// factors of the same method.
 func (s *Store) ConfirmMFA(ctx context.Context, factor *model.MFA) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Unscoped().
@@ -68,9 +65,8 @@ func (s *Store) ConfirmMFA(ctx context.Context, factor *model.MFA) error {
 	return err
 }
 
-// ClaimMFAStep records that a factor accepted a code for the step starting at
-// `at`. Only the first of two requests presenting codes for the same step
-// succeeds, so a code cannot be used twice even at the same moment.
+// ClaimMFAStep records the step a code was accepted for; only one of two
+// concurrent claims succeeds.
 func (s *Store) ClaimMFAStep(ctx context.Context, factor uuid.UUID, at time.Time) (bool, error) {
 	result := s.db.WithContext(ctx).Model(&model.MFA{}).
 		Where("id = ? AND (last_used_at IS NULL OR last_used_at < ?)", factor, at).
@@ -79,15 +75,9 @@ func (s *Store) ClaimMFAStep(ctx context.Context, factor uuid.UUID, at time.Time
 	return result.RowsAffected == 1, result.Error
 }
 
-// ConsumeRecoveryCode removes one recovery code from a factor, if it holds it,
-// and says whether it did. It locks the row, so a code works once even when
-// presented twice at once.
-//
-// It leaves LastUsedAt alone. That column is the start of the last TOTP step
-// accepted (model.MFA.UsedStep), not a note of when the factor was last used
-// at all: writing the wall clock into it would make the step just gone look
-// spent, and the code on the administrator's phone would be refused until the
-// next one appeared. What was used, and when, is in the activity log.
+// ConsumeRecoveryCode removes one recovery code under a row lock, so it works
+// only once even when presented twice. It leaves LastUsedAt alone: that column
+// is the last accepted TOTP step, not a timestamp.
 func (s *Store) ConsumeRecoveryCode(ctx context.Context, factor uuid.UUID, hash string) (bool, error) {
 	consumed := false
 
@@ -118,9 +108,8 @@ func (s *Store) SetRecoveryCodes(ctx context.Context, factor *model.MFA) error {
 	return s.db.WithContext(ctx).Model(factor).Select("RecoveryCodes").Updates(&model.MFA{RecoveryCodes: factor.RecoveryCodes}).Error
 }
 
-// RemoveMFA deletes every factor an administrator has and ends their sessions:
-// what turning two-factor sign-in off, or a super admin resetting it, means.
-// With `keep` set, that one session stays signed in.
+// RemoveMFA deletes all of an administrator's factors and ends their sessions,
+// except `keep` if set.
 func (s *Store) RemoveMFA(ctx context.Context, admin uuid.UUID, keep *uuid.UUID, at time.Time) error {
 	var ended []model.AdminSession
 

@@ -21,12 +21,9 @@ const maxPageSize = 500
 // maxURIs caps how many redirect URIs of each kind an application may have.
 const maxURIs = 20
 
-// applicationRequest is the body of the create and update endpoints. The
-// names are RFC 7591's client metadata where it has one.
-//
-// Type is read on create only: it decides whether the app is a public client,
-// which cannot change once copies of it are in use. A lifetime left at zero
-// takes the default.
+// applicationRequest is the body of the create and update endpoints, named
+// after RFC 7591 client metadata. Type is read on create only. A lifetime of
+// zero takes the default.
 type applicationRequest struct {
 	Name        string `json:"name" validate:"required,max=100"`
 	Description string `json:"description" validate:"max=255"`
@@ -57,9 +54,8 @@ type applicationRequest struct {
 	// registration on its sign-in page.
 	AllowRegistration *bool `json:"allow_registration"`
 
-	// LoginFlowID is the flow this application signs people in with. An
-	// empty string puts it back on the default flow; leaving it out leaves
-	// the flow it has.
+	// LoginFlowID: "" returns to the default flow, omitted keeps the current
+	// one.
 	LoginFlowID *string `json:"login_flow_id"`
 }
 
@@ -92,9 +88,8 @@ type authorizeRequest struct {
 	Scopes []uuid.UUID `json:"scopes"`
 }
 
-// previewRequest is a token request to evaluate: who for (nil for the
-// application itself), which API, and the scope parameter as an application
-// would send it.
+// previewRequest is a token request to evaluate: the user (nil for the
+// application itself), the API and the scope parameter.
 type previewRequest struct {
 	UserID   *uuid.UUID `json:"user_id"`
 	Audience string     `json:"audience"`

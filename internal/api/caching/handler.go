@@ -1,11 +1,6 @@
-// Package caching answers the endpoints a super admin looks after Redis with:
-// what each of its two databases holds, a key at a time, and the ways to
-// clear some or all of it.
-//
-// Nothing here is needed for the server to be right. Every value in Redis is
-// a copy the store can read again, so removing one only makes the next
-// request slower; see internal/cache/inspect.go for the two things that are
-// refused whatever the caller.
+// Package caching lets a super admin inspect Redis key by key and clear some or
+// all of it. Every value is a copy the store can reload, so removing one only
+// slows the next request; see internal/cache/inspect.go for what is refused.
 package caching
 
 import (
@@ -180,9 +175,8 @@ func (h *Handler) ClearGroup(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// Flush removes every key this server keeps in one database. Flushing the
-// session database signs nobody out — the sessions are read from the
-// database again — but it does start every rate limit afresh.
+// Flush removes every key this server keeps in one database. Flushing sessions
+// signs nobody out, but resets every rate limit.
 func (h *Handler) Flush(c *gin.Context) {
 	database, ok := h.database(c)
 	if !ok {

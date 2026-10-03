@@ -1,10 +1,6 @@
-// Package roles answers the endpoints for the roles users hold: global roles,
-// which belong to no application, and application roles, which belong to
-// one. What a role lets someone do is the applications' business; these
-// endpoints only say which roles exist, what they include, and who holds them.
-//
-// Every request is allowed or not by the role's scope: what the administrator
-// holds for its application, or for the whole panel when the role is global.
+// Package roles manages the roles users hold, global or per application. What a
+// role allows is the applications' business. Every request is checked against
+// the role's scope.
 package roles
 
 import (
@@ -41,13 +37,9 @@ const (
 	applicationScope = "application"
 )
 
-// List returns a page of roles, sorted by name, each with how many users hold
-// it and every role it includes once inheritance is followed.
-//
-// Two query parameters say which roles. scope is "global" for the global
-// roles, "application" for the roles of every application the administrator
-// can see, and empty for both. application narrows to one application's
-// roles, whatever scope says.
+// List returns a page of roles sorted by name, each with its member count and
+// every role it includes. `scope` is "global", "application" or empty for both;
+// `application` narrows to one application.
 func (h *Handler) List(c *gin.Context) {
 	ctx := c.Request.Context()
 	query := listQuery(c)
@@ -153,9 +145,8 @@ func (h *Handler) Create(c *gin.Context) {
 	h.answer(c, http.StatusCreated, role)
 }
 
-// Update replaces a role's name, description, default flag and what it
-// includes. Its scope stays as it is: a role does not move between global and
-// an application, or between applications.
+// Update replaces a role's name, description, default flag and inheritance. Its
+// scope never changes.
 func (h *Handler) Update(c *gin.Context) {
 	role, ok := h.find(c, model.PermUserRolesWrite)
 	if !ok {
@@ -201,13 +192,9 @@ func (h *Handler) Delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// build checks a submitted role and returns the role to write. Passing an
-// existing role fills that one in instead of making a new one, whose scope is
-// then the request's.
-//
-// The included roles are named by id; every one has to exist, be one the
-// administrator can see, and be one the role may include. Including is
-// refused when it would make a role include itself.
+// build checks a submitted role and returns the role to write, filling in
+// `into` when updating. Included roles must exist, be visible to the
+// administrator, be includable, and not create a cycle.
 func (h *Handler) build(c *gin.Context, req *roleRequest, into *model.UserRole) (*model.UserRole, error) {
 	ctx := c.Request.Context()
 
@@ -233,11 +220,9 @@ func (h *Handler) build(c *gin.Context, req *roleRequest, into *model.UserRole) 
 			return nil, respond.Fault{Status: http.StatusBadRequest, Message: "inherits: one of them does not exist"}
 		}
 
-		// Including a role gives it to everyone holding this one, so adding
-		// it takes the right to manage roles where it belongs. Otherwise an
-		// administrator of one application could slip a global role into one
-		// of its roles and hand that out. What the role already included
-		// stays, whoever put it there.
+		// Including a role hands it to everyone holding this one, so adding it
+		// needs the right to manage roles where it belongs. Already included
+		// roles stay.
 		added := !slices.ContainsFunc(role.Inherits, func(held model.UserRole) bool { return held.ID == inherited.ID })
 		if added && !session.AllowedScope(c, model.PermUserRolesWrite, inherited.ApplicationID) {
 			return nil, respond.Fault{
@@ -336,9 +321,8 @@ func (h *Handler) answer(c *gin.Context, status int, role *model.UserRole) {
 	c.JSON(status, gin.H{"role": newRoleResponse(*role, details)})
 }
 
-// find loads the role named in the path and, when `permission` is given,
-// checks the administrator holds it for the role's scope, answering the
-// request itself otherwise. A role the administrator cannot see is not found.
+// find loads the role in the path and, given `permission`, checks it for the
+// role's scope. Invisible roles are not found.
 func (h *Handler) find(c *gin.Context, permission string) (*model.UserRole, bool) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

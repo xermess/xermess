@@ -11,9 +11,8 @@ func init() {
 	validate.Register("rolename", model.RoleNamePattern.MatchString)
 }
 
-// validate checks the role's own columns. Whether the roles it inherits
-// exist, and whether inheriting them would make a loop, needs the database
-// and is checked by the handler.
+// validate checks the role's own columns; inheritance needs the database and is
+// checked by the handler.
 func (r *roleRequest) validate() error {
 	r.clean()
 

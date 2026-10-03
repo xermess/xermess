@@ -5,13 +5,8 @@ import type { Admin, AdminPermissionName } from '$lib/api';
 import { can, canAnywhere } from '$lib/permissions';
 
 /**
- * Calls the API as the administrator making this request.
- *
- * It takes the load's own fetch and nothing else: handleFetch in
- * hooks.server.ts is what points that fetch at the admin API's internal
- * address and sends the reader's cookie with it. Everything the panel renders
- * goes through here, which is what lets the pages be rendered on the server
- * instead of assembled in the browser afterwards.
+ * Calls the API as the administrator making this request, using the load's fetch, which
+ * handleFetch points at the internal admin API with the reader's cookie.
  */
 async function call(path: string, fetch: typeof globalThis.fetch) {
 	try {
@@ -44,11 +39,8 @@ export async function apiGet<T>(path: string, fetch: typeof globalThis.fetch): P
 }
 
 /**
- * Whether the panel still has to be set up — that is, whether the API has no
- * administrator yet.
- *
- * The sign-in page asks before it draws itself: with no account to sign in
- * to, the only useful thing to show is the form that makes one.
+ * Whether the panel still needs its first administrator; the sign-in page shows the setup form
+ * instead.
  */
 export async function setupRequired(fetch: typeof globalThis.fetch): Promise<boolean> {
 	const response = await call('/admin/setup', fetch);
@@ -61,9 +53,8 @@ export async function setupRequired(fetch: typeof globalThis.fetch): Promise<boo
 }
 
 /**
- * Stops a page load for an administrator whose roles do not allow the page,
- * before it asks the API for anything it would only refuse. Pass
- * 'super_admin' for the pages that only a super admin may open.
+ * Stops a page load the administrator's roles do not allow, before calling the API. Pass
+ * 'super_admin' for super-admin pages.
  */
 export function requirePermission(
 	admin: Admin,
@@ -77,9 +68,8 @@ export function requirePermission(
 }
 
 /**
- * Stops a page load unless the administrator holds the permission for the
- * whole panel or for at least one application: the pages whose lists are
- * narrowed to the applications an administrator's roles reach.
+ * Stops a page load unless the administrator holds the permission panel-wide or for at least
+ * one application.
  */
 export function requireAnywhere(admin: Admin, permission: AdminPermissionName): void {
 	if (!canAnywhere(admin, permission)) {

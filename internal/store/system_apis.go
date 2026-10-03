@@ -11,19 +11,10 @@ import (
 	"loginer/internal/model"
 )
 
-// EnsureSystemAPIs brings the APIs this server is itself — the admin API and
-// the account API — in step with the server, and makes the admin-cli
-// application on the first start.
-//
-// It runs on every start, like EnsureLanguages, because the admin API's
-// scopes are the permission catalog, which a release can add to. A scope
-// that is still in the catalog keeps its id, and with it every application's
-// allowance of it; one that left the catalog goes. What an administrator may
-// change about a system API — its name, description and token lifetime — is
-// left as they set it.
-//
-// admin-cli is made once and never touched again: an administrator gives it
-// scopes and a secret, may turn it off, and it is theirs from then on.
+// EnsureSystemAPIs keeps the admin and account APIs in step with the server on
+// every start (the admin API's scopes are the permission catalog) and creates
+// admin-cli on the first. Scopes keep their ids; administrator-editable fields
+// are left alone.
 func (s *Store) EnsureSystemAPIs(ctx context.Context) error {
 	var admin *model.API
 
@@ -37,7 +28,8 @@ func (s *Store) EnsureSystemAPIs(ctx context.Context) error {
 		}
 	}
 
-	return s.ensureAdminCLI(ctx, admin)
+	// A release may have renamed or added a system API's scopes.
+	return s.forgetting(ctx, s.ensureAdminCLI(ctx, admin), cache.Grants)
 }
 
 func (s *Store) ensureSystemAPI(ctx context.Context, want model.API) (*model.API, error) {

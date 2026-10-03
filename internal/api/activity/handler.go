@@ -31,16 +31,12 @@ const (
 	defaultLimit = 50
 	maxLimit     = 200
 
-	// exportLimit caps an export, and exportPage is how many entries it
-	// reads at a time: a file of the whole history is a job for the
-	// database's own tools, not a request.
+	// Exports are capped; full history is a job for database tools.
 	exportLimit = 10000
 	exportPage  = 500
 )
 
-// ranges are the spans the dashboard may be looked at over, in days. A
-// short list rather than any number: each is a chart the page knows how to
-// draw, and a year of daily bars is not one.
+// ranges are the dashboard's allowed spans in days.
 var ranges = map[int]bool{7: true, 14: true, 30: true, 90: true}
 
 // Handler holds what these endpoints need.
@@ -54,12 +50,9 @@ func New(st *store.Store, log *slog.Logger) *Handler {
 	return &Handler{store: st, log: log}
 }
 
-// Overview is the admin panel's front page over a range of days: how much of
-// everything there is, how signing in has gone, what each day looked like,
-// who has been busiest, and the latest entries.
-//
-// The five reads do not depend on each other, so they run at once: the page
-// waits for the slowest of them rather than for all of them in a row.
+// Overview is the panel's front page for a range of days: totals, sign-in
+// outcomes, daily activity, the busiest people and the latest entries. Its five
+// reads run concurrently.
 func (h *Handler) Overview(c *gin.Context) {
 	ctx := c.Request.Context()
 	now := time.Now()
@@ -133,9 +126,8 @@ func (h *Handler) Logs(c *gin.Context) {
 	})
 }
 
-// Export writes the entries the filters match as a CSV file, newest first,
-// up to exportLimit of them. Each row says what the logs page would: the
-// same names hidden, the same detail left out, for the same administrator.
+// Export writes matching entries as CSV, newest first, up to exportLimit,
+// hiding exactly what the logs page hides.
 func (h *Handler) Export(c *gin.Context) {
 	filter, err := parseFilter(c, exportPage)
 	if err != nil {
@@ -192,11 +184,8 @@ func (h *Handler) Export(c *gin.Context) {
 	out.Flush()
 }
 
-// csvSafe guards a row against spreadsheet formula injection: a cell that a
-// spreadsheet would read as a formula — it begins with =, +, -, @, or a
-// control character it strips to reach one — is prefixed with a quote, so
-// Excel or LibreOffice shows the text instead of running it. The values come
-// from a sign-in's User-Agent and email, which anybody can set.
+// csvSafe prefixes cells a spreadsheet would read as a formula with a quote.
+// User-Agent and email are attacker-controlled.
 func csvSafe(row []string) []string {
 	for i, cell := range row {
 		if cell != "" && strings.ContainsRune("=+-@\t\r", rune(cell[0])) {
@@ -207,9 +196,8 @@ func csvSafe(row []string) []string {
 	return row
 }
 
-// describe turns log entries into what the panel shows: each with its target
-// named, where the administrator may see that target, and the detail worth
-// reading.
+// describe turns entries into what the panel shows, naming targets the
+// administrator may see.
 func (h *Handler) describe(c *gin.Context, events []model.AuditLog) ([]eventResponse, error) {
 	ids := map[string][]string{}
 	for _, event := range events {
@@ -252,10 +240,8 @@ func (h *Handler) describe(c *gin.Context, events []model.AuditLog) ([]eventResp
 	return out, nil
 }
 
-// maySeeName reports whether the administrator may be told what a target is
-// called. Reading the log shows that something happened to a record; what
-// the record is called is the business of whoever may read that kind of
-// record.
+// maySeeName reports whether the administrator may see a target's name: that is
+// for whoever may read that kind of record.
 func maySeeName(c *gin.Context, targetType string, name store.TargetName) bool {
 	admin := session.Admin(c)
 	if admin == nil {

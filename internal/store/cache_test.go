@@ -37,6 +37,7 @@ func TestCachedTypesSurviveJSON(t *testing.T) {
 		"Application.ClientSecretHash": "kept beside it in client, and put back",
 		"SSOConnection.ClientSecret":   "never kept: only the sign-in buttons are cached, which read the name",
 		"SSOConnection.SPKey":          "never kept: only the sign-in buttons are cached, which read the name",
+		"UserRole.Application":         "a relation the role graph never loads",
 	}
 
 	cachedTypes := []any{
@@ -55,6 +56,10 @@ func TestCachedTypesSurviveJSON(t *testing.T) {
 		model.MFA{},
 		client{},
 		model.Application{},
+		model.UserRole{},
+		model.APIScope{},
+		model.API{},
+		Audience{},
 	}
 
 	for _, value := range cachedTypes {

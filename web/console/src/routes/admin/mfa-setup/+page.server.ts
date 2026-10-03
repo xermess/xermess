@@ -4,9 +4,8 @@ import { adminApi, mfaApi } from '$lib/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * Setting up an authenticator: the one thing an administrator who has to have
- * one can do before anything else, and what a signed-in one without one comes
- * here for. Anyone else has nothing to set up here.
+ * Authenticator setup, for an administrator who must have one or wants one. Anyone else is
+ * redirected.
  */
 export const load: PageServerLoad = async ({ fetch }) => {
 	const { state } = await adminApi.session(fetch).catch(() => ({ state: 'none' as const }));

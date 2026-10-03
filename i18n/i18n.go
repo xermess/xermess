@@ -1,38 +1,14 @@
-// Package i18n is the translations this server ships with, and the one list
-// of which keys there are.
+// Package i18n holds the shipped translations and the list of keys that exist.
 //
-// A shipped language is a directory of JSON groups: `i18n/id/ru/` is Russian
-// for the sign-in pages. The groups are merged into one catalog per language,
-// so a deployment is one binary and carries them.
+// A language is a directory of JSON groups (`i18n/id/ru/` is Russian for the
+// sign-in pages), nested by namespace and flattened to dotted keys such as
+// "login.title". Only the sign-in pages are translated; `i18n/console/en/`
+// holds just the English sentences for the admin API's problems.
 //
-// The sign-in pages are the only app a language is translated for. The admin
-// panel is written in English, in its own markup, and `i18n/console/en/` is
-// not a translation of it — it is the English sentences the admin API answers
-// with, one per problem the panel can be shown (internal/api/respond).
-// Nothing imports it into the database and nothing offers it for translation;
-// it is here because it is the base language's text, read the same way the
-// sign-in pages' is.
-//
-// A group is nested by namespace — `{"login": {"title": "Sign in"}}` — so a
-// translator reads related text together, and Flatten reads every group into
-// the dotted keys everything else speaks of: "login.title". The `error`
-// namespace is the server's to fill (internal/api/respond): every problem it
-// can answer with has its sentence there, and its English comes from here.
-//
-// What an installation actually serves lives in the database, not here. On
-// the first start every group is imported (store.EnsureLanguages), and from
-// then on the languages are the panel's: an administrator adds one, edits its
-// text, imports a catalog somebody translated, or removes it, and none of that
-// needs a build. The shipped groups keep two jobs after that:
-//
-//   - The base language's groups are the contract. The keys under
-//     `i18n/id/en/` are the keys the apps look up, so coverage is counted
-//     against them, and their text is what a key nobody has translated falls
-//     back to — even when the database copy of English has lost it.
-//   - A release that adds a key adds its translation to the shipped groups,
-//     and the next start copies the new key into the database for every
-//     language that has a directory, without touching what an administrator
-//     has written.
+// What an installation serves lives in the database: the first start imports
+// everything, and afterwards the shipped files only matter as the base
+// language's key list (and last-resort fallback text) and as the source of keys
+// a release adds.
 package i18n
 
 import (
@@ -57,11 +33,8 @@ const (
 	// ID is the sign-in pages and a user's own account, web/id.
 	ID App = "id"
 
-	// Console is the admin panel, web/console — which is written in English
-	// and has no translations. It is an app here only so the problems the
-	// panel is shown (respond.Admin) have somewhere to keep their English,
-	// and so the tests can hold the two to each other. A language never has
-	// text for it.
+	// Console is the admin panel. It is not translated; it is an app here only
+	// so the English of its problems has a home the tests can check.
 	Console App = "console"
 )
 
@@ -84,10 +57,8 @@ func ParseApp(name string) (App, bool) {
 	return "", false
 }
 
-// AppsFor is the apps a language is translated for, which is the sign-in
-// pages and nothing else. It is a function rather than a constant because
-// what a language covers is the kind of thing that grows: a second
-// translatable app would be added here.
+// AppsFor returns the apps a language is translated for: only the sign-in
+// pages.
 func AppsFor(string) []App {
 	return Apps
 }
@@ -97,9 +68,7 @@ func ServesApp(code string, app App) bool {
 	return slices.Contains(AppsFor(code), app)
 }
 
-// Base is the language every other is a translation of: the keys it has are
-// the keys there are, and the text it holds is what a missing translation
-// falls back to.
+// Base is the language every other translates; its keys are the keys there are.
 const Base = "en"
 
 // Messages is one language's text for one app, by key.
@@ -111,9 +80,8 @@ type File struct {
 	// "pt-BR".
 	Code string
 
-	// Name is what the language is called in English, and Native what it is
-	// called in itself, both read from its metadata so a translator names their
-	// own language.
+	// Name and Native are the language's English and native names, from its
+	// metadata.
 	Name   string
 	Native string
 
@@ -140,9 +108,8 @@ func Shipped() ([]File, error) {
 	return out, nil
 }
 
-// Keys are the keys an app looks up, sorted: the base language's, without its
-// metadata. Sorted rather than in group order, which also puts every key of
-// one namespace together — they share a prefix.
+// Keys are an app's keys from the base language, sorted (which groups each
+// namespace).
 func Keys(app App) []string {
 	shipped, err := load()
 	if err != nil {
@@ -152,9 +119,8 @@ func Keys(app App) []string {
 	return shipped.keys[app]
 }
 
-// Coverage is how much of an app a language's messages translate, as a
-// percentage of the keys there are, and how many keys it is short. A key
-// holding only spaces is not a translation.
+// Coverage is the percentage of an app's keys a language translates and how
+// many are missing; blank values do not count.
 func Coverage(app App, messages Messages) (percent, missing int) {
 	keys := Keys(app)
 	if len(keys) == 0 {
@@ -171,17 +137,9 @@ func Coverage(app App, messages Messages) (percent, missing int) {
 	return translated * 100 / len(keys), len(keys) - translated
 }
 
-// Resolve is what an app is sent for one language: every key there is, each
-// taken from the first of `layers` that has it, and from the shipped base
-// language when none does.
-//
-// The layers are the language itself and then the base language as the
-// database holds it, so an administrator's edit to the English text reaches
-// every language still missing that key. The shipped catalog under them is
-// what keeps a page from ever showing a bare key, whatever has been deleted.
-//
-// Keys that are not in the base language are dropped: nothing looks them up,
-// and a catalog from an older release may still carry some.
+// Resolve returns every key for one language, taken from the first of `layers`
+// that has it, else the shipped base language, so a page never shows a bare
+// key. Keys not in the base language are dropped.
 func Resolve(app App, layers ...Messages) Messages {
 	shipped, err := load()
 	if err != nil {
@@ -205,9 +163,8 @@ func Resolve(app App, layers ...Messages) Messages {
 	return out
 }
 
-// Text is the base language's shipped text for one key of an app, and
-// whether there is any. It is what the server says in English when it has to
-// say something itself — the sentence beside an error's code.
+// Text is the shipped base-language text for a key: the server's own English,
+// such as an error's sentence.
 func Text(app App, key string) (string, bool) {
 	shipped, err := load()
 	if err != nil {
@@ -239,9 +196,8 @@ func Fill(text string, params map[string]any) string {
 // placeholder is a `{name}` in a text.
 var placeholder = regexp.MustCompile(`\{(\w+)\}`)
 
-// Known keeps the messages whose keys an app looks up and drops the rest,
-// with how many it dropped. An empty value is dropped too: it is the same as
-// no translation, and storing it would only make the catalog bigger.
+// Known keeps only keys the app looks up, dropping empty values, and returns
+// how many it dropped.
 func Known(app App, messages Messages) (Messages, int) {
 	keys := make(map[string]bool, len(Keys(app)))
 	for _, key := range Keys(app) {
@@ -278,9 +234,8 @@ type catalog struct {
 var load = sync.OnceValues(func() (*catalog, error) {
 	byCode := map[string]*File{}
 
-	// Only the translatable apps make languages. The admin API's English is
-	// read below, straight into the base text, so it never becomes a
-	// language catalog and never reaches the database.
+	// Only translatable apps make languages; the admin API's English goes
+	// straight into the base text.
 	for _, app := range Apps {
 		messages, err := readApp(app)
 		if err != nil {
@@ -294,9 +249,7 @@ var load = sync.OnceValues(func() (*catalog, error) {
 				byCode[code] = language
 			}
 
-			// A language names itself in whichever of its groups has it; the
-			// groups say the same thing, and a language with only one group
-			// still has a name.
+			// A language may name itself in any of its groups.
 			if language.Name == "" {
 				language.Name = file["$name"]
 			}
@@ -421,16 +374,12 @@ func readApp(app App) (map[string]Messages, error) {
 	return byCode, nil
 }
 
-// Flatten reads a translation group into messages by dotted key.
+// Flatten turns a nested translation group into dotted keys:
 //
-// The groups are nested by namespace, so a translator sees related text
-// together:
+//	{"login": {"title": "Sign in"}}  ->  "login.title"
 //
-//	{"login": {"title": "Sign in", "subtitle_app": "to continue to {app}"}}
-//
-// and everything else — the database, the editor, the apps' `t()` — speaks
-// of "login.title". A group may also be flat, or mix the two, as long as no
-// key is said twice; a value that is not text is refused.
+// Flat and mixed groups are accepted as long as no key repeats; non-text values
+// are refused.
 func Flatten(nested map[string]any) (Messages, error) {
 	out := Messages{}
 	if err := flattenInto(out, "", nested); err != nil {

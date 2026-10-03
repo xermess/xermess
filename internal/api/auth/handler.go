@@ -86,9 +86,8 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"admin": newAdminResponse(admin)})
 }
 
-// State says how far the session this browser carries has got, so the sign-in
-// page knows whether to ask for a password, a code, or to set up an
-// authenticator. It needs no session: saying there is none is an answer.
+// State reports how far this browser's session has got (password, code,
+// enrolment). It needs no session.
 func (h *Handler) State(c *gin.Context) {
 	token, _ := c.Cookie(session.Cookie)
 
@@ -140,13 +139,9 @@ func (h *Handler) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "signed out"})
 }
 
-// Me returns the signed-in administrator, and is what the browser calls to
-// find out whether it still has a session.
-//
-// The organisation's name and logo come with it, because every page of the
-// panel draws them in its header. They are what the sign-in pages show any
-// stranger, so no permission is needed to see them here — reading the rest
-// of the organisation's settings still takes organization.read.
+// Me returns the signed-in administrator, and tells the browser whether its
+// session is still alive. The organisation's public name and logo come with it
+// for the panel's header.
 func (h *Handler) Me(c *gin.Context) {
 	organization, err := h.store.Organization(c.Request.Context())
 	if err != nil {
@@ -160,9 +155,8 @@ func (h *Handler) Me(c *gin.Context) {
 	})
 }
 
-// UpdateMe changes the caller's own name and address. It reaches nothing
-// else about the account — not the roles, not the status — so every
-// administrator may use it, whatever their roles allow.
+// UpdateMe changes the caller's own name and address, nothing else, so every
+// administrator may use it.
 func (h *Handler) UpdateMe(c *gin.Context) {
 	var req profileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -245,10 +239,8 @@ func (h *Handler) Sessions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"sessions": newSessionResponses(sessions, session.ID(c))})
 }
 
-// EndSession signs the administrator out of one of their other browsers.
-// The one the request came from is not ended here — that is signing out,
-// which also clears the cookie — and a session that is not theirs is
-// answered as one that does not exist.
+// EndSession signs one of the administrator's other browsers out. Another
+// administrator's session is answered as not found.
 func (h *Handler) EndSession(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

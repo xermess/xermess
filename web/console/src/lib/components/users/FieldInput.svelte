@@ -5,13 +5,11 @@
 
 	type Props = {
 		field: UserField;
-		/** Booleans are held as booleans; everything else as the text in the
-		    input. The form converts on the way in and out, so this component
-		    holds no state of its own.
-		    
-		    It is undefined for the moment before the form has filled itself
-		    in, so there is deliberately no fallback here: binding undefined to
-		    a prop that has one is an error in Svelte. */
+		/**
+		 * Booleans stay booleans, everything else is input text; the form converts. It may be
+		 * undefined before the form fills in, so there is deliberately no default (Svelte errors
+		 * binding undefined to a prop with one).
+		 */
 		value: string | boolean | undefined;
 	};
 

@@ -5,10 +5,8 @@ import { setupRequired } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * Where the reader is in signing in decides what this page shows: someone
- * already signed in goes to the panel, someone who has to set up two-factor
- * sign-in goes to do that, someone waiting for a code is asked for it, and a
- * panel with no administrator yet sends the reader to make the first one.
+ * Routes by sign-in state: signed in goes to the panel, MFA setup or code entry goes there, and
+ * a panel without administrators goes to setup.
  */
 export const load: PageServerLoad = async ({ fetch }) => {
 	const { state } = await adminApi.session(fetch).catch(() => ({ state: 'none' as const }));

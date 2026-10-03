@@ -1,13 +1,6 @@
 // Package oidc is the OAuth 2.0 authorization server and OpenID Connect
-// provider: what happens behind the authorization, token, userinfo, logout,
-// revocation and introspection endpoints, and behind the sign-in pages users
-// reach from an application.
-//
-// It knows nothing of HTTP. The handlers in internal/api/oauth and
-// internal/api/account read requests, call a method here, and write what it
-// returns; the rules live here, in one place, and what a token carries is
-// still decided by model.EvaluateToken alone — the same function the panel's
-// token preview runs.
+// provider. It knows nothing of HTTP: handlers in internal/api call it, and
+// what a token carries is decided by model.EvaluateToken alone.
 package oidc
 
 import (
@@ -25,9 +18,8 @@ import (
 	"loginer/internal/store"
 )
 
-// The paths the provider serves, relative to the issuer. They are here rather
-// than only in the route table because the discovery document and the
-// redirects name them too.
+// Provider paths relative to the issuer, named here because discovery and
+// redirects use them too.
 const (
 	PathDiscovery  = "/.well-known/openid-configuration"
 	PathJWKS       = "/.well-known/jwks.json"
@@ -96,14 +88,12 @@ func New(ctx context.Context, cfg config.Config, st *store.Store, mailer mail.Se
 		issuer:     cfg.Issuer,
 		accountURL: cfg.AccountURL,
 		sealer:     sealer,
-		social:     newFederationClient(socialTimeout),
+		social:     newFederationClient(socialTimeout, onLoopback(cfg.Issuer)),
 		now:        time.Now,
 	}, nil
 }
 
-// MaintainKeys keeps the signing keys rotating until ctx ends: it makes the
-// next key when one is due, retires and deletes old ones, and picks up what
-// other servers changed. main runs it for as long as the server serves.
+// MaintainKeys runs key maintenance until ctx ends.
 func (s *Service) MaintainKeys(ctx context.Context) {
 	ticker := time.NewTicker(keyMaintenanceInterval)
 	defer ticker.Stop()
@@ -159,15 +149,12 @@ type Discovery struct {
 	PromptValuesSupported                      []string `json:"prompt_values_supported"`
 	AuthorizationResponseIssParameterSupported bool     `json:"authorization_response_iss_parameter_supported"`
 
-	// The organisation's agreements, which OpenID Provider Metadata names
-	// op_tos_uri and op_policy_uri: what a client's users accept by signing
-	// in here. Left out when the organisation has published neither.
+	// The organisation's terms and privacy links (op_tos_uri, op_policy_uri),
+	// omitted when unset.
 	OpTosURI    string `json:"op_tos_uri,omitempty"`
 	OpPolicyURI string `json:"op_policy_uri,omitempty"`
 
-	// ServiceDocumentation is where a developer reads how to integrate with
-	// this provider: the project's documentation, whose API reference is
-	// written from this server's code.
+	// ServiceDocumentation links developers to the project's documentation.
 	ServiceDocumentation string `json:"service_documentation"`
 
 	ClaimsParameterSupported     bool `json:"claims_parameter_supported"`
@@ -175,15 +162,9 @@ type Discovery struct {
 	RequestURIParameterSupported bool `json:"request_uri_parameter_supported"`
 }
 
-// Discovery describes the provider. Every list is read from the model, so it
-// cannot claim a grant, scope or method the server does not offer.
-//
-// The organisation's terms and privacy links are read from the database: they
-// are settings an administrator changes in the panel, and the document has to
-// say what they are now rather than what they were when the server started.
-// A database that cannot be reached still yields a document — the rest of it
-// is what a client needs to reach the endpoints at all — with those two left
-// out and the failure logged.
+// Discovery describes the provider from the model, so it cannot claim anything
+// the server does not offer. Terms and privacy links come from the database; if
+// it is unreachable they are left out and the rest is still served.
 func (s *Service) Discovery(ctx context.Context) Discovery {
 	secretMethods := []string{string(model.AuthClientSecretBasic), string(model.AuthClientSecretPost)}
 
@@ -244,16 +225,13 @@ func (s *Service) JWKS(ctx context.Context) (JWKS, error) {
 type Client struct {
 	IP        string
 	UserAgent string
-	// Language is the one the sign-in pages were shown in, for an email the
-	// server writes on the way — a link to verify the address. Empty is the
-	// installation's default.
+	// Language is the sign-in pages' language, for emails sent on the way;
+	// empty is the default.
 	Language string
 }
 
-// LanguageCookie is where the sign-in pages keep the language somebody chose
-// (web/id/src/lib/brand.ts). The pages and the provider are one origin,
-// so every request to the provider carries it — the callback from a social
-// provider included, which has no body to say it in.
+// LanguageCookie holds the language chosen on the sign-in pages; same origin,
+// so every provider request carries it.
 const LanguageCookie = brand.LanguageCookie
 
 // withQuery appends parameters to a URL that may already have a query.
@@ -276,10 +254,9 @@ func withQuery(base string, values url.Values) string {
 	return u.String()
 }
 
-// errorPage is the sign-in app's page for an authorization error that cannot
-// be sent back to the application: an unknown client, or a redirect URI that
-// is not registered, where redirecting would hand the error — and the user —
-// to whoever wrote the link.
+// errorPage is for authorization errors that cannot be redirected (unknown
+// client, unregistered redirect URI), since redirecting would hand the user to
+// whoever wrote the link.
 func (s *Service) errorPage(code, description string) string {
 	return withQuery(s.accountURL+PageError, url.Values{"error": {code}, "error_description": {description}})
 }

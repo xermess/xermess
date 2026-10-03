@@ -6,23 +6,9 @@ import { BASE } from '$lib/i18n';
 export { handleFetch } from '$lib/server/proxy';
 
 /**
- * Two things every response of this app gets.
- *
- * The reader's theme goes into the HTML before it is sent, so a reader who
- * chose dark is served dark rather than shown light and corrected a moment
- * later. A reader who has not chosen gets no attribute, and the
- * prefers-color-scheme rules in tokens.css decide — also before the first
- * paint.
- *
- * The language goes in the same way, so `<html lang>` is right in the first
- * byte — which is what a screen reader reads the page's words with. Which
- * language that is depends on what this installation offers, so the root
- * layout's load decides it and leaves it in `locals`; the page is only
- * transformed once the loads have run.
- *
- * And no other site may frame any page: every one of them takes a password or
- * acts for a signed-in user, and a transparent frame over a fake page is how
- * clickjacking gets either.
+ * Writes the reader's theme and language into <html> before sending, so there is no flash and
+ * screen readers get the right lang (the root layout decides the language in `locals`). Also
+ * forbids framing on every page, since each takes a password or acts for a signed-in user.
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const saved = event.cookies.get(COOKIES.theme);

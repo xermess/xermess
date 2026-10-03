@@ -1,12 +1,7 @@
-// Package oauth answers the OAuth 2.0 and OpenID Connect provider endpoints:
-// discovery and keys, authorization, token, userinfo, logout, revocation and
-// introspection.
-//
-// These are not JSON API endpoints like the rest. They follow their RFCs: the
-// token endpoint takes a form and answers errors as {"error", "error_description"},
-// the authorization and logout endpoints answer with redirects, and userinfo
-// reports a bad token in WWW-Authenticate. What each one decides is in
-// internal/oidc; this package only reads and writes HTTP.
+// Package oauth serves the OAuth 2.0 and OpenID Connect endpoints. They follow
+// their RFCs rather than the JSON API's conventions (form bodies, {"error",
+// "error_description"}, redirects, WWW-Authenticate); the decisions live in
+// internal/oidc.
 package oauth
 
 import (
@@ -81,9 +76,8 @@ func (h *Handler) Authorize(c *gin.Context) {
 	c.Redirect(http.StatusFound, location)
 }
 
-// SocialStart sends the browser to a provider to sign in there, leaving the
-// sign-in's state with the browser so the callback can tell this browser's
-// answer from one somebody else's sign-in produced.
+// SocialStart sends the browser to a provider and leaves the state in a cookie,
+// binding the callback to this browser.
 func (h *Handler) SocialStart(c *gin.Context) {
 	location, state, err := h.provider.StartSocial(
 		c.Request.Context(),
@@ -102,11 +96,8 @@ func (h *Handler) SocialStart(c *gin.Context) {
 	c.Redirect(http.StatusFound, location)
 }
 
-// SocialCallback is where the provider sends the browser back to.
-//
-// It answers GET and POST: nearly every provider redirects with the code in
-// the query, and Apple posts it as a form when a name or an address was asked
-// for.
+// SocialCallback is where the provider sends the browser back. It answers GET
+// and POST, since Apple posts its answer.
 func (h *Handler) SocialCallback(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -142,9 +133,8 @@ func (h *Handler) SocialCallback(c *gin.Context) {
 	c.Redirect(http.StatusFound, h.provider.SocialLanding(ctx, result))
 }
 
-// socialFailed sends the browser to the sign-in app's error page. What the
-// person is told is the provider service's to decide; anything that is not
-// one of its own errors is the server's fault and is logged.
+// socialFailed shows the sign-in app's error page; unexpected errors are logged
+// as the server's fault.
 func (h *Handler) socialFailed(c *gin.Context, err error, note string) {
 	if !oidc.IsSocialFailure(err) {
 		h.log.Error(note, "provider", c.Param("slug"), "error", err)
@@ -154,9 +144,8 @@ func (h *Handler) socialFailed(c *gin.Context, err error, note string) {
 	c.Redirect(http.StatusFound, h.provider.SocialErrorPage(err))
 }
 
-// SSOStart sends the browser to a connection's identity provider. The address
-// typed on the sign-in page comes along as `login_hint`, so it is not asked
-// for twice.
+// SSOStart sends the browser to a connection's identity provider, passing the
+// typed address as `login_hint`.
 func (h *Handler) SSOStart(c *gin.Context) {
 	location, state, err := h.provider.StartSSO(
 		c.Request.Context(),
@@ -290,9 +279,8 @@ func (h *Handler) Logout(c *gin.Context) {
 		return
 	}
 
-	// Only a request that was about this browser's session clears its cookie.
-	// Anyone can put this address in a link, and a link that was refused — or
-	// that named somebody else — must leave the reader signed in.
+	// Clear the cookie only for a logout about this browser's session; anyone
+	// can put this address in a link.
 	if signedOut {
 		session.ClearUser(c, h.secure)
 	}

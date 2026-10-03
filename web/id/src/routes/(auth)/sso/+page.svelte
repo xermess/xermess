@@ -22,10 +22,8 @@
 	const canSubmit = $derived(email.trim().includes('@') && !submitting);
 
 	/**
-	 * Finds the organisation's identity provider from the address's domain and
-	 * sends the browser there, the address passed on so it is not asked for
-	 * again. The provider is the organisation's own, so there is nothing to
-	 * type here but where the person works.
+	 * Finds the organisation's provider from the address's domain and sends the browser there
+	 * with the address.
 	 */
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();

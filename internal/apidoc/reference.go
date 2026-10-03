@@ -1,19 +1,10 @@
-// Package apidoc writes the API reference from the code that serves the API.
+// Package apidoc writes the API reference from the code that serves the API:
+// the route table, each handler's doc comment, request types and the problems
+// defined beside them. TestTheReferenceIsCurrent fails when the committed
+// reference is behind.
 //
-// Nothing about an endpoint is written twice. The route table in
-// internal/api/server.go already says which paths exist, on which server, and
-// behind which guards; each handler's doc comment already says what it does;
-// its request type already says which fields it reads and what it holds them
-// to; the problems it can answer with are already defined next to it. So the
-// reference is read out of those, with the type checker, rather than kept
-// beside them — and TestTheReferenceIsCurrent fails when what is committed is
-// behind the code, the way `bun run check` fails when the panel's tokens are
-// behind its theme.
-//
-// It writes two things: an OpenAPI 3.1 document for each server, which the
-// public server serves at /openapi.json for other applications' tooling, and
-// Markdown pages the docs app (web/docs) renders beside the hand-written
-// guides. `make docs` runs it.
+// It writes an OpenAPI 3.1 document per server and Markdown pages for web/docs.
+// `make docs` runs it.
 package apidoc
 
 // Reference is everything the two servers answer, as read from the code.
@@ -86,17 +77,14 @@ type Operation struct {
 
 // Access is who may call an operation.
 type Access struct {
-	// Session is whose signed-in session the request has to carry: "" for
-	// nobody's, "user", "admin", or "admin-setup" for an administrator who may
-	// still be part way through signing in.
+	// Session is the session the route requires: "", "user", "admin", or
+	// "admin-setup" (may be mid sign-in).
 	Session string
-	// Token is which of this server's APIs an access token may call the
-	// route as, instead of the session: "admin" for an admin-cli token,
-	// "account" for a user's account API token, or "" for none.
+	// Token is the API an access token may call the route as instead: "admin",
+	// "account" or "".
 	Token string
-	// Permissions are the panel permissions the route checks; any one of
-	// them is enough. Anywhere says holding one for a single application
-	// is enough to reach the route, and the handler narrows from there.
+	// Permissions the route checks (any one suffices). Anywhere means holding
+	// one for a single application is enough.
 	Permissions []string
 	Anywhere    bool
 	SuperAdmin  bool

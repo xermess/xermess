@@ -1,8 +1,7 @@
 <!--
-  @component
-  Downloads for tools: each API as a Postman collection — which Bruno imports
-  too — or as an OpenAPI document. All four are written by `make docs` from
-  the server's code, so they list exactly the endpoints the reference does.
+	@component
+	Downloads each API as a Postman collection (Bruno imports it too) or an OpenAPI document, all
+	written by `make docs`.
 -->
 <script lang="ts">
 	import { RiArrowDownSLine, RiBracesLine, RiDownload2Line, RiStackLine } from 'svelte-remixicon';

@@ -1,10 +1,6 @@
-// Package keys answers the endpoints a super admin sees and rotates the keys
-// tokens are signed with.
-//
-// Rotation normally happens on its own (LOGINER_KEY_ROTATION_DAYS): a new key
-// is published a day before it signs, and an old one stays published for two
-// days after. These endpoints are for looking, and for rotating now — at once,
-// and revoking the old keys, when one may have leaked.
+// Package keys lets a super admin see the signing keys and rotate them now,
+// optionally revoking the old ones after a leak. Normal rotation is automatic
+// (LOGINER_KEY_ROTATION_DAYS).
 package keys
 
 import (

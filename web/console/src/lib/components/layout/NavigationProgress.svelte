@@ -18,13 +18,9 @@
 		void bar.offsetWidth;
 	});
 
-	// Each navigation is caught as it begins. Finishing is shared by all
-	// successful navigations because SvelteKit does not run another
-	// beforeNavigate callback while one is already in progress; an aborted
-	// navigation must therefore leave the bar alone when another one has
-	// already replaced it. The navigating watcher below catches a failed
-	// replacement, while afterNavigate also covers a very quick preload.
-	// Leaving the app is the browser's to show, not ours.
+	// SvelteKit runs no second beforeNavigate while one is pending, so finishing is shared, and
+	// an aborted navigation leaves the bar alone if another replaced it. afterNavigate covers
+	// very quick preloads.
 	const finish = () => void progress.finish();
 
 	beforeNavigate((navigation) => {
@@ -48,11 +44,10 @@
 	$effect(() => () => progress.dispose());
 </script>
 
-<!-- The bar across the top of the window while a page is on its way, the
-     way NProgress draws one. It is moved, never resized — a transform, so the
-     browser slides it without laying anything out — and it is only a
-     picture: the page itself says when it has changed. The timing is in
-     lib/state/progress.svelte.ts. -->
+<!--
+	The top loading bar, moved with a transform only. Timing lives in
+	lib/state/progress.svelte.ts.
+-->
 <div
 	bind:this={bar}
 	class="progress"

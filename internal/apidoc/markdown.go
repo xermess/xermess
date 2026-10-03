@@ -14,9 +14,8 @@ import (
 	"loginer/internal/model"
 )
 
-// The pages are Markdown the docs app renders as it renders the guides, with
-// two conventions of its own: a heading may end in {#id} to fix its anchor,
-// and a heading that starts with an HTTP method is drawn as an endpoint.
+// Pages are Markdown in the docs app's dialect: `{#id}` fixes an anchor, and a
+// heading starting with an HTTP method is an endpoint.
 
 // page is a Markdown file under the docs app's content/reference.
 type page struct {
@@ -150,9 +149,8 @@ func (b *built) sectionPage(server Server, section Section, order int) *page {
 	return p
 }
 
-// operationMarkdown writes one endpoint in the order a developer reads it:
-// what it does, how to call it — an example first — what it takes, and what
-// comes back.
+// operationMarkdown writes an endpoint in reading order: purpose, example,
+// parameters, responses.
 func (b *built) operationMarkdown(p *page, server Server, section Section, op Operation) {
 	p.line("## %s %s {#%s}", op.Method, op.Path, anchor(op))
 	p.line("")
@@ -392,9 +390,8 @@ func exampleJSON(s *Schema) string {
 	return string(out)
 }
 
-// maxExampleDepth is how many objects deep an example goes before the
-// objects inside it are shown empty: far enough to show a user's roles, not
-// so far that an application's example repeats the whole schema.
+// maxExampleDepth is how deep an example object nests before inner objects are
+// shown empty.
 const maxExampleDepth = 4
 
 func example(s *Schema, name string, depth int, request bool) any {

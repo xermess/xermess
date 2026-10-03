@@ -1,11 +1,6 @@
-// Package otp answers the endpoints for the one-time codes this server emails
-// people as they sign in: how long a code is, how long it lasts, how many
-// guesses it takes, and how soon another may be asked for.
-//
-// There is one record of it, like the organisation's, so there is no list and
-// nothing to create or delete: the two endpoints read the settings and write
-// them back. Which sign-ins ask for a code is not here — that is the login
-// flow's emailed code step, on the Login flows page.
+// Package otp reads and updates the single record that decides how emailed
+// one-time codes behave. Which sign-ins ask for a code is decided by the login
+// flow.
 package otp
 
 import (
@@ -31,9 +26,7 @@ func New(st *store.Store, recorder audit.Recorder, log *slog.Logger) *Handler {
 	return &Handler{store: st, audit: recorder, log: log}
 }
 
-// Get returns the settings, and which login flows ask for a code — so the
-// page can say whether any of this is being used, and lead to the flow that
-// uses it.
+// Get returns the settings and the login flows that use emailed codes.
 func (h *Handler) Get(c *gin.Context) {
 	ctx := c.Request.Context()
 

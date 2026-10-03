@@ -18,12 +18,10 @@
 		onOpen?: (row: Row) => void;
 		/** What that row's arrow is called, for anyone not looking at it. */
 		label?: (row: Row) => string;
-		/** The ids of the ticked rows. Passing it, together with onSelect,
-		    is what puts a column of checkboxes at the front of the table.
-		
-		    The caller owns the list: the table says what was ticked and shows
-		    what it is given, so there is one copy of the truth rather than two
-		    that can drift apart. */
+		/**
+		 * Ids of the ticked rows; with onSelect it adds a checkbox column. The caller owns the
+		 * list.
+		 */
 		selected?: string[];
 		onSelect?: (ids: string[]) => void;
 	};

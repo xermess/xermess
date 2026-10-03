@@ -6,25 +6,13 @@ import { safeNext } from '$lib/utils/next';
 import type { LayoutServerLoad } from './$types';
 
 /**
- * The language every page below is drawn in, its text, and the ones somebody
- * may switch to.
+ * Resolves the page language, its text and the languages to switch to, on the server so the
+ * first response is already translated. Text comes from the API, so languages edited in the
+ * panel apply on the next page.
  *
- * It is resolved here rather than in each page because it is the same answer
- * for all of them, and on the server because the first response has to arrive
- * already translated — a page that renders in English and corrects itself is
- * a page that flickers.
- *
- * The text comes from the server rather than the build: languages are added
- * and reworded in the admin panel, and the next page anybody opens has it.
- * The picker switches by setting a cookie and invalidating LANGUAGE_DEPENDENCY, which
- * runs this load again and nothing else. `?lang=` does the same for a link
- * followed without JavaScript: it is remembered and then redirected away, so
- * an address left carrying one reader's choice does not carry it to whoever
- * it was shared with.
- *
- * Failing to load any of it is not worth an error page. The pages fall back
- * to the base language this app was built with — the sign-in pages have to
- * work when nothing else does.
+ * Switching sets a cookie and invalidates LANGUAGE_DEPENDENCY; `?lang=` does the same without
+ * JavaScript and then redirects away so shared links do not carry it. Failures fall back to the
+ * built-in base language.
  */
 export const load: LayoutServerLoad = async ({ cookies, depends, fetch, locals, request, url }) => {
 	depends(LANGUAGE_DEPENDENCY);

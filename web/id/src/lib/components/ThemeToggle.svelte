@@ -6,10 +6,8 @@
 	const t = useTranslator();
 
 	/**
-	 * Switches between light and dark, and remembers it in a cookie the server
-	 * reads, so the next page arrives in the right theme. Both icons are
-	 * rendered and CSS picks one from the data-theme attribute, so the server
-	 * draws the right icon and nothing changes on hydration.
+	 * Toggles the theme and stores it in a cookie the server reads. CSS picks the icon from
+	 * data-theme, so hydration changes nothing.
 	 */
 	function toggle() {
 		const root = document.documentElement;

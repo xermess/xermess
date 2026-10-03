@@ -15,13 +15,9 @@ import (
 	"loginer/internal/model"
 )
 
-// ErrAlreadyUsed is returned when a single-use secret — an authorization code,
-// a refresh token, a reset link — is presented after it was used. It is told
-// apart from ErrNotFound because the provider answers a replay by revoking
-// what the first use issued.
+// ErrAlreadyUsed is a single-use secret presented again; it differs from
+// ErrNotFound because a replay revokes what the first use issued.
 var ErrAlreadyUsed = errors.New("already used")
-
-// ---- Signing keys ---------------------------------------------------------
 
 // SigningKeys returns every stored signing key, newest first.
 func (s *Store) SigningKeys(ctx context.Context) ([]model.SigningKey, error) {
@@ -36,11 +32,8 @@ func (s *Store) CreateSigningKey(ctx context.Context, key *model.SigningKey) err
 	return translate(s.db.WithContext(ctx).Create(key).Error)
 }
 
-// ---- Applications and audiences -------------------------------------------
-
-// ApplicationByClientID returns the application a client id belongs to.
-// Every authorization, token and logout request asks, so it is read through
-// the session database.
+// ApplicationByClientID returns the application for a client id, through the
+// session cache.
 func (s *Store) ApplicationByClientID(ctx context.Context, clientID string) (*model.Application, error) {
 	kept, err := cached(ctx, s, cache.Clients, "client_id:"+clientID, func() (client, error) {
 		var app model.Application
@@ -60,48 +53,55 @@ func (s *Store) ApplicationByClientID(ctx context.Context, clientID string) (*mo
 	return &app, nil
 }
 
-// client is how an application is kept in the session database. The model
-// leaves the hash of its secret out of its JSON; the token endpoint checks a
-// client's secret against it, so it is kept here, spelled out. It is a
-// SHA-256 of a random secret, which is why it may leave the database at all.
+// client is how an application is cached, including its secret hash (a SHA-256
+// of a random secret) which the model omits from JSON.
 type client struct {
 	Application model.Application `json:"application"`
 	SecretHash  string            `json:"secret_hash"`
 }
 
-// Audience is what a token request naming an API needs to know about it: the
-// API, whether the application may ask for tokens for it, and the names of the
-// scopes it may ask for.
+// Audience is an API, whether the application may request it, and the scope
+// names it may ask for.
 type Audience struct {
 	API        *model.API
 	Authorized bool
 	Allowed    []string
 }
 
-// AudienceFor loads the API with this identifier and what the application may
-// do with it. An unknown identifier is ErrNotFound.
+// AudienceFor loads one API and the application's grants on it (ErrNotFound for
+// an unknown identifier), through the session cache.
 func (s *Store) AudienceFor(ctx context.Context, applicationID uuid.UUID, identifier string) (Audience, error) {
+	return cached(ctx, s, cache.Grants, "audience:"+applicationID.String()+":"+identifier, func() (Audience, error) {
+		return s.audienceFor(ctx, applicationID, identifier)
+	})
+}
+
+func (s *Store) audienceFor(ctx context.Context, applicationID uuid.UUID, identifier string) (Audience, error) {
 	api, err := s.APIByIdentifier(ctx, identifier)
 	if err != nil {
 		return Audience{}, err
 	}
 
-	access, err := s.ApplicationAPIAccess(ctx, applicationID)
+	var authorized int64
+	err = s.db.WithContext(ctx).Model(&model.ApplicationAPI{}).
+		Where("application_id = ? AND api_id = ?", applicationID, api.ID).Count(&authorized).Error
 	if err != nil {
 		return Audience{}, err
 	}
 
-	out := Audience{API: api, Allowed: []string{}}
-	for _, it := range access {
-		if it.API.ID != api.ID {
-			continue
-		}
+	var allowed []uuid.UUID
+	err = s.db.WithContext(ctx).Model(&model.ApplicationAPIScope{}).
+		Joins("JOIN api_scopes ON api_scopes.id = application_api_scopes.api_scope_id").
+		Where("application_api_scopes.application_id = ? AND api_scopes.api_id = ?", applicationID, api.ID).
+		Pluck("application_api_scopes.api_scope_id", &allowed).Error
+	if err != nil {
+		return Audience{}, err
+	}
 
-		out.Authorized = it.Authorized
-		for _, scope := range api.Scopes {
-			if slices.Contains(it.Allowed, scope.ID) {
-				out.Allowed = append(out.Allowed, scope.Name)
-			}
+	out := Audience{API: api, Authorized: authorized > 0, Allowed: []string{}}
+	for _, scope := range api.Scopes {
+		if slices.Contains(allowed, scope.ID) {
+			out.Allowed = append(out.Allowed, scope.Name)
 		}
 	}
 
@@ -124,11 +124,7 @@ func (s *Store) EffectiveRoles(ctx context.Context, user *model.User) ([]model.U
 	return graph.Effective(held), nil
 }
 
-// ---- Users signing in -----------------------------------------------------
-
-// UserByEmail returns the user with this address, compared without case.
-// Addresses are stored normalized (model.NormalizeEmail), so this is one
-// lookup on the unique index rather than a scan of every user.
+// UserByEmail finds a user by normalised address on the unique index.
 func (s *Store) UserByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
 	err := s.db.WithContext(ctx).Preload("Roles", byName).First(&user, "email = ?", model.NormalizeEmail(email)).Error
@@ -139,12 +135,9 @@ func (s *Store) UserByEmail(ctx context.Context, email string) (*model.User, err
 	return &user, nil
 }
 
-// MarkUserSignedIn records when a user signed in, and forgets the wrong
-// passwords that came before.
-//
-// It writes these columns and nothing else: GORM would otherwise write back
-// the roles the user was loaded with, putting back any that were taken away
-// during the sign-in — which is what single sign-on's role sync does.
+// MarkUserSignedIn records the sign-in and clears failed attempts. It writes
+// only these columns, so roles removed by SSO role sync during the sign-in are
+// not written back.
 func (s *Store) MarkUserSignedIn(ctx context.Context, user *model.User, at time.Time) error {
 	return s.db.WithContext(ctx).Model(user).Omit(clause.Associations).Updates(map[string]any{
 		"last_login_at":      at,
@@ -153,23 +146,16 @@ func (s *Store) MarkUserSignedIn(ctx context.Context, user *model.User, at time.
 	}).Error
 }
 
-// ReserveUserLogin counts one sign-in attempt against a user before the
-// password is checked, and reports whether the check may go ahead: no when
-// the account is already locked.
-//
-// Counting before the check, atomically, is what makes the lock hold under
-// load: counting after lets a burst of parallel attempts all read the same
-// unlocked row and all go through. The `max`th reservation sets the lock in
-// the statement that counts it, and every one after is refused until it
-// lifts; a right password clears the count through MarkUserSignedIn.
+// ReserveUserLogin counts an attempt before the password is checked and reports
+// false when the account is locked. The `max`th reservation sets the lock in
+// the same statement, so parallel attempts cannot slip past it.
 func (s *Store) ReserveUserLogin(ctx context.Context, user *model.User, at time.Time, max int, lockFor time.Duration) (bool, error) {
 	var rows []struct {
 		LockedUntil *time.Time
 	}
 
-	// The WHERE refuses a locked account by matching no row, so nothing is
-	// counted while it is locked; otherwise this attempt is counted, and the
-	// `max`th one locks the account.
+	// The WHERE matches no row while locked, so nothing is counted; otherwise
+	// the attempt is counted and the `max`th locks.
 	err := s.db.WithContext(ctx).Raw(`
 		UPDATE users SET
 			locked_until = CASE WHEN failed_login_count + 1 >= @max THEN @until ELSE locked_until END,
@@ -194,11 +180,9 @@ func (s *Store) ClearUserFailedLogins(ctx context.Context, user *model.User, at 
 	}).Error
 }
 
-// RecordUserFailedLogin counts a wrong password against a user and, at the
-// `max`th in a row, locks the account until `lockFor` from now. It reports
-// whether this attempt locked it. It is the after-the-check counterpart used
-// where the password is already known to be the account's — changing it —
-// rather than guessed; the sign-in path reserves before the check instead.
+// RecordUserFailedLogin counts a wrong password after the check, for paths
+// where the user is already signed in (changing a password). It reports whether
+// this attempt locked the account.
 func (s *Store) RecordUserFailedLogin(ctx context.Context, user *model.User, at time.Time, max int, lockFor time.Duration) (bool, error) {
 	var row struct {
 		LockedUntil *time.Time
@@ -219,8 +203,6 @@ func (s *Store) RecordUserFailedLogin(ctx context.Context, user *model.User, at 
 	return row.LockedUntil != nil && row.LockedUntil.After(at), nil
 }
 
-// ---- Authorization requests and codes -------------------------------------
-
 // CreateAuthorizationRequest stores a sign-in under way.
 func (s *Store) CreateAuthorizationRequest(ctx context.Context, req *model.AuthorizationRequest) error {
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(req).Error)
@@ -238,9 +220,8 @@ func (s *Store) AuthorizationRequestByHandle(ctx context.Context, hash string) (
 	return &req, nil
 }
 
-// CompleteAuthorizationRequest marks a sign-in finished. Only the first call
-// succeeds, so one handle can never be turned into two codes; the others get
-// ErrAlreadyUsed.
+// CompleteAuthorizationRequest marks a sign-in finished; only the first call
+// succeeds, so a handle yields one code.
 func (s *Store) CompleteAuthorizationRequest(ctx context.Context, req *model.AuthorizationRequest, at time.Time) error {
 	result := s.db.WithContext(ctx).Model(&model.AuthorizationRequest{}).
 		Where("id = ? AND completed_at IS NULL", req.ID).
@@ -262,14 +243,10 @@ func (s *Store) CreateAuthorizationCode(ctx context.Context, code *model.Authori
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(code).Error)
 }
 
-// ClaimAuthorizationCode marks an application's own code used and returns it.
-// Of two requests presenting the same code at once, one claims it and the
-// other gets ErrAlreadyUsed — with the code too, so its tokens can be revoked.
-//
-// A code belonging to another application is never written to, and comes back
-// with ErrAlreadyUsed as well; the caller tells the two apart by the code's
-// ApplicationID. Claiming on the hash alone would let any client that had seen
-// a code spend it out of the owner's hands by presenting it once.
+// ClaimAuthorizationCode marks this application's code used and returns it. A
+// concurrent second claim, or a code belonging to another application, gets
+// ErrAlreadyUsed with the code, which is never written to, so a client that saw
+// someone else's code cannot burn it.
 func (s *Store) ClaimAuthorizationCode(ctx context.Context, hash string, application uuid.UUID, at time.Time) (*model.AuthorizationCode, error) {
 	var codes []model.AuthorizationCode
 	err := s.db.WithContext(ctx).Model(&codes).
@@ -291,8 +268,6 @@ func (s *Store) ClaimAuthorizationCode(ctx context.Context, hash string, applica
 	return &used, ErrAlreadyUsed
 }
 
-// ---- Refresh tokens -------------------------------------------------------
-
 // CreateRefreshToken stores a refresh token.
 func (s *Store) CreateRefreshToken(ctx context.Context, token *model.RefreshToken) error {
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(token).Error)
@@ -308,10 +283,8 @@ func (s *Store) RefreshTokenByHash(ctx context.Context, hash string) (*model.Ref
 	return &token, nil
 }
 
-// RotateRefreshToken revokes `old` and stores `next` in its place, in one
-// transaction. If `old` was already revoked — by a rotation that got there
-// first, or because it was stolen and used — nothing is stored and the answer
-// is ErrAlreadyUsed.
+// RotateRefreshToken revokes `old` and stores `next` in one transaction; if
+// `old` was already revoked it returns ErrAlreadyUsed.
 func (s *Store) RotateRefreshToken(ctx context.Context, old, next *model.RefreshToken, at time.Time) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&model.RefreshToken{}).
@@ -350,8 +323,6 @@ func (s *Store) RevokeRefreshTokensForUser(ctx context.Context, user uuid.UUID, 
 		Where("user_id = ? AND revoked_at IS NULL", user).
 		Update("revoked_at", at).Error
 }
-
-// ---- User sessions --------------------------------------------------------
 
 // CreateUserSession starts a user session.
 func (s *Store) CreateUserSession(ctx context.Context, session *model.UserSession) error {
@@ -399,13 +370,9 @@ func (s *Store) RevokeUserSessionsFor(ctx context.Context, user uuid.UUID, at ti
 	return err
 }
 
-// ---- Password resets ------------------------------------------------------
-
-// pendingEmailChangesUsed uses up every link that would move the user's
-// account to another address. It runs wherever the ways into an account are
-// ended — a reset, a change of password, signing out everywhere — because a
-// move that was asked for before is the one way those leave open: whoever
-// asked for it opens the link afterwards, and the account is theirs again.
+// pendingEmailChangesUsed cancels pending address changes wherever access is
+// reset (password reset or change, sign out everywhere); otherwise whoever
+// requested one could take the account back.
 const pendingEmailChangesUsed = "UPDATE email_verifications SET used_at = @at " +
 	"WHERE user_id = @user AND used_at IS NULL AND new_email <> ''"
 
@@ -418,11 +385,9 @@ func (s *Store) CreatePasswordReset(ctx context.Context, reset *model.PasswordRe
 // hour, however many times forgot-password is asked for it.
 const passwordResetsPerHour = 5
 
-// CreatePasswordResetThrottled stores a reset link only if the account has not
-// been sent one in the last minute and not more than passwordResetsPerHour in
-// the last hour, and reports whether it did. It holds a per-account advisory
-// lock so a burst of requests at once cannot each pass the check before any of
-// them has inserted — a plain count-then-insert would let all of them through.
+// CreatePasswordResetThrottled stores a reset link only if the account got none
+// in the last minute and fewer than passwordResetsPerHour in the hour. A
+// per-account advisory lock stops a burst from all passing the check.
 func (s *Store) CreatePasswordResetThrottled(ctx context.Context, reset *model.PasswordReset, now time.Time) (bool, error) {
 	created := false
 
@@ -464,9 +429,9 @@ func (s *Store) PasswordResetByHash(ctx context.Context, hash string) (*model.Pa
 	return &reset, nil
 }
 
-// ResetPassword uses a reset link: it marks the link used, saves the user's
-// new password, and ends every session and refresh token the user has, in one
-// transaction. A link used by someone else first is ErrAlreadyUsed.
+// ResetPassword uses a reset link, saves the password and ends every session
+// and refresh token in one transaction; ErrAlreadyUsed if the link was used
+// first.
 func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, user *model.User, at time.Time) error {
 	var ended []model.UserSession
 
@@ -487,11 +452,8 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 			"failed_login_count":    0,
 			"locked_until":          nil,
 		}
-		// A link that was emailed was opened from the address's own inbox,
-		// which is as much proof the address is theirs as a verification
-		// link would be. The link a temporary password hands out at sign-in
-		// was not emailed to anyone — whoever knew the password holds it —
-		// so it proves nothing about the address.
+		// An emailed link proves the address; the link a temporary password
+		// hands out does not.
 		if !user.IsPasswordTemporary {
 			changes["is_email_verified"] = true
 		}
@@ -508,9 +470,8 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 			"UPDATE refresh_tokens SET revoked_at = @at WHERE user_id = @user AND revoked_at IS NULL",
 			// Any other link sent to the same address stops working too.
 			"UPDATE password_resets SET used_at = @at WHERE user_id = @user AND used_at IS NULL",
-			// And so does a pending move to another address: it was asked for
-			// by whoever held the account before the reset, and a reset is
-			// how an account is taken back.
+			// And any pending change of address, which whoever held the account
+			// may have requested.
 			pendingEmailChangesUsed,
 		}
 		for _, statement := range statements {
@@ -529,8 +490,6 @@ func (s *Store) ResetPassword(ctx context.Context, reset *model.PasswordReset, u
 
 	return nil
 }
-
-// ---- A user's own account -------------------------------------------------
 
 // ActiveUserSessions returns the sessions still signing a user in, newest
 // first.
@@ -587,8 +546,7 @@ func (s *Store) ChangeUserPassword(ctx context.Context, user *model.User, keep u
 }
 
 // Grant is what one application holds for a user: the scopes of its usable
-// refresh tokens, when the user first signed in for it, and when it last got
-// a token.
+// refresh tokens and when it was first and last issued one.
 type Grant struct {
 	Application model.Application
 	Scopes      []string
@@ -664,16 +622,13 @@ func (s *Store) RevokeUserGrant(ctx context.Context, user, application uuid.UUID
 	return result.RowsAffected, result.Error
 }
 
-// ---- Signing key rotation -------------------------------------------------
-
 // keyLock is the advisory lock that keeps two servers from rotating the
 // signing keys at the same moment.
 const keyLock = brand.SigningKeysLock
 
-// AddSigningKeyIfDue stores `key` unless its algorithm already has an
-// unretired key made after `dueBefore` — which another server may have just
-// made. It holds an advisory lock while it looks, so of several servers
-// deciding at once, one makes the key. It reports whether it did.
+// AddSigningKeyIfDue stores `key` unless its algorithm already has an unretired
+// key newer than `dueBefore`. An advisory lock makes one of several servers
+// create it; it reports whether this one did.
 func (s *Store) AddSigningKeyIfDue(ctx context.Context, key *model.SigningKey, dueBefore time.Time) (bool, error) {
 	added := false
 
@@ -719,8 +674,6 @@ func (s *Store) DeleteSigningKeysExcept(ctx context.Context, keep []string) erro
 	return s.db.WithContext(ctx).Where("kid NOT IN ?", keep).Delete(&model.SigningKey{}).Error
 }
 
-// ---- Email verifications ----------------------------------------------------
-
 // CreateEmailVerification stores a verification link that is about to be sent.
 func (s *Store) CreateEmailVerification(ctx context.Context, verification *model.EmailVerification) error {
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Create(verification).Error)
@@ -736,13 +689,10 @@ func (s *Store) EmailVerificationByHash(ctx context.Context, hash string) (*mode
 	return &verification, nil
 }
 
-// VerifyEmail uses a verification link: it marks the link, and every other
-// one sent to the user, used, and the user's address verified, in one
-// transaction. A link that carries a new address moves the account to it in
-// the same transaction, so an address is never half changed.
-//
-// A link already used is ErrAlreadyUsed, and an address another account has
-// taken since the link was sent is ErrDuplicate.
+// VerifyEmail uses a link in one transaction: it marks every pending link used,
+// verifies the address, and applies a pending change of address. It returns
+// ErrAlreadyUsed for a used link and ErrDuplicate if the new address was taken
+// since.
 func (s *Store) VerifyEmail(ctx context.Context, verification *model.EmailVerification, at time.Time) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&model.EmailVerification{}).

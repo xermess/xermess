@@ -24,17 +24,14 @@ func New(st *store.Store, log *slog.Logger) Recorder {
 	return Recorder{store: st, log: log}
 }
 
-// Record notes that the signed-in administrator did something to something.
-//
-// Failing to write the log must not fail the request that caused it: the
-// change has already happened, so the error is logged and no more.
+// Record logs what the signed-in administrator did. A logging failure is
+// logged, never failing the request.
 func (r Recorder) Record(c *gin.Context, action, targetType, targetID string) {
 	r.RecordWith(c, action, targetType, targetID, nil)
 }
 
-// RecordWith is Record with more to keep about what happened: what else it
-// involved, so the record can be found from there too. Never put secrets in
-// it.
+// RecordWith is Record with related metadata, so the entry can be found from
+// there too. Never include secrets.
 func (r Recorder) RecordWith(c *gin.Context, action, targetType, targetID string, metadata map[string]any) {
 	actor := session.Admin(c)
 	if actor == nil {

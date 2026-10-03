@@ -31,10 +31,8 @@ type AuthorizeParams struct {
 	ResponseMode        string
 }
 
-// The most of each parameter an authorization request may carry. OAuth puts
-// no size on any of them; these are generous for what each is for — a state
-// is a nonce or a serialised return address, a scope a list of words — and
-// small beside the megabyte a request body may be.
+// Size limits for authorization request parameters: generous for their purpose,
+// small beside the body limit.
 const (
 	maxState     = 1024
 	maxNonce     = 256
@@ -73,13 +71,9 @@ func (p AuthorizeParams) oversized() string {
 }
 
 // Authorize handles an authorization request and returns where to send the
-// browser: back to the application with a code or an error, to the sign-in
-// page, or — when the request cannot be trusted with a redirect — to the
-// sign-in app's error page.
-//
-// `session` is the signed-in user's session in this browser, or nil. With one,
-// and unless the request asks to sign in again, the user is not asked for
-// their password a second time.
+// browser: back to the application, to the sign-in page, or, when the request
+// cannot be trusted with a redirect, to the error page. With a live `session`
+// the user is not asked for their password again unless the request says so.
 func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Session) (string, error) {
 	app, err := s.store.ApplicationByClientID(ctx, p.ClientID)
 	switch {
@@ -100,12 +94,8 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 		return s.errorPage(ErrInvalidRequest, "redirect_uri is not registered for this application; it has to match exactly"), nil
 	}
 
-	// What is stored has a size. The columns do not — and a megabyte of
-	// state per anonymous request is a way to fill the disk — so the sizes
-	// are these, and what Postgres would refuse (a byte that is not UTF-8,
-	// a NUL) is refused here as a bad request rather than a server error.
-	// The error page rather than a redirect: an oversized state is not
-	// echoed back to anyone.
+	// Stored values have size limits and must be valid UTF-8; an oversized
+	// request goes to the error page rather than being echoed back.
 	if reason := p.oversized(); reason != "" {
 		return s.errorPage(ErrInvalidRequest, reason), nil
 	}
@@ -141,8 +131,8 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 	}
 
 	if p.Audience != "" {
-		if _, err := s.store.AudienceFor(ctx, app.ID, p.Audience); errors.Is(err, store.ErrNotFound) {
-			return back(ErrInvalidRequest, "audience: no API has this identifier")
+		if _, err := s.store.APIByIdentifier(ctx, p.Audience); errors.Is(err, store.ErrNotFound) {
+			return back(ErrInvalidRequest, errUnknownAudience.Description)
 		} else if err != nil {
 			return "", err
 		}
@@ -173,13 +163,8 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 		}
 	}
 
-	// A session also has to satisfy this application's flow. It was made by
-	// whichever flow the person signed in through — the default one, when
-	// they signed in with no application waiting — and that flow may be
-	// looser than this one: the rules a flow puts on signing in are applied
-	// where the session is made (startSession), so a stricter application
-	// would otherwise be entered on a session that never met them. One that
-	// does not meet them is sent to the sign-in page, which runs this flow.
+	// A session made by a looser flow must still meet this application's flow,
+	// or the user is sent to sign in again.
 	if session != nil {
 		flow, err := s.store.EffectiveLoginFlow(ctx, app)
 		if err != nil {
@@ -225,17 +210,9 @@ func (s *Service) Authorize(ctx context.Context, p AuthorizeParams, session *Ses
 	return withQuery(s.accountURL+PageLogin, url.Values{"request": {handle}}), nil
 }
 
-// sessionSatisfies reports whether a session, made by whichever flow signed
-// the person in, would have been made by this flow: signing in is open, the
-// address is verified where the flow insists on it, and the session is no
-// older than the flow lets a session live.
-//
-// A session does not record which flow made it or which steps it passed, so
-// a flow that holds sign-ins for an emailed code is taken not to have been
-// met: the person signs in again, code and all, each time an application on
-// such a flow sends them here. That gives up single sign-on between those
-// applications for the certainty that the code was typed; recording the
-// steps a session passed is how to have both.
+// sessionSatisfies reports whether this flow would have made the session.
+// Sessions do not record the steps they passed, so a flow with the emailed-code
+// step is never satisfied by an existing session.
 func sessionSatisfies(flow *model.LoginFlow, session *Session, now time.Time) bool {
 	switch {
 	case !flow.AllowSignIn:
@@ -258,8 +235,7 @@ type PendingRequest struct {
 	ExpiresAt   time.Time
 }
 
-// Pending returns a sign-in under way, by the handle the sign-in page was
-// given. One that has expired, been used, or never existed is
+// Pending returns a sign-in under way by handle; expired, used or unknown is
 // ErrRequestExpired.
 func (s *Service) Pending(ctx context.Context, handle string) (*PendingRequest, error) {
 	req, err := s.pending(ctx, handle)
@@ -306,12 +282,8 @@ func (s *Service) Continue(ctx context.Context, handle string, session *Session)
 func (s *Service) finish(ctx context.Context, req *model.AuthorizationRequest, user *model.User, session *model.UserSession) (string, error) {
 	app := req.Application
 
-	// The application's redirect URIs and PKCE rule are re-checked here, not
-	// only when the request was made: an administrator may have removed the
-	// redirect URI, or turned PKCE on, in between. A redirect URI that is no
-	// longer registered cannot be redirected to at all, so the sign-in app's
-	// error page says so; PKCE missing is sent back as an error, since that
-	// redirect URI is still good.
+	// Redirect URIs and PKCE are checked again: an administrator may have
+	// changed them since the request was made.
 	if !slices.Contains(app.RedirectURIs, req.RedirectURI) {
 		return s.errorPage(ErrInvalidRequest, "redirect_uri is no longer registered for this application"), nil
 	}
@@ -319,10 +291,13 @@ func (s *Service) finish(ctx context.Context, req *model.AuthorizationRequest, u
 		return s.redirectError(req.RedirectURI, req.State, ErrInvalidRequest, "this application now requires PKCE; start the sign-in again"), nil
 	}
 
-	// The same evaluation the token endpoint runs, now, so a user who may not
-	// sign in to the application — inactive, or without a required role —
-	// is turned away here rather than holding a code that will be refused.
+	// Evaluate now, as the token endpoint will, so a user who cannot get a
+	// token is refused before a code is issued.
 	token, err := s.evaluate(ctx, app, user, strings.Fields(req.Scope), req.Audience)
+	if errors.Is(err, errUnknownAudience) {
+		// Deleted since the sign-in began.
+		return s.redirectError(req.RedirectURI, req.State, ErrAccessDenied, "no API has the identifier "+req.Audience), nil
+	}
 	if err != nil {
 		return "", err
 	}
@@ -374,6 +349,9 @@ func (s *Service) redirectError(redirectURI, state, code, description string) st
 	})
 }
 
+// errUnknownAudience is a token request naming an API that does not exist.
+var errUnknownAudience = oauthError(ErrInvalidRequest, "audience: no API has this identifier")
+
 // evaluate loads what model.EvaluateToken needs and runs it. `user` is nil for
 // a client credentials token.
 func (s *Service) evaluate(ctx context.Context, app *model.Application, user *model.User, scopes []string, audience string) (model.TokenPreview, error) {
@@ -396,7 +374,7 @@ func (s *Service) evaluate(ctx context.Context, app *model.Application, user *mo
 	if audience != "" {
 		access, err := s.store.AudienceFor(ctx, app.ID, audience)
 		if errors.Is(err, store.ErrNotFound) {
-			return model.TokenPreview{Reason: "no API has the identifier " + audience}, nil
+			return model.TokenPreview{}, errUnknownAudience
 		}
 		if err != nil {
 			return model.TokenPreview{}, err

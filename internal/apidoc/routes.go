@@ -47,10 +47,8 @@ func (g guard) with(other guard) guard {
 // methods are the Gin methods that mount a route.
 var methods = map[string]bool{"GET": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true}
 
-// table reads the route table one function of server.go writes: every
-// `group := parent.Group(path, middleware...)` and `group.METHOD(path,
-// middleware..., handler)`, in order. Anything it does not understand in
-// front of a handler stops it, so a new kind of guard cannot go undocumented.
+// table reads the route table in server.go. An unrecognised guard stops it, so
+// a new kind of guard cannot go undocumented.
 type table struct {
 	pkg    *packages.Package
 	groups map[types.Object]guardedPrefix
@@ -212,9 +210,7 @@ func (t *table) parent(expr ast.Expr) (guardedPrefix, bool) {
 	return g, ok
 }
 
-// guard reads one middleware. The names are the route table's own: the
-// handlers' fields for the rate limits and the origin check, and the session
-// package's guards.
+// guard reads one middleware by the route table's own names.
 func (t *table) guard(expr ast.Expr) (guard, error) {
 	info := t.pkg.TypesInfo
 	where := t.pkg.Fset.Position(expr.Pos())

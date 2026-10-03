@@ -10,9 +10,7 @@ import (
 	"loginer/internal/model"
 )
 
-// minPasswordLength is the shortest password an administrator may be given:
-// the same floor the first super admin's password keeps, since an admin
-// account opens the panel.
+// minPasswordLength matches the first super admin's floor.
 const minPasswordLength = model.MinAdminPasswordLength
 
 // validate checks the form. `creating` says whether this makes a new

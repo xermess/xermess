@@ -11,20 +11,10 @@ import (
 	"loginer/internal/brand"
 )
 
-// Organization is who this installation belongs to: what it is called, how
-// users reach it, and the agreements they sign up to.
-//
-// There is one row. An installation is one organisation's — the users, the
-// applications and the administrators all belong to it — so this is a record
-// of settings rather than a list of things: the panel reads it and writes it
-// back, and never makes another. The row is created by the migration, and by
-// the store if it ever finds none.
-//
-// It is the organisation's half of what the server shows the outside world.
-// Its terms and privacy links are published in the discovery document as
-// op_tos_uri and op_policy_uri, and the sign-in pages fall back to them, and
-// to its name, logo and support contact, for an application that gives none
-// of its own. Only a super admin may change any of it.
+// Organization is the single row describing who the installation belongs to.
+// Its terms and privacy links are published in discovery (op_tos_uri,
+// op_policy_uri), and the sign-in pages fall back to its name, logo and
+// contact. Only a super admin may change it.
 type Organization struct {
 	Base
 
@@ -39,20 +29,17 @@ type Organization struct {
 	// LogoURL is an absolute http(s) URL to the organisation's logo.
 	LogoURL string `gorm:"size:512" json:"logo_url"`
 
-	// SupportEmail and SupportPhone are how someone who cannot get in asks
-	// for help. The sign-in pages show them, so an account locked out of
-	// every application still has somewhere to turn.
+	// SupportEmail and SupportPhone are shown on the sign-in pages for people
+	// who cannot get in.
 	SupportEmail string `gorm:"size:255" json:"support_email"`
 	SupportPhone string `gorm:"size:32" json:"support_phone"`
 
-	// TermsURL and PrivacyURL are the agreements a user accepts by making an
-	// account: the organisation's own, which an application's links replace
-	// where it has them.
+	// TermsURL and PrivacyURL are accepted on registration; an application's
+	// own links replace them.
 	TermsURL   string `gorm:"size:512" json:"terms_url"`
 	PrivacyURL string `gorm:"size:512" json:"privacy_url"`
-	// Timezone is the IANA zone the organisation keeps its calendar in,
-	// "Asia/Bishkek". A user's account pages say dates in it, so the page the
-	// server renders and the one the browser redraws name the same day.
+	// Timezone is the IANA zone account pages show dates in, so server and
+	// browser agree on the day.
 	Timezone string `gorm:"size:64;not null;default:UTC" json:"timezone"`
 }
 
@@ -61,12 +48,8 @@ func (Organization) TableName() string {
 	return "organizations"
 }
 
-// DefaultOrganization is the row a fresh installation starts with: named
-// after the server, with nothing filled in that would be a guess, for whoever
-// installed it to correct in the panel.
-//
-// The migration seeds this, and the store falls back to it, so what a new
-// installation holds is written down once.
+// DefaultOrganization is the row a fresh installation starts with, seeded by
+// the migration and used as the store's fallback.
 func DefaultOrganization() Organization {
 	return Organization{Name: brand.Name, Slug: brand.Slug, Timezone: "UTC"}
 }
@@ -75,10 +58,8 @@ func DefaultOrganization() Organization {
 // and dashes, starting and ending with one of the first two.
 var slugPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
-// phonePattern is a number someone can dial: digits, in any of the ways
-// people write them apart, optionally in international form. It is deliberately
-// loose — numbering plans differ by country, and a number refused here is a
-// number the organisation cannot publish.
+// phonePattern is deliberately loose: digits with common separators, optionally
+// international.
 var phonePattern = regexp.MustCompile(`^\+?[0-9][0-9 ()./-]{4,30}$`)
 
 // Validate reports the first thing wrong with an organisation.
@@ -131,9 +112,8 @@ func (o Organization) Validate() error {
 	return nil
 }
 
-// validTimezone holds a zone the IANA database names. "Local" is refused
-// although Go loads it: it is whatever zone the server happens to run in,
-// which is not a setting anybody chose.
+// validTimezone requires an IANA zone; "Local" is refused because it depends on
+// the host.
 func validTimezone(zone string) error {
 	if zone == "" {
 		return fmt.Errorf("timezone is required")
@@ -146,11 +126,9 @@ func validTimezone(zone string) error {
 	return nil
 }
 
-// ValidLink holds a link to an absolute http(s) address: these are put in an
-// img tag and in anchors on pages served by this server and by the
-// applications reading the discovery document, where a relative path would
-// point at whichever of them rendered it and a javascript: URL would be a way
-// in. An empty value is no link at all, which is allowed.
+// ValidLink accepts an empty value or an absolute http(s) URL; these are
+// rendered in pages, where a relative path or javascript: URL would be wrong or
+// dangerous.
 func ValidLink(field, value string) error {
 	if value == "" {
 		return nil

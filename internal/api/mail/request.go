@@ -6,18 +6,13 @@ const (
 	targetType = "mail"
 	targetID   = "settings"
 
-	// The words of the emails are their own subject, named by the language
-	// they were written in: "changed the email content" rather than a second
-	// kind of change to the mail settings.
+	// Email text is its own activity log target, named by language.
 	contentTargetType = "mail_content"
 )
 
-// settingsRequest is what an update sends.
-//
-// Every field is a pointer because this is a PATCH: nil is "not sent", and
-// the stored value stands. That matters most for the password — the panel
-// never has the stored one to send back, so leaving it out is how a form
-// saves without changing it, and an empty string is how it is cleared.
+// settingsRequest is a PATCH: nil leaves a setting alone. The panel never
+// receives the stored password, so omitting it keeps it and an empty string
+// clears it.
 type settingsRequest struct {
 	IsEnabled   *bool   `json:"is_enabled"`
 	Host        *string `json:"host"`
@@ -29,18 +24,16 @@ type settingsRequest struct {
 	FromName    *string `json:"from_name"`
 }
 
-// testRequest is a test message: where to send it, and the settings to send
-// it with. The settings are the form's, so a server can be tried before it is
-// saved; what the form leaves out is the stored value.
+// testRequest is a test send with the form's settings, falling back to stored
+// values.
 type testRequest struct {
 	To string `json:"to"`
 
 	settingsRequest
 }
 
-// contentRequest is one language's words for the emails: the keys of
-// model.MailMessageSpecs and what they say. A key with an empty value clears
-// the override rather than storing a blank, and the shipped text comes back.
+// contentRequest is one language's email text. An empty value clears the
+// override and brings the shipped text back.
 type contentRequest struct {
 	Messages map[string]string `json:"messages"`
 }

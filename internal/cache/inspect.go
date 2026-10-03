@@ -12,16 +12,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// What a super admin can see of Redis and do to it, for the panel's cache
-// page. Everything here stays under this server's prefix: another
-// installation sharing the Redis is neither listed nor touched.
-//
-// Two things are refused whatever the caller. A generation counter is never
-// removed: a group whose counter starts again at zero would read the values of
-// generation zero again, however old. And nothing in the session database is
-// written by hand: a session or an administrator edited there would sign
-// somebody in, or give them roles, that the database never did. Removing
-// anything there is safe — the next request reads the database again.
+// What a super admin can see of Redis and do to it, always under this server's
+// prefix. A generation counter is never removed (generation zero would come
+// back), and nothing in the session database is written by hand, since that
+// would sign somebody in. Removing a key is always safe.
 
 // Kinds of key, by what the name says it is.
 const (
@@ -45,7 +39,7 @@ var (
 // them.
 var Groups = map[string][]string{
 	CacheDatabase:   {Languages, Organization, LoginFlows, SocialButtons, SSOButtons, OTPSettings},
-	SessionDatabase: {Admins, Clients, AdminSecurity},
+	SessionDatabase: {Admins, Clients, AdminSecurity, Grants},
 }
 
 // Key is one key, described.
@@ -98,9 +92,8 @@ type Stats struct {
 	Version string
 }
 
-// Stats sums a database up. It walks every key under the prefix, which on a
-// Redis holding millions of sessions takes a moment: it is for a person
-// looking at a page, not for a request path.
+// Stats walks every key under the prefix. It is for the panel, not a request
+// path.
 func (c *Cache) Stats(ctx context.Context) (Stats, error) {
 	if c == nil {
 		return Stats{}, ErrNoRedis
@@ -171,11 +164,8 @@ type KeyQuery struct {
 	Limit  int
 }
 
-// Keys lists keys under the prefix, a page at a time: it answers the keys and
-// the cursor to pass for the next page, which is 0 after the last.
-//
-// Redis walks a database in no particular order, so a page is whatever the
-// walk reached, and a key written meanwhile may or may not be on it.
+// Keys lists keys under the prefix a page at a time, with the cursor for the
+// next page (0 after the last). Redis walks in no particular order.
 func (c *Cache) Keys(ctx context.Context, q KeyQuery) ([]Key, uint64, error) {
 	if c == nil {
 		return nil, 0, ErrNoRedis
@@ -279,10 +269,8 @@ func (c *Cache) Read(ctx context.Context, name string) (Value, error) {
 	return value, nil
 }
 
-// Write replaces a cached value by hand. `value` has to be JSON, and is what
-// the next reader decodes: one that no longer decodes into what the store
-// expects is a miss, and the database is read instead. A zero `ttl` keeps
-// the time the value had left.
+// Write replaces a cached value by hand. It must be JSON; one the store cannot
+// decode is a miss. A zero `ttl` keeps the remaining time.
 func (c *Cache) Write(ctx context.Context, name string, value json.RawMessage, ttl time.Duration) error {
 	if c == nil {
 		return ErrNoRedis
@@ -338,10 +326,8 @@ func (c *Cache) Clear(ctx context.Context, group string) error {
 	return c.incr(ctx, []string{group})
 }
 
-// Flush removes every key under this server's prefix in this database — the
-// cached values and the generations, or the sessions and the rate limit's
-// buckets — and leaves anything else in the Redis alone. It is SCAN rather
-// than KEYS, so a large Redis is not blocked while it looks.
+// Flush removes every key under this server's prefix in this database, using
+// SCAN so a large Redis is not blocked.
 func (c *Cache) Flush(ctx context.Context) error {
 	if c == nil {
 		return nil
@@ -371,9 +357,8 @@ func (c *Cache) Flush(ctx context.Context) error {
 	return nil
 }
 
-// describe says what a key is from its name. `generations` are the current
-// generations of the groups; a group not among them is taken to be at
-// generation zero.
+// describe says what a key is from its name; groups missing from `generations`
+// are at generation zero.
 func (c *Cache) describe(name string, generations map[string]int64) Key {
 	key := Key{Name: name, Kind: KindOther, TTL: -1}
 
@@ -414,9 +399,8 @@ func (c *Cache) measure(ctx context.Context, keys []Key) error {
 		sizes[i] = pipe.MemoryUsage(ctx, c.prefix+key.Name)
 	}
 
-	// MEMORY USAGE is missing from some servers that speak the protocol, and
-	// answers nil for a key that went away meanwhile: neither is a failure
-	// of the listing, so only the connection's own error is.
+	// MEMORY USAGE may be unsupported or return nil for a vanished key; only a
+	// connection error fails the listing.
 	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) && !isCommandError(err) {
 		return err
 	}

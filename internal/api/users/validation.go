@@ -18,12 +18,8 @@ import (
 // user. Length is all that is asked of it, as for the super admin's.
 const minPasswordLength = 8
 
-// validate checks the built-in fields, which are the record's own columns.
-// What the additional ones have to keep is checked by normalise below,
-// against the definitions in user_fields rather than against a tag.
-//
-// `creating` says whether this makes a new user, which is the one time a
-// password has to be given.
+// validate checks the built-in fields. A password is required only when
+// `creating`.
 func (r *userRequest) validate(creating bool) error {
 	r.clean()
 
@@ -45,12 +41,9 @@ func badRequest(message string) error {
 	return respond.Fault{Status: http.StatusBadRequest, Message: message}
 }
 
-// normalise checks the submitted values against the field definitions and
-// returns what should be stored: the rules a field carries — its type, its
-// bounds, its prefix, whether it has to be unique — are all applied here.
-//
-// `self` is the user being written, so a unique field does not find the
-// record's own value and call it a clash. It is uuid.Nil when creating one.
+// normalise checks submitted values against the field definitions (type,
+// bounds, prefix, uniqueness) and returns what to store. `self` is the user
+// being written, or uuid.Nil on create, so its own value is not a clash.
 func normalise(
 	ctx context.Context,
 	st *store.Store,

@@ -6,12 +6,8 @@ import (
 	"loginer/internal/model"
 )
 
-// PublicOrganization is what the sign-in pages show about the organisation
-// this server signs users in for: who they are dealing with, how to reach
-// somebody, and the agreements they are accepting.
-//
-// It is built by hand, like PublicApplication, because these pages are served
-// to anyone who can reach a sign-in: only what a stranger may see is in it.
+// PublicOrganization is what the sign-in pages show about the organisation. It
+// is built by hand because anyone can read it.
 type PublicOrganization struct {
 	Name         string `json:"name"`
 	LogoURL      string `json:"logo_url"`

@@ -13,32 +13,25 @@ import (
 	"loginer/internal/store"
 )
 
-// This server's own two APIs can be called with an access token it issued,
-// as well as with a browser's session: the admin API by software acting as
-// itself (admin-cli, or any machine-to-machine application an administrator
-// authorizes), and the account API by an application acting for a signed-in
-// user. What a token may do there is decided here, like everything else a
-// token means.
+// This server's admin and account APIs also accept its own access tokens: the
+// admin API from a service (client credentials), the account API from an
+// application acting for a user.
 
-// ErrTokenRefused is an access token that may not call the API it was
-// presented to: not this server's, expired, for another audience, of the
-// wrong kind, or from an application that has since lost access.
+// ErrTokenRefused is a token that may not call this API: foreign, expired,
+// wrong audience or kind, or from an application that lost access.
 var ErrTokenRefused = errors.New("oidc: the access token is not accepted by this API")
 
 // AdminCaller is software calling the admin API.
 type AdminCaller struct {
 	Application *model.Application
-	// Permissions are the admin permissions the call may use: the token's
-	// scopes that the application is still allowed, so taking a scope away
-	// in the panel takes effect on the next call rather than at expiry.
+	// Permissions are the token's scopes the application is still allowed, so
+	// revoking a scope applies on the next call.
 	Permissions []string
 }
 
-// AdminCaller checks an access token presented to the admin API. It has to be
-// for the admin API, and a service's token — from the client credentials
-// grant, whose subject is the application itself. A token issued for a user
-// is refused whatever its scopes: the admin API acts for administrators, and
-// a person signing in to an application is not one.
+// AdminCaller checks a token presented to the admin API. It must be for the
+// admin API and a service's token; a user's token is refused whatever its
+// scopes.
 func (s *Service) AdminCaller(ctx context.Context, token string) (*AdminCaller, error) {
 	claims, app, err := s.caller(ctx, token, brand.AdminAPIIdentifier)
 	if err != nil {
@@ -77,19 +70,16 @@ type AccountCaller struct {
 	Scopes []string
 }
 
-// AccountCaller checks an access token presented to the account API. It has
-// to be for the account API and issued for a user, who still exists and may
-// still sign in.
+// AccountCaller checks a token for the account API: issued for a user who still
+// exists and may sign in.
 func (s *Service) AccountCaller(ctx context.Context, token string) (*AccountCaller, error) {
 	claims, app, err := s.caller(ctx, token, brand.AccountAPIIdentifier)
 	if err != nil {
 		return nil, err
 	}
 
-	// The application still has to be allowed the account API, and may use
-	// only the scopes it is still allowed — rechecked on every call, as the
-	// admin API does, so revoking the access or narrowing the scopes takes
-	// effect at once rather than at the token's expiry.
+	// Access and scopes are rechecked on every call, so revoking them applies
+	// at once.
 	audience, err := s.store.AudienceFor(ctx, app.ID, brand.AccountAPIIdentifier)
 	if err != nil {
 		return nil, err

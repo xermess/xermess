@@ -10,12 +10,9 @@ import (
 	"loginer/internal/model"
 )
 
-// WriteAudit adds one line to the activity log.
-//
-// What a caller sent is made to fit its column first. The log is written
-// after the fact and its error only logged, so a User-Agent of 300 bytes, or
-// one with a byte that is not UTF-8, would otherwise be a way to keep a
-// failed sign-in — or anything done with that header — out of the log.
+// WriteAudit adds a line to the activity log, first fitting outside input to
+// its column so an oversized or invalid User-Agent cannot keep an event out of
+// the log.
 func (s *Store) WriteAudit(ctx context.Context, entry *model.AuditLog) error {
 	entry.UserAgent = model.Truncate(entry.UserAgent, 255)
 	entry.ActorEmail = model.Truncate(entry.ActorEmail, 255)
@@ -30,9 +27,8 @@ func (s *Store) AuditLog(ctx context.Context, limit int) ([]model.AuditLog, erro
 	return events, err
 }
 
-// AuditCursor is where a page of the log ends: the newest entry not yet
-// shown is the one just older than this. Two entries can share a moment,
-// so the id breaks the tie.
+// AuditCursor marks where a page ended; the id breaks ties between entries at
+// the same moment.
 type AuditCursor struct {
 	At time.Time
 	ID uuid.UUID
@@ -51,21 +47,15 @@ type AuditFilter struct {
 	From, To time.Time
 	// Before continues from the end of the previous page.
 	Before *AuditCursor
-	// HideUserActors keeps the searches on who acted away from what users
-	// did at the sign-in pages, for an administrator who may not read users:
-	// that a search for an address matched would say the user exists.
+	// HideUserActors stops actor searches matching users' own actions, for
+	// administrators who may not read users.
 	HideUserActors bool
 	Limit          int
 }
 
-// AuditQuery returns one page of the log, newest first, and the cursor the
-// next page starts from — nil when this page is the last.
-//
-// It pages by the position of the last entry rather than by an offset, so
-// the hundredth page costs what the first does, and an entry written while
-// someone reads does not shift the pages under them. The indexes on
-// (created_at, id), (action, created_at) and (actor_email, created_at) are
-// what keep each filter a range read.
+// AuditQuery returns a page of the log, newest first, and the cursor for the
+// next page (nil at the end). Keyset paging keeps every page as cheap as the
+// first and stable under new writes.
 func (s *Store) AuditQuery(ctx context.Context, filter AuditFilter) ([]model.AuditLog, *AuditCursor, error) {
 	query := s.db.WithContext(ctx).Model(&model.AuditLog{})
 
@@ -151,16 +141,9 @@ type Counts struct {
 	ActiveSessions      int64 `json:"active_sessions"`
 }
 
-// Counts totals the tables the dashboard reports on. NewUsers counts the users
-// created since `since`.
-//
-// The activity log is not counted here: it is the one table that grows
-// without end, and counting all of it on every visit to the front page is a
-// read of the whole table. The chart sums the days it shows instead.
-//
-// It is one query, so the numbers are all read at the same moment. A count
-// that fails takes the whole answer with it: a dashboard of partly wrong
-// numbers is worse than an error.
+// Counts totals what the dashboard reports in one query, so the numbers agree.
+// The activity log is not counted (it grows without end); any failure fails the
+// whole answer.
 func (s *Store) Counts(ctx context.Context, now, since time.Time) (Counts, error) {
 	var counts Counts
 
@@ -225,9 +208,8 @@ type DayCount struct {
 	Failures int64 `json:"failures"`
 }
 
-// DailyActivity counts the log entries of each of the last `days` days, today
-// included, oldest first. A day with nothing logged is there with zeros, so
-// the chart has no gaps.
+// DailyActivity counts entries per day for the last `days` days, oldest first,
+// with zero days included.
 func (s *Store) DailyActivity(ctx context.Context, now time.Time, days int) ([]DayCount, error) {
 	// Empty rather than nil, so an answer with nothing in it is a list and
 	// not null.
@@ -270,10 +252,8 @@ type ActorCount struct {
 	Events int64  `json:"events"`
 }
 
-// TopActors are the administrators who did the most since `since`, busiest
-// first. Signing in and out is left out: it says someone was there, not that
-// they did anything. So is what users did at the sign-in pages, which has no
-// administrator behind it.
+// TopActors are the busiest administrators since `since`, excluding sign-ins
+// and users' own actions.
 func (s *Store) TopActors(ctx context.Context, since time.Time, limit int) ([]ActorCount, error) {
 	// Empty rather than nil: a week with no changes is an empty list in the
 	// JSON, which the panel can count, and not null, which it cannot.
@@ -293,17 +273,14 @@ func (s *Store) TopActors(ctx context.Context, since time.Time, limit int) ([]Ac
 	return out, err
 }
 
-// TargetName is what a log entry's target is called now, and the application
-// it belongs to when it belongs to one — which is what deciding whether an
-// administrator may see the name needs.
+// TargetName is a log target's current name and its application, if any.
 type TargetName struct {
 	Name          string
 	ApplicationID *uuid.UUID
 }
 
-// targetTables says where each kind of target the log records is kept, and
-// which column names it. Only these can be looked up, so nothing from the log
-// ever becomes part of a query's text.
+// targetTables whitelists where each target kind is stored, so nothing from the
+// log reaches query text.
 var targetTables = map[string]struct{ table, name, application string }{
 	"user":           {table: "users", name: "email"},
 	"user_field":     {table: "user_fields", name: "name"},
@@ -317,9 +294,8 @@ var targetTables = map[string]struct{ table, name, application string }{
 	"sso_connection": {table: "sso_connections", name: "name"},
 }
 
-// TargetNames looks up what the targets of one kind are called, by id. A
-// target that no longer exists, an id that is not one, and a kind nothing is
-// kept for are simply missing from the map.
+// TargetNames looks up target names by id; missing targets and unknown kinds
+// are simply absent.
 func (s *Store) TargetNames(ctx context.Context, targetType string, ids []string) (map[string]TargetName, error) {
 	where, ok := targetTables[targetType]
 	names := map[string]TargetName{}

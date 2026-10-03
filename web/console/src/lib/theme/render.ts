@@ -1,10 +1,6 @@
 /**
- * Turns a theme into the two stylesheets the app loads. Pure: a theme in,
- * text out, so the script that writes the files and the test that checks
- * them run the same code.
- *
- * The output is formatted by Prettier afterwards (scripts/theme.ts), so what
- * is written here only has to be correct, not tidy.
+ * Renders a theme into the two stylesheets. Pure, so the writer script and the check share it;
+ * Prettier formats the output (scripts/theme.ts).
  */
 import type { Theme, Tokens } from './types';
 

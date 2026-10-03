@@ -1,6 +1,5 @@
-// Package session is everything about who is signed in, over HTTP: the cookie
-// the browser carries, the check every admin route passes through, and the
-// way a handler asks who is making the request.
+// Package session handles who is signed in over HTTP: the cookie, the guards on
+// admin routes, and how handlers ask who is calling.
 package session
 
 import (
@@ -19,9 +18,8 @@ import (
 	"loginer/internal/oidc"
 )
 
-// Cookie carries the session token between the browser and the server. It is
-// HttpOnly so no script can read it, which is what keeps a cross-site
-// scripting bug from turning into a stolen session.
+// Cookie carries the admin session token, HttpOnly so script (and an XSS bug)
+// cannot read it.
 const Cookie = brand.AdminSessionCookie
 
 // The Gin context keys the signed-in administrator, and the session the
@@ -78,14 +76,10 @@ func Require(service *auth.Service) gin.HandlerFunc {
 // oidc.AdminCaller for why one is refused.
 var tokenRefused = respond.Define(http.StatusUnauthorized, "token_refused", respond.Admin)
 
-// RequireAny is Require for the routes software may call too: it takes an
-// administrator's session cookie, or an access token for the admin API from
-// an application such as admin-cli. A token caller becomes a service admin
-// holding the permissions its token grants, so Can, CanAnywhere and every
-// check a handler makes work unchanged — and RequireSuperAdmin refuses it.
-//
-// A request carrying a token is judged by the token alone, never by a cookie
-// it happens to carry as well.
+// RequireAny accepts an administrator's session cookie or an admin API access
+// token. A token caller becomes a service admin holding its token's
+// permissions, so every permission check works unchanged and RequireSuperAdmin
+// refuses it. A token always wins over a cookie.
 func RequireAny(service *auth.Service, provider *oidc.Service, log *slog.Logger) gin.HandlerFunc {
 	cookie := Require(service)
 
@@ -123,9 +117,8 @@ func Bearer(c *gin.Context) string {
 	return strings.TrimSpace(token)
 }
 
-// RequireSetup lets through a signed-in administrator, and one who is half
-// signed in waiting to set up a second factor — and nobody else. It guards
-// the endpoints that set a factor up, which is all such a session may do.
+// RequireSetup admits signed-in administrators and half-signed-in ones waiting
+// to enrol a second factor; it guards the enrolment endpoints.
 func RequireSetup(service *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, _ := c.Cookie(Cookie)
@@ -155,10 +148,8 @@ func Can(permission string) gin.HandlerFunc {
 	}
 }
 
-// CanAnywhere refuses the request unless the signed-in administrator holds one
-// of the permissions for the whole panel or for at least one application. It
-// guards the routes whose handlers then narrow what they do to the
-// applications the administrator can reach, using Allowed and Reach.
+// CanAnywhere requires one of the permissions panel-wide or for at least one
+// application; handlers then narrow with Allowed and Reach.
 func CanAnywhere(permissions ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		admin := Admin(c)
@@ -174,18 +165,16 @@ func CanAnywhere(permissions ...string) gin.HandlerFunc {
 	}
 }
 
-// Allowed reports whether the signed-in administrator holds the permission
-// for one application: a whole-panel role grants it, or one scoped to that
-// application does.
+// Allowed reports whether the administrator holds the permission for one
+// application.
 func Allowed(c *gin.Context, permission string, application uuid.UUID) bool {
 	admin := Admin(c)
 
 	return admin != nil && admin.HasPermissionFor(permission, &application)
 }
 
-// AllowedScope reports whether the signed-in administrator holds the
-// permission for a role's scope: for its application, or for the whole panel
-// when the role is global (a nil application).
+// AllowedScope reports whether the administrator holds the permission for a
+// role's scope (nil application means global).
 func AllowedScope(c *gin.Context, permission string, application *uuid.UUID) bool {
 	if application == nil {
 		admin := Admin(c)
@@ -195,16 +184,15 @@ func AllowedScope(c *gin.Context, permission string, application *uuid.UUID) boo
 	return Allowed(c, permission, *application)
 }
 
-// SeesRole reports whether the signed-in administrator can see a user role:
-// a global role is seen by everyone who reaches the endpoints that list
-// roles, and an application's roles by whoever can read the application.
+// SeesRole reports whether the administrator can see a role: global roles are
+// visible to all who list roles; application roles to those who can read the
+// application.
 func SeesRole(c *gin.Context, role model.UserRole) bool {
 	return role.Global() || Allowed(c, model.PermApplicationsRead, *role.ApplicationID)
 }
 
-// Reach says which applications the signed-in administrator holds the
-// permission for, as a store filter: nil for every application, otherwise
-// the ids of the ones they can reach, which may be none.
+// Reach is the applications the administrator holds the permission for, as a
+// store filter: nil for all, otherwise their ids (possibly none).
 func Reach(c *gin.Context, permission string) []uuid.UUID {
 	admin := Admin(c)
 	if admin == nil {

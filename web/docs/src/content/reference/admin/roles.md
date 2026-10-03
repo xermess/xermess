@@ -9,9 +9,7 @@ generated: true
 
 ## GET /api/v1/admin/user-roles {#get-api-v1-admin-user-roles}
 
-Returns a page of roles, sorted by name, each with how many users hold it and every role it includes once inheritance is followed.
-
-Two query parameters say which roles. scope is "global" for the global roles, "application" for the roles of every application the administrator can see, and empty for both. application narrows to one application's roles, whatever scope says.
+Returns a page of roles sorted by name, each with its member count and every role it includes. `scope` is "global", "application" or empty for both; `application` narrows to one application.
 
 | | |
 | --- | --- |
@@ -254,7 +252,7 @@ response.raise_for_status()
 | `description` | string | At most 255 characters. |
 | `is_default` | boolean | `is_default` gives the role to every user created without roles of their own. |
 | `inherits` | array of string (uuid) |  |
-| `api_scopes` | array of string (uuid) or null | `api_scopes` are the ids of the API scopes the role grants, and replace what it granted. Left out, the role keeps its grants — so an administrator who cannot see APIs can still edit the rest of it. |
+| `api_scopes` | array of string (uuid) or null | `api_scopes` replace the role's scope grants; left out, they are kept, so administrators who cannot see APIs can still edit roles. |
 
 #### Response
 
@@ -272,9 +270,9 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 ## PATCH /api/v1/admin/user-roles/:id {#patch-api-v1-admin-user-roles-id}
 
-Replaces a role's name, description, default flag and what it includes.
+Replaces a role's name, description, default flag and inheritance.
 
-Its scope stays as it is: a role does not move between global and an application, or between applications.
+Its scope never changes.
 
 | | |
 | --- | --- |
@@ -347,7 +345,7 @@ response.raise_for_status()
 | `description` | string | At most 255 characters. |
 | `is_default` | boolean | `is_default` gives the role to every user created without roles of their own. |
 | `inherits` | array of string (uuid) |  |
-| `api_scopes` | array of string (uuid) or null | `api_scopes` are the ids of the API scopes the role grants, and replace what it granted. Left out, the role keeps its grants — so an administrator who cannot see APIs can still edit the rest of it. |
+| `api_scopes` | array of string (uuid) or null | `api_scopes` replace the role's scope grants; left out, they are kept, so administrators who cannot see APIs can still edit roles. |
 
 #### Response
 

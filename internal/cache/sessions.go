@@ -15,25 +15,16 @@ const (
 	UserSession  = "user"
 )
 
-// SessionTTL is the longest a session is kept in Redis before it is read from
-// the database again. Every write that changes a session puts the new one
-// here itself, so this only bounds what an outage at the wrong moment could
-// leave behind.
+// SessionTTL bounds how long a session lives in Redis; writes replace it
+// directly, so this only limits damage from an outage.
 const SessionTTL = 10 * time.Minute
 
-// A session is found by the hash of the token in its cookie, which no write
-// knows in advance, so sessions are not kept in generations the way the
-// groups are. The rule instead is who may overwrite what:
+// Sessions are found by token hash, which no write knows in advance, so they
+// are not kept in generations. Instead a reader that missed only fills an empty
+// key (SET NX) and a write always overwrites (SET), revoked sessions included.
 //
-//   - A reader that missed and loaded the row from the database fills the
-//     key only if it is still empty (FillSession, SET NX).
-//   - A write puts the session as it has just committed it (PutSession, SET),
-//     over whatever is there — a revoked session included, which stays in
-//     Redis as revoked.
-//
-// So a reader that loaded a session a moment before it was revoked cannot
-// put it back: either its fill lands first and the revocation overwrites it,
-// or the revocation lands first and the fill finds the key taken.
+// So a reader that loaded a session just before it was revoked cannot put it
+// back.
 
 // Session reads the session a token hash names into `dst`, and reports
 // whether it was there.
@@ -75,9 +66,9 @@ func (c *Cache) FillSession(ctx context.Context, kind, hash string, session any,
 	}
 }
 
-// PutSession replaces a session with what a write has just committed. It is
-// called after the commit; when Redis does not answer, the key is removed as
-// soon as it does, and until then this process reads nothing from Redis.
+// PutSession replaces a session with what a write just committed. If Redis is
+// down the key is removed once it answers, and this process skips Redis until
+// then.
 func (c *Cache) PutSession(ctx context.Context, kind, hash string, session any, expires time.Time) {
 	if c == nil || hash == "" {
 		return
@@ -121,17 +112,14 @@ func (c *Cache) sessionKey(kind, hash string) string {
 	return c.key("session", kind, hash)
 }
 
-// sessionTTL is how long a session is kept: SessionTTL, or less when it ends
-// sooner. A session that has already ended is kept a second, which is as
-// good as not keeping it — the reader checks the expiry itself.
+// sessionTTL is SessionTTL or the time left, whichever is shorter; readers
+// check expiry themselves.
 func sessionTTL(expires time.Time) time.Duration {
 	return max(time.Second, min(SessionTTL, time.Until(expires)))
 }
 
-// DropSessions removes sessions that no longer exist in the database — the
-// sweep's, once it has deleted them. Nothing can put one back but a reader
-// that loaded it before the delete, and the sweep deletes only sessions that
-// have expired, which that reader turns away itself.
+// DropSessions removes swept sessions. Only expired sessions are swept, which
+// readers reject anyway.
 func (c *Cache) DropSessions(ctx context.Context, kind string, hashes ...string) {
 	if c == nil || len(hashes) == 0 {
 		return

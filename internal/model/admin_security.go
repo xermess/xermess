@@ -1,12 +1,7 @@
 package model
 
-// AdminSecurity is how administrators are made to sign in: the settings that
-// apply to every one of them, rather than to any single account.
-//
-// There is one row, like the organisation's. It starts as the installation's
-// configuration says (LOGINER_ADMIN_MFA), and is a super admin's to change
-// afterwards — so turning two-factor sign-in on for everybody does not mean
-// editing a file and restarting the server.
+// AdminSecurity is the single row of settings for how administrators sign in.
+// It is seeded from LOGINER_ADMIN_MFA and owned by super admins afterwards.
 type AdminSecurity struct {
 	Base
 
@@ -20,15 +15,9 @@ func (AdminSecurity) TableName() string {
 	return "admin_security"
 }
 
-// DefaultAdminSecurity is what an installation starts with when nothing says
-// otherwise: a second factor for whoever wants one, and nobody made to.
-//
-// Off is the default because the alternative decides for people who have not
-// been asked: the first administrator would be sent to set up an
-// authenticator before they had seen the panel, on a server they may only be
-// trying out. A super admin requires them of everybody on the Administrators
-// page — which is the deliberate act it should be — and each administrator is
-// then taken to /admin/mfa-setup to enrol before they may do anything else.
+// DefaultAdminSecurity makes a second factor optional, so the first
+// administrator is not forced to enrol on a server they are only trying out.
+// Requiring it is a deliberate choice on the Administrators page.
 func DefaultAdminSecurity() AdminSecurity {
 	return AdminSecurity{RequireMFA: false}
 }

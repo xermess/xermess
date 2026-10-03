@@ -4,9 +4,8 @@ import { apiGet, requireAnywhere } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * The applications this administrator can see. A role held for one
- * application is enough to open the page; the list is narrowed to what their
- * roles reach. The search and the type filter live in the URL.
+ * The applications this administrator can see; a role for one application is enough. Search and
+ * type filter live in the URL.
  */
 export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	requireAnywhere((await parent()).admin, 'applications.read');

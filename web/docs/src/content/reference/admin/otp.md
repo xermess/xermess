@@ -9,7 +9,7 @@ generated: true
 
 ## GET /api/v1/admin/otp {#get-api-v1-admin-otp}
 
-Returns the settings, and which login flows ask for a code — so the page can say whether any of this is being used, and lead to the flow that uses it.
+Returns the settings and the login flows that use emailed codes.
 
 | | |
 | --- | --- |

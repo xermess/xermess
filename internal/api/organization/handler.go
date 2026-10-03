@@ -1,9 +1,4 @@
-// Package organization answers the endpoints for the organisation this
-// installation belongs to: what it is called, where its users reach it, and
-// how it is run.
-//
-// There is one of it, so there is no list and nothing to create or delete:
-// the two endpoints read the settings and write them back.
+// Package organization reads and updates the single organisation record.
 package organization
 
 import (

@@ -11,20 +11,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// OTPSettings is how the one-time codes this server emails behave: how long
-// one is, how long it lasts, how many guesses it takes, and how soon another
-// may be asked for.
-//
-// There is one row, like the organisation's. It is seeded with the defaults
-// below on the first start and is a super admin's afterwards, and it is read
-// where a code is made and checked rather than held from startup — so making
-// codes shorter for a shop, or longer for a staff tool, takes effect on the
-// next sign-in.
-//
-// The codes an authenticator app shows are not these. Those are RFC 6238,
-// whose parameters every app assumes (internal/totp), and changing them would
-// mean apps showing the wrong codes; these are the codes the server sends to
-// an address itself.
+// OTPSettings is the single row deciding how emailed one-time codes behave,
+// read where codes are made and checked. Authenticator-app codes are RFC 6238
+// (internal/totp) and are not configurable.
 type OTPSettings struct {
 	Base
 
@@ -34,14 +23,11 @@ type OTPSettings struct {
 	// LifetimeMinutes is how long a code works for.
 	LifetimeMinutes int `gorm:"not null" json:"lifetime_minutes"`
 
-	// MaxAttempts is how many wrong guesses a code takes before it is spent.
-	// Without it a six-digit code is a million guesses away from anybody
-	// patient.
+	// MaxAttempts is how many wrong guesses spend a code.
 	MaxAttempts int `gorm:"not null" json:"max_attempts"`
 
-	// ResendSeconds is how long somebody waits before another code can be
-	// sent to the same address. It is what keeps the "send it again" button
-	// from being a way to post mail to a stranger.
+	// ResendSeconds is the wait before another code can go to the same address,
+	// so resending cannot spam a stranger.
 	ResendSeconds int `gorm:"not null" json:"resend_seconds"`
 }
 
@@ -52,9 +38,7 @@ func (OTPSettings) TableName() string {
 
 // The bounds the panel is held to, and the reasons for them.
 const (
-	// MinOTPLength is four digits, which is short enough to be worth
-	// refusing below: ten thousand codes and five guesses is a lottery
-	// somebody would run.
+	// MinOTPLength: below four digits the guesses become a lottery.
 	MinOTPLength = 4
 	// MaxOTPLength is ten, past which people copy rather than read.
 	MaxOTPLength = 10
@@ -69,10 +53,8 @@ const (
 	MaxOTPResendSeconds = 900
 )
 
-// DefaultOTPSettings is what an installation starts with: six digits for ten
-// minutes, five guesses, and a minute between messages. It is what almost
-// every service that emails a code does, which is the point — somebody
-// signing in has seen it before.
+// DefaultOTPSettings: six digits, ten minutes, five guesses, a minute between
+// messages.
 func DefaultOTPSettings() OTPSettings {
 	return OTPSettings{
 		CodeLength:      6,
@@ -108,13 +90,8 @@ func (o OTPSettings) Validate() error {
 	return nil
 }
 
-// LoginCode is a sign-in waiting for a code that was emailed: who it is for,
-// what they have to type, and how far they have got with it.
-//
-// The row is the sign-in itself, held between the password being accepted and
-// the session being made. The page carries HandleHash's handle and nothing
-// else, so a code on its own is no use to whoever read the message over
-// somebody's shoulder — they would need the browser it was asked from too.
+// LoginCode is a sign-in waiting for an emailed code. The page holds only the
+// handle, so a code alone is useless without the browser that asked for it.
 type LoginCode struct {
 	Base
 
@@ -128,14 +105,12 @@ type LoginCode struct {
 	UserID uuid.UUID `gorm:"type:uuid;not null;index"`
 	User   *User     `gorm:"constraint:OnDelete:CASCADE"`
 
-	// Request is the sign-in under way this belongs to, so the session made
-	// once the code is right goes back to the application that asked. Empty
-	// when somebody is signing in to their account itself.
+	// Request is the sign-in under way, so the session returns to the asking
+	// application; empty for the account itself.
 	Request string `gorm:"size:64"`
 
-	// RememberMe is the "stay signed in" box as it was ticked before the code
-	// was asked for: the sign-in is one act, and the answer to it should not
-	// depend on where the code arrived.
+	// RememberMe is the "stay signed in" choice made before the code was asked
+	// for.
 	RememberMe bool `gorm:"not null"`
 
 	// Attempts is how many codes have been typed: every one is counted before
@@ -161,9 +136,7 @@ func (c LoginCode) Usable(now time.Time, maxAttempts int) bool {
 	return c.UsedAt == nil && now.Before(c.ExpiresAt) && c.Attempts < maxAttempts
 }
 
-// NewOTP returns a code of `length` digits and its hash. Every digit comes
-// from crypto/rand: a code somebody could work out from the last one is not a
-// second factor.
+// NewOTP returns a crypto/rand code of `length` digits and its hash.
 func NewOTP(length int) (code, hash string, err error) {
 	var b strings.Builder
 	for range length {

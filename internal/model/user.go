@@ -18,8 +18,7 @@ type User struct {
 	LastName        string `gorm:"size:100" json:"last_name"`
 	IsActive        bool   `gorm:"not null" json:"is_active"`
 
-	// PasswordHash is empty for a user who has never been given a password.
-	// The password itself is never stored, and the hash never leaves the
+	// PasswordHash is empty for a user without a password and never leaves the
 	// server.
 	PasswordHash string `gorm:"size:255;not null;default:''" json:"-"`
 	// IsPasswordTemporary marks a password an administrator chose for the
@@ -29,9 +28,8 @@ type User struct {
 	// it anything about the password.
 	HasPassword bool `gorm:"-" json:"has_password"`
 
-	// SocialAccounts are the providers this user signs in with. Like
-	// HasPassword it is no column: the panel is told what a record amounts
-	// to, and the rows themselves are social_identities.
+	// SocialAccounts are the providers this user signs in with, loaded from
+	// social_identities.
 	SocialAccounts []SocialAccount `gorm:"-" json:"social_accounts"`
 
 	// LastLoginAt is when the user last signed in to an application.
@@ -56,12 +54,8 @@ func (User) TableName() string {
 // no further than 72 bytes, and refuses rather than quietly ignoring the rest.
 var ErrPasswordTooLong = errors.New("password must be at most 72 bytes")
 
-// NormalizeEmail is an address as users are stored and found by: trimmed and
-// lower case. Addresses are compared case-insensitively everywhere people
-// type them, and storing them one way is what lets the unique index on
-// users.email both find a user and keep "Ada@x" from being a second account
-// beside "ada@x" — an index on LOWER(email) would do the first, but every
-// lookup would have to remember to ask for it.
+// NormalizeEmail trims and lower-cases an address, so the unique index on
+// users.email both finds users and stops "Ada@x" duplicating "ada@x".
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }

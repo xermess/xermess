@@ -31,7 +31,7 @@ Creating the first administrator of a new installation.
 
 | Endpoint | |
 | --- | --- |
-| [`GET /api/v1/admin/setup`](/reference/admin/setup#get-api-v1-admin-setup) | Says whether the panel still has to be set up. |
+| [`GET /api/v1/admin/setup`](/reference/admin/setup#get-api-v1-admin-setup) | Says whether the panel still needs its first administrator. |
 | [`POST /api/v1/admin/setup`](/reference/admin/setup#post-api-v1-admin-setup) | Makes the first administrator: a super admin, with the address and password whoever is setting the panel up chose. |
 
 ## [Signing in](/reference/admin/auth)
@@ -41,14 +41,14 @@ Signing an administrator in and out, and who is signed in.
 | Endpoint | |
 | --- | --- |
 | [`POST /api/v1/admin/auth/login`](/reference/admin/auth#post-api-v1-admin-auth-login) | Checks the credentials and sets the session cookie. |
-| [`GET /api/v1/admin/auth/session`](/reference/admin/auth#get-api-v1-admin-auth-session) | Says how far the session this browser carries has got, so the sign-in page knows whether to ask for a password, a code, or to set up an authenticator. |
+| [`GET /api/v1/admin/auth/session`](/reference/admin/auth#get-api-v1-admin-auth-session) | Reports how far this browser's session has got (password, code, enrolment). |
 | [`POST /api/v1/admin/auth/mfa`](/reference/admin/auth#post-api-v1-admin-auth-mfa) | Finishes a sign-in waiting for a second factor. |
 | [`POST /api/v1/admin/auth/logout`](/reference/admin/auth#post-api-v1-admin-auth-logout) | Revokes the session and clears the cookie. |
-| [`GET /api/v1/admin/me`](/reference/admin/auth#get-api-v1-admin-me) | Returns the signed-in administrator, and is what the browser calls to find out whether it still has a session. |
-| [`PATCH /api/v1/admin/me`](/reference/admin/auth#patch-api-v1-admin-me) | Changes the caller's own name and address. |
+| [`GET /api/v1/admin/me`](/reference/admin/auth#get-api-v1-admin-me) | Returns the signed-in administrator, and tells the browser whether its session is still alive. |
+| [`PATCH /api/v1/admin/me`](/reference/admin/auth#patch-api-v1-admin-me) | Changes the caller's own name and address, nothing else, so every administrator may use it. |
 | [`POST /api/v1/admin/me/password`](/reference/admin/auth#post-api-v1-admin-me-password) | Sets the caller's own password, given the one they have. |
 | [`GET /api/v1/admin/sessions`](/reference/admin/auth#get-api-v1-admin-sessions) | Lists the caller's own sessions, so they can see where they are signed in. |
-| [`DELETE /api/v1/admin/sessions/:id`](/reference/admin/auth#delete-api-v1-admin-sessions-id) | Signs the administrator out of one of their other browsers. |
+| [`DELETE /api/v1/admin/sessions/:id`](/reference/admin/auth#delete-api-v1-admin-sessions-id) | Signs one of the administrator's other browsers out. |
 | [`DELETE /api/v1/admin/sessions`](/reference/admin/auth#delete-api-v1-admin-sessions) | Signs the administrator out everywhere but here: what to do after using a shared computer, or losing a laptop. |
 
 ## [Second factor](/reference/admin/mfa)
@@ -77,9 +77,9 @@ The dashboard's counts and the activity log.
 
 | Endpoint | |
 | --- | --- |
-| [`GET /api/v1/admin/overview`](/reference/admin/activity#get-api-v1-admin-overview) | Is the admin panel's front page over a range of days: how much of everything there is, how signing in has gone, what each day looked like, who has been busiest, and the latest entries. |
+| [`GET /api/v1/admin/overview`](/reference/admin/activity#get-api-v1-admin-overview) | Is the panel's front page for a range of days: totals, sign-in outcomes, daily activity, the busiest people and the latest entries. |
 | [`GET /api/v1/admin/logs`](/reference/admin/activity#get-api-v1-admin-logs) | Lists one page of the activity log, newest first, narrowed by the filters parseFilter reads, with the cursor the next page starts from. |
-| [`GET /api/v1/admin/logs/export`](/reference/admin/activity#get-api-v1-admin-logs-export) | Writes the entries the filters match as a CSV file, newest first, up to exportLimit of them. |
+| [`GET /api/v1/admin/logs/export`](/reference/admin/activity#get-api-v1-admin-logs-export) | Writes matching entries as CSV, newest first, up to exportLimit, hiding exactly what the logs page hides. |
 
 ## [Users](/reference/admin/users)
 
@@ -87,16 +87,16 @@ The people your organisation manages.
 
 | Endpoint | |
 | --- | --- |
-| [`GET /api/v1/admin/users`](/reference/admin/users#get-api-v1-admin-users) | Returns a page of users, newest first. |
+| [`GET /api/v1/admin/users`](/reference/admin/users#get-api-v1-admin-users) | Returns a page of users, newest first. `search` matches the email and any field text. |
 | [`GET /api/v1/admin/users/:id`](/reference/admin/users#get-api-v1-admin-users-id) | Returns one user. |
-| [`GET /api/v1/admin/users/:id/roles`](/reference/admin/users#get-api-v1-admin-users-id-roles) | Returns the roles a user holds as a token would carry them: the global roles, and for each application its roles — each as the ones given directly and every role those include. |
-| [`GET /api/v1/admin/users/:id/role-mappings`](/reference/admin/users#get-api-v1-admin-users-id-role-mappings) | Returns every role a user holds, Keycloak's role mapping: the roles given directly, and the roles that come to the user through them, each with what it comes through. |
+| [`GET /api/v1/admin/users/:id/roles`](/reference/admin/users#get-api-v1-admin-users-id-roles) | Returns the roles a user holds as a token would carry them: global roles and each application's, direct and inherited. `client_id` narrows to one application; applications the administrator cannot see are left out. |
+| [`GET /api/v1/admin/users/:id/role-mappings`](/reference/admin/users#get-api-v1-admin-users-id-role-mappings) | Returns every role a user holds, direct and inherited, with what each comes through. |
 | [`POST /api/v1/admin/users`](/reference/admin/users#post-api-v1-admin-users) | Adds a user. |
 | [`PATCH /api/v1/admin/users/:id`](/reference/admin/users#patch-api-v1-admin-users-id) | Replaces a user's email, verified flag and fields, and the password too when a new one is given. |
 | [`DELETE /api/v1/admin/users/:id`](/reference/admin/users#delete-api-v1-admin-users-id) | Removes a user for good. |
-| [`DELETE /api/v1/admin/users/:id/social-accounts/:identity`](/reference/admin/users#delete-api-v1-admin-users-id-social-accounts-identity) | Takes away a provider a user signs in with: an account of theirs somewhere else that should no longer reach this one. |
-| [`POST /api/v1/admin/users/:id/role-mappings`](/reference/admin/users#post-api-v1-admin-users-id-role-mappings) | Gives a user roles directly, global and application roles alike, leaving what they already hold as it is. |
-| [`DELETE /api/v1/admin/users/:id/role-mappings/:role`](/reference/admin/users#delete-api-v1-admin-users-id-role-mappings-role) | Takes away a role the user was given directly. |
+| [`DELETE /api/v1/admin/users/:id/social-accounts/:identity`](/reference/admin/users#delete-api-v1-admin-users-id-social-accounts-identity) | Removes a provider a user signs in with; their account and other ways in remain. |
+| [`POST /api/v1/admin/users/:id/role-mappings`](/reference/admin/users#post-api-v1-admin-users-id-role-mappings) | Gives a user roles directly, keeping existing ones. |
+| [`DELETE /api/v1/admin/users/:id/role-mappings/:role`](/reference/admin/users#delete-api-v1-admin-users-id-role-mappings-role) | Removes a directly held role; an inherited one is removed by removing what it comes through. |
 
 ## [User fields](/reference/admin/fields)
 
@@ -106,8 +106,8 @@ The custom fields a user record is made of.
 | --- | --- |
 | [`GET /api/v1/admin/user-fields`](/reference/admin/fields#get-api-v1-admin-user-fields) | Returns the fields a user record has, in the order they are shown. |
 | [`POST /api/v1/admin/user-fields`](/reference/admin/fields#post-api-v1-admin-user-fields) | Adds a field to every user record. |
-| [`PATCH /api/v1/admin/user-fields/:id`](/reference/admin/fields#patch-api-v1-admin-user-fields-id) | Changes what a field expects. |
-| [`DELETE /api/v1/admin/user-fields/:id`](/reference/admin/fields#delete-api-v1-admin-user-fields-id) | Removes a field. |
+| [`PATCH /api/v1/admin/user-fields/:id`](/reference/admin/fields#patch-api-v1-admin-user-fields-id) | Changes a field's rules. |
+| [`DELETE /api/v1/admin/user-fields/:id`](/reference/admin/fields#delete-api-v1-admin-user-fields-id) | Removes a field; stored values are dropped when each user is next saved. |
 
 ## [User sessions](/reference/admin/sessions)
 
@@ -136,10 +136,10 @@ Signing in with an account at another provider.
 | --- | --- |
 | [`GET /api/v1/admin/social-providers`](/reference/admin/social#get-api-v1-admin-social-providers) | Returns every configured provider, and the kinds a new one may be. |
 | [`GET /api/v1/admin/social-providers/:id`](/reference/admin/social#get-api-v1-admin-social-providers-id) | Returns one provider. |
-| [`GET /api/v1/admin/social-providers/:id/secret`](/reference/admin/social#get-api-v1-admin-social-providers-id-secret) | Answers with the client secret itself, for an administrator who has to check what is configured against the provider's console. |
+| [`GET /api/v1/admin/social-providers/:id/secret`](/reference/admin/social#get-api-v1-admin-social-providers-id-secret) | Returns the stored client secret so it can be checked against the provider's console. |
 | [`POST /api/v1/admin/social-providers`](/reference/admin/social#post-api-v1-admin-social-providers) | Registers a provider. |
 | [`PATCH /api/v1/admin/social-providers/:id`](/reference/admin/social#patch-api-v1-admin-social-providers-id) | Changes a provider's settings. |
-| [`DELETE /api/v1/admin/social-providers/:id`](/reference/admin/social#delete-api-v1-admin-social-providers-id) | Removes a provider, and every identity held at it. |
+| [`DELETE /api/v1/admin/social-providers/:id`](/reference/admin/social#delete-api-v1-admin-social-providers-id) | Removes a provider and its identities; the accounts stay, though some may lose their only way in. |
 
 ## [Single sign-on](/reference/admin/sso)
 
@@ -149,7 +149,7 @@ Signing in through a customer's own identity provider, over OpenID Connect or SA
 | --- | --- |
 | [`GET /api/v1/admin/sso-connections`](/reference/admin/sso#get-api-v1-admin-sso-connections) | Returns every connection, with how many people sign in through each. |
 | [`GET /api/v1/admin/sso-connections/:id`](/reference/admin/sso#get-api-v1-admin-sso-connections-id) | Returns one connection. |
-| [`POST /api/v1/admin/sso-connections`](/reference/admin/sso#post-api-v1-admin-sso-connections) | Adds a connection. |
+| [`POST /api/v1/admin/sso-connections`](/reference/admin/sso#post-api-v1-admin-sso-connections) | Adds a connection, disabled until an administrator turns it on. |
 | [`POST /api/v1/admin/sso-connections/test`](/reference/admin/sso#post-api-v1-admin-sso-connections-test) | Tries a provider before it is relied on: an OpenID Connect issuer's discovery, or a SAML provider's metadata, from its address or as pasted. |
 | [`PATCH /api/v1/admin/sso-connections/:id`](/reference/admin/sso#patch-api-v1-admin-sso-connections-id) | Changes a connection. |
 | [`DELETE /api/v1/admin/sso-connections/:id`](/reference/admin/sso#delete-api-v1-admin-sso-connections-id) | Removes a connection and the identities held at it. |
@@ -163,7 +163,7 @@ The steps a sign-in goes through, per application.
 | --- | --- |
 | [`GET /api/v1/admin/login-flows`](/reference/admin/flows#get-api-v1-admin-login-flows) | Returns every flow, the steps one can be made of, and how many applications each flow signs people in for. |
 | [`GET /api/v1/admin/login-flows/:id`](/reference/admin/flows#get-api-v1-admin-login-flows-id) | Returns one flow. |
-| [`POST /api/v1/admin/login-flows`](/reference/admin/flows#post-api-v1-admin-login-flows) | Adds a flow. |
+| [`POST /api/v1/admin/login-flows`](/reference/admin/flows#post-api-v1-admin-login-flows) | Adds a flow, disabled until an administrator enables it. |
 | [`PATCH /api/v1/admin/login-flows/:id`](/reference/admin/flows#patch-api-v1-admin-login-flows-id) | Changes a flow. |
 | [`DELETE /api/v1/admin/login-flows/:id`](/reference/admin/flows#delete-api-v1-admin-login-flows-id) | Removes a flow. |
 
@@ -191,9 +191,9 @@ The applications that sign users in: their settings, secrets and API access.
 | [`PATCH /api/v1/admin/applications/:id`](/reference/admin/applications#patch-api-v1-admin-applications-id) | Replaces an application's settings. |
 | [`POST /api/v1/admin/applications/:id/secret`](/reference/admin/applications#post-api-v1-admin-applications-id-secret) | Replaces a confidential client's secret. |
 | [`GET /api/v1/admin/applications/:id/apis`](/reference/admin/applications#get-api-v1-admin-applications-id-apis) | Lists every API with what the application may do with it: whether it is authorised to ask for tokens for it, and which scopes. |
-| [`PUT /api/v1/admin/applications/:id/apis/:api`](/reference/admin/applications#put-api-v1-admin-applications-id-apis-api) | Lets the application ask for tokens for an API, and replaces the API scopes it may ask for with the ones named. |
+| [`PUT /api/v1/admin/applications/:id/apis/:api`](/reference/admin/applications#put-api-v1-admin-applications-id-apis-api) | Lets the application request tokens for an API and replaces the scopes it may ask for: the ceiling on its tokens. |
 | [`DELETE /api/v1/admin/applications/:id/apis/:api`](/reference/admin/applications#delete-api-v1-admin-applications-id-apis-api) | Stops the application asking for tokens for an API. |
-| [`POST /api/v1/admin/applications/:id/token-preview`](/reference/admin/applications#post-api-v1-admin-applications-id-token-preview) | Shows what a token request would amount to — whether a token is issued, the decision on every scope, and the claims each token carries — without issuing anything. |
+| [`POST /api/v1/admin/applications/:id/token-preview`](/reference/admin/applications#post-api-v1-admin-applications-id-token-preview) | Runs the token endpoint's evaluation without issuing anything: whether a token is issued, each scope decision, and the claims. |
 | [`POST /api/v1/admin/applications`](/reference/admin/applications#post-api-v1-admin-applications) | Registers an application. |
 | [`DELETE /api/v1/admin/applications/:id`](/reference/admin/applications#delete-api-v1-admin-applications-id) | Removes an application, the roles it defines, and everyone's hold on them. |
 
@@ -203,10 +203,10 @@ The roles users hold, globally and in each application.
 
 | Endpoint | |
 | --- | --- |
-| [`GET /api/v1/admin/user-roles`](/reference/admin/roles#get-api-v1-admin-user-roles) | Returns a page of roles, sorted by name, each with how many users hold it and every role it includes once inheritance is followed. |
+| [`GET /api/v1/admin/user-roles`](/reference/admin/roles#get-api-v1-admin-user-roles) | Returns a page of roles sorted by name, each with its member count and every role it includes. `scope` is "global", "application" or empty for both; `application` narrows to one application. |
 | [`GET /api/v1/admin/user-roles/:id`](/reference/admin/roles#get-api-v1-admin-user-roles-id) | Returns one role. |
 | [`POST /api/v1/admin/user-roles`](/reference/admin/roles#post-api-v1-admin-user-roles) | Adds a role: a global one when application_id is null, otherwise one of that application's. |
-| [`PATCH /api/v1/admin/user-roles/:id`](/reference/admin/roles#patch-api-v1-admin-user-roles-id) | Replaces a role's name, description, default flag and what it includes. |
+| [`PATCH /api/v1/admin/user-roles/:id`](/reference/admin/roles#patch-api-v1-admin-user-roles-id) | Replaces a role's name, description, default flag and inheritance. |
 | [`DELETE /api/v1/admin/user-roles/:id`](/reference/admin/roles#delete-api-v1-admin-user-roles-id) | Removes a role for good. |
 
 ## [APIs](/reference/admin/apis)
@@ -217,11 +217,11 @@ The APIs access tokens are issued for, and their scopes.
 | --- | --- |
 | [`GET /api/v1/admin/apis`](/reference/admin/apis#get-api-v1-admin-apis) | Returns every API matching the search, sorted by name, with its scopes and how many applications may use it. |
 | [`GET /api/v1/admin/apis/:id`](/reference/admin/apis#get-api-v1-admin-apis-id) | Returns one API. |
-| [`GET /api/v1/admin/apis/:id/applications`](/reference/admin/apis#get-api-v1-admin-apis-id-applications) | Lists the applications the administrator can see, with what each may do with the API. |
-| [`GET /api/v1/admin/apis/:id/logs`](/reference/admin/apis#get-api-v1-admin-apis-id-logs) | Lists what has happened to or involving the API, newest first: changes to it, and applications gaining or losing access. |
+| [`GET /api/v1/admin/apis/:id/applications`](/reference/admin/apis#get-api-v1-admin-apis-id-applications) | Lists visible applications with their access to the API. |
+| [`GET /api/v1/admin/apis/:id/logs`](/reference/admin/apis#get-api-v1-admin-apis-id-logs) | Lists changes to the API and applications gaining or losing access, newest first. |
 | [`POST /api/v1/admin/apis`](/reference/admin/apis#post-api-v1-admin-apis) | Registers an API with its scopes. |
 | [`PATCH /api/v1/admin/apis/:id`](/reference/admin/apis#patch-api-v1-admin-apis-id) | Replaces an API's name, description, role enforcement and scopes. |
-| [`DELETE /api/v1/admin/apis/:id`](/reference/admin/apis#delete-api-v1-admin-apis-id) | Removes an API, its scopes, every application's authorisation for it and every role's grant of its scopes. |
+| [`DELETE /api/v1/admin/apis/:id`](/reference/admin/apis#delete-api-v1-admin-apis-id) | Removes an API with its scopes, application authorisations and role grants. |
 
 ## [Administrators](/reference/admin/admins)
 
@@ -229,14 +229,14 @@ The panel's administrators.
 
 | Endpoint | |
 | --- | --- |
-| [`GET /api/v1/admin/security`](/reference/admin/admins#get-api-v1-admin-security) | Answers how administrators are made to sign in, and how many of them have an authenticator, so the panel can say what turning it on would mean for the people who have not set one up. |
+| [`GET /api/v1/admin/security`](/reference/admin/admins#get-api-v1-admin-security) | Returns the administrators' sign-in settings and how many have an authenticator. |
 | [`PATCH /api/v1/admin/security`](/reference/admin/admins#patch-api-v1-admin-security) | Changes those settings. |
 | [`GET /api/v1/admin/admins`](/reference/admin/admins#get-api-v1-admin-admins) | Returns a page of administrators, newest first. |
 | [`POST /api/v1/admin/admins`](/reference/admin/admins#post-api-v1-admin-admins) | Adds an administrator, with the password and roles the super admin chose for them. |
 | [`GET /api/v1/admin/admins/:id`](/reference/admin/admins#get-api-v1-admin-admins-id) | Returns one administrator. |
-| [`PATCH /api/v1/admin/admins/:id`](/reference/admin/admins#patch-api-v1-admin-admins-id) | Replaces an administrator's details, status and roles, and their password when a new one is given. |
+| [`PATCH /api/v1/admin/admins/:id`](/reference/admin/admins#patch-api-v1-admin-admins-id) | Replaces an administrator's details, status, roles and optionally password. |
 | [`DELETE /api/v1/admin/admins/:id`](/reference/admin/admins#delete-api-v1-admin-admins-id) | Removes an administrator for good. |
-| [`DELETE /api/v1/admin/admins/:id/mfa`](/reference/admin/admins#delete-api-v1-admin-admins-id-mfa) | Removes another administrator's second factor and signs them out everywhere, for someone who lost both their phone and their recovery codes. |
+| [`DELETE /api/v1/admin/admins/:id/mfa`](/reference/admin/admins#delete-api-v1-admin-admins-id-mfa) | Removes another administrator's second factor and signs them out everywhere. |
 
 ## [Mail](/reference/admin/mail)
 
@@ -245,10 +245,10 @@ How email is sent, and what each message says.
 | Endpoint | |
 | --- | --- |
 | [`GET /api/v1/admin/mail`](/reference/admin/mail#get-api-v1-admin-mail) | Returns the mail settings. |
-| [`PATCH /api/v1/admin/mail`](/reference/admin/mail#patch-api-v1-admin-mail) | Changes the settings. |
-| [`POST /api/v1/admin/mail/test`](/reference/admin/mail#post-api-v1-admin-mail-test) | Sends one message, to find out whether the settings work before anybody's sign-in depends on them. |
-| [`GET /api/v1/admin/mail/content`](/reference/admin/mail#get-api-v1-admin-mail-content) | Returns the words of every email the server sends, for each language the sign-in pages are offered in: what the language says, and what English says underneath it. |
-| [`PUT /api/v1/admin/mail/content/:code`](/reference/admin/mail#put-api-v1-admin-mail-content-code) | Writes one language's words for the emails. |
+| [`PATCH /api/v1/admin/mail`](/reference/admin/mail#patch-api-v1-admin-mail) | Changes the settings; omitted fields stay, including the password unless a new one is typed. |
+| [`POST /api/v1/admin/mail/test`](/reference/admin/mail#post-api-v1-admin-mail-test) | Sends one message with the form's settings, so a server can be tried before saving. |
+| [`GET /api/v1/admin/mail/content`](/reference/admin/mail#get-api-v1-admin-mail-content) | Returns every email's text in each offered language, with English beside it. |
+| [`PUT /api/v1/admin/mail/content/:code`](/reference/admin/mail#put-api-v1-admin-mail-content-code) | Writes one language's email text, merging only the email keys. |
 
 ## [One-time codes](/reference/admin/otp)
 
@@ -256,7 +256,7 @@ How the one-time codes sent by email behave.
 
 | Endpoint | |
 | --- | --- |
-| [`GET /api/v1/admin/otp`](/reference/admin/otp#get-api-v1-admin-otp) | Returns the settings, and which login flows ask for a code — so the page can say whether any of this is being used, and lead to the flow that uses it. |
+| [`GET /api/v1/admin/otp`](/reference/admin/otp#get-api-v1-admin-otp) | Returns the settings and the login flows that use emailed codes. |
 | [`PATCH /api/v1/admin/otp`](/reference/admin/otp#patch-api-v1-admin-otp) | Changes the settings. |
 
 ## [Signing keys](/reference/admin/keys)

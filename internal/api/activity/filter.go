@@ -20,9 +20,8 @@ import (
 // one, a cursor that was not handed out, an action that could not be one.
 var filterInvalid = respond.Define(http.StatusBadRequest, "logs_filter_invalid", respond.Admin)
 
-// actionPattern is what an action's name looks like: "<resource>.<action>".
-// A name is checked before it reaches a query, and a list of them is capped,
-// so a filter cannot be made to cost more than the log has kinds of entry.
+// actionPattern is "<resource>.<action>"; names are checked and lists capped
+// before reaching a query.
 var actionPattern = regexp.MustCompile(`^[a-z_]{1,64}\.[a-z_]{1,64}$`)
 
 const maxActions = 100
@@ -80,9 +79,8 @@ func parseFilter(c *gin.Context, limit int) (store.AuditFilter, error) {
 	return filter, nil
 }
 
-// moment reads a bound. A date alone is its first instant, in the server's
-// zone — or, as the end of a range, the first instant of the next day, so
-// "to 12 March" includes the whole of the 12th.
+// moment parses a bound. A bare date is its first instant, or as an end bound
+// the next day's, so "to 12 March" includes the 12th.
 func moment(raw string, end bool) (time.Time, error) {
 	if raw == "" {
 		return time.Time{}, nil

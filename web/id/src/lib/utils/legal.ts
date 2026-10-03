@@ -7,12 +7,8 @@ import type { Application, Organization } from '$lib/api';
 export type LegalLink = { key: string; href: string };
 
 /**
- * The agreements shown on a sign-in page: the application's own where it has
- * them, and the organisation's where it has not.
- *
- * Each link falls back on its own, because they are two documents and an
- * application may publish one without the other. A link nobody has published
- * is not shown at all rather than pointing nowhere.
+ * Terms and privacy links: the application's own where it has them, the organisation's
+ * otherwise, each independently. Unpublished links are not shown.
  */
 export function legalLinks(
 	application: Application | null | undefined,

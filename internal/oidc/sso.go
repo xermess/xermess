@@ -18,24 +18,18 @@ import (
 	"loginer/internal/store"
 )
 
-// Enterprise single sign-on: an organisation's own identity provider signing
-// its people in, over OpenID Connect or SAML 2.0 (model.SSOConnection).
+// Enterprise SSO over OpenID Connect or SAML 2.0 (model.SSOConnection). This
+// server is the relying party; the callback, ACS and metadata paths are given
+// to the provider and must never move.
 //
-// As with social sign-in this server is the client — the relying party, the
-// service provider — and the paths carry the connection's slug. The callback,
-// the assertion consumer service and the metadata are given to the provider,
-// so they may not move once anybody signs in through them.
+// What is checked:
 //
-// What is checked, because the provider's word is what signs somebody in:
-//
-//   - OpenID Connect: the code is bound to this sign-in by PKCE and the state,
-//     and the id_token's signature is verified against the provider's
-//     published keys, along with its issuer, audience, expiry and nonce;
-//   - SAML: the response has to be signed by the certificate in the provider's
-//     metadata, be meant for this service provider, be in time, and answer the
-//     request this server sent — an unsolicited, IdP-initiated response is
-//     refused, since nothing ties it to the browser presenting it;
-//   - both: the address has to be at one of the connection's own domains.
+//   - OIDC: PKCE and state bind the code to this sign-in; the id_token's
+//     signature, issuer, audience, expiry and nonce are verified;
+//   - SAML: the response must be signed by the metadata's certificate,
+//     addressed to us, in time, and answer a request we sent (IdP-initiated
+//     responses are refused);
+//   - both: the address must be at one of the connection's domains.
 const (
 	PathSSOStart    = "/oauth2/sso/:slug/start"
 	PathSSOCallback = "/oauth2/sso/:slug/callback"
@@ -55,8 +49,8 @@ var (
 	// never started here — which is also what an IdP-initiated one is.
 	ErrSSOExpired = problem("sso_expired", "the single sign-on expired or was used")
 	// ErrSSOUpstream is the provider refusing, failing, or answering with
-	// something that does not verify. What it was is logged, and written to
-	// the activity log against the connection (ssoFailed).
+	// something that does not verify; details go to the activity log
+	// (ssoFailed).
 	ErrSSOUpstream = problem("sso_upstream", "the identity provider did not complete the sign-in")
 	// ErrSSONoEmail is a provider that said nothing this server can sign in:
 	// no address, or one it says it has not verified.
@@ -70,9 +64,9 @@ var (
 	// ErrSSONoAccount is somebody new, at a connection that does not make
 	// accounts.
 	ErrSSONoAccount = problem("sso_no_account", "the connection does not create accounts")
-	// ErrSSORequired is a password sign-in, registration or reset for an
-	// address whose domain has to sign in through its provider. Returned as
-	// an *SSORequired, which says which.
+	// ErrSSORequired refuses password sign-in, registration or reset for a
+	// domain that must use SSO; returned as an *SSORequired naming the
+	// connection.
 	ErrSSORequired = problem("sso_required", "the address has to sign in through single sign-on")
 )
 
@@ -96,9 +90,8 @@ func ssoButton(connection *model.SSOConnection) SSOButton {
 	return SSOButton{Slug: connection.Slug, Name: connection.Name, Protocol: string(connection.Protocol)}
 }
 
-// SSOButtons are the connections the sign-in page shows a button for, and
-// whether any connection signs people in at all — which is whether the page
-// offers "Sign in with SSO" for the ones without a button.
+// SSOButtons are the connections shown as buttons, and whether any connection
+// is enabled (for "Sign in with SSO").
 func (s *Service) SSOButtons(ctx context.Context) ([]SSOButton, bool, error) {
 	connections, err := s.store.SSOButtons(ctx)
 	if err != nil {
@@ -118,12 +111,9 @@ func (s *Service) SSOButtons(ctx context.Context) ([]SSOButton, bool, error) {
 	return out, available, nil
 }
 
-// DiscoverSSO is the connection an address signs in through, for the sign-in
-// page's "Sign in with SSO": the enabled connection owning its domain, whether
-// it is enforced, or store.ErrNotFound.
-//
-// It says which domains have a connection, which is not a secret — the page
-// would send anybody who typed such an address there anyway.
+// DiscoverSSO returns the enabled connection owning an address's domain and
+// whether it is enforced, or store.ErrNotFound. Which domains have SSO is not
+// secret.
 func (s *Service) DiscoverSSO(ctx context.Context, email string) (SSOButton, bool, error) {
 	connection, err := s.store.SSOConnectionForEmail(ctx, email)
 	if err != nil {
@@ -164,10 +154,8 @@ func (s *Service) ssoConnection(ctx context.Context, slug string) (*model.SSOCon
 	return connection, nil
 }
 
-// StartSSO is where to send the browser to sign in through a connection, and
-// the state the caller has to remember in that browser
-// (session.SignInStateCookie). `loginHint` is the address the person typed,
-// passed on so they are not asked for it again.
+// StartSSO returns where to send the browser and the state to keep in its
+// cookie. `loginHint` passes the typed address on.
 func (s *Service) StartSSO(ctx context.Context, slug, request, next, loginHint string) (string, string, error) {
 	connection, err := s.ssoConnection(ctx, slug)
 	if err != nil {
@@ -221,9 +209,8 @@ type ssoPerson struct {
 	Sent []string
 }
 
-// CompleteSSOCallback turns the code an OpenID Connect provider sent the
-// browser back with into a session.
-// `binding` is what the browser kept from StartSSO.
+// CompleteSSOCallback turns an OIDC provider's code into a session. `binding`
+// is what the browser kept from StartSSO.
 func (s *Service) CompleteSSOCallback(ctx context.Context, slug, code, state, binding string, client Client) (*SocialResult, error) {
 	connection, login, err := s.takeSSOLogin(ctx, slug, state, binding)
 	if err != nil {
@@ -241,8 +228,7 @@ func (s *Service) CompleteSSOCallback(ctx context.Context, slug, code, state, bi
 	return s.finishSSO(ctx, connection, login, person, client)
 }
 
-// CompleteSSOAssertion turns the response a SAML provider posted to the
-// assertion consumer service into a session.
+// CompleteSSOAssertion turns a SAML response posted to the ACS into a session.
 // `binding` is what the browser kept from StartSSO.
 func (s *Service) CompleteSSOAssertion(ctx context.Context, slug string, r *http.Request, binding string, client Client) (*SocialResult, error) {
 	if err := r.ParseForm(); err != nil {
@@ -266,12 +252,9 @@ func (s *Service) CompleteSSOAssertion(ctx context.Context, slug string, r *http
 	return s.finishSSO(ctx, connection, login, person, client)
 }
 
-// RefuseSSO is a provider sending the browser back with an OAuth error rather
-// than a code — the person cancelled, or the provider would not let the
-// connection sign them in: an unknown scope, a redirect URI or a client it
-// does not know. The sign-in is used up, and the refusal recorded against the
-// connection, but only for a state this server issued, so a link anybody can
-// make does not write to the activity log.
+// RefuseSSO handles a provider returning an OAuth error instead of a code. The
+// sign-in is used up and the refusal logged, but only for a state this server
+// issued.
 func (s *Service) RefuseSSO(ctx context.Context, slug, state, binding, code, description string, client Client) error {
 	connection, _, err := s.takeSSOLogin(ctx, slug, state, binding)
 	if err != nil {
@@ -286,9 +269,8 @@ func (s *Service) RefuseSSO(ctx context.Context, slug, state, binding, code, des
 	return s.ssoFailed(ctx, connection, client, upstream("authorize", errors.New(reason)))
 }
 
-// ssoRefusal is a sign-in through a connection that did not complete: what
-// the person signing in is shown, and — for the administrator, in the
-// activity log — at which step, and exactly why.
+// ssoRefusal is a failed SSO sign-in: what the person is shown, and for the
+// activity log, the step and the exact reason.
 type ssoRefusal struct {
 	shown *Problem
 	step  string
@@ -314,11 +296,8 @@ func (f *ssoRefusal) Unwrap() error { return f.err }
 // not complete.
 const ssoFailedAction = "sso_connection.sign_in_failed"
 
-// ssoFailed turns a refusal into the problem the person is shown, and writes
-// what it was to the activity log against the connection. The person signing
-// in is told nothing a provider said, which is no business of theirs; the
-// administrator setting the connection up needs all of it, and should not
-// have to go looking in the server's log.
+// ssoFailed logs the provider's error against the connection for the
+// administrator, and tells the person signing in nothing of it.
 func (s *Service) ssoFailed(ctx context.Context, connection *model.SSOConnection, client Client, err error) error {
 	var failure *ssoRefusal
 	if !errors.As(err, &failure) {
@@ -353,11 +332,9 @@ func (s *Service) ssoFailed(ctx context.Context, connection *model.SSOConnection
 	return failure.shown
 }
 
-// takeSSOLogin is the sign-in a state belongs to, used up, and the enabled
-// connection it was for. `binding` is what the browser kept from StartSSO: an
-// answer that comes back in another browser is no answer to this sign-in, and
-// accepting one would let whoever started a sign-in of their own walk somebody
-// else through it and sign that browser in as them.
+// takeSSOLogin uses up the sign-in a state belongs to. `binding` must match
+// what this browser kept from StartSSO, so nobody can walk another browser
+// through their own sign-in.
 func (s *Service) takeSSOLogin(ctx context.Context, slug, state, binding string) (*model.SSOConnection, *model.SSOLogin, error) {
 	connection, err := s.ssoConnection(ctx, slug)
 	if err != nil {
@@ -403,9 +380,8 @@ func (s *Service) finishSSO(
 	return &SocialResult{SignIn: result, Request: login.Request, Next: login.Next, Provider: connection.Name}, nil
 }
 
-// signInThroughSSO is the account a verified person signs in to — theirs
-// already, one their address has, or a new one — brought up to date with
-// what the provider says.
+// signInThroughSSO finds or creates the account for a verified person and syncs
+// it with what the provider says.
 func (s *Service) signInThroughSSO(
 	ctx context.Context,
 	connection *model.SSOConnection,
@@ -417,10 +393,7 @@ func (s *Service) signInThroughSSO(
 	now := s.now()
 	email := strings.ToLower(strings.TrimSpace(person.Email))
 
-	// Closed means closed before anything happens: without this check the
-	// account would be made, the identity linked and the roles synced, and
-	// only startSession at the end would refuse — leaving those side effects
-	// behind for a sign-in nobody was let through.
+	// Check a closed flow first, before any account is created or roles synced.
 	if !flow.AllowSignIn {
 		return nil, ErrSignInClosed
 	}
@@ -473,9 +446,7 @@ func (s *Service) signInThroughSSO(
 		return nil, err
 	}
 
-	// Remembered: a sign-in through a provider has no box to tick, and
-	// somebody who has just been sent back from one is not on a machine they
-	// are passing through.
+	// Provider sign-ins are remembered: there is no checkbox to tick.
 	result, err := s.startSession(ctx, user, flow, request, true, client, "user.login")
 	if err != nil {
 		return nil, err
@@ -486,9 +457,8 @@ func (s *Service) signInThroughSSO(
 	return result, nil
 }
 
-// ssoAccountFor is the account somebody signing in through a connection for
-// the first time gets: the one their address already has, if the connection
-// links, or a new one, if it makes them.
+// ssoAccountFor is a first-time SSO user's account: the one with their address
+// (if the connection links), or a new one (if it provisions).
 func (s *Service) ssoAccountFor(
 	ctx context.Context,
 	connection *model.SSOConnection,
@@ -502,9 +472,8 @@ func (s *Service) ssoAccountFor(
 		if connection.Matching != model.SSOMatchLink {
 			return nil, ErrSSOLinkRefused
 		}
-		// Somebody can register an address they do not own and wait for its
-		// owner to arrive through the provider, keeping the password they
-		// set; an account that never proved its address is not linked.
+		// Never link to an account that has not proved its address, or whoever
+		// pre-registered it would keep their password.
 		if !user.IsEmailVerified {
 			return nil, refused(ErrSSOLinkRefused, "the account for %s never verified its address, so it is not linked", email)
 		}
@@ -550,9 +519,8 @@ func (s *Service) ssoAccountFor(
 	return user, nil
 }
 
-// syncFromSSO keeps the account in step with the provider: its name, when the
-// connection says the provider is where it is kept, and the roles the
-// provider's groups give.
+// syncFromSSO updates the name (when the provider owns the profile) and the
+// roles mapped from the provider's groups.
 func (s *Service) syncFromSSO(ctx context.Context, connection *model.SSOConnection, user *model.User, person *ssoPerson, client Client) error {
 	if connection.SyncProfile {
 		first, last := truncate(person.FirstName, 100), truncate(person.LastName, 100)
@@ -620,11 +588,8 @@ func (s *Service) syncFromSSO(ctx context.Context, connection *model.SSOConnecti
 	return nil
 }
 
-// ---- the error page -------------------------------------------------------
-
-// SSOErrorPage is the sign-in app's error page for a failed single sign-on,
-// naming the reason the way the API does so the page says it in the reader's
-// language.
+// SSOErrorPage is the sign-in app's error page for a failed SSO, with the
+// reason as a translatable code.
 func (s *Service) SSOErrorPage(err error) string {
 	reason := ErrSSOUpstream
 

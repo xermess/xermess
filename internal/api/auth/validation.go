@@ -15,9 +15,8 @@ func (r *loginRequest) validate() error {
 	return validate.Struct(r)
 }
 
-// validate tidies the profile form and checks it. The address is kept
-// trimmed and lower case, the way every address is, since it is the
-// username too.
+// validate trims and lower-cases the address (it is also the username) and
+// checks the form.
 func (r *profileRequest) validate() error {
 	r.FirstName = strings.TrimSpace(r.FirstName)
 	r.LastName = strings.TrimSpace(r.LastName)

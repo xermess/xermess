@@ -14,6 +14,7 @@
 		RiUserStarLine
 	} from 'svelte-remixicon';
 	import type { OverviewDays } from '$lib/api';
+	import { countOf } from '$lib/utils/format';
 	import { BRAND } from '$lib/brand';
 	import { logsHref } from '$lib/components/activity/filters';
 	import ActivityChart from '$lib/components/activity/ActivityChart.svelte';
@@ -113,11 +114,11 @@
 			),
 			applications: note(
 				`${count(counts.enabled_applications)} enabled`,
-				`${count(counts.user_roles)} roles`
+				countOf(counts.user_roles, 'role')
 			),
-			apis: note(`${count(counts.api_scopes)} scopes`),
+			apis: note(countOf(counts.api_scopes, 'scope')),
 			sessions: note(
-				`${count(counts.admins)} ${counts.admins === 1 ? 'admin' : 'admins'}`,
+				countOf(counts.admins, 'admin'),
 				counts.locked_admins > 0 && `${counts.locked_admins} locked`
 			)
 		};
@@ -209,7 +210,7 @@
 		<div class="row">
 			<Panel title="Activity · last {data.days} days" icon={RiBarChartBoxLine}>
 				{#snippet meta()}
-					<Tag>{totals.events.toLocaleString()} events</Tag>
+					<Tag>{countOf(totals.events, 'event')}</Tag>
 					{#if totals.refused > 0}
 						<Tag tone="danger" dot>{totals.refused.toLocaleString()} refused</Tag>
 					{/if}

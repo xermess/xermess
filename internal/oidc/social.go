@@ -25,16 +25,9 @@ import (
 	"loginer/internal/store"
 )
 
-// Signing in with an account somewhere else.
-//
-// This server is the client here, not the provider: it sends the browser to
-// Google or Yandex, they send it back with a code, and this file turns that
-// code into a session — the same session a password would have started, so
-// everything after it is the same.
-//
-// The paths are the two halves of that, and they carry the provider's slug so
-// one server can offer several. The callback is registered with the provider,
-// so it may not move once anybody is signing in with it.
+// Social sign-in: this server is the client of Google, Yandex and the rest, and
+// turns their answer into the same session a password starts. The callback path
+// is registered with each provider, so it must never move.
 const (
 	PathSocialStart    = "/oauth2/social/:slug/start"
 	PathSocialCallback = "/oauth2/social/:slug/callback"
@@ -66,14 +59,9 @@ func (s *Service) SocialButtons(ctx context.Context) ([]SocialButton, error) {
 	return buttons, nil
 }
 
-// StartSocial is where to send the browser to sign in with a provider, and the
-// state the caller has to remember in that browser (session.SignInStateCookie)
-// so the callback knows the answer came back where it set off.
-//
-// `request` is the sign-in under way, if the person came from an application,
-// and `next` is where to put them afterwards when they did not. Both are kept
-// here rather than in the address the provider is given, which comes back
-// only as far as `state`.
+// StartSocial returns where to send the browser and the state to keep in its
+// cookie (session.SignInStateCookie), so the callback can tell the answer came
+// back to the same browser.
 func (s *Service) StartSocial(ctx context.Context, slug, request, next string) (string, string, error) {
 	provider, err := s.socialProvider(ctx, slug)
 	if err != nil {
@@ -163,10 +151,9 @@ func (s *Service) CompleteSocial(ctx context.Context, slug, code, state, binding
 		return nil, ErrSocialExpired
 	}
 
-	// The answer has to come back in the browser the sign-in set off from.
-	// Without this a state and a code are enough on their own, and whoever
-	// holds a pair of their own can hand them to somebody else's browser and
-	// sign it in as themselves (RFC 6749 section 10.12).
+	// The answer must return to the browser that started the sign-in, or a
+	// stolen state and code could sign a victim's browser into the attacker's
+	// account (RFC 6749 10.12).
 	if subtle.ConstantTimeCompare([]byte(binding), []byte(state)) != 1 {
 		return nil, ErrSocialExpired
 	}
@@ -228,9 +215,8 @@ func challengeFor(verifier string) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
-// socialToken is what a provider's token endpoint answered with. The fields
-// that are read by name are here; the rest stays in Raw, because a provider
-// may put the address there (VK) and nowhere else.
+// socialToken is the provider's token response; unknown fields stay in Raw
+// because some providers (VK) put the address there.
 type socialToken struct {
 	AccessToken string
 	IDToken     string
@@ -392,9 +378,8 @@ func (s *Service) socialIdentity(ctx context.Context, provider *model.SocialProv
 		LastName:  claimString(claims, spec.Claims.LastName),
 	}
 
-	// A provider that sends the address with the token rather than in the
-	// profile (VK), and one that only ever hands out addresses it has checked
-	// itself and says so nowhere.
+	// Some providers send the address with the token (VK), or only ever hand
+	// out verified addresses without saying so.
 	if identity.Email == "" && spec.EmailInTokenResponse {
 		identity.Email = stringClaim(token.Raw, "email")
 	}
@@ -412,15 +397,10 @@ func (s *Service) socialIdentity(ctx context.Context, provider *model.SocialProv
 	return identity, nil
 }
 
-// idTokenClaims reads an id_token that came straight back from the token
-// endpoint.
-//
-// Its signature is not checked, and does not have to be: it arrived over TLS
-// from the provider's own token endpoint, in answer to a request carrying
-// this client's secret, which OpenID Connect Core section 3.1.3.7 accepts in
-// place of checking the signature. That the answer is the provider's is not
-// the same as the token in it being theirs, so what it claims is still held
-// to this client, to the issuer the kind is known to have, and to the clock.
+// idTokenClaims reads an id_token straight from the provider's token endpoint
+// over TLS, which OpenID Connect Core 3.1.3.7 accepts in place of a signature
+// check. Its claims are still held to this client, the expected issuer and the
+// clock.
 func (s *Service) idTokenClaims(provider *model.SocialProvider, idToken string) (map[string]any, error) {
 	if idToken == "" {
 		s.log.Error("a social provider gave no id_token", "provider", provider.Slug)
@@ -447,9 +427,8 @@ func (s *Service) idTokenClaims(provider *model.SocialProvider, idToken string) 
 		return nil, ErrSocialUpstream
 	}
 
-	// A kind whose provider is known in advance names its issuer, and a token
-	// naming another one is not that provider's however it arrived. A kind
-	// configured per installation has no issuer to be held to.
+	// Kinds with a known provider must name its issuer; per-installation kinds
+	// have none to check.
 	if want := provider.Spec().IDTokenIssuer; want != "" && stringClaim(claims, "iss") != want {
 		s.log.Error("a social provider's id_token named another issuer",
 			"provider", provider.Slug, "issuer", stringClaim(claims, "iss"), "want", want)
@@ -503,11 +482,8 @@ func (s *Service) fetchSocialProfile(ctx context.Context, provider *model.Social
 	return claims, nil
 }
 
-// decodeClaims reads a provider's JSON with its numbers kept as written.
-// Decoded as float64, an id above 2^53 — a snowflake, a Java long — loses
-// its last digits, and every id within the same few hundred rounds to one
-// string: the first person to sign in would own that subject, and the rest
-// would be signed in as them. As json.Number, claimString gets the literal.
+// decodeClaims keeps numbers as json.Number: as float64, ids above 2^53 round
+// together and different people would share one subject.
 func decodeClaims(payload []byte, claims *map[string]any) error {
 	decoder := json.NewDecoder(bytes.NewReader(payload))
 	decoder.UseNumber()
@@ -515,13 +491,12 @@ func decodeClaims(payload []byte, claims *map[string]any) error {
 	return decoder.Decode(claims)
 }
 
-// callProvider makes one request to a provider and reads the answer. What
-// went wrong is logged with the provider's own words; the caller gets one
-// error, because none of it is the person signing in to act on.
+// callProvider makes one request to a provider, logging details and returning a
+// single error.
 func (s *Service) callProvider(request *http.Request, provider *model.SocialProvider, what string) ([]byte, error) {
 	client := s.social
 	if client == nil {
-		client = newFederationClient(socialTimeout)
+		client = newFederationClient(socialTimeout, onLoopback(s.issuer))
 	}
 
 	response, err := client.Do(request)
@@ -549,9 +524,8 @@ func (s *Service) callProvider(request *http.Request, provider *model.SocialProv
 	return body, nil
 }
 
-// signInWithIdentity turns who the provider said it was into a session: the
-// account that already holds this identity, the one with the same address, or
-// a new one.
+// signInWithIdentity signs in the account holding this identity, the one with
+// the same address, or a new one.
 func (s *Service) signInWithIdentity(
 	ctx context.Context,
 	provider *model.SocialProvider,
@@ -581,9 +555,8 @@ func (s *Service) signInWithIdentity(
 		if err != nil {
 			return nil, err
 		}
-		// The account's own address decides, not the one the provider gave:
-		// a provider may give none, or one that has since changed, and the
-		// organisation's rule is about the account it owns.
+		// The account's own address decides SSO enforcement, not the
+		// provider's.
 		if err := s.socialSSORequired(ctx, user.Email); err != nil {
 			return nil, err
 		}
@@ -607,18 +580,14 @@ func (s *Service) signInWithIdentity(
 		return nil, ErrSocialNoEmail
 	}
 
-	// An address whose organisation signs in through its own identity
-	// provider is not linked or registered here either: "the only way in" has
-	// to hold for a provider's button as much as for a password.
+	// SSO-only domains are not linked or registered through a provider either.
 	if err := s.socialSSORequired(ctx, email); err != nil {
 		return nil, err
 	}
 
-	// An account with that address already: the provider has to have proved
-	// the address belongs to whoever is signing in, and the provider has to
-	// be one this installation trusts to prove it. The account has to have
-	// proved it too — otherwise whoever registered the address before its
-	// owner arrived would keep a password to the owner's account.
+	// Linking to an existing account needs the address proved by the provider,
+	// a provider trusted to prove it, and the account's own address verified;
+	// otherwise whoever pre-registered the address would keep a password to it.
 	user, err := s.store.UserByEmail(ctx, email)
 	switch {
 	case err == nil:
@@ -681,9 +650,8 @@ func (s *Service) signInWithIdentity(
 	return s.startSocialSession(ctx, user, provider, flow, request, client)
 }
 
-// socialSSORequired is ssoRequiredFor on the social way in: the same refusal,
-// as one of the sign-in failures the error page has a sentence for. The page
-// cannot name the connection, so the problem carries nothing.
+// socialSSORequired is ssoRequiredFor as a sign-in failure the error page can
+// explain.
 func (s *Service) socialSSORequired(ctx context.Context, email string) error {
 	err := s.ssoRequiredFor(ctx, email)
 
@@ -695,9 +663,8 @@ func (s *Service) socialSSORequired(ctx context.Context, email string) error {
 	return err
 }
 
-// socialRegistrationAllowed refuses to make an account for a sign-in to an
-// application that does not take registrations, so the rule is the same
-// whether someone registers with a password or with a provider.
+// socialRegistrationAllowed applies the application's registration rule to
+// provider sign-ups too.
 func (s *Service) socialRegistrationAllowed(ctx context.Context, request string) error {
 	if request == "" {
 		return nil
@@ -744,9 +711,7 @@ func (s *Service) startSocialSession(
 	request string,
 	client Client,
 ) (*SignInResult, error) {
-	// Remembered: a sign-in through a provider has no box to tick, and
-	// somebody who has just been sent back from one is not on a machine they
-	// are passing through.
+	// Provider sign-ins are remembered: there is no checkbox to tick.
 	result, err := s.startSession(ctx, user, flow, request, true, client, "user.login")
 	if err != nil {
 		return nil, err
@@ -758,10 +723,8 @@ func (s *Service) startSocialSession(
 	return result, nil
 }
 
-// claimString reads a string out of a payload by path: dots step into
-// objects and numbers into arrays, so "response.0.id" is as easy to name as
-// "sub". A number is read as a string, because a provider that gives a
-// numeric id (VK, Facebook) still gives an identity.
+// claimString reads a string by path ("response.0.id"); numbers are read as
+// strings, since some providers use numeric ids.
 func claimString(claims map[string]any, path string) string {
 	switch value := claimAt(claims, path).(type) {
 	case string:
@@ -860,12 +823,8 @@ func splitName(full string) (first, last string) {
 	}
 }
 
-// SocialLanding is where to send the browser once a provider has signed
-// someone in: back to the application that asked, or to their own account.
-//
-// A sign-in handle that expired while the person was away at the provider is
-// not an error to show them — they are signed in, and their account page is
-// somewhere to be.
+// SocialLanding is where to send the browser after a provider signs someone in:
+// the waiting application, or their account if the handle expired meanwhile.
 func (s *Service) SocialLanding(ctx context.Context, result *SocialResult) string {
 	if result.Request != "" {
 		location, err := s.Continue(ctx, result.Request, result.SignIn.Session)
@@ -880,9 +839,8 @@ func (s *Service) SocialLanding(ctx context.Context, result *SocialResult) strin
 	return s.accountLanding(result.Next)
 }
 
-// accountLanding is a path on the account app, checked the way the app checks
-// its own `next`: anything else would make this server a way to send someone
-// wherever the link said.
+// accountLanding is a path on the account app, checked like the app checks
+// `next` (no open redirect).
 func (s *Service) accountLanding(next string) string {
 	if safePath(next) {
 		return s.accountURL + next
@@ -891,11 +849,10 @@ func (s *Service) accountLanding(next string) string {
 	return s.accountURL + "/"
 }
 
-// safePath reports whether `next` is a path on the account app and nothing
-// else, by the same rule as the app's own safeNext: it starts with one slash,
-// and carries neither a second slash or a backslash where a browser would
-// read a host, nor a control character — a browser drops tabs and newlines
-// before it parses, so "/\t/evil.example" is "//evil.example" to it.
+// safePath reports whether `next` is a path on the account app only, by the
+// same rule as the app's safeNext: one leading slash, no second slash or
+// backslash, and no control characters (browsers strip tabs and newlines before
+// parsing).
 func safePath(next string) bool {
 	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.HasPrefix(next, `/\`) {
 		return false

@@ -15,7 +15,7 @@ COMPOSE_LOCAL := $(COMPOSE) -f deploy/compose.local.yaml
 MODE ?= $(if $(filter prod --prod,$(MAKECMDGOALS)),prod,dev)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup full-start dev prod --dev --prod run build test test-integration check docs docs-check \
+.PHONY: help setup full-start dev prod --dev --prod run build test bench test-integration check docs docs-check \
 	migrate-up migrate-down migrate-status migrate-new db-create db-reset db-psql \
 	web-check web-build deploy-build deploy-up deploy-down deploy-logs \
 	deploy-local deploy-local-down deploy-local-logs clean
@@ -55,6 +55,9 @@ check: ## Format, vet and test the Go code
 
 test: ## Run the Go tests
 	go test $(PKGS)
+
+bench: ## Run the Go micro-benchmarks
+	go test -run '^$$' -bench . -benchmem ./internal/jose/ ./internal/model/ ./internal/api/ratelimit/
 
 test-integration: ## Run the tests that need Postgres and Redis (throwaway databases and key prefixes)
 	@. scripts/lib.sh && load_env && LOGINER_TEST_DB_DSN="$${DB_URL:-$$LOGINER_DB_DSN}" \

@@ -23,13 +23,9 @@ var (
 	unreachable      = respond.Define(http.StatusBadRequest, "sso_unreachable", respond.Admin)
 )
 
-// connectionRequest is what a create or an update sends.
-//
-// Every field is a pointer because an update is a PATCH: nil is "not sent",
-// and the stored value stands. The slug and the protocol are read only when a
-// connection is made — both are in the addresses its provider was given.
-// The client secret is never sent back, so an update without one keeps the
-// one there is.
+// connectionRequest is a PATCH: nil leaves a setting alone. Slug and protocol
+// are read only on create, and an update without a client secret keeps the
+// stored one.
 type connectionRequest struct {
 	Name      *string `json:"name" validate:"omitnil,min=1,max=100"`
 	Slug      *string `json:"slug" validate:"omitnil,max=64"`

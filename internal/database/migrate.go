@@ -15,9 +15,8 @@ import (
 	_ "loginer/migrations"
 )
 
-// Migrate applies the migrations that have not run yet. Goose records what it
-// applied in the goose_db_version table, so running this on every start is
-// safe.
+// Migrate applies pending migrations; goose tracks them in goose_db_version, so
+// it is safe on every start.
 func Migrate(db *gorm.DB, cfg config.DB, log *slog.Logger) error {
 	sqlDB, err := prepareGoose(db)
 	if err != nil {
@@ -81,9 +80,8 @@ func MigrateStatus(db *gorm.DB, cfg config.DB) error {
 	return goose.Status(sqlDB, cfg.MigrateDir)
 }
 
-// printLogger lets goose write its own output, which is what makes the status
-// table readable. Goose's Logger interface requires Fatalf, and goose only
-// calls it on an error it cannot return.
+// printLogger lets goose print its own status table. Fatalf exists only to
+// satisfy goose's interface.
 type printLogger struct{}
 
 func (printLogger) Printf(format string, v ...any) {

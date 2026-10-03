@@ -1,6 +1,5 @@
-// Package admins answers the endpoints a super admin manages the panel's
-// administrators with: who they are, which admin roles they hold, and whether
-// their account may sign in.
+// Package admins lets a super admin manage administrators, their admin roles
+// and whether they may sign in.
 package admins
 
 import (
@@ -83,9 +82,9 @@ func (h *Handler) Create(c *gin.Context) {
 	h.answer(c, http.StatusCreated, admin)
 }
 
-// Update replaces an administrator's details, status and roles, and their
-// password when a new one is given. A new password or an account that may no
-// longer sign in ends every session the administrator has open.
+// Update replaces an administrator's details, status, roles and optionally
+// password. A new password, or losing the right to sign in, ends their
+// sessions.
 func (h *Handler) Update(c *gin.Context) {
 	admin, ok := h.find(c)
 	if !ok {
@@ -140,16 +139,14 @@ func (h *Handler) answer(c *gin.Context, status int, admin *model.Admin) {
 	c.JSON(status, gin.H{"admin": newAdminResponse(*stored)})
 }
 
-// Security answers how administrators are made to sign in, and how many of
-// them have an authenticator, so the panel can say what turning it on would
-// mean for the people who have not set one up.
+// Security returns the administrators' sign-in settings and how many have an
+// authenticator.
 func (h *Handler) Security(c *gin.Context) {
 	h.answerSecurity(c)
 }
 
-// UpdateSecurity changes those settings. Requiring a second factor takes
-// effect at once: an administrator without one can do nothing but set one up
-// the next time they load a page.
+// UpdateSecurity changes those settings. Requiring a second factor applies on
+// each administrator's next page load.
 func (h *Handler) UpdateSecurity(c *gin.Context) {
 	var req securityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -201,9 +198,7 @@ func (h *Handler) answerSecurity(c *gin.Context) {
 }
 
 // ResetMFA removes another administrator's second factor and signs them out
-// everywhere, for someone who lost both their phone and their recovery codes.
-// Your own is managed from your profile, with a code: resetting it here would
-// be a way round needing one.
+// everywhere. Your own is managed from your profile with a code.
 func (h *Handler) ResetMFA(c *gin.Context) {
 	admin, ok := h.find(c)
 	if !ok {
@@ -248,12 +243,9 @@ func (h *Handler) Delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// build checks a submitted administrator and returns the account to write.
-// Passing an existing one fills that one in instead of making a new one.
-//
-// A super admin may not suspend themselves or take away their own whole-panel
-// super_admin role: the request that did it would be the last one they could
-// make, and this endpoint is the only way back.
+// build checks a submitted administrator and returns the account to write. A
+// super admin may not suspend themselves or drop their own panel-wide
+// super_admin role.
 func (h *Handler) build(c *gin.Context, req *adminRequest, into *model.Admin) (*model.Admin, error) {
 	if err := req.validate(into == nil); err != nil {
 		return nil, err
@@ -311,9 +303,8 @@ func (h *Handler) build(c *gin.Context, req *adminRequest, into *model.Admin) (*
 	return admin, nil
 }
 
-// assignments turns the submitted role assignments into rows, checking every
-// role and application exists. The same role for the same scope twice is one
-// assignment, and super_admin can only be held for the whole panel.
+// assignments turns submitted assignments into rows, checking roles and
+// applications exist. Duplicates collapse, and super_admin is panel-wide only.
 func (h *Handler) assignments(c *gin.Context, requested []assignmentRequest) ([]model.AdminRoleAssignment, error) {
 	ctx := c.Request.Context()
 

@@ -18,10 +18,8 @@ export type RoleListParams = {
 export const ROLE_CHOICES_LIMIT = 500;
 
 /**
- * The roles matching a search, as pages.
- *
- * `first` is the page the server already rendered, so opening the page does
- * not fetch the same rows a second time.
+ * Roles matching a search as pages; `first` is the server-rendered page, so it is not fetched
+ * twice.
  */
 export function rolesOptions(params: RoleListParams, first: RolePage) {
 	return infiniteQueryOptions({

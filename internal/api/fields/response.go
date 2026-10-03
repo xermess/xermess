@@ -2,13 +2,9 @@ package fields
 
 import "loginer/internal/model"
 
-// fieldResponse is one field as the panel sees it.
-//
-// It is built by hand rather than returning the model because the two kinds
-// of field are not the same shape: an additional one is a row and has an id
-// and timestamps, while a built-in one is a column of the record and has
-// none. Sending a row's fields for something that is not a row would be
-// saying it has an id of all zeros, which is not true.
+// fieldResponse is one field as the panel sees it. Built-in fields are columns
+// with no id or timestamps, so this is built by hand rather than returning the
+// model.
 type fieldResponse struct {
 	ID string `json:"id,omitempty"`
 
@@ -47,13 +43,8 @@ func newFieldResponse(field model.UserField) fieldResponse {
 	return out
 }
 
-// listResponse is every field a user record has, and the types a new one may
-// have. Both come together because the panel's form needs the second to offer
-// the first.
-//
-// The built-in fields come first and are marked as such: the panel draws its
-// table and its form from this one list, and uses the mark to know which of
-// them it may offer to change.
+// listResponse is every field of a user record, built-ins first and marked,
+// plus the types a new field may have.
 type listResponse struct {
 	Fields []fieldResponse   `json:"fields"`
 	Types  []model.FieldType `json:"types"`

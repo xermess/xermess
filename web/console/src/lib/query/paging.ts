@@ -16,10 +16,8 @@ export function nextOffset(page: OffsetPage, count: number): number | undefined 
 }
 
 /**
- * The rows of every page read so far, each once.
- *
- * Pages by offset slide when a row is added or removed between two of them,
- * so the same row can arrive twice; a table keyed by id cannot show it twice.
+ * Rows of every page loaded so far, deduplicated by id (offset pages can repeat a row after an
+ * insert or delete).
  */
 export function uniqueById<Row extends { id: string }>(rows: Row[]): Row[] {
 	const seen = new Set<string>();
@@ -28,11 +26,8 @@ export function uniqueById<Row extends { id: string }>(rows: Row[]): Row[] {
 }
 
 /**
- * How many rows a list that holds every row at once starts by showing.
- *
- * The arguments are what the list is filtered by. They are not used: reading
- * them is what makes a `$derived` of this go back to one page whenever the
- * filter changes, while "Show more" can still write to it in between.
+ * How many rows a fully-loaded list shows at first. The filter arguments are unused but read,
+ * so a `$derived` of this resets to one page when the filter changes.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function firstPage(...filter: unknown[]): number {

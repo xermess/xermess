@@ -5,13 +5,9 @@ export type Messages = Record<string, string>;
 export type Nested = { [key: string]: string | Nested };
 
 /**
- * Reads a translation group into messages by dotted key.
- *
- * The groups under i18n/ are nested by namespace — `{"login": {"title": …}}`
- * — so a translator sees related text together; everything that looks text up
- * speaks of "login.title". A flat group, or one that mixes the two, reads the
- * same. It answers null for anything that is not a group of text: a number, a
- * list, or a key said twice.
+ * Flattens a nested translation group into dotted keys (`{"login": {"title": …}}` to
+ * "login.title"). Flat or mixed groups read the same; anything that is not text, or a repeated
+ * key, gives null.
  */
 export function flatten(file: unknown): Messages | null {
 	if (!isObject(file)) return null;

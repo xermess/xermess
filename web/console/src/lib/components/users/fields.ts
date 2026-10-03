@@ -1,12 +1,8 @@
 import type { UserField, UserRecord } from '$lib/api';
 
 /**
- * Reading and writing a field's value, whichever kind it is.
- *
- * A built-in field is a column of the record and a property of the object; an
- * additional one lives under its name in `data`. Everything that draws a
- * table cell or an input goes through here, so the difference is in one file
- * rather than in every component that shows a field.
+ * Reads and writes a field's value: built-in fields are properties of the user, additional ones
+ * live in `data`.
  */
 
 /** What this record holds for that field. */

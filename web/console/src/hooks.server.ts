@@ -5,21 +5,9 @@ import { COOKIES } from '$lib/brand';
 export { handleFetch } from '$lib/server/proxy';
 
 /**
- * Puts the reader's theme into the HTML before it is sent.
- *
- * The panel renders in the browser, so for the first frames there is no
- * stylesheet and no JavaScript: whatever `<html>` carries is what gets
- * painted. Deciding it here means a reader who chose dark is served dark,
- * rather than being shown light and corrected a moment later.
- *
- * A reader who has not chosen yet gets no attribute at all, which leaves the
- * prefers-color-scheme rules in tokens.css to decide — also without a flash,
- * because that happens in CSS rather than after it.
- *
- * `<html lang>` is written here too — it is what a screen reader reads the
- * page's words with — and it is always English: the panel is written in
- * English, in its own markup. The sign-in pages are the app an installation
- * translates.
+ * Writes the reader's chosen theme into <html> before it is sent, so there is no
+ * light-then-dark flash; with no choice, prefers-color-scheme in tokens.css decides. <html
+ * lang> is always English: the panel is not translated.
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const saved = event.cookies.get(COOKIES.theme);

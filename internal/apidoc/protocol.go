@@ -8,11 +8,8 @@ import (
 	"loginer/internal/model"
 )
 
-// protocolParams says what the OAuth 2.0 and OpenID Connect parameters
-// mean, for the provider's endpoints, which read them by name out of a form
-// rather than bind a documented struct. These are the protocols' own
-// definitions, narrowed to what this server accepts — the lists are read
-// from the model, so they cannot offer a grant or a scope it does not.
+// protocolParams documents the OAuth and OpenID Connect form parameters,
+// narrowed to what this server accepts.
 var protocolParams = map[string]string{
 	"client_id":             "The application's client ID.",
 	"client_secret":         "The application's secret, when it sends it in the form rather than with HTTP Basic. Never sent by a public client.",

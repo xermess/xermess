@@ -13,9 +13,7 @@ type settingsResponse struct {
 	ResendSeconds   int `json:"resend_seconds"`
 }
 
-// usingFlow is one login flow that asks for an emailed code, so the page can
-// say who these settings are for rather than leaving an administrator to
-// guess whether anything reads them.
+// usingFlow is a login flow that asks for an emailed code.
 type usingFlow struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`

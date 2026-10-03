@@ -69,7 +69,8 @@ describe('countOf', () => {
 	it.each([
 		[1, 'role', '1 role'],
 		[0, 'role', '0 roles'],
-		[3, 'API', '3 APIs']
+		[3, 'API', '3 APIs'],
+		[1200, 'event', '1,200 events']
 	])('counts %i %s as "%s"', (n, noun, expected) => {
 		expect(countOf(n, noun)).toBe(expected);
 	});

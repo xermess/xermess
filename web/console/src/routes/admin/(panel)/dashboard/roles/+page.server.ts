@@ -6,13 +6,9 @@ import { apiGet } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * Roles, on two tabs: the global roles, and every application's roles. The
- * tab, the search and the filter live in the URL, so a link opens the same
- * list; an application's panel links here with `application` set, which
- * narrows the second tab to that application's roles.
- *
- * Every role the administrator can see is loaded as well as the page: the tab
- * counts come from it, and a role can include roles of other scopes.
+ * Roles on two tabs, global and per application, with tab, search and filter in the URL
+ * (`application` narrows the second tab). All visible roles load too, for tab counts and
+ * cross-scope inheritance.
  */
 export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	const { admin } = await parent();

@@ -1,18 +1,12 @@
 /**
- * Markdown to HTML, while building.
+ * Markdown to HTML at build time: GitHub Markdown plus
  *
- * It is GitHub's Markdown with the few things a reference needs on top:
- *
- * - `## Heading {#id}` fixes a heading's anchor, so a link to it survives
- *   the heading being reworded — the generated pages link across each other.
- * - A heading that is a method and a path, `## POST /oauth2/token`, is drawn
- *   as an endpoint.
- * - `> [!NOTE]`, `[!TIP]`, `[!WARNING]` start a callout, as on GitHub.
- * - Code blocks are highlighted here, in both themes, so no highlighter
- *   ships to the browser. Consecutive blocks with a `title="…"` become tabs:
- *   the same request in curl, Node and Go.
- * - `{{name}}` and the other keys of PLACEHOLDERS are filled in from
- *   $lib/brand, so no guide spells the project's name.
+ * - `## Heading {#id}` fixes an anchor so links survive rewording;
+ * - `## POST /oauth2/token` headings render as endpoints;
+ * - `> [!NOTE]`, `[!TIP]`, `[!WARNING]` callouts;
+ * - code highlighted at build time in both themes, consecutive `title="…"` blocks becoming
+ *   tabs;
+ * - `{{name}}` and the other PLACEHOLDERS filled from $lib/brand.
  */
 import { Marked, type Token, type Tokens } from 'marked';
 import { createHighlighter, type Highlighter } from 'shiki';

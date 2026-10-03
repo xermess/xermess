@@ -1,10 +1,6 @@
-// Package totp is time-based one-time passwords (RFC 6238): the six-digit
-// codes an authenticator app shows, and checking them.
-//
-// The parameters are the ones every authenticator app assumes when an
-// otpauth:// URI does not say otherwise — SHA-1, six digits, thirty-second
-// steps — so they are fixed here rather than configurable: an app that reads
-// a different value from the URI is an app that shows the wrong codes.
+// Package totp implements RFC 6238 codes with the parameters every
+// authenticator app assumes (SHA-1, six digits, thirty seconds). They are fixed
+// because an app given others would show wrong codes.
 package totp
 
 import (
@@ -26,9 +22,8 @@ const (
 	Digits = 6
 )
 
-// Skew is how many steps before and after the current one are accepted, so a
-// phone whose clock is a little off, or a code typed as it changes, still
-// works.
+// Skew accepts one step either side, for clock drift and codes typed as they
+// change.
 const Skew = 1
 
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
@@ -70,10 +65,8 @@ func Code(secret string, step int64) (string, error) {
 	return fmt.Sprintf("%0*d", Digits, value%1_000_000), nil
 }
 
-// Verify checks a code against the steps around `at`, and returns the step it
-// matched. A step at or before `after` is refused even when the code is right:
-// that code has been used already, and accepting it again would let whoever
-// saw it over someone's shoulder use it too.
+// Verify checks a code around `at` and returns the matched step. Steps at or
+// before `after` are refused, so a code cannot be replayed.
 func Verify(secret, code string, at time.Time, after int64) (int64, bool) {
 	code = strings.ReplaceAll(strings.TrimSpace(code), " ", "")
 	if len(code) != Digits {

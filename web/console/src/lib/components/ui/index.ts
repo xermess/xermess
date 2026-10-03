@@ -1,9 +1,8 @@
-// The design system. One import path for every building block:
+// The design system, imported from one path:
 //
-//   import { Button, Input, Select } from '$lib/components/ui';
+//     import { Button, Input, Select } from '$lib/components/ui';
 //
-// How they are styled — sizes, variants, palettes — is in README.md beside
-// this file, and in styles/controls.css and styles/palettes.css.
+// Styling lives in styles/controls.css and styles/palettes.css.
 
 // Controls
 export { default as Button } from './Button.svelte';

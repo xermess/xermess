@@ -12,9 +12,8 @@ import (
 	"fmt"
 )
 
-// Sealer encrypts private keys before they are stored, with AES-256-GCM under
-// a key derived from the server's secret. A database dump without the secret
-// holds nothing that can sign a token.
+// Sealer encrypts secrets at rest with AES-256-GCM under a key derived from the
+// server's secret, so a database dump alone cannot sign tokens.
 type Sealer struct {
 	aead cipher.AEAD
 	key  [sha256.Size]byte
@@ -38,12 +37,9 @@ func NewSealer(secret string) (*Sealer, error) {
 	return &Sealer{aead: aead, key: sum}, nil
 }
 
-// Tag is a keyed hash of `data` under the same secret, for a value that is
-// compared rather than read back — a recovery code — and too short for a
-// bare hash to protect against a database dump. `purpose` names the use, so
-// a tag made for one kind of value is no tag for another: the key is the
-// secret's hash and the purpose, hashed together, and never the sealing key
-// itself.
+// Tag is a keyed hash for values that are compared, not read back, and too
+// short for a bare hash to survive a database dump. `purpose` separates uses,
+// and the sealing key itself is never used.
 func (s *Sealer) Tag(purpose string, data []byte) []byte {
 	key := sha256.Sum256(append(append([]byte{}, s.key[:]...), []byte(purpose)...))
 	mac := hmac.New(sha256.New, key[:])
@@ -62,9 +58,8 @@ func (s *Sealer) Seal(key crypto.Signer) ([]byte, error) {
 	return s.SealBytes(der)
 }
 
-// SealBytes encrypts any secret the server has to be able to read back — a
-// signing key, an administrator's TOTP seed: a fresh nonce, then the
-// ciphertext.
+// SealBytes encrypts a secret that must be read back (a signing key, a TOTP
+// seed) as nonce plus ciphertext.
 func (s *Sealer) SealBytes(plain []byte) ([]byte, error) {
 	nonce := make([]byte, s.aead.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {

@@ -1,14 +1,7 @@
 /**
- * The pages: every Markdown file under src/content, read while building.
- *
- * A file's path is its address — guides/tokens.md is /guides/tokens, and an
- * index.md is its directory. Its directory decides where it goes in the
- * sidebar, and a guide names its own section there with `section:` — so the
- * guides can be grouped by what a reader is doing without their addresses,
- * which other pages link to, ever moving.
- * Two kinds of file live there: the guides, written by hand, and
- * content/reference, written by `make docs` from the Go source. Both are
- * rendered the same way; a generated page says so in its front matter.
+ * Every Markdown file under src/content, read at build time. A file's path is its address and
+ * its directory places it in the sidebar; guides choose their section with `section:` so
+ * regrouping never moves an address. content/reference is written by `make docs`.
  */
 import type { NavSection } from '$lib/docs/types';
 
@@ -33,10 +26,8 @@ export interface Page {
 }
 
 /**
- * The groups, in the order the sidebar shows them, and how: under which of
- * its labels, and whether as rows of their own or as one branch that opens
- * onto its pages — the console's two kinds of row. A directory not listed
- * here is not published: a page has to be placed deliberately.
+ * Sidebar groups in order, with their label and whether they show as rows or one branch.
+ * Unlisted directories are not published.
  */
 const GROUPS: { directory: string; title: string; section: string; branch?: string }[] = [
 	{ directory: '', title: 'Overview', section: 'Get started' },

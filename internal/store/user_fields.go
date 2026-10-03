@@ -37,9 +37,8 @@ func (s *Store) SaveUserField(ctx context.Context, field *model.UserField) error
 	return translate(s.db.WithContext(ctx).Save(field).Error)
 }
 
-// DeleteUserField removes a field. The values stored under its name stay in
-// the user records until those are next saved, at which point they are
-// dropped: removing a column from the panel destroys nothing by itself.
+// DeleteUserField removes a field; its values are dropped from each user the
+// next time they are saved.
 func (s *Store) DeleteUserField(ctx context.Context, field *model.UserField) error {
 	return s.db.WithContext(ctx).Unscoped().Delete(field).Error
 }

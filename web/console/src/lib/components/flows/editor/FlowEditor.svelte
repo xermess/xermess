@@ -28,11 +28,8 @@
 	import Palette from './Palette.svelte';
 
 	/**
-	 * A login flow's editor: the steps a sign-in goes through on a canvas, the
-	 * steps that can be added beside it, and the settings of whatever is
-	 * selected on the other side. Nothing is saved until Save — the draft is
-	 * the page's own, checked against the server's rules as it is drawn, and
-	 * leaving with it unsaved asks first.
+	 * The login flow editor: canvas, palette and inspector. Edits are a local draft, validated as
+	 * drawn, saved only on Save, and leaving with unsaved changes asks first.
 	 */
 	type Props = {
 		/** The flow being edited, or null for a new one. */
@@ -93,8 +90,6 @@
 		await goto(leavingFor);
 	}
 
-	// ---- Changing the steps ----------------------------------------------------
-
 	function insert(index: number, step: LoginStep) {
 		if (draft.steps.includes(step)) return;
 
@@ -114,8 +109,6 @@
 		waiting = null;
 	}
 
-	// ---- What the canvas says ----------------------------------------------------
-
 	function lifetimeText(hours: number): string {
 		return hours % 24 === 0 && hours >= 24 ? `${hours / 24} d` : `${hours} h`;
 	}
@@ -133,8 +126,6 @@
 				return [];
 		}
 	}
-
-	// ---- Saving and the rest -----------------------------------------------------
 
 	async function run(action: () => Promise<void>) {
 		busy = true;

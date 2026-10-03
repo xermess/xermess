@@ -3,11 +3,8 @@ package organization
 // targetType is what this row is called in the activity log.
 const targetType = "organization"
 
-// organizationRequest is what an update sends.
-//
-// Every field is a pointer because this is a PATCH: nil is "not sent", and
-// the stored value stands. An empty string is sent on purpose and clears the
-// setting — which only the ones that may be empty accept.
+// organizationRequest is a PATCH: nil leaves a setting alone, an empty string
+// clears one that may be empty.
 type organizationRequest struct {
 	Name         *string `json:"name"`
 	Slug         *string `json:"slug"`

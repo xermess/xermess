@@ -41,9 +41,8 @@ type roleResponse struct {
 	// Inherits are the roles this one includes directly.
 	Inherits []roleRef `json:"inherits"`
 
-	// InheritedRoles is every role holding this one includes once
-	// inheritance is followed all the way down, sorted by name. Roles of
-	// applications the administrator cannot see are left out.
+	// InheritedRoles is every role this one includes, transitively, sorted by
+	// name; roles of invisible applications are left out.
 	InheritedRoles []roleRef `json:"inherited_roles"`
 
 	// APIScopes are the API scopes the role grants directly.

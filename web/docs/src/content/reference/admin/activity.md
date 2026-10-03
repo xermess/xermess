@@ -9,9 +9,9 @@ generated: true
 
 ## GET /api/v1/admin/overview {#get-api-v1-admin-overview}
 
-Is the admin panel's front page over a range of days: how much of everything there is, how signing in has gone, what each day looked like, who has been busiest, and the latest entries.
+Is the panel's front page for a range of days: totals, sign-in outcomes, daily activity, the busiest people and the latest entries.
 
-The five reads do not depend on each other, so they run at once: the page waits for the slowest of them rather than for all of them in a row.
+Its five reads run concurrently.
 
 | | |
 | --- | --- |
@@ -219,9 +219,7 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/logs/export {#get-api-v1-admin-logs-export}
 
-Writes the entries the filters match as a CSV file, newest first, up to exportLimit of them.
-
-Each row says what the logs page would: the same names hidden, the same detail left out, for the same administrator.
+Writes matching entries as CSV, newest first, up to exportLimit, hiding exactly what the logs page hides.
 
 | | |
 | --- | --- |

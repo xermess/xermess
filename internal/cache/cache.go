@@ -1,40 +1,24 @@
-// Package cache is Redis: two databases on one server, each with its own job.
+// Package cache is Redis: two databases on one server.
 //
-// The cache database (LOGINER_REDIS_CACHE_DB) holds what the sign-in pages
-// and the panel read on every render and anybody may see — the languages and
-// their text, the organisation, the login flows, the sign-in buttons, how a
-// one-time code works. Losing it costs nothing but a slower page.
+// The cache database holds what anybody may see and every page reads
+// (languages, the organisation, login flows, sign-in buttons). The session
+// database holds what decides who is signed in and what they may do (sessions,
+// administrators, client credentials, grants) and the rate limit's counts, so
+// flushing the cache never signs anybody out.
 //
-// The session database (LOGINER_REDIS_SESSION_DB) holds what decides who is
-// signed in and what they may do: the sessions behind the cookies, the
-// administrators those sessions belong to with the roles they hold, the
-// applications' client credentials, the sign-in security settings — and the
-// rate limit's counts. It can be given its own persistence and access, and
-// flushing the cache database never signs anybody out.
-//
-// The store reads through both and forgets what it writes, so nothing above
-// the store knows either is there. Every key is under the configured prefix,
-// and then under what it is for, so a Redis browser shows a tree:
+// Keys, under the configured prefix:
 //
 //	<prefix>cache:<group>:generation            the group's current generation
 //	<prefix>cache:<group>:v<generation>:<entry> one cached value, as JSON
 //	<prefix>session:<kind>:<token hash>         one session, as JSON
 //	<prefix>ratelimit:<scope>:<address>         one rate-limit bucket
 //
-// Most of what is cached belongs to a group, and a write forgets the whole
-// group at once by moving it on to its next generation: forgetting is one
-// INCR. That is what makes invalidation safe with several server processes
-// and a reader in flight — a reader that loaded a row just before a write
-// stores it under the old generation, which nobody reads again, rather than
-// putting stale text back after the write cleared it. Old generations are
-// left to expire. Sessions are the exception, because they are found by
-// their token rather than by anything a write knows in advance; see
-// sessions.go.
+// A write forgets a whole group with one INCR of its generation, so a reader
+// that loaded a row just before the write stores it under a generation nobody
+// reads again. Sessions are handled differently; see sessions.go.
 //
-// Redis is an optimisation, never a dependency of correctness. A nil *Cache
-// is a cache that is always empty, which is what the server runs with when
-// no Redis is configured; and a Redis that stops answering is logged and
-// treated as a miss, so a page is slower rather than broken.
+// Redis is an optimisation, never needed for correctness: a nil *Cache is
+// always empty, and a Redis that stops answering is treated as a miss.
 package cache
 
 import (
@@ -57,9 +41,8 @@ const (
 	SessionDatabase = "sessions"
 )
 
-// Groups of cached values, each forgotten as one. The entries of each are
-// named where the store reads them. The first ones live in the cache
-// database; the rest decide who may do what, and live in the session one.
+// Cache groups, each forgotten as a whole. The first live in the cache
+// database, the rest in the session database.
 const (
 	Languages     = "languages"
 	Organization  = "organization"
@@ -71,6 +54,9 @@ const (
 	Admins        = "admins"
 	Clients       = "clients"
 	AdminSecurity = "admin_security"
+	// Grants is what decides what a token carries: the role graph, and each
+	// application's access to each API.
+	Grants = "grants"
 )
 
 // Redis is the two databases. Either is nil when no Redis is configured,
@@ -117,11 +103,9 @@ func (r *Redis) Close() error {
 // could not deliver while Redis was away.
 const settleRetryInterval = 30 * time.Second
 
-// KeepSettling retries, on a timer until ctx ends, the group and session
-// invalidations a write could not deliver because Redis was unreachable at the
-// moment it committed. Without it those sit in memory until the next request
-// happens to touch the cache; a process that goes idle, or is about to be
-// restarted, would otherwise leave other processes serving a stale value.
+// KeepSettling retries, until ctx ends, the invalidations a write could not
+// deliver while Redis was unreachable, so an idle process does not leave others
+// serving a stale value.
 func (r *Redis) KeepSettling(ctx context.Context) {
 	if r == nil {
 		return
@@ -144,18 +128,15 @@ func (r *Redis) KeepSettling(ctx context.Context) {
 	}
 }
 
-// BumpAuthorityGroups moves the session-database groups on by one generation.
-// It runs at startup: a process that forgot one of these groups but died
-// before Redis took the invalidation would otherwise leave every process
-// serving a stale principal, client secret or security setting until the TTL
-// ran out, and a restart would not clear it. Discarding a generation only ever
-// throws cached values away, which is always safe, so this is cheap insurance.
+// BumpAuthorityGroups moves the session-database groups on by one generation at
+// startup, so an invalidation lost when a process died cannot outlive a
+// restart.
 func (r *Redis) BumpAuthorityGroups(ctx context.Context) error {
 	if r == nil || r.Sessions == nil {
 		return nil
 	}
 
-	return r.Sessions.incr(ctx, []string{Admins, Clients, AdminSecurity})
+	return r.Sessions.incr(ctx, Groups[SessionDatabase])
 }
 
 // Cache is one Redis database, and the prefix every key starts with.
@@ -166,26 +147,22 @@ type Cache struct {
 	number int
 	log    *slog.Logger
 
-	// warned keeps an outage from writing a line per request: the first
-	// failure is logged, and the next is logged once Redis has answered
-	// again in between.
+	// warned logs an outage once, and again only after Redis has recovered in
+	// between.
 	mu        sync.Mutex
 	warned    bool
 	downUntil time.Time
 
-	// pending is what a write could not forget because Redis did not
-	// answer: groups to move on and keys to remove. Until they are done this
-	// process reads none of the database and writes none of it, and every
-	// call tries them again first — so a moment's outage during a save
-	// cannot leave the old value being served once Redis is back.
+	// pending is what a write could not forget because Redis did not answer.
+	// Until it is delivered this process neither reads nor writes the database,
+	// so an outage during a save cannot leave the old value served.
 	pending     map[string]bool
 	pendingKeys map[string]bool
 }
 
-// Open connects to both databases of the Redis in the configuration, and
-// checks each answers so a wrong address stops the server at startup rather
-// than quietly caching nothing. With no Redis configured it returns nil,
-// which is two working caches that never hold anything.
+// Open connects to both Redis databases and pings them, so a wrong address
+// fails startup. With no Redis configured it returns nil: caches that never
+// hold anything.
 func Open(ctx context.Context, cfg config.Redis, log *slog.Logger) (*Redis, error) {
 	if !cfg.Enabled() {
 		return nil, nil
@@ -202,9 +179,8 @@ func Open(ctx context.Context, cfg config.Redis, log *slog.Logger) (*Redis, erro
 		return nil, err
 	}
 
-	// go-redis writes a line of its own for every failed dial, which in an
-	// outage is a line per request. The cache says it once (failed), so the
-	// library's lines go to debug.
+	// The cache logs outages once (failed), so go-redis's per-dial lines go to
+	// debug.
 	redis.SetLogger(quiet{log: log})
 
 	return &Redis{Cache: cacheDB, Sessions: sessionDB}, nil
@@ -217,9 +193,8 @@ func open(ctx context.Context, cfg config.Redis, name string, number int, log *s
 		Username: cfg.Username,
 		Password: cfg.Password,
 		DB:       number,
-		// A cache that takes longer than this to answer is slower than the
-		// database it stands in front of, so it fails fast and is left alone
-		// for a while (cooldown) rather than retried on every request.
+		// A cache slower than the database is useless, so it fails fast and
+		// cools down instead of retrying per request.
 		DialTimeout:   time.Second,
 		DialerRetries: 1,
 		MaxRetries:    1,

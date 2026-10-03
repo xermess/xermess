@@ -1,9 +1,6 @@
 /**
- * Days as the date picker reads and write them. A day travels as an ISO
- * date — "2026-03-12" — the same value a native date input has, and is shown
- * one way, day first — "12/03/2026" — rather than in the reader's locale: the
- * server renders the field too, and a date written two ways would be two
- * different pages.
+ * Dates travel as ISO days ("2026-03-12") and display day-first ("12/03/2026") regardless of
+ * locale, so the server and browser render the same.
  */
 import { parseDate, type DateValue } from '@ark-ui/svelte/date-picker';
 

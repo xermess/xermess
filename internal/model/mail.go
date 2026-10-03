@@ -8,26 +8,13 @@ import (
 	"loginer/internal/brand"
 )
 
-// MailSettings is how this installation sends email: the server it hands a
-// message to, and the address that message comes from.
-//
-// There is one row, like the organisation's and admin_security's. It starts
-// as the configuration says (LOGINER_SMTP_*) and is a super admin's to change
-// afterwards, and it is read when a message is sent rather than held in a
-// field from startup — so correcting a password that was typed wrong takes
-// effect on the next email instead of the next restart.
-//
-// Password is sealed with the server's secret key, like a social provider's
-// client secret: the database should never hold it in the clear, and it never
-// leaves the server. Nothing reads it back; a password that is forgotten is
-// typed again.
+// MailSettings is the single row saying how email is sent. It is seeded from
+// LOGINER_SMTP_* and read per message, so a fix applies to the next email.
+// Password is sealed with the secret key and never read back out.
 type MailSettings struct {
 	Base
 
-	// IsEnabled is whether messages are sent at all. Off, each one is written
-	// to the log instead — which is how a developer follows a reset link
-	// without a mail server, and how an installation that has not been given
-	// one yet behaves rather than failing every sign-up.
+	// IsEnabled sends messages; off, they are logged instead.
 	IsEnabled bool `gorm:"not null" json:"is_enabled"`
 
 	Host string `gorm:"size:255" json:"host"`
@@ -41,10 +28,8 @@ type MailSettings struct {
 	Username string `gorm:"size:255" json:"username"`
 	Password []byte `gorm:"type:bytea" json:"-"`
 
-	// FromAddress is what every message is sent from, and FromName what a
-	// mail client shows instead of it. They are apart rather than one
-	// "Name <address>" string because the panel asks for them apart, and
-	// because an address has to be checked and a name does not.
+	// FromAddress and FromName are stored apart because only the address is
+	// validated.
 	FromAddress string `gorm:"size:255" json:"from_address"`
 	FromName    string `gorm:"size:100" json:"from_name"`
 }
@@ -84,14 +69,8 @@ func IsMailEncryption(value MailEncryption) bool {
 	return false
 }
 
-// DefaultMailSettings is what an installation starts with when the
-// configuration names no mail server: nothing sent, and the port and form a
-// server is most likely to want once one is given.
-//
-// Off is the default because the alternative is worse than not sending: a
-// server configured with a host that does not answer makes every sign-up wait
-// for a connection to time out, where one that logs its messages lets the
-// installation be tried.
+// DefaultMailSettings sends nothing: a configured host that does not answer
+// would make every sign-up wait on a timeout.
 func DefaultMailSettings() MailSettings {
 	return MailSettings{
 		IsEnabled:   false,
@@ -102,11 +81,8 @@ func DefaultMailSettings() MailSettings {
 	}
 }
 
-// Validate reports the first thing wrong with the settings.
-//
-// A mail server that is off is checked as loosely as it is used: nothing is
-// sent, so a half-filled form is somebody's work in progress rather than a
-// mistake. Turning it on is what makes the host and the address required.
+// Validate reports the first problem. Host and address are required only once
+// sending is on.
 func (m MailSettings) Validate() error {
 	if !IsMailEncryption(m.Encryption) {
 		return fmt.Errorf("encryption must be one of: %s", joinEncryptions())
@@ -159,14 +135,9 @@ func joinEncryptions() string {
 	return strings.Join(names, ", ")
 }
 
-// MailMessageSpec is one email this server sends, for the panel to list: what
-// it is called, when it goes out, and the keys its subject and body are
-// written under.
-//
-// The text itself is not here. It is the sign-in pages' text, in the
-// languages table, so a message goes out in the reader's language and is
-// translated by whoever translates the rest — the Mail page edits those keys
-// rather than holding a second copy of them.
+// MailMessageSpec is one email the server sends, for the panel to list. Its
+// text lives with the sign-in pages' translations, so it goes out in the
+// reader's language.
 type MailMessageSpec struct {
 	Kind        string `json:"kind"`
 	Label       string `json:"label"`
@@ -176,9 +147,8 @@ type MailMessageSpec struct {
 	SubjectKey string `json:"subject_key"`
 	BodyKey    string `json:"body_key"`
 
-	// Params are the {braces} the text may use, each with what it stands
-	// for, so the panel can list them beside the editor and refuse one it
-	// does not know.
+	// Params are the {braces} the text may use, so the panel can list them and
+	// refuse unknown ones.
 	Params []MailParam `json:"params"`
 }
 
@@ -188,9 +158,8 @@ type MailParam struct {
 	Description string `json:"description"`
 }
 
-// MailMessageSpecs is every email the server sends, in the order the panel
-// lists them. A message added to the server is added here, or the Mail page
-// will not know it exists.
+// MailMessageSpecs is every email the server sends, in panel order. Add new
+// messages here.
 var MailMessageSpecs = []MailMessageSpec{
 	{
 		Kind:        "reset",
@@ -233,9 +202,7 @@ var MailMessageSpecs = []MailMessageSpec{
 	},
 }
 
-// MailMessageKeys is every key the Mail page edits, in the order the messages
-// are listed. It is what tells the page's reads and writes apart from the
-// rest of a language's text.
+// MailMessageKeys is every key the Mail page edits.
 func MailMessageKeys() []string {
 	keys := make([]string, 0, len(MailMessageSpecs)*2)
 	for _, spec := range MailMessageSpecs {
@@ -245,14 +212,11 @@ func MailMessageKeys() []string {
 	return keys
 }
 
-// MailTextPrefix is the group every key an email is built from is under —
-// the messages themselves, and the words put into them, such as the name an
-// account is called when the application has none.
+// MailTextPrefix groups every key used in emails.
 const MailTextPrefix = "email."
 
-// IsMailTextKey reports whether a key is part of an email at all: wider than
-// IsMailMessageKey, it is what keeps a translator's save off the Mail page's
-// text, where a reset link — a live token — is placed wherever {link} is put.
+// IsMailTextKey keeps translators' saves off email text, where {link} places a
+// live reset token.
 func IsMailTextKey(key string) bool {
 	return strings.HasPrefix(key, MailTextPrefix)
 }

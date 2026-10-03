@@ -1,17 +1,12 @@
 /**
- * Toasts: what an action on the account pages came to — saved, sent, could
- * not change — said in a corner of the screen rather than above a form that
- * may be out of sight. <Toaster /> in the root layout draws them.
+ * Toasts for actions on the account pages, drawn by <Toaster /> in the root layout. Callers
+ * pass already translated text.
  *
- *   notify.success(t('profile.saved'));
- *   notify.error(messageOf(err, t));
+ *     notify.success(t('profile.saved'));
+ *     notify.error(messageOf(err, t));
  *
- * The text is already translated: the caller has the translator. What the
- * sign-in pages say about the one form on them — a wrong password, an
- * expired link — stays in the page, beside that form.
- *
- * Written for this app rather than taken from a library: the app depends on
- * nothing but Svelte, and a toast is a list, a timer and a transition.
+ * Errors about the one form on a sign-in page stay beside that form. Written in-house to keep
+ * the app dependent on Svelte alone.
  */
 
 export type ToastTone = 'success' | 'danger';

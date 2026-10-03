@@ -11,14 +11,10 @@
 	let { label, options, value, onChange }: Props = $props();
 </script>
 
-<!-- A handful of mutually exclusive filters — "All · Web · SPA" — as one
-     control at a field's height, so it sits level with the search box beside
-     it, which is the box it borrows its border from.
-
-     The option that is on is filled in the brand colour: the same mark the row
-     you are on carries in the column, and a fill rather than a raised surface
-     because a shadow is the one thing the dark theme takes away. "All" is
-     ruled off from the values beside it, because it is the absence of one. -->
+<!--
+	Mutually exclusive filters as one control at field height. The active option is filled with
+	the brand colour (shadows vanish in dark mode); "All" is ruled off from the values.
+-->
 <div class="segmented" role="group" aria-label={label}>
 	{#each options as option, index (option.value)}
 		<button

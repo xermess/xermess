@@ -13,12 +13,8 @@ var servers = []struct {
 	{"admin", "Admin API", "registerAdminRoutes"},
 }
 
-// sections are what each handler package's page is called, and the one line
-// under its title. They are written for a developer calling the API, which
-// is why they are here rather than read from the packages' comments: those
-// are written for whoever maintains the package. A package missing here is
-// titled after its name, which reads well enough to ship and badly enough
-// to be noticed.
+// sections title each handler package's page for developers calling the API. A
+// package missing here is titled after its name.
 var sections = map[string]struct{ title, summary string }{
 	"api":          {"Health", "Whether the server is up, for load balancers and uptime checks."},
 	"reference":    {"OpenAPI document", "The server's own OpenAPI document, for your tooling."},

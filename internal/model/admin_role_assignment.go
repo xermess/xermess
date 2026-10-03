@@ -7,14 +7,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// AdminRoleAssignment gives an administrator a role, either for the whole
-// panel or for one application.
-//
-// The same role can be assigned more than once with different scopes — a
-// "moderator" of shop and of blog — which is how Zitadel's project managers
-// and Keycloak's per-client admin roles work. A scoped assignment grants only
-// the role's scopable permissions, and only for its application; super_admin
-// is only ever assigned for the whole panel.
+// AdminRoleAssignment gives an administrator a role for the whole panel or for
+// one application. A scoped assignment grants only the role's scopable
+// permissions; super_admin is always panel-wide.
 type AdminRoleAssignment struct {
 	ID        uuid.UUID `gorm:"type:uuid;primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -56,9 +51,8 @@ func (a AdminRoleAssignment) Global() bool {
 	return a.ApplicationID == nil
 }
 
-// Grants reports whether the assignment allows a permission for an
-// application. A nil application asks about the panel as a whole, which only
-// a global assignment can answer yes to.
+// Grants reports whether the assignment allows a permission for an application;
+// a nil application asks about the whole panel.
 func (a AdminRoleAssignment) Grants(permission string, application *uuid.UUID) bool {
 	if a.Global() {
 		return a.Role.Grants(permission)

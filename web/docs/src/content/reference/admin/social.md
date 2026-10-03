@@ -180,9 +180,9 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 ## GET /api/v1/admin/social-providers/:id/secret {#get-api-v1-admin-social-providers-id-secret}
 
-Answers with the client secret itself, for an administrator who has to check what is configured against the provider's console.
+Returns the stored client secret so it can be checked against the provider's console.
 
-It is stored encrypted rather than hashed, so it can be read back — which makes reading it an event worth recording. It takes the permission that could replace it anyway, and every reading is written to the log with who asked.
+It requires the permission that could replace it, and every read is written to the activity log.
 
 | | |
 | --- | --- |
@@ -255,7 +255,7 @@ response.raise_for_status()
 
 Registers a provider.
 
-It is not reachable by anyone signing in until somebody has signed in with it once — the credentials are only ever proved right by the provider itself.
+Its credentials are proved only by a first sign-in.
 
 | | |
 | --- | --- |
@@ -311,7 +311,7 @@ response.raise_for_status()
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `kind` | string | `kind` and `slug` are read when a provider is registered and never again: the slug is in the address registered with the provider, and the kind decides which addresses those are. |
+| `kind` | string | `kind` and `slug` are read only on registration; they decide the registered callback address. |
 | `slug` | string |  |
 | `name` | string or null |  |
 | `client_id` | string or null |  |
@@ -347,7 +347,7 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 Changes a provider's settings.
 
-Its kind and its identifier are not among them: both are in the address registered with the provider, and a sign-in that comes back to an address nobody answers is a worse failure than having to register a second provider.
+Kind and slug are fixed, since they form the registered callback address.
 
 | | |
 | --- | --- |
@@ -409,7 +409,7 @@ response.raise_for_status()
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `kind` | string | `kind` and `slug` are read when a provider is registered and never again: the slug is in the address registered with the provider, and the kind decides which addresses those are. |
+| `kind` | string | `kind` and `slug` are read only on registration; they decide the registered callback address. |
 | `slug` | string |  |
 | `name` | string or null |  |
 | `client_id` | string or null |  |
@@ -440,12 +440,11 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 | 401 | [`token_refused`](/reference/errors#token_refused) | This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access. |
 | 403 | [`cross_origin`](/reference/errors#cross_origin) | Requests from {origin} are not allowed. |
 | 403 | [`forbidden`](/reference/errors#forbidden) | You do not have permission to do that. |
+| 409 | [`social_provider_repointed`](/reference/errors#social_provider_repointed) | This provider already has linked accounts, so it cannot be pointed at a different one. Register a new provider instead. |
 
 ## DELETE /api/v1/admin/social-providers/:id {#delete-api-v1-admin-social-providers-id}
 
-Removes a provider, and every identity held at it.
-
-The accounts stay — a user who had no password keeps one way in fewer, which is why the panel says how many people that is before it asks.
+Removes a provider and its identities; the accounts stay, though some may lose their only way in.
 
 | | |
 | --- | --- |

@@ -429,7 +429,7 @@ response.raise_for_status()
 
 Replaces one language's text for one app.
 
-Keys the app does not look up are dropped and counted rather than refused, so a file from an older release still imports.
+Unknown keys are dropped and counted, so older files still import.
 
 | | |
 | --- | --- |

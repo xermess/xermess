@@ -32,12 +32,10 @@
 	const glyph: Record<Size, string> = { sm: '1rem', md: '1.125rem', lg: '1.25rem' };
 </script>
 
-<!-- IconButton, but somewhere to go rather than something to do: the shape
-     and the tooltip are the same, the element is an anchor, so it can be
-     opened in a tab and the browser says where it leads.
-
-     The href belongs to whoever used this component — an address off this
-     site, usually, which no resolve() applies to. -->
+<!--
+	An IconButton that navigates: an anchor with the same shape and tooltip. The caller supplies
+	the href, usually external, so no resolve() applies.
+-->
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 <Tooltip {label} {placement}>
 	{#snippet children(trigger)}

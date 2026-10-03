@@ -45,9 +45,7 @@ type applicationResponse struct {
 	IsEnabled             bool `json:"is_enabled"`
 	AllowRegistration     bool `json:"allow_registration"`
 
-	// LoginFlowID is the flow this application signs people in with, null
-	// for the default one. The panel has the flows themselves; what belongs
-	// here is which of them this application named.
+	// LoginFlowID is the application's flow, null for the default.
 	LoginFlowID *uuid.UUID `json:"login_flow_id"`
 
 	// RoleCount is how many roles the application defines.
@@ -92,9 +90,8 @@ func newApplicationResponse(app model.Application, roles int64) applicationRespo
 	}
 }
 
-// secretResponse is an application together with a client secret that was
-// just made. The secret is only ever in this one answer; it is left out when
-// none was made.
+// secretResponse is an application with a just-issued secret, the only time it
+// is shown.
 type secretResponse struct {
 	Application  applicationResponse `json:"application"`
 	ClientSecret string              `json:"client_secret,omitempty"`

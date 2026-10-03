@@ -16,18 +16,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// Application is an app or service that signs its users in through this
-// server with OAuth 2.0 and OpenID Connect: a client, in OAuth's words.
-//
-// What is stored follows the client metadata of OAuth 2.0 Dynamic Client
-// Registration (RFC 7591) and the rules of the OAuth 2.0 Security Best
-// Current Practice (RFC 9700): redirect URIs are matched exactly, the implicit
-// and password grants are not offered, and a client that cannot keep a
-// secret has to use PKCE.
-//
-// An application also owns roles. A role means something only inside the
-// application it belongs to, so "admin" in one app says nothing about another,
-// and a token issued for an app carries that app's roles alone.
+// Application is an OAuth client. It follows RFC 7591 metadata and RFC 9700:
+// exact redirect URI matching, no implicit or password grants, and PKCE for
+// clients that cannot keep a secret. Its roles mean something only within it.
 type Application struct {
 	Base
 
@@ -36,29 +27,25 @@ type Application struct {
 	Type        ApplicationType `gorm:"type:varchar(16);not null;index" json:"type"`
 
 	// LogoURL and ClientURI are shown on the sign-in pages. There is no
-	// consent page: see the note on asking in README.md.
+	// consent page: every registered application is trusted (see README.md).
 	LogoURL    string `gorm:"size:512" json:"logo_url"`
 	WebsiteURL string `gorm:"size:512" json:"website_url"`
 
-	// PrivacyURL and TosURI are the application's privacy policy and terms
-	// of service, linked from its sign-in pages and agreed to on
-	// registration. The names are RFC 7591's.
+	// PrivacyURL and TosURI (RFC 7591 names) are linked from the sign-in pages
+	// and agreed to on registration.
 	PrivacyURL string `gorm:"size:512" json:"privacy_url"`
 	TermsURL   string `gorm:"size:512" json:"terms_url"`
 
-	// AllowRegistration offers "Create an account" on the application's
-	// sign-in page. Users made that way get the default roles, as users an
-	// administrator makes do.
+	// AllowRegistration offers "Create an account"; such users get the default
+	// roles.
 	AllowRegistration bool `gorm:"not null" json:"allow_registration"`
 
 	// ClientID is what the application identifies itself with. It is made
 	// here and never changes.
 	ClientID string `gorm:"size:64;uniqueIndex;not null" json:"client_id"`
 
-	// ClientSecretHash is a SHA-256 of the secret, which is only ever shown
-	// once, when it is made. The secret is long and random, so a fast hash is
-	// right here, as it is for session tokens. SecretHint is its last four
-	// characters, so an administrator can tell which secret an app is using.
+	// ClientSecretHash is a SHA-256 of the secret, shown only once. SecretHint
+	// is its last four characters.
 	ClientSecretHash string     `gorm:"size:64" json:"-"`
 	SecretHint       string     `gorm:"size:8" json:"secret_hint"`
 	SecretCreatedAt  *time.Time `json:"secret_created_at"`
@@ -79,17 +66,14 @@ type Application struct {
 	IDTokenLifetime      int `gorm:"not null" json:"id_token_lifetime"`
 	RefreshTokenLifetime int `gorm:"not null" json:"refresh_token_lifetime"`
 
-	// AssertRoles puts the user's roles in this application into its tokens
-	// and the userinfo response. RequireRoleAssignment lets only users who
-	// hold at least one of its roles sign in to it. Both are Zitadel's
-	// project settings of the same names.
+	// AssertRoles puts the user's roles in this application into tokens and
+	// userinfo; RequireRoleAssignment admits only users holding one of its
+	// roles.
 	AssertRoles           bool `gorm:"not null" json:"assert_roles"`
 	RequireRoleAssignment bool `gorm:"not null;default:false" json:"require_role_assignment"`
 
-	// LoginFlowID is the login flow this application signs people in with.
-	// Nil means the default flow, which is also what an application holding
-	// a flow that has since been turned off falls back to — so a flow can be
-	// withdrawn without taking the applications using it down with it.
+	// LoginFlowID is this application's flow. Nil, or a flow that was turned
+	// off, means the default flow.
 	LoginFlowID *uuid.UUID `gorm:"type:uuid;index" json:"login_flow_id"`
 
 	// IsEnabled is false for an application that may not sign anyone in.
@@ -193,10 +177,9 @@ func (a Application) HasSecret() bool {
 	return a.TokenAuthMethod != AuthNone
 }
 
-// Normalise fills in what a type implies and tidies the lists, before
-// Validate checks what is left. A public client gets no secret method and
-// always requires PKCE; a machine-to-machine one has no user, so nothing to
-// redirect to and no OpenID scopes.
+// Normalise applies what the type implies before Validate: public clients get
+// no secret and require PKCE; machine-to-machine clients get no redirects or
+// OpenID scopes.
 func (a *Application) Normalise() {
 	switch {
 	case a.Type.Public():
@@ -281,10 +264,8 @@ func (a Application) Validate() error {
 		}
 	}
 
-	// website_url, privacy_url and terms_url are only links, so plain http is
-	// fine, as it is for an app running on a developer's machine. logo_url
-	// is loaded as an image on the sign-in page, which is served over https,
-	// and a browser blocks an http image there.
+	// Plain http is fine for links, but logo_url is loaded as an image on an
+	// https page, where browsers block http.
 	links := []struct{ name, value string }{
 		{"website_url", a.WebsiteURL},
 		{"privacy_url", a.PrivacyURL},
@@ -323,10 +304,8 @@ func (a Application) Validate() error {
 	return nil
 }
 
-// checkRedirectURI holds a redirect URI to RFC 9700: an absolute URI with no
-// fragment and no wildcard, since it is matched exactly. It has to be https,
-// except on a loopback address, and a native app may also use a private-use
-// scheme such as com.example.app:/callback (RFC 8252).
+// checkRedirectURI enforces RFC 9700: absolute, no fragment or wildcard, https
+// except on loopback, and for native apps a private-use scheme (RFC 8252).
 func checkRedirectURI(raw string, kind ApplicationType) error {
 	if strings.Contains(raw, "*") {
 		return fmt.Errorf("%q: wildcards are not allowed, redirect URIs are matched exactly", raw)
@@ -379,9 +358,7 @@ func NewClientID() (string, error) {
 // ErrNoSecret is returned when a secret is asked of a public client.
 var ErrNoSecret = errors.New("a public client has no secret")
 
-// IssueSecret gives the application a new client secret, replacing any it had,
-// and returns it. This is the only time the secret exists outside the caller:
-// only its hash is kept.
+// IssueSecret replaces the client secret and returns it; only its hash is kept.
 func (a *Application) IssueSecret(now time.Time) (string, error) {
 	if !a.HasSecret() {
 		return "", ErrNoSecret
@@ -414,9 +391,8 @@ func (a Application) CheckSecret(secret string) bool {
 	return subtle.ConstantTimeCompare([]byte(hex.EncodeToString(sum[:])), []byte(a.ClientSecretHash)) == 1
 }
 
-// ordered keeps the values that appear in `catalog`, once each, in catalog
-// order. Anything else stays at the end, in the order given, for Validate to
-// refuse.
+// ordered keeps catalog values once each in catalog order, followed by unknown
+// values for Validate to refuse.
 func ordered(values, catalog []string) []string {
 	out := []string{}
 	for _, known := range catalog {

@@ -7,14 +7,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// takeToken is a token bucket kept in Redis, taken from in one atomic step so
-// two server processes cannot both spend the last token.
-//
-// The bucket is a hash of how many tokens it held and when it was last
-// touched, refilled for the time in between at `rate` tokens a second up to
-// `burst`. The clock is Redis's own, so servers whose clocks disagree still
-// agree on the bucket. It answers whether a token was taken, and when not,
-// how many milliseconds until one will be there.
+// takeToken is a token bucket in Redis, taken from atomically so two processes
+// cannot spend the last token. It uses Redis's clock, so servers whose clocks
+// disagree still agree on the bucket. It answers whether a token was taken and,
+// if not, the milliseconds until one is.
 var takeToken = redis.NewScript(`
 local rate = tonumber(ARGV[1])
 local burst = tonumber(ARGV[2])
@@ -41,12 +37,8 @@ redis.call('PEXPIRE', KEYS[1], math.ceil(burst / rate * 1000))
 return {allowed, wait}
 `)
 
-// Take spends a token from the bucket named `bucket`, which allows
-// `perMinute` a minute with the whole minute's worth available at once, and
-// says whether there was one and, when not, how long until there is.
-//
-// An error means Redis did not answer; the caller decides what a limit is
-// worth without it.
+// Take spends a token from `bucket`, allowing `perMinute` a minute with the
+// whole minute available at once. An error means Redis did not answer.
 func (c *Cache) Take(ctx context.Context, bucket string, perMinute int) (bool, time.Duration, error) {
 	if !c.available() {
 		return false, 0, errUnavailable

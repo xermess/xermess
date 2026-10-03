@@ -22,13 +22,8 @@ import {
 import type { ActivityEvent } from '$lib/api';
 
 /**
- * What the actions in the activity log mean, said the way a person would.
- *
- * The server records an action as "<resource>.<what happened>" — see the
- * audit.Record calls in internal/api, and internal/auth for signing in. Each
- * is given a sentence, an icon and a tone here, so the dashboard, the logs
- * page and anything else listing activity say the same thing. An action not
- * listed still shows, by its raw name.
+ * The activity log's actions ("<resource>.<event>", from audit.Record) as a sentence, icon and
+ * tone, shared by every list of activity. Unlisted actions show their raw name.
  */
 
 /** The kind of thing an entry is about, which picks its colour. */

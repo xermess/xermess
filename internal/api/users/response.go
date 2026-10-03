@@ -45,9 +45,8 @@ type applicationRoles struct {
 	heldRoles
 }
 
-// rolesResponse is the roles a user holds as tokens would carry them: the
-// global roles, and each application's. An application the user holds
-// nothing in is still listed, with empty lists.
+// rolesResponse is the roles a user holds as tokens would carry them, listing
+// every application even when empty.
 type rolesResponse struct {
 	Global       heldRoles          `json:"global"`
 	Applications []applicationRoles `json:"applications"`
@@ -104,10 +103,8 @@ type mappedRole struct {
 	// Composite says the role includes other roles.
 	Composite bool `json:"composite"`
 
-	// Assigned says the role was given to the user directly, and Via lists
-	// the directly given roles it also comes through. A role with Via and
-	// not Assigned is inherited; one with both is given directly and also
-	// implied, and taking it away leaves the user holding it.
+	// Assigned means given directly; Via lists the direct roles it also comes
+	// through. With both, removing it leaves the user holding it.
 	Assigned bool      `json:"assigned"`
 	Via      []roleRef `json:"via"`
 }

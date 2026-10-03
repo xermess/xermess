@@ -16,12 +16,8 @@
 	import StepNode, { type StepNodeData } from './StepNode.svelte';
 
 	/**
-	 * The flow drawn as what it is: a sign-in starting at the top, each step in
-	 * turn, and a session at the bottom. It is Svelte Flow underneath — pan,
-	 * zoom, drag — held to one column, since a login flow is a sequence rather
-	 * than a graph: dragging a step reorders it, a step dropped from the
-	 * palette goes into the gap nearest where it lands, and the "+" between
-	 * two steps asks the palette for one to put there.
+	 * The flow as one column on Svelte Flow: start at the top, steps in order, session at the
+	 * bottom. Dragging reorders; a step dropped from the palette goes into the nearest gap.
 	 */
 	type Props = {
 		steps: LoginStep[];

@@ -1,7 +1,6 @@
 /**
- * The icons a page may name in its front matter (`icon: key-2`), from Remix
- * Icon — the set the console draws with. A name not here falls back to a
- * plain page, so a typo shows as the wrong icon rather than a broken build.
+ * Icons a page may name in front matter (`icon: key-2`), from Remix Icon. Unknown names fall
+ * back to a plain page icon.
  */
 import type { ComponentType } from 'svelte';
 import {

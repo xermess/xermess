@@ -13,39 +13,26 @@ import (
 	"loginer/internal/store"
 )
 
-// The emailed code step (model.StepEmailCode): a flow that names it holds a
-// sign-in back once the password has been accepted, emails a code to the
-// address on the account, and makes the session only when that code is typed
-// back.
+// The emailed code step: after the password is accepted, a code is sent to the
+// account's address and the session starts only when it is typed back. Sign-ins
+// whose provider already proved the address skip it.
 //
-// It is the address being proved, not the password being doubted, which is
-// why the ways in that a provider has already proved the address for — a
-// social sign-in, an organisation's identity provider — go straight through.
-// Asking those for a code would prove nothing that was not proved already,
-// and would mean sending somebody back to a page they had left.
-//
-// The handle is the secret here. A six-digit code is guessable in a way
-// nothing else this server hands out is, so the code alone is no use: it has
-// to be typed into the browser that asked for it, which is the only thing
-// holding the handle.
+// The handle is the real secret: a six-digit code is guessable, so it only
+// works in the browser holding the handle.
 
 // CodeChallenge is a sign-in waiting for its emailed code, as the page shows
-// it: what to come back with, where the message went, and what it may do
-// while it waits.
+// it.
 type CodeChallenge struct {
 	// Handle names the sign-in. The page keeps it and sends it back.
 	Handle string `json:"handle"`
 
-	// Email is the address the message went to, with the middle of the local
-	// part hidden: enough for somebody to recognise their own address, not
-	// enough to learn one they did not already know.
+	// Email is masked: enough to recognise one's own address, not to learn
+	// someone else's.
 	Email string `json:"email"`
 
 	ExpiresAt time.Time `json:"expires_at"`
 
-	// ResendAfter is how many seconds until another message may be asked
-	// for, so the page can count down rather than offering a button that
-	// refuses.
+	// ResendAfter is seconds until another code may be sent, for a countdown.
 	ResendAfter int `json:"resend_after"`
 
 	// AttemptsLeft is how many more codes may be typed before this sign-in
@@ -60,11 +47,8 @@ type codeContext struct {
 	settings *model.OTPSettings
 }
 
-// sendLoginCode holds a sign-in back for a code and emails one.
-//
-// The row replaces any the same user was already waiting on
-// (store.CreateLoginCode), so starting a sign-in twice leaves one code alive
-// — the one in the message that arrived last.
+// sendLoginCode holds a sign-in back and emails a code. A new code replaces the
+// user's previous one.
 func (s *Service) sendLoginCode(
 	ctx context.Context,
 	user *model.User,
@@ -110,11 +94,8 @@ func (s *Service) sendLoginCode(
 	return &SignInResult{Code: &answer}, nil
 }
 
-// SubmitLoginCode finishes a sign-in that was waiting for a code.
-//
-// Every code typed is counted before it is compared, and the count is the
-// row's rather than the address's: whoever is guessing has to hold the handle, and
-// the sign-in they hold it for is the one that runs out of guesses.
+// SubmitLoginCode finishes a sign-in that was waiting for a code. Each guess is
+// counted before comparing, against the sign-in rather than the address.
 func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, client Client) (*SignInResult, error) {
 	waiting, err := s.waitingCode(ctx, handle)
 	if err != nil {
@@ -166,9 +147,8 @@ func (s *Service) SubmitLoginCode(ctx context.Context, handle, typed string, cli
 	return s.startSession(ctx, user, flow, waiting.code.Request, waiting.code.RememberMe, client, "user.login")
 }
 
-// ResendLoginCode sends another code for a sign-in that is still waiting,
-// without starting it again: the handle stays, and so do the guesses already
-// spent.
+// ResendLoginCode sends another code without restarting: the handle and spent
+// guesses stay.
 func (s *Service) ResendLoginCode(ctx context.Context, handle string, client Client) (*CodeChallenge, error) {
 	waiting, err := s.waitingCode(ctx, handle)
 	if err != nil {
@@ -206,11 +186,8 @@ func (s *Service) ResendLoginCode(ctx context.Context, handle string, client Cli
 	return &answer, nil
 }
 
-// waitingCode reads the sign-in a handle names, with the settings it is held
-// to. Anything that cannot be used — a handle nobody has, a code that has
-// expired, one that has been guessed at too often — is the same answer: the
-// page starts the sign-in again either way, and which of them it was is not
-// the page's business.
+// waitingCode reads the sign-in a handle names. Every unusable case gets the
+// same answer, since the page restarts the sign-in either way.
 func (s *Service) waitingCode(ctx context.Context, handle string) (*codeContext, error) {
 	if handle == "" {
 		return nil, ErrCodeExpired
@@ -236,9 +213,8 @@ func (s *Service) waitingCode(ctx context.Context, handle string) (*codeContext,
 	return &codeContext{code: code, settings: settings}, nil
 }
 
-// challenge is a waiting sign-in as the page is told about it. The handle is
-// passed in rather than read off the row: the row holds its hash, and the
-// handle itself exists only where it was made.
+// challenge describes a waiting sign-in. The handle is passed in because only
+// its hash is stored.
 func challenge(handle string, code model.LoginCode, settings model.OTPSettings, email string, now time.Time) CodeChallenge {
 	wait := int(code.SentAt.Add(settings.Resend()).Sub(now).Round(time.Second).Seconds())
 	if wait < 0 {
@@ -254,9 +230,7 @@ func challenge(handle string, code model.LoginCode, settings model.OTPSettings, 
 	}
 }
 
-// mailCode sends the message, in the reader's language, without holding the
-// request that asked up: the answer is the same whether the mail server is
-// quick or slow, and a page waiting on one is a page that looks broken.
+// mailCode sends the code in the background, in the reader's language.
 func (s *Service) mailCode(
 	ctx context.Context,
 	user *model.User,
@@ -295,10 +269,8 @@ func (s *Service) mailCode(
 	}()
 }
 
-// maskEmail hides the middle of the local part: "alexander@example.com"
-// becomes "al•••••••r@example.com". It is shown to whoever asked for the code
-// so they can tell which of their addresses the message went to, and it says
-// nothing to somebody who did not know the address already.
+// maskEmail hides the middle of the local part: "alexander@example.com" becomes
+// "al•••••••r@example.com".
 func maskEmail(email string) string {
 	at := strings.LastIndex(email, "@")
 	if at < 1 {

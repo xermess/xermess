@@ -1,13 +1,6 @@
 /**
- * The navigation bar's timing, apart from its drawing: how it starts, how it
- * creeps while a page loads, and how it finishes. NavigationProgress.svelte
- * calls `start` as each navigation begins and `finish` once it has, and draws
- * `value` and `visible`; nothing here touches the page, so the timing can be
- * tested with a fake clock.
- *
- * It starts at once, the way NProgress and nextjs-toploader do, and every
- * navigation shows it: a quick one as a short sweep, a slow one as a bar
- * that creeps until the page arrives.
+ * The navigation bar's timing, separate from drawing so it can be tested with a fake clock. It
+ * starts at once, sweeps quickly for fast navigations and creeps for slow ones.
  */
 
 /** How often the bar creeps forward while the page is still loading, and

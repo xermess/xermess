@@ -10,12 +10,9 @@ import (
 	"loginer/internal/model"
 )
 
-// The sessions the panel's Sessions page lists: who is signed in, from where,
-// and since when — Keycloak's Sessions, for an installation that may have
-// millions of them. So the list is never counted and never paged by offset:
-// it is read newest first by the index on (created_at, id) and continued
-// from the last session shown, which costs the same on the first page as on
-// the thousandth.
+// User sessions for the Sessions page are never counted or offset-paged: they
+// are read newest first by (created_at, id) and continued from the last shown,
+// so every page costs the same.
 
 // SessionQuery narrows the list of active sessions.
 type SessionQuery struct {
@@ -77,10 +74,8 @@ func (s *Store) UserSession(ctx context.Context, id uuid.UUID) (*model.UserSessi
 	return &session, nil
 }
 
-// SignOutUser ends every session a user has and revokes every refresh token
-// their applications hold, in one transaction — Keycloak's "Sign out" on a
-// user. Ending the sessions alone would leave every application signed in
-// until its tokens ran out.
+// SignOutUser ends every session and revokes every refresh token of a user in
+// one transaction, so applications are signed out too.
 func (s *Store) SignOutUser(ctx context.Context, user uuid.UUID, at time.Time) (sessions, tokens int64, err error) {
 	var ended []model.UserSession
 

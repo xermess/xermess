@@ -10,9 +10,8 @@ import { apiGet, requirePermission } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * A super admin's page. The search and the filters live in the URL, as on the
- * users page. Every admin role and the permission catalog are loaded too, for
- * the role filter and for the panel, which offers the roles to hold.
+ * A super admin's page; search and filters live in the URL. Admin roles and the permission
+ * catalog load too, for the filter and the role picker.
  */
 export const load: PageServerLoad = async ({ fetch, parent, url }) => {
 	requirePermission((await parent()).admin, 'super_admin');

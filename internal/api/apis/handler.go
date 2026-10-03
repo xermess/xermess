@@ -1,6 +1,5 @@
-// Package apis answers the endpoints for resource servers: the services
-// applications ask for access tokens to call, each with an audience and the
-// scopes its tokens may carry.
+// Package apis manages resource servers: the services tokens are issued for,
+// each with an audience and scopes.
 package apis
 
 import (
@@ -89,9 +88,8 @@ func (h *Handler) Create(c *gin.Context) {
 	h.answer(c, http.StatusCreated, api.ID)
 }
 
-// Update replaces an API's name, description, role enforcement and scopes. Its
-// identifier stays as it is: every service checking tokens compares against
-// it.
+// Update replaces an API's name, description, role enforcement and scopes. The
+// identifier never changes.
 func (h *Handler) Update(c *gin.Context) {
 	api, ok := h.find(c)
 	if !ok {
@@ -109,10 +107,8 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	// A system API's scopes are the server's — the admin permissions, or the
-	// account API's two — so they stay what the server made them, whatever
-	// the request says; its name, description and token settings are the
-	// panel's to change.
+	// A system API's scopes stay the server's whatever the request says; only
+	// its name, description and token settings change.
 	scopes := api.Scopes
 
 	if err := req.applyTo(api, false); err != nil {
@@ -137,9 +133,8 @@ func (h *Handler) Update(c *gin.Context) {
 // systemAPI is the answer to deleting an API this server is itself.
 var systemAPI = respond.Define(http.StatusConflict, "system_api", respond.Admin)
 
-// Delete removes an API, its scopes, every application's authorisation for it
-// and every role's grant of its scopes. Tokens already issued for it stay
-// valid until they expire.
+// Delete removes an API with its scopes, application authorisations and role
+// grants. Issued tokens stay valid until they expire.
 func (h *Handler) Delete(c *gin.Context) {
 	api, ok := h.find(c)
 	if !ok {
@@ -172,9 +167,8 @@ func (h *Handler) answer(c *gin.Context, status int, id uuid.UUID) {
 	c.JSON(status, gin.H{"api": h.withCount(c, api)})
 }
 
-// Applications lists the applications the administrator can see, with what
-// each may do with the API. Granting and revoking access goes through the
-// application's own endpoints, which check the administrator may change it.
+// Applications lists visible applications with their access to the API. Access
+// is changed through the application's endpoints.
 func (h *Handler) Applications(c *gin.Context) {
 	api, ok := h.find(c)
 	if !ok {
@@ -190,9 +184,8 @@ func (h *Handler) Applications(c *gin.Context) {
 	c.JSON(http.StatusOK, newApplicationsResponse(apps))
 }
 
-// Logs lists what has happened to or involving the API, newest first:
-// changes to it, and applications gaining or losing access. Token requests
-// join these once the token endpoint issues tokens.
+// Logs lists changes to the API and applications gaining or losing access,
+// newest first.
 func (h *Handler) Logs(c *gin.Context) {
 	api, ok := h.find(c)
 	if !ok {
@@ -208,9 +201,8 @@ func (h *Handler) Logs(c *gin.Context) {
 	c.JSON(http.StatusOK, newLogResponse(events))
 }
 
-// details reads what every API response carries beyond the API: counts, and
-// where this server is. A count that cannot be read fails the list, but not a
-// write that has already happened; see withCount.
+// details reads the counts and server address every API response carries. A
+// failed count fails a list but not a completed write.
 func (h *Handler) details(c *gin.Context) (apiDetails, error) {
 	ctx := c.Request.Context()
 

@@ -8,23 +8,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// UserRole is a role users hold, either across every application or in one.
+// UserRole is a role users hold: global (no application) or belonging to one
+// application, where its name means nothing elsewhere. Names are unique within
+// their scope. A role carries no permissions; applications decide what it
+// allows.
 //
-// A global role belongs to no application — Keycloak's realm roles — and is
-// the same role wherever the user signs in: "employee", "beta-tester". An
-// application role belongs to the application that defines it — Keycloak's
-// client roles, Zitadel's project roles, Entra's app roles — so "admin" in
-// one app says nothing about another. A name is unique within its scope: once
-// among the global roles, and once within each application.
-//
-// This server says which roles a user holds; what a role lets them do is
-// decided by the applications, so a role carries no permissions of its own.
-//
-// A role can be composite, inheriting other roles: holding "editor" also
-// means holding "viewer". As in Keycloak, a global role may include global
-// roles and any application's roles, and an application role may include
-// global roles and roles of its own application. A role marked default is
-// given to every user created.
+// A role may inherit others. A global role may include global and any
+// application's roles; an application role may include global roles and its own
+// application's. A default role is given to every new user.
 type UserRole struct {
 	Base
 
@@ -59,9 +50,8 @@ func (r UserRole) In(application *uuid.UUID) bool {
 	return *r.ApplicationID == *application
 }
 
-// MayInherit reports whether this role may include `other`: a global role may
-// include any role, and an application role may include global roles and the
-// roles of its own application.
+// MayInherit: a global role may include any role; an application role, global
+// roles and its own application's.
 func (r UserRole) MayInherit(other UserRole) bool {
 	return r.Global() || other.Global() || other.In(r.ApplicationID)
 }
@@ -76,9 +66,7 @@ func (UserRole) TableName() string {
 // to put in a token or compare in code. Admin roles keep the same rule.
 var RoleNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
-// RoleGraph is every role by id, each with the ids of the roles it inherits
-// loaded. Roles are few, so resolving against the whole graph in memory is
-// simpler than walking it in SQL.
+// RoleGraph is every role by id with its inherited ids, resolved in memory.
 type RoleGraph map[uuid.UUID]UserRole
 
 // Reaches reports whether `to` can be reached from `from` by following what
@@ -93,10 +81,8 @@ func (g RoleGraph) Reaches(from, to uuid.UUID) bool {
 	return false
 }
 
-// WouldCycle reports whether letting `role` inherit `inherits` would make a
-// role inherit itself, directly or through others. The graph is the one
-// stored before the change: a path back to the role through its old
-// inheritance still passes through the role, so it is found either way.
+// WouldCycle reports whether letting `role` inherit `inherits` would make it
+// inherit itself.
 func (g RoleGraph) WouldCycle(role uuid.UUID, inherits []uuid.UUID) bool {
 	for _, id := range inherits {
 		if id == role || g.Reaches(id, role) {
@@ -142,10 +128,9 @@ func (g RoleGraph) walk(from []uuid.UUID) []UserRole {
 	return roles
 }
 
-// Via says, for every role holding these amounts to, which of the held roles
-// it comes through. A held role counts as coming through itself only when it
-// is not also reached through another held role, so a role listed under
-// itself is exactly one that was given directly and nothing else implies.
+// Via maps each role the held roles amount to onto the held roles it comes
+// through; a role lists itself only when given directly and implied by nothing
+// else.
 func (g RoleGraph) Via(held []uuid.UUID) map[uuid.UUID][]uuid.UUID {
 	via := map[uuid.UUID][]uuid.UUID{}
 

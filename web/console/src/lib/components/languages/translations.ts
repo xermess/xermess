@@ -23,14 +23,9 @@ export type ReadResult =
 	{ ok: true; messages: Record<string, string>; skipped: number } | { ok: false };
 
 /**
- * Reads a translation file somebody chose: the merged shape of the groups
- * under i18n/ and of what Export writes — nested by namespace — or a flat file
- * of texts by dotted key, which reads the same.
- *
- * Keys this version of the apps does not look up are skipped and counted, as
- * the server would drop them anyway; `$name` and `$native` describe the file
- * and are neither. An empty text is left out, so importing a half-done file
- * over a finished one cannot empty anything.
+ * Reads an imported translation file, nested or flat. Unknown keys are skipped and counted,
+ * `$name`/`$native` are ignored, and empty texts are left out so a partial file never erases
+ * anything.
  */
 export async function readTranslationFile(file: File, known: string[]): Promise<ReadResult> {
 	let parsed: unknown;
@@ -77,12 +72,8 @@ export function download(filename: string, text: string) {
 export const languageCode = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/i;
 
 /**
- * What a language is called, in English and in itself, from its tag — so
- * typing "uz" fills in "Uzbek" and "o‘zbek". The browser knows every
- * language's name; there is no list of them to keep here.
- *
- * It answers nothing for a tag the browser cannot name, and the fields are
- * then left for somebody to fill in.
+ * A language's English and native names from its tag, using the browser's Intl data; null when
+ * the browser cannot name it.
  */
 export function namesOf(code: string): { name: string; native: string } | null {
 	try {

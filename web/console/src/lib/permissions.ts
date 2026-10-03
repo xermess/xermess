@@ -1,11 +1,8 @@
 import type { Admin, AdminPermissionName } from '$lib/api';
 
 /**
- * What the signed-in administrator may do, for deciding what to show.
- *
- * This is only ever about the panel: a control that is hidden is a request
- * nobody makes by accident. The server checks every request against the same
- * roles, so a request made anyway is refused there.
+ * What the signed-in administrator may do, for deciding what to show. The server checks every
+ * request itself; hiding a control is only convenience.
  */
 
 /** Whether the administrator holds the permission for the whole panel, or,

@@ -13,15 +13,12 @@ import (
 // targetType is what these records are called in the activity log.
 const targetType = "user_role"
 
-// maxPageSize caps how many roles one request can ask for. It is higher than
-// for users: the panel asks for every role it can see at once to offer them
-// as choices.
+// maxPageSize is high because the panel loads every visible role at once as
+// choices.
 const maxPageSize = 500
 
-// roleRequest is the body of the create and update endpoints.
-//
-// Inherits holds ids, and replaces what the role had: an update sends the
-// whole role, the same as for a user.
+// roleRequest is the create and update body. Inherits holds ids and replaces
+// the role's inheritance.
 type roleRequest struct {
 	// ApplicationID is the application the role belongs to, or null for a
 	// global role. It is read on create only: a role keeps its scope.
@@ -35,9 +32,8 @@ type roleRequest struct {
 
 	Inherits []uuid.UUID `json:"inherits"`
 
-	// APIScopes are the ids of the API scopes the role grants, and replace
-	// what it granted. Left out, the role keeps its grants — so an
-	// administrator who cannot see APIs can still edit the rest of it.
+	// APIScopes replace the role's scope grants; left out, they are kept, so
+	// administrators who cannot see APIs can still edit roles.
 	APIScopes *[]uuid.UUID `json:"api_scopes"`
 }
 

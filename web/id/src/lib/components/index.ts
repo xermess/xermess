@@ -1,9 +1,8 @@
 // Every building block of the app, from one import path:
 //
-//   import { Button, TextField } from '$lib/components';
+//     import { Button, TextField } from '$lib/components';
 //
-// They style themselves from the tokens in styles/tokens.css and depend on
-// nothing but Svelte.
+// They style themselves from styles/tokens.css and depend only on Svelte.
 
 export { default as Alert } from './Alert.svelte';
 export { default as AppMark } from './AppMark.svelte';

@@ -11,12 +11,8 @@ import (
 	"time"
 )
 
-// SelfSigned makes a self-signed certificate for a key, as PEM.
-//
-// It is what a SAML service provider hands an identity provider: nobody
-// checks it against an authority — the provider is given this exact
-// certificate in our metadata and trusts it by being given it — so there is no
-// authority to ask for one.
+// SelfSigned makes a self-signed PEM certificate for a key, which is all a SAML
+// identity provider needs: it trusts the exact certificate in our metadata.
 func SelfSigned(key crypto.Signer, commonName string, validFor time.Duration) (string, error) {
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 126))
 	if err != nil {

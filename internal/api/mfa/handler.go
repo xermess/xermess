@@ -1,10 +1,6 @@
-// Package mfa answers the endpoints an administrator manages their own second
-// factor with: setting up an authenticator app, replacing it, turning it off
-// where that is allowed, and new recovery codes.
-//
-// Setting up is open to a session half way through signing in when a factor is
-// required — that is the one thing such a session can do. Everything else
-// needs a full session, and a code from the factor itself.
+// Package mfa lets an administrator set up, replace and remove their
+// authenticator and regenerate recovery codes. Setup is the only thing a
+// half-signed-in session may do when a factor is required.
 package mfa
 
 import (

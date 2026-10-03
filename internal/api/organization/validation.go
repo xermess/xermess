@@ -8,14 +8,9 @@ import (
 	"loginer/internal/model"
 )
 
-// applyTo copies what a request sent onto the organisation and returns the
-// settings it changed, in the order they are listed here, so the activity log
-// can say what an administrator touched.
-//
-// The rules are the model's: what a name, a timezone or a logo may be is the
-// same question wherever it is asked, and asking it in one place is what
-// keeps an answer from drifting. Nothing is written when any of them is
-// broken, since the record is only saved once this returns.
+// applyTo copies the request onto the organisation using the model's rules and
+// returns the changed settings for the activity log. Nothing is saved if any
+// rule fails.
 func (r *organizationRequest) applyTo(organization *model.Organization) ([]string, error) {
 	// A short name is compared rather than read, so it is stored lower case:
 	// the panel should not hold two spellings of one identifier.

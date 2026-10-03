@@ -1,9 +1,9 @@
 ---
 description: Run the app on spare ports and look at a page in the browser
-argument-hint: "[path, e.g. /admin/dashboard/organization]"
+argument-hint: "[path, e.g. /admin/dashboard/settings]"
 ---
 
-Look at $ARGUMENTS (default: `/admin/dashboard/organization`) in a running
+Look at $ARGUMENTS (default: `/admin/dashboard/settings`) in a running
 panel, without disturbing whatever is already running.
 
 First check whether the normal stack is up — anything answering on 8080, 8081,

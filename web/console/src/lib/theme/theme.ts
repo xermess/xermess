@@ -1,17 +1,8 @@
 /**
- * The console's theme: every colour, size, typeface and speed the panel is
- * drawn with, in one place.
- *
- * This file is the source. `bun run theme` renders it into
- * lib/styles/tokens.css and lib/styles/fonts.css, which the app loads, and
- * `bun run check` fails while those two are behind it — so a value is changed
- * here, never in the generated CSS. Components go on naming tokens the way
- * they always have (`var(--color-brand)`, `var(--space-3)`); nothing reads
- * this file at run time.
- *
- * The layout and spacing come from the PocketBase admin UI; the colour is
- * Telegram's: a white or a black page, cool greys a step apart, and one brand
- * blue, #0088cc, for everything chosen, pressed or current.
+ * The console's theme: every colour, size, typeface and speed. `bun run theme` renders it to
+ * lib/styles/tokens.css and fonts.css, and `bun run check` fails while they are behind, so
+ * change values here only. Layout follows the PocketBase admin UI; colour is Telegram's, with
+ * one brand blue (#0088cc).
  */
 import type { Theme } from './types';
 
@@ -50,9 +41,8 @@ const systemMono = [
 /* ---- Colour ---------------------------------------------------------- */
 
 /**
- * The light palette, and the name of every colour token there is. Every value
- * is solid — a colour mixed with transparency is a different grey over every
- * surface it lands on.
+ * The light palette, which names every colour token. Values are solid, since transparency would
+ * differ over each surface.
  */
 const light = {
 	// The brand: whatever is chosen, pressed or current.
@@ -113,11 +103,8 @@ const light = {
 	'tooltip-surface': '#2b2b2e',
 	'tooltip-text': '#fff',
 
-	// A toast is the theme turned over — black on the light page, white on
-	// the dark one — so it is the one thing on screen that stands out without
-	// a colour of its own. Its icon is the brand, whatever the toast says —
-	// the shape tells a success from a failure — and it is the brand as the
-	// other theme writes it, since that is what reads on black.
+	// A toast is the theme inverted, so it stands out without its own colour; its icon uses the
+	// other theme's brand colour, which reads on black.
 	'toast-surface': '#16191d',
 	'toast-text': '#fff',
 	'toast-hint': '#aab0b7',
@@ -125,12 +112,8 @@ const light = {
 
 	'row-hover': '#f7f7f8',
 
-	// The sidebar's column, header block included: a step off the page, so
-	// the column reads as a panel of its own, and a hover a step darker than
-	// the usual so it still shows on that tint. A page's name is in the full
-	// text colour — on white a grey name reads as disabled — and its icon a
-	// step quieter. The page being read is the one row filled solid in the
-	// brand: nothing else in the column is blue, so it is found at a glance.
+	// The sidebar column, a step off the page with a darker hover. Page names use full text
+	// colour (grey reads as disabled); only the current row is filled with brand blue.
 	'nav-surface': 'var(--color-surface-alt)',
 	'nav-hover': 'var(--color-secondary-alt)',
 	'nav-text': 'var(--color-text)',
@@ -189,16 +172,9 @@ export type ColorName = keyof typeof light;
 const black = '#000';
 
 /**
- * The dark palette: only what differs from the light one.
- *
- * The page is true black, and its greys are cool and faintly blue (#16181c,
- * #202327, #2f3336). Elevation in a black theme is lightness, not shadow — a
- * shadow has nothing to fall on — so what floats is a small step lighter
- * than what it floats over, and every step comes from that same ramp rather
- * than a neutral grey beside it: a dialog and a menu read as the page's own
- * material, raised. The page is #000; a dialog sits at #0a0b0d, its panel
- * heads at #101215; a popover one step above at #0f1114, so a select opened
- * in a dialog still stands off it.
+ * The dark palette: only what differs from light. True black with cool, faintly blue greys;
+ * elevation is lightness rather than shadow, so each raised surface (dialog, panel head,
+ * popover) is one step up the same ramp.
  */
 const dark: Partial<Record<ColorName, string>> = {
 	'color-brand-hover': '#1a9ad9',
@@ -286,15 +262,9 @@ const dark: Partial<Record<ColorName, string>> = {
 
 export const theme: Theme<ColorName> = {
 	fonts: {
-		// Chirp is the console's typeface, bundled from assets/fonts so the
-		// panel has the same face on every machine. It is X's own typeface
-		// rather than an open family; see assets/fonts/README.md before
-		// shipping it publicly.
-		//
-		// Chirp is static and covers Latin and Latin Extended. The panel's
-		// 400, 500 and 700 weights are bundled, with 600 drawn from 700.
-		// unicode-range keeps an English page to the smaller Latin file;
-		// other scripts use the system fallback.
+		// Chirp, bundled from assets/fonts: weights 400, 500 and 700 (600 drawn from 700), Latin
+		// and Latin Extended. It is X's typeface, not an open font; see the README's Third-party assets
+		// before shipping publicly.
 		baseUrl: '../../assets/fonts/',
 		subsets: {
 			'latin-ext':
@@ -358,13 +328,8 @@ export const theme: Theme<ColorName> = {
 				md: '10px',
 				lg: '14px',
 				pill: '999px',
-				// The panel's three kinds of corner, which every field, control
-				// and surface names. A field is the one thing drawn with a tight
-				// corner, so a box to type in never reads as a button; a control
-				// — a button, a chip, a filter — is a pill; a surface — a card, a
-				// table, a dialog — is softly rounded. The sizes above are for
-				// the small parts inside those: a menu's row, a checkbox, a tag
-				// of code.
+				// Three kinds of corner: fields are tight (so they never read as buttons), controls are
+				// pills, surfaces are softly rounded.
 				field: 'var(--radius-sm)',
 				control: 'var(--radius-pill)',
 				surface: 'var(--radius-lg)'

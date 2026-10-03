@@ -9,13 +9,9 @@ import (
 	"loginer/internal/model"
 )
 
-// applyTo checks the request and copies it onto a flow.
-//
-// `creating` says whether the identifier is read from it. A flow's slug is
-// what an application stores to name it, so it is set once and then stays.
-//
-// Everything else is copied only where the request mentioned it, so turning a
-// flow off says nothing about its steps.
+// applyTo checks the request and copies it onto a flow. The slug is read only
+// when `creating`, since applications name flows by it; everything else changes
+// only where the request mentions it.
 func (r *flowRequest) applyTo(flow *model.LoginFlow, creating bool) error {
 	if creating {
 		flow.Slug = slugify(r.Slug, r.Name)
@@ -43,10 +39,8 @@ func (r *flowRequest) applyTo(flow *model.LoginFlow, creating bool) error {
 		flow.Steps = cleanSteps(*r.Steps)
 	}
 
-	// Marking a flow as the default is also turning it on: it is what every
-	// application without one of its own falls back to, and the model refuses
-	// a default that is off. Saying so here saves an administrator a second
-	// save to find that out.
+	// Making a flow the default also enables it; the model refuses a disabled
+	// default.
 	if flow.IsDefault {
 		flow.IsEnabled = true
 	}
@@ -74,9 +68,8 @@ func cleanSteps(sent []model.LoginStep) model.StepList {
 	return steps
 }
 
-// slugify is the identifier a new flow gets: the one that was sent, or one
-// made from its name — "Staff sign-in" becomes "staff-sign-in", so the
-// common case needs no second field filled in.
+// slugify uses the sent slug or derives one from the name ("Staff sign-in" to
+// "staff-sign-in").
 func slugify(sent, name *string) string {
 	if sent != nil && strings.TrimSpace(*sent) != "" {
 		return strings.ToLower(strings.TrimSpace(*sent))

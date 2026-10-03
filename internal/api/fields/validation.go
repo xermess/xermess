@@ -14,9 +14,8 @@ import (
 // because that is what it stands in for.
 var column = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 
-// The two rules a request here is held to that the validator cannot know by
-// itself. They are registered where they are meant, so the rule and the thing
-// it describes stay together.
+// Custom rules for this package's requests, registered beside what they
+// describe.
 func init() {
 	validate.Register("column", column.MatchString)
 
@@ -51,11 +50,8 @@ func (r *fieldRequest) newField() (*model.UserField, error) {
 	return field, nil
 }
 
-// applyTo copies the rules from a request onto a field and checks that the
-// field can keep them — a bool with a length, or a largest value below its
-// smallest, is a mistake in the panel rather than in someone's record.
-//
-// The name and the type are not touched: an update may not change either.
+// applyTo copies a request's rules onto a field and checks they make sense
+// together. Name and type never change.
 func (r *rulesRequest) applyTo(field *model.UserField) error {
 	r.Label = strings.TrimSpace(r.Label)
 	r.StartsWith = strings.TrimSpace(r.StartsWith)

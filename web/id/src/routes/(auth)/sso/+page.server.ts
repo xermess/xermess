@@ -4,9 +4,8 @@ import { safeNext } from '$lib/utils/next';
 import type { PageServerLoad } from './$types';
 
 /**
- * "Sign in with SSO" is the sign-in page's other door, so it behaves like it:
- * somebody already signed in, with no application waiting, goes to their
- * account, and `next` is kept for where to land afterwards.
+ * Like the sign-in page: a signed-in user with no application waiting goes to their account,
+ * and `next` is kept.
  */
 export const load: PageServerLoad = async ({ url, cookies, fetch }) => {
 	const next = safeNext(url.searchParams.get('next'));

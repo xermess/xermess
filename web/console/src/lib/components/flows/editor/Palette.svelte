@@ -5,10 +5,8 @@
 	import { describe, labelFor, markFor } from '../steps';
 
 	/**
-	 * The steps a flow can be made of. Each can be dragged onto the canvas, or
-	 * clicked: into the gap the canvas is waiting to fill, or last. The ones the
-	 * sign-in pages run come first; the planned ones can be placed too, as a
-	 * plan, and say so.
+	 * The steps a flow can contain, dragged onto the canvas or clicked into the waiting gap (or
+	 * the end). Steps not yet implemented can be placed as a plan and are marked.
 	 */
 	type Props = {
 		kinds: LoginStepSpec[];

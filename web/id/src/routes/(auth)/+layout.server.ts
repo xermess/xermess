@@ -11,20 +11,9 @@ import {
 import type { LayoutServerLoad } from './$types';
 
 /**
- * The sign-in under way, when the page was given one, and the organisation
- * these pages always speak for.
- *
- * The authorization endpoint sends the browser here with `?request=<handle>`,
- * and every sign-in page passes it on. Loading it once, here, is what lets
- * each page show the application's name, logo and links in the first response.
- * A handle that expired or was used is not an error page: the page says so.
- *
- * The organisation, the providers people may sign in with and the options of
- * the login flow this sign-in belongs to are loaded whether or not there is a
- * sign-in under way: a reset link opened on its own still names who it is from
- * and whom to ask for help. Failing to load any of them is not worth an error
- * page — the pages show what they have — so they come back empty, and the
- * options fall back to the sign-in these pages have always offered.
+ * Loads the sign-in handle (from `?request=`), the organisation, providers and flow options
+ * once for every sign-in page, so the first response shows the application. Expired handles are
+ * shown, not errors, and failed loads fall back to defaults.
  */
 export const load: LayoutServerLoad = async ({ url, fetch, setHeaders }) => {
 	// A sign-in page is never cached: it is about one sign-in, for one person.

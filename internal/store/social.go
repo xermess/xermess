@@ -33,10 +33,8 @@ type SocialButton struct {
 	Kind string `json:"kind"`
 }
 
-// SocialButtons is the enabled providers, in order, as buttons. Every sign-in
-// page asks for them, so they are read through the cache — as buttons and
-// not as providers, because a provider carries its sealed client secret and
-// that has no business in a cache.
+// SocialButtons returns enabled providers as buttons, through the cache.
+// Buttons, not providers, so sealed secrets never reach the cache.
 func (s *Store) SocialButtons(ctx context.Context) ([]SocialButton, error) {
 	return cached(ctx, s, cache.SocialButtons, "enabled", func() ([]SocialButton, error) {
 		providers, err := s.SocialProviders(ctx, true)
@@ -95,9 +93,8 @@ func (s *Store) SaveSocialProvider(ctx context.Context, provider *model.SocialPr
 	return nil
 }
 
-// DeleteSocialProvider removes a provider, and with it every identity held at
-// it: without the provider there is no way to check those identities again,
-// and the accounts themselves stay.
+// DeleteSocialProvider removes a provider and its identities; the accounts
+// stay.
 func (s *Store) DeleteSocialProvider(ctx context.Context, provider *model.SocialProvider) error {
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Unscoped().Where("provider_id = ?", provider.ID).Delete(&model.SocialIdentity{}).Error
@@ -201,9 +198,8 @@ func (s *Store) CreateSocialLogin(ctx context.Context, login *model.SocialLogin)
 	return translate(s.db.WithContext(ctx).Create(login).Error)
 }
 
-// TakeSocialLogin returns the sign-in a state belongs to and deletes it, so
-// an answer from a provider is only ever accepted once. A state that is not
-// there, or has expired, is ErrNotFound.
+// TakeSocialLogin returns and deletes the sign-in a state belongs to, so an
+// answer is accepted once. Missing or expired is ErrNotFound.
 func (s *Store) TakeSocialLogin(ctx context.Context, stateHash string, now time.Time) (*model.SocialLogin, error) {
 	var login model.SocialLogin
 

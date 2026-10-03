@@ -21,12 +21,9 @@ type Opener interface {
 	OpenBytes(sealed []byte) ([]byte, error)
 }
 
-// FromStore is the Source a running server sends with: the row on the Mail
-// page, with its password unsealed for the one message about to go out.
-//
-// A password that cannot be unsealed is an error rather than an empty one:
-// signing in to the mail server without it would fail anyway, and the log
-// should say which of the two went wrong.
+// FromStore is the Source a running server sends with: the Mail page's row with
+// its password unsealed. A password that cannot be unsealed is an error, so the
+// log says which thing failed.
 func FromStore(st Store, opener Opener) Source {
 	return func(ctx context.Context) (Settings, error) {
 		stored, err := st.MailSettings(ctx)
@@ -62,18 +59,12 @@ func Of(stored model.MailSettings, password string) Settings {
 	}
 }
 
-// implicitTLSPort is the port that expects TLS from the first byte. It is the
-// one thing the configuration does not say, and the port is how every mail
-// client has always guessed it.
+// implicitTLSPort is the port that speaks TLS from the first byte.
 const implicitTLSPort = 465
 
-// Seed is the row a fresh installation starts with, from the configuration:
-// LOGINER_SMTP_HOST and the rest, which are read once and then belong to the
-// panel. A host named there turns sending on, since naming one is what an
-// installation does to mean "send email".
-//
-// The password is not sealed here — the caller holds the secret key — so it
-// is returned beside the record rather than in it.
+// Seed is the row a fresh installation starts with, from LOGINER_SMTP_*. Naming
+// a host turns sending on. The password is returned beside the record because
+// the caller seals it.
 func Seed(cfg config.Mail) (model.MailSettings, string) {
 	settings := model.DefaultMailSettings()
 	settings.IsEnabled = cfg.Host != ""
@@ -87,10 +78,8 @@ func Seed(cfg config.Mail) (model.MailSettings, string) {
 		settings.Encryption = model.MailTLS
 	}
 
-	// LOGINER_SMTP_FROM is one string in the form a mail client shows,
-	// "a name <no-reply@localhost>"; the panel asks for the two parts
-	// apart. Anything that is not an address is left for the Mail page to
-	// correct rather than stopping the server.
+	// LOGINER_SMTP_FROM is "Name <address>"; an unparseable value is left for
+	// the Mail page to fix.
 	if parsed, err := mail.ParseAddress(cfg.From); err == nil {
 		settings.FromAddress = parsed.Address
 		settings.FromName = parsed.Name

@@ -1148,3 +1148,37 @@ func TestLiveSigningKeyRevocation(t *testing.T) {
 		t.Errorf("rotation by an app manager = %d, want 403", status)
 	}
 }
+
+// What a client credentials token carries is decided by the API it names:
+// the API has to exist, the application has to be allowed it, and only the
+// scopes the application was given survive.
+func TestLiveOAuthAudienceDecidesTheToken(t *testing.T) {
+	f := newOAuthFixture(t)
+
+	allowed, allowedSecret, allowedID := f.register(map[string]any{"name": "Allowed job", "type": "m2m"})
+	f.authorizeAPI(allowedID, "orders:read")
+	stranger, strangerSecret, _ := f.register(map[string]any{"name": "Stranger job", "type": "m2m"})
+
+	for _, tt := range []struct {
+		name      string
+		clientID  string
+		secret    string
+		audience  string
+		scope     string
+		wantError string
+		wantScope string
+	}{
+		{"an API that does not exist", allowed, allowedSecret, "https://api.example.com/nothing", "", "invalid_request", ""},
+		{"an API the application is not allowed", stranger, strangerSecret, ordersAPI, "orders:read", "unauthorized_client", ""},
+		{"a scope the application was not given", allowed, allowedSecret, ordersAPI, "orders:read orders:write", "", "orders:read"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r := f.token("/oauth2/token", tt.clientID, tt.secret, url.Values{
+				"grant_type": {"client_credentials"}, "audience": {tt.audience}, "scope": {tt.scope},
+			})
+			if r.str("error") != tt.wantError || r.str("scope") != tt.wantScope {
+				t.Errorf("= %d %v, want error %q and scope %q", r.status, r.body, tt.wantError, tt.wantScope)
+			}
+		})
+	}
+}

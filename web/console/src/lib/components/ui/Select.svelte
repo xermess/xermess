@@ -89,15 +89,10 @@
 	let open = $state(false);
 </script>
 
-<!-- A select is the same outlined box and floating label as an Input, so a
-     form reads as one column of fields whatever kind of value each one holds.
-     The difference is only what happens on a click: a panel of options
-     rather than a caret.
-
-     Ark gives this the parts, the keyboard (arrows, home/end, and typing a
-     few letters to jump), and a hidden native select for form submission.
-     The closed field is styled in styles/fields.css, the open panel in
-     styles/ark.css. -->
+<!--
+	A select with the same outlined box and floating label as Input. Ark provides the keyboard,
+	type-ahead and a hidden native select; styles are in styles/fields.css and styles/ark.css.
+-->
 <ArkSelect.Root
 	class="field-root"
 	data-disabled={disabled || undefined}

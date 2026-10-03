@@ -26,9 +26,7 @@ var (
 	invalidTTL       = respond.Define(http.StatusBadRequest, "cache_ttl_invalid", respond.Admin)
 )
 
-// maxTTL is the longest a value written by hand may be given: a day, well
-// past the hour the store keeps a value itself, and short enough that a
-// mistake does not outlive the day it was made.
+// maxTTL caps hand-written values at a day, so mistakes expire.
 const maxTTL = 24 * time.Hour
 
 // kinds are the kinds of key a listing may be narrowed to.

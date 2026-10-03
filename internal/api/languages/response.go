@@ -22,9 +22,8 @@ type languageResponse struct {
 	// sign-in pages and nothing else.
 	Apps []i18n.App `json:"apps"`
 
-	// Coverage is how much of each of those apps is translated, as a
-	// percentage of the keys the base language has, and Missing how many keys
-	// each is short. The keys are the app names.
+	// Coverage and Missing are per app: the percentage of base keys translated
+	// and how many are missing.
 	Coverage map[i18n.App]int `json:"coverage"`
 	Missing  map[i18n.App]int `json:"missing"`
 
@@ -43,9 +42,8 @@ type languageResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// shippedResponse is a language the server ships with that this installation
-// does not have — one somebody removed, or one that shipped after it started
-// — which the panel offers to add back.
+// shippedResponse is a shipped language this installation lacks, which the
+// panel offers to add.
 type shippedResponse struct {
 	Code       string `json:"code"`
 	Name       string `json:"name"`
@@ -66,9 +64,8 @@ type response struct {
 	Language languageResponse `json:"language"`
 }
 
-// translationResponse is one language's text for one app, as the editor
-// needs it: the keys there are, the base language's text beside each, and
-// what this language has.
+// translationResponse is one language's text for one app with the base text
+// beside each key.
 type translationResponse struct {
 	App  i18n.App `json:"app"`
 	Keys []string `json:"keys"`
@@ -78,9 +75,8 @@ type translationResponse struct {
 	Messages map[string]string `json:"messages"`
 }
 
-// savedResponse is what saving a translation answers with: the language as it
-// now counts, and how many keys of what was sent were not ones the app looks
-// up — a file from an older release, or a typo.
+// savedResponse is the language after saving and how many sent keys were
+// unknown.
 type savedResponse struct {
 	Language languageResponse `json:"language"`
 	Ignored  int              `json:"ignored"`

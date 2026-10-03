@@ -14,9 +14,8 @@ import (
 	"loginer/i18n"
 )
 
-// loader holds the type-checked source of the module's internal packages,
-// and indexes of it: where every function, type and field is declared, and
-// every problem defined.
+// loader holds the type-checked internal packages and indexes of their
+// declarations and problems.
 type loader struct {
 	fset     *token.FileSet
 	packages map[string]*packages.Package
@@ -93,9 +92,8 @@ func (l *loader) suffixed(suffix string) (*packages.Package, error) {
 	return nil, fmt.Errorf("apidoc: no package %s was loaded", suffix)
 }
 
-// indexProblems finds every `var x = respond.Define(status, "code", apps)`.
-// The status and the code are constants, so the type checker has them; the
-// English is the base language's text for the key, as the server reads it.
+// indexProblems finds every `respond.Define(status, "code", apps)`; the English
+// is the base language's text for the key.
 func (l *loader) indexProblems(pkg *packages.Package, file *ast.File) {
 	for _, decl := range file.Decls {
 		gen, ok := decl.(*ast.GenDecl)

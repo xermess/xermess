@@ -1,7 +1,5 @@
-// Command apidoc writes the API reference from the source: the OpenAPI
-// document each server serves, and the reference pages of the docs app.
-// Run it from the repository with `make docs` after changing a route, a
-// handler's doc comment, a request or response type, or a problem.
+// Command apidoc writes the OpenAPI documents and the docs app's reference
+// pages from the source.
 //
 //	go run ./cmd/apidoc          write the files
 //	go run ./cmd/apidoc -check   fail if any is behind the code

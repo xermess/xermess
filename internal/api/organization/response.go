@@ -6,10 +6,8 @@ import (
 	"loginer/internal/model"
 )
 
-// organizationResponse is the organisation as the panel sees it. It is built
-// by hand rather than returning the model so the row's own bookkeeping — its
-// id, when it was last written — stays out of a record of settings, and the
-// one date worth showing is named for what it means.
+// organizationResponse is built by hand to keep row bookkeeping out of a
+// settings record.
 type organizationResponse struct {
 	Name         string    `json:"name"`
 	Slug         string    `json:"slug"`

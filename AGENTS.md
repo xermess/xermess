@@ -3,9 +3,8 @@
 Loginer is an OAuth 2.0 / OpenID Connect server in Go, with three SvelteKit apps
 under `web/`: `console` (the admin panel), `id` (sign-in pages and a user's
 own account) and `docs` (the documentation for developers integrating with
-it). `README.md` is the long-form documentation and is kept current — read the
-part that covers what you are changing, and update it when your change makes a
-sentence in it untrue.
+it). `README.md` is the short project overview and `TESTING.md` the test
+report; update either when your change makes a sentence in it untrue.
 
 ## Commands
 
@@ -14,6 +13,7 @@ sentence in it untrue.
 | Format, vet and test Go    | `make check`                                         |
 | Go tests only              | `make test`                                          |
 | Tests that need Postgres   | `make test-integration` (runs every `TestLive…`)     |
+| Benchmarks                 | `make bench`                                         |
 | Lint and type-check apps   | `make web-check` (or `bun run lint` / `bun run check` in `web/<app>`) |
 | Run everything             | `make dev` — API on :8080/:8081, id :5173, console :5174, docs :5175 |
 | API reference              | `make docs` (write it), `make docs-check`            |
@@ -232,15 +232,16 @@ dictionary: a product is not called something else in another language.
 
 ## Style
 
-The code is written to be read. Comments say *why* something is the way it is,
-not what the next line does, and the prose is plain — look at a neighbouring
-file and match it rather than inventing a second voice. Names are spelled out.
-A file that needs a paragraph to explain itself has it at the top.
+The code is written to be read. Comments are few and short: they say *why*
+something is the way it is — a security reason, a race, a protocol rule — never
+what the next line does, and one or two lines is the norm. Code that is clear
+gets no comment. Names are spelled out. Doc comments on handlers and request
+fields stay, because `make docs` builds the API reference from them.
 
 In the panel, a page never writes a colour, a height or a hover state: it names
 one. Everything is built from `$lib/components/ui` — `Panel`, `List`,
-`PageContainer`, `Input`, `Select`, `Button` — and `lib/components/ui/README.md`
-says what each is for and where every kind of styling lives. Pages render on the
+`PageContainer`, `Input`, `Select`, `Button` — with their styling in
+`lib/styles/controls.css` and `lib/styles/palettes.css`. Pages render on the
 server, so data is fetched in `+page.server.ts`, never in `onMount`.
 
 Tests are table-driven, named for what they prove — "a slug with spaces", not

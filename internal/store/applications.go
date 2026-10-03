@@ -90,10 +90,9 @@ func (s *Store) SaveApplication(ctx context.Context, app *model.Application) err
 	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Save(app).Error), cache.Clients, cache.Admins)
 }
 
-// DeleteApplication removes an application for good, with every role it
-// defines, every user's hold on those roles and the API scopes they grant,
-// every administrator's role scoped to it, and its access to APIs. The joins are removed by hand rather than left to the foreign
-// keys, so this does not depend on how those constraints were created.
+// DeleteApplication removes an application with its roles and their grants,
+// scoped admin roles and API access. Joins are deleted explicitly rather than
+// relying on FK constraints.
 func (s *Store) DeleteApplication(ctx context.Context, app *model.Application) error {
 	// Administrators with a role scoped to it lose that role, so every one of
 	// them is read again.
@@ -117,5 +116,5 @@ func (s *Store) DeleteApplication(ctx context.Context, app *model.Application) e
 		}
 
 		return tx.Unscoped().Delete(app).Error
-	}), cache.Clients, cache.Admins)
+	}), cache.Clients, cache.Admins, cache.Grants)
 }

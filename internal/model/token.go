@@ -7,9 +7,8 @@ import (
 	"time"
 )
 
-// TokenRequest is everything deciding what a token carries needs, already
-// loaded. It is the same whether the token is previewed in the panel or, once
-// the endpoints exist, actually issued: the rules live in EvaluateToken alone.
+// TokenRequest is everything EvaluateToken needs, already loaded, whether
+// previewed in the panel or issued.
 type TokenRequest struct {
 	Application Application
 
@@ -66,22 +65,19 @@ const (
 	ClaimApplicationRoles = "roles"
 )
 
-// EvaluateToken decides what a token request amounts to. It is the one place
+// EvaluateToken decides what a token request amounts to; it is the one place
 // down-scoping happens:
 //
-//   - a disabled application, or one missing the grant the request needs,
-//     gets no token; so does an inactive user, and a user holding none of the
-//     application's roles when it requires one;
-//   - naming an API the application is not authorised for gets no token;
-//   - an OpenID Connect scope is granted when the application may use it;
-//   - an API scope is granted when it belongs to the audience, the application
-//     is allowed it, and — for a user, when the API enforces roles — one of
-//     the user's global roles or this application's roles grants it; the audience's default scopes are added by
-//     the same rule, whether asked for or not;
-//   - offline_access is refused for an audience that does not allow refresh
-//     tokens;
-//   - the access token's audience is the API asked for alone, and roles are
-//     carried only when the application asserts them and "roles" is granted.
+//   - no token for a disabled application, a missing grant, an inactive user,
+//     or a user without a required role;
+//   - no token for an API the application is not authorised for;
+//   - an OIDC scope is granted when the application may use it;
+//   - an API scope (and the audience's defaults) is granted when the
+//     application is allowed it and, when the API enforces roles, the user's
+//     roles grant it;
+//   - offline_access is refused for an API that does not allow refresh tokens;
+//   - the audience is the requested API alone, and roles are carried only when
+//     the application asserts them and "roles" is granted.
 func EvaluateToken(r TokenRequest) TokenPreview {
 	app := r.Application
 	preview := TokenPreview{Decisions: []ScopeDecision{}}
@@ -115,9 +111,8 @@ func EvaluateToken(r TokenRequest) TokenPreview {
 		case role.In(&app.ID):
 			appRoles = append(appRoles, role.Name)
 		default:
-			// Another application's role means nothing here, the scopes it
-			// grants included: otherwise whoever manages that application
-			// could hand out scopes in this one's tokens.
+			// Another application's roles grant nothing here, or its managers
+			// could add scopes to this application's tokens.
 			continue
 		}
 

@@ -559,7 +559,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Sends the browser to a provider to sign in there, leaving the sign-in's state with the browser so the callback can tell this browser's answer from one somebody else's sign-in produced.",
+            "description": "Sends the browser to a provider and leaves the state in a cookie, binding the callback to this browser.",
             "method": "GET",
             "url": {
               "host": [
@@ -602,7 +602,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Is where the provider sends the browser back to.\n\nIt answers GET and POST: nearly every provider redirects with the code in the query, and Apple posts it as a form when a name or an address was asked for.",
+            "description": "Is where the provider sends the browser back.\n\nIt answers GET and POST, since Apple posts its answer.",
             "method": "GET",
             "url": {
               "host": [
@@ -672,7 +672,7 @@
                 }
               ]
             },
-            "description": "Is where the provider sends the browser back to.\n\nIt answers GET and POST: nearly every provider redirects with the code in the query, and Apple posts it as a form when a name or an address was asked for.",
+            "description": "Is where the provider sends the browser back.\n\nIt answers GET and POST, since Apple posts its answer.",
             "method": "POST",
             "url": {
               "host": [
@@ -701,7 +701,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Sends the browser to a connection's identity provider.\n\nThe address typed on the sign-in page comes along as `login_hint`, so it is not asked for twice.",
+            "description": "Sends the browser to a connection's identity provider, passing the typed address as `login_hint`.",
             "method": "GET",
             "url": {
               "host": [
@@ -895,7 +895,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Describes the organisation these pages sign users in for: who the account belongs to, where to ask for help, and the agreements accepted by making one.\n\nEvery sign-in page asks for it, with or without a sign-in under way, so it needs no session and names nothing about the caller.",
+            "description": "Describes the organisation the sign-in pages speak for.\n\nPublic, so it needs no session.",
             "method": "GET",
             "url": {
               "host": [
@@ -917,7 +917,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Lists the accounts elsewhere that users may sign in with, as the buttons on the sign-in pages.\n\nIt says nothing about any of them beyond what the button needs.",
+            "description": "Lists the sign-in buttons, with only what a button needs.",
             "method": "GET",
             "url": {
               "host": [
@@ -1030,7 +1030,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Says what these pages may offer: the options of the login flow the sign-in belongs to. `request` is the handle of a sign-in under way, which names the application whose flow applies; without one, or with one that has expired, it is the installation's default flow.",
+            "description": "Returns the options of the login flow for the sign-in handle `request`, or the default flow.",
             "method": "GET",
             "url": {
               "host": [
@@ -1082,7 +1082,7 @@
             "auth": {
               "type": "noauth"
             },
-            "description": "Is the text of these pages in one offered language, every key filled in.\n\nThe pages ask for it while rendering, so a language added or reworded in the panel is on the next page anybody opens.",
+            "description": "Returns the sign-in pages' text in one offered language with every key filled in.",
             "method": "GET",
             "url": {
               "host": [
@@ -1412,7 +1412,7 @@
               },
               "raw": "{\n  \"token\": \"eyJhbGciOiJSUzI1NiIs…\"\n}"
             },
-            "description": "Uses a link sent to prove an address.\n\nIt is a POST the page makes when the person presses the button, not the link itself: a mail scanner that follows every link in an inbox would otherwise use it up.",
+            "description": "Uses a verification link.\n\nIt is a POST made when the person presses the button, so mail scanners that follow links cannot spend it.",
             "header": [
               {
                 "key": "Content-Type",
@@ -1598,7 +1598,7 @@
               },
               "raw": "{\n  \"email\": \"ada@example.com\"\n}"
             },
-            "description": "Starts moving the signed-in user to another sign-in address.\n\nIt answers the same whether or not the address is already somebody else's, so this cannot be used to find out which addresses have accounts.",
+            "description": "Starts moving the signed-in user to another address.\n\nIt answers the same whether or not the address is taken.",
             "header": [
               {
                 "key": "Content-Type",

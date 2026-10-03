@@ -9,10 +9,8 @@ import (
 	"loginer/internal/model"
 )
 
-// applyTo checks the request and copies it onto a language.
-//
-// Marking a language as the default is also turning it on, since the default
-// is what somebody sees before choosing and has to be among the choices.
+// applyTo checks the request and copies it onto a language. Making a language
+// the default also enables it.
 func (r *languageRequest) applyTo(language *model.Language) error {
 	if err := validate.Struct(r); err != nil {
 		return err
@@ -75,9 +73,8 @@ func settle(language *model.Language) error {
 	return nil
 }
 
-// normalizeCode writes a language tag the way the standard does, so "PT-br"
-// and "pt-BR" are one language rather than two: the language lower case, a
-// four-letter script title case, and a region upper case.
+// normalizeCode writes a tag canonically ("pt-BR", "sr-Latn") so case variants
+// are one language.
 func normalizeCode(code string) string {
 	parts := strings.Split(strings.TrimSpace(code), "-")
 

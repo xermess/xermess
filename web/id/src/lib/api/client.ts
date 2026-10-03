@@ -1,11 +1,7 @@
 /**
- * A failed request, as the server described it: `code` names the problem, and
- * a page says `error.<code>` from its own catalog, in the reader's language,
- * with `params` filled in (messageOf in $lib/i18n). `message` is the server's
- * English, for when a page has no sentence of its own for the code.
- *
- * `status` is 0 when the server could not be reached, and the code is then
- * `network`; an answer that was not the server's is `unknown`.
+ * A failed request as the server described it: `code` names the problem, translated as
+ * `error.<code>` with `params`; `message` is the server's English fallback. `status` is 0 with
+ * code `network` when unreachable, and `unknown` for an answer that was not the server's.
  */
 export class ApiError extends Error {
 	constructor(
@@ -28,9 +24,8 @@ type Options = {
 };
 
 /**
- * Calls the API, at /api/v1 on this app's own origin. From the browser
- * the proxy routes it to the API; from a server load, pass the load's `fetch`,
- * and hooks.server.ts sends it to the API directly with the reader's cookie.
+ * Calls the API at /api/v1 on this origin. From a server load pass the load's `fetch`, which
+ * hooks.server.ts routes straight to the API with the reader's cookie.
  */
 export async function request<T>(path: string, options: Options = {}): Promise<T> {
 	const { method = 'GET', body, fetch: fetcher = globalThis.fetch } = options;

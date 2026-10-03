@@ -1,24 +1,13 @@
-// Package api builds the HTTP servers: the middleware every request passes
-// through, and the tables of which handler answers which path.
+// Package api builds the two HTTP servers and the table of which handler
+// answers which path.
 //
-// There are two servers, on two listeners, and a path exists on only one of
-// them. The public server is the OAuth 2.0 / OpenID Connect provider and the
-// account API the id app calls: it is meant to face the internet. The admin
-// server is the admin API the console calls, and nothing else: it is meant to be
-// reachable only from where administrators work. Keeping them apart is what
-// makes "the admin panel is internal" true of the API too, rather than only of
-// the page that calls it.
+// The public server is the OAuth 2.0 / OpenID Connect provider and the account
+// API, meant to face the internet. The admin server is the admin API the
+// console calls, meant to be reachable only where administrators work. A path
+// exists on only one of them.
 //
-// The handlers themselves live one directory down, one package per subject:
-// auth signs administrators in, users manages user records, fields the
-// columns those records are made of, applications the OAuth clients that sign
-// users in, roles the roles users hold in each application, admins and
-// adminroles the administrators and what they may do, organization the
-// settings of the installation itself, activity reports on what has happened,
-// oauth and account are the provider and the users' own API. Each of those
-// packages is the same four files — the handler, the requests it accepts, the
-// answers it gives, and the rules it holds them to — so finding your way
-// around a new one is the same as finding your way around the last.
+// Handlers live one package per subject, each with handler.go, request.go,
+// response.go and validation.go.
 package api
 
 import (
@@ -70,22 +59,13 @@ import (
 	"loginer/internal/store"
 )
 
-// tokenLimitMultiple is how much looser the provider's own endpoints are held
-// than the sign-in pages.
-//
-// They need a limit — nothing else stops a caller hammering the token endpoint
-// for as long as it likes, and each attempt costs a few queries — but not the
-// same one. A sign-in comes from the person's own browser, one address per
-// person; a token request comes from an application's backend, which may be
-// exchanging codes and refreshing for a whole company from one address. Held
-// to the sign-in rate, that backend would stop working, which is a worse
-// failure than the one being prevented. Zero still turns every limit off.
+// tokenLimitMultiple loosens the provider's endpoints relative to the sign-in
+// pages: one application backend may refresh tokens for a whole company from
+// one address.
 const tokenLimitMultiple = 10
 
-// NewPublic builds the public server: the provider, the account API, and a
-// health check. `provider` is built by the caller because building it reads
-// the signing keys from the database. `shared` is the Redis the rate limit
-// counts in, or nil to count in memory.
+// NewPublic builds the public server: provider, account API and health check.
+// `shared` is the Redis rate limits count in, or nil for memory.
 func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shared *cache.Redis) (*gin.Engine, error) {
 	r, err := engine(cfg, log)
 	if err != nil {
@@ -109,9 +89,8 @@ func NewPublic(cfg config.Config, log *slog.Logger, provider *oidc.Service, shar
 	return r, nil
 }
 
-// NewAdmin builds the admin server: the admin API, and a health check.
-// `provider` is the same provider the public server answers with, so rotating
-// its signing keys here takes effect there at once.
+// NewAdmin builds the admin server: admin API and health check. It shares the
+// provider with the public server, so key rotations apply to both.
 func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oidc.Service, shared *cache.Redis) (*gin.Engine, error) {
 	r, err := engine(cfg, log)
 	if err != nil {
@@ -161,9 +140,8 @@ func NewAdmin(cfg config.Config, st *store.Store, log *slog.Logger, provider *oi
 	return r, nil
 }
 
-// adminIssuer is what authenticator apps list an administrator's account
-// under: the panel's host, so staff with several installations can tell them
-// apart.
+// adminIssuer is the authenticator app label: the panel's host, so staff with
+// several installations can tell them apart.
 func adminIssuer(adminURL string) string {
 	if host := strings.TrimPrefix(strings.TrimPrefix(config.Origin(adminURL), "https://"), "http://"); host != "" {
 		return brand.Name + " (" + host + ")"
@@ -171,11 +149,8 @@ func adminIssuer(adminURL string) string {
 	return brand.Name
 }
 
-// engine is what both servers start from: middleware first, in the order
-// every request passes through them.
-//
-// gin.New starts with no middleware, unlike gin.Default, which adds Gin's own
-// logger. We want the slog one instead, so the whole server logs the same way.
+// engine is what both servers start from. gin.New has no middleware, so the
+// slog logger is the only one.
 func engine(cfg config.Config, log *slog.Logger) (*gin.Engine, error) {
 	r := gin.New()
 
@@ -243,20 +218,16 @@ type adminHandlers struct {
 func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	r.GET("/healthz", health)
 
-	// The OAuth 2.0 and OpenID Connect provider. These paths are fixed by the
-	// discovery document rather than versioned with the API: every client
-	// library finds them from there.
+	// The OAuth 2.0 / OpenID Connect provider, at paths fixed by discovery
+	// rather than versioned.
 	r.GET(oidc.PathDiscovery, h.oauth.Discovery)
 	r.GET(oidc.PathJWKS, h.oauth.JWKS)
-	// Authorize writes a row for anybody who names a client, so it shares the
-	// loose per-address limit of the token endpoints below rather than go
-	// without one; a browser signing in asks for it once.
+	// Authorize writes a row per request, so it shares the token endpoints'
+	// loose per-address limit.
 	r.GET(oidc.PathAuthorize, h.tokens, h.oauth.Authorize)
 	r.POST(oidc.PathAuthorize, h.tokens, h.oauth.Authorize)
-	// The three that take a client's credentials, or a token, are limited per
-	// address: each one reads the database, and nothing else stops a caller
-	// asking for ever. The limit is its own, and a loose one — see
-	// tokenLimitMultiple.
+	// Endpoints taking client credentials or a token have their own loose
+	// per-address limit (tokenLimitMultiple).
 	r.POST(oidc.PathToken, h.tokens, h.oauth.Token)
 	r.GET(oidc.PathUserInfo, h.oauth.UserInfo)
 	r.POST(oidc.PathUserInfo, h.oauth.UserInfo)
@@ -265,27 +236,19 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	r.POST(oidc.PathRevoke, h.tokens, h.oauth.Revoke)
 	r.POST(oidc.PathIntrospect, h.tokens, h.oauth.Introspect)
 
-	// What this server answers, as OpenAPI, for the tooling of whoever
-	// integrates with it. It sits beside the discovery document so it is
-	// reached through every proxy that already routes that one.
+	// This server's OpenAPI document, beside discovery so the same proxy routes
+	// reach it.
 	r.GET("/.well-known/openapi.json", h.reference.Document)
 
-	// Signing in with an account somewhere else. The callback answers POST
-	// as well, because Apple posts its answer rather than redirecting with
-	// it; it is outside the CSRF group for the same reason — the form comes
-	// from Apple, not from this server's own app.
-	// Starting writes a sign-in for anybody, like the SSO start below.
+	// Social sign-in. The callback also answers POST and sits outside CSRF
+	// because Apple posts its answer from its own form.
 	r.GET(oidc.PathSocialStart, h.limit, h.oauth.SocialStart)
 	r.GET(oidc.PathSocialCallback, h.oauth.SocialCallback)
 	r.POST(oidc.PathSocialCallback, h.oauth.SocialCallback)
 
-	// Signing in through an organisation's own identity provider. The
-	// assertion consumer service takes a SAML provider's posted response, and
-	// is outside the CSRF group for the reason Apple's callback is: the form
-	// comes from the provider. The metadata is what the provider is set up
-	// from.
-	// Starting writes a sign-in and the ACS verifies an XML signature, both
-	// for anybody, so both are rate limited per address.
+	// Enterprise SSO. The SAML ACS takes the provider's posted form, so it is
+	// outside CSRF; start and ACS are rate limited because anyone can call
+	// them.
 	r.GET(oidc.PathSSOStart, h.limit, h.oauth.SSOStart)
 	r.GET(oidc.PathSSOCallback, h.oauth.SSOCallback)
 	r.POST(oidc.PathSSOACS, h.limit, h.oauth.SSOAssertion)
@@ -295,10 +258,8 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 	// session cookie, so it only takes changes from the id app's origin.
 	v1 := r.Group("/api/v1", h.csrf)
 	{
-		// What the id app calls. Signing in needs no session: it is how a
-		// user gets one, and what a page may do is decided by the sign-in
-		// handle it was given, and by the password. The routes that take a
-		// password or send an email are rate limited per address.
+		// The id app's API. Signing in needs no session; password and email
+		// endpoints are rate limited per address.
 		accounts := v1.Group("/account")
 		accounts.GET("/organization", h.account.Organization)
 		accounts.GET("/social-providers", h.account.SocialProviders)
@@ -310,9 +271,8 @@ func registerPublicRoutes(r *gin.Engine, h publicHandlers) {
 		accounts.GET("/languages/:code", h.account.LanguageText)
 		accounts.GET("/applications/:client_id", h.account.Application)
 		accounts.POST("/login", h.limit, h.account.Login)
-		// Finishing a sign-in a login flow held for an emailed code. Both
-		// are limited per address: the first takes guesses at a six-digit
-		// code, the second sends mail.
+		// Emailed code sign-in: both rate limited (code guesses, and sending
+		// mail).
 		accounts.POST("/login/code", h.limit, h.account.Code)
 		accounts.POST("/login/code/resend", h.limit, h.account.ResendCode)
 		accounts.POST("/register", h.limit, h.account.Register)
@@ -349,18 +309,14 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 	// cookie, so it only takes changes from the console's origin.
 	v1 := r.Group("/api/v1", h.csrf)
 	{
-		// Setting the panel up and signing in are the routes that cannot
-		// require a session: before the first there is no account, and before
-		// the second no way to prove one. Creating an administrator is
-		// refused as soon as there is one, which is what keeps the first of
-		// those from being a way in.
+		// Setup and sign-in cannot require a session. Setup is refused once any
+		// administrator exists.
 		v1.GET("/admin/setup", h.setup.Status)
 		v1.POST("/admin/setup", h.limit, h.setup.Create)
 		v1.POST("/admin/auth/login", h.limit, h.auth.Login)
 
-		// Signing in, the rest of the way. The state says which step a
-		// session is at; a code finishes a sign-in waiting for one; signing
-		// out works at any step.
+		// The rest of admin sign-in: the session's state, finishing with a
+		// code, and signing out at any step.
 		v1.GET("/admin/auth/session", h.auth.State)
 		v1.POST("/admin/auth/mfa", h.limit, h.auth.VerifyMFA)
 		v1.POST("/admin/auth/logout", h.auth.Logout)
@@ -391,15 +347,11 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			// strangers: which routes exist is the panel's business.
 			signedIn.GET("/openapi.json", h.reference.Document)
 
-			// The rest is guarded by what the administrator's roles allow.
-			// The panel hides what someone cannot do; these checks are what
-			// actually stops them.
-			//
-			// These routes also take an access token for the admin API, from
-			// admin-cli or another application an administrator authorized,
-			// whose scopes stand in for roles. The routes above them are about
-			// the person signed in, and the super admin's below are a person's
-			// alone, so both stay behind the session.
+			// Everything below is guarded by the administrator's permissions;
+			// the panel hiding a control is not the check. These routes also
+			// accept an admin API access token whose scopes stand in for roles;
+			// routes about the signed-in person, and super-admin routes, stay
+			// session-only.
 			managed := v1.Group("/admin", session.RequireAny(service, provider, log))
 
 			activity := managed.Group("", session.Can(model.PermActivityRead))
@@ -407,9 +359,8 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			activity.GET("/logs", h.activity.Logs)
 			activity.GET("/logs/export", h.activity.Export)
 
-			// The users an organisation manages and the fields their records
-			// are made of. Users are shared by every application, so these
-			// are whole-panel permissions.
+			// Users and their fields are shared by every application, so these
+			// are panel-wide permissions.
 			readUsers := managed.Group("", session.Can(model.PermUsersRead))
 			readUsers.GET("/users", h.users.List)
 			readUsers.GET("/users/:id", h.users.Get)
@@ -431,15 +382,12 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			writeFields.PATCH("/user-fields/:id", h.fields.Update)
 			writeFields.DELETE("/user-fields/:id", h.fields.Delete)
 
-			// The organisation the installation belongs to: one record of
-			// settings, read by anyone whose roles allow the page and
-			// written by anyone allowed to change it.
+			// The organisation's single settings record.
 			managed.GET("/organization", session.Can(model.PermOrganizationRead), h.organization.Get)
 			signedIn.PATCH("/organization", session.Can(model.PermOrganizationWrite), h.organization.Update)
 
-			// The providers users may sign in with. Registering one decides
-			// which accounts elsewhere reach this server, so changing them is
-			// its own permission, apart from reading them.
+			// Social providers; changing them decides which outside accounts
+			// get in, so it is its own permission.
 			readSocial := managed.Group("", session.Can(model.PermSocialRead))
 			readSocial.GET("/social-providers", h.social.List)
 			readSocial.GET("/social-providers/:id", h.social.Get)
@@ -452,10 +400,8 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			writeSocial.PATCH("/social-providers/:id", h.social.Update)
 			writeSocial.DELETE("/social-providers/:id", h.social.Delete)
 
-			// The organisations' own identity providers. Connecting one decides
-			// who may sign in, as whom, and with which roles, so changing them
-			// is its own permission; trying a provider is part of setting it
-			// up, so it takes the same.
+			// SSO connections; changing or testing them decides who signs in
+			// with which roles, so it is its own permission.
 			readSSO := managed.Group("", session.Can(model.PermSSORead))
 			readSSO.GET("/sso-connections", h.sso.List)
 			readSSO.GET("/sso-connections/:id", h.sso.Get)
@@ -467,9 +413,8 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			writeSSO.DELETE("/sso-connections/:id", h.sso.Delete)
 			writeSSO.POST("/sso-connections/:id/refresh-metadata", h.sso.RefreshMetadata)
 
-			// The login flows applications sign their users in with, and the
-			// steps one can be made of. Writing a flow decides what a
-			// sign-in asks for, so it is its own permission.
+			// Login flows; writing one decides what sign-in asks for, so it is
+			// its own permission.
 			readFlows := managed.Group("", session.Can(model.PermLoginFlowsRead))
 			readFlows.GET("/login-flows", h.flows.List)
 			readFlows.GET("/login-flows/:id", h.flows.Get)
@@ -479,9 +424,8 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			writeFlows.PATCH("/login-flows/:id", h.flows.Update)
 			writeFlows.DELETE("/login-flows/:id", h.flows.Delete)
 
-			// The languages, and their text for each app. Adding, rewording
-			// and removing one changes what every sign-in page says, so it
-			// takes languages.write; reading the text back takes only read.
+			// Languages and their text; changing them changes every sign-in
+			// page, so it needs languages.write.
 			readLanguages := managed.Group("", session.Can(model.PermLanguagesRead))
 			readLanguages.GET("/languages", h.languages.List)
 			readLanguages.GET("/languages/:code/translations/:app", h.languages.Translation)
@@ -492,20 +436,17 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			writeLanguages.DELETE("/languages/:code", h.languages.Delete)
 			writeLanguages.PUT("/languages/:code/translations/:app", h.languages.SaveTranslation)
 
-			// Applications, the roles each defines, and who holds them. A
-			// role can grant these for one application, so the routes only
-			// check the administrator can reach some application; each
-			// handler then checks the one the request is about.
+			// Applications and their roles. Routes only check the administrator
+			// reaches some application; each handler checks the one requested.
 			apps := managed.Group("", session.CanAnywhere(model.PermApplicationsRead))
 			apps.GET("/applications", h.applications.List)
 			apps.GET("/applications/:id", h.applications.Get)
 			apps.PATCH("/applications/:id", h.applications.Update)
 			apps.POST("/applications/:id/secret", h.applications.RotateSecret)
 
-			// Roles: global ones, which belong to no application, and each
-			// application's. Anyone who can see users or some application can
-			// read them; each handler narrows to the scopes the administrator
-			// reaches and checks writes against the role's scope.
+			// User roles, global and per application. Handlers narrow to the
+			// scopes the administrator reaches and check writes against the
+			// role's scope.
 			roles := managed.Group("", session.CanAnywhere(model.PermUsersRead, model.PermApplicationsRead))
 			roles.GET("/user-roles", h.roles.List)
 			roles.GET("/user-roles/:id", h.roles.Get)
@@ -528,17 +469,15 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			apps.DELETE("/applications/:id/apis/:api", h.applications.RevokeAPI)
 			apps.POST("/applications/:id/token-preview", h.applications.TokenPreview)
 
-			// APIs: the resource servers tokens are issued for. Anyone who can
-			// see them or configure an application's access to them may read
-			// them; changing them is a whole-panel permission.
+			// APIs. Readable by anyone who can see them or configure an
+			// application's access; changing them is panel-wide.
 			readAPIs := managed.Group("", session.CanAnywhere(model.PermAPIsRead, model.PermApplicationsWrite))
 			readAPIs.GET("/apis", h.apis.List)
 			readAPIs.GET("/apis/:id", h.apis.Get)
 			readAPIs.GET("/apis/:id/applications", h.apis.Applications)
 
-			// An API's log names every application given or refused access,
-			// including ones an administrator of a few applications cannot
-			// see, so it takes apis.read itself.
+			// An API's log names every application, visible or not, so it needs
+			// apis.read itself.
 			managed.GET("/apis/:id/logs", session.Can(model.PermAPIsRead), h.apis.Logs)
 
 			writeAPIs := managed.Group("", session.Can(model.PermAPIsWrite))
@@ -567,22 +506,17 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			super.DELETE("/admins/:id", h.admins.Delete)
 			super.DELETE("/admins/:id/mfa", h.admins.ResetMFA)
 
-			// How this installation sends email, and the words of every
-			// message it sends. The settings carry the mail server's
-			// password, and the words are what lands in a user's inbox, so
-			// both are a super admin's rather than something a role hands
-			// out. Sending a test message is rate limited: it is the one
-			// route in the panel that makes the server post mail anywhere an
-			// administrator names.
+			// Mail settings carry the SMTP password and the email text decides
+			// what lands in inboxes, so both are super-admin only. The test
+			// send is rate limited.
 			super.GET("/mail", h.mail.Get)
 			super.PATCH("/mail", h.mail.Update)
 			super.POST("/mail/test", h.limit, h.mail.Test)
 			super.GET("/mail/content", h.mail.Content)
 			super.PUT("/mail/content/:code", h.mail.SaveContent)
 
-			// The one-time codes the server emails as people sign in. How
-			// short or long-lived a code is decides how hard this server is
-			// to get into, so it is a super admin's too.
+			// Emailed one-time code settings decide how hard sign-in is, so
+			// they are super-admin only.
 			super.GET("/otp", h.otp.Get)
 			super.PATCH("/otp", h.otp.Update)
 
@@ -591,10 +525,8 @@ func registerAdminRoutes(r *gin.Engine, service *auth.Service, provider *oidc.Se
 			super.GET("/signing-keys", h.keys.List)
 			super.POST("/signing-keys/rotate", h.limit, h.keys.Rotate)
 
-			// Redis: what its two databases hold, and clearing some or all of
-			// it. Everything there is a copy the store can read again, but a
-			// value written by hand is what the pages then show, so it is a
-			// super admin's alone.
+			// Redis inspection and clearing. A hand-written value is what pages
+			// then show, so it is super-admin only.
 			super.GET("/cache", h.caching.Overview)
 			super.GET("/cache/:database/keys", h.caching.Keys)
 			super.GET("/cache/:database/key", h.caching.Key)

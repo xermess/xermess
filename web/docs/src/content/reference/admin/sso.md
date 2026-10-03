@@ -192,11 +192,9 @@ Errors come back as an [OAuth error](/reference/errors#oauth-errors): `{"error",
 
 ## POST /api/v1/admin/sso-connections {#post-api-v1-admin-sso-connections}
 
-Adds a connection.
+Adds a connection, disabled until an administrator turns it on.
 
-A SAML one is given its own key and certificate to sign requests with, which its provider is shown.
-
-A new connection starts off: nobody signs in through it until an administrator has tried it and turned it on.
+A SAML connection gets its own signing key and certificate.
 
 | | |
 | --- | --- |

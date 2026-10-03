@@ -34,19 +34,11 @@
 	const name = $derived(organization.name.trim() || BRAND.name);
 </script>
 
-<!-- One row, read left to right: whose panel this is, the sidebar's control,
-     then at the far end the tools — search, help, the theme — and who is
-     signed in.
-
-     A wide window has a sidebar column, and the logo block is its top: as
-     wide, as tinted, folding with it, with the fold control beside it. A
-     narrow one has none — the sections are a panel over the page — so the
-     control that opens the panel comes first and the logo and the word follow
-     it.
-
-     Which of the two controls shows is the stylesheet's choice, not the
-     script's: the server renders both, so the page arrives right at any
-     width and nothing changes when it comes to life. -->
+<!--
+	The header row: logo and sidebar control, then search, help, theme and the account menu. On
+	wide screens the logo block tops the sidebar column; on narrow ones the menu button comes
+	first. CSS picks which control shows, so the server-rendered page is right at any width.
+-->
 <header class:mini={shell.collapsed} class:dashboard={besideSidebar}>
 	{#if besideSidebar}
 		<div class="menu-control">

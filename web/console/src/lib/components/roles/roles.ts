@@ -2,11 +2,8 @@ import type { Admin, Application, Role, UserRoleRef } from '$lib/api';
 import { can } from '$lib/permissions';
 
 /**
- * Roles on the panel's side: their scopes, and following what they include.
- *
- * The server resolves inheritance too — every role arrives with its
- * `inherited_roles`, and a user with their role mapping — but a form shows
- * what a change would do before it is saved, so the walk is repeated here.
+ * Role scopes and inheritance on the client, so a form can show what a change would do before
+ * saving. The server resolves the same rules.
  */
 
 /** Every role reached from these ids by following inheritance, the starting

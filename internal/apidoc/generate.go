@@ -9,9 +9,8 @@ import (
 	"sort"
 )
 
-// Where the generated files go, relative to the repository. The server
-// embeds its copy of each OpenAPI document; the docs app is built on its own
-// (deploy/docker/web.Dockerfile copies only the app), so it has a copy too.
+// Where generated files go. The server embeds its OpenAPI copies; the docs app
+// keeps its own because its image copies only the app.
 const (
 	serverDocuments = "internal/api/reference"
 	docsDocuments   = "web/docs/static/openapi"
@@ -51,9 +50,8 @@ func Generate(root string) (map[string][]byte, error) {
 	return files, nil
 }
 
-// Stale compares what Generate makes with what is on disk: the files that
-// differ or are missing, and the pages under the generated directory that
-// nothing makes any more.
+// Stale lists generated files that differ, are missing, or are no longer
+// generated.
 func Stale(root string, files map[string][]byte) ([]string, error) {
 	var out []string
 

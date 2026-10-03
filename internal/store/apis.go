@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"loginer/internal/cache"
 	"loginer/internal/model"
 )
 
@@ -93,9 +94,8 @@ type APIApplication struct {
 	Allowed []uuid.UUID
 }
 
-// APIApplications lists applications with what each may do with an API,
-// sorted by name. `only` narrows them to the applications an administrator
-// can see; nil is every one.
+// APIApplications lists applications with their access to an API, by name;
+// `only` narrows to visible applications (nil is all).
 func (s *Store) APIApplications(ctx context.Context, apiID uuid.UUID, only []uuid.UUID) ([]APIApplication, error) {
 	apps, _, err := s.Applications(ctx, ApplicationQuery{Only: only, Limit: 1000})
 	if err != nil {
@@ -135,9 +135,8 @@ func (s *Store) APIApplications(ctx context.Context, apiID uuid.UUID, only []uui
 func (s *Store) APIAuditLog(ctx context.Context, apiID uuid.UUID, limit int) ([]model.AuditLog, error) {
 	var events []model.AuditLog
 	err := s.db.WithContext(ctx).
-		// Each side matches an index — idx_audit_logs_target, and
-		// idx_audit_logs_api, whose predicate the LIKE repeats — so the log
-		// is read by index however long it grows.
+		// Each side of the OR matches an index (idx_audit_logs_target,
+		// idx_audit_logs_api), so this stays an index read.
 		Where(`(target_type = ? AND target_id = ?)
 			OR (metadata LIKE '%"api_id"%' AND (metadata::jsonb) ->> 'api_id' = ?)`,
 			"api", apiID.String(), apiID.String()).
@@ -161,14 +160,13 @@ func (s *Store) APIScopesByID(ctx context.Context, ids []uuid.UUID) ([]model.API
 
 // CreateAPI writes a new API with its scopes, in one transaction.
 func (s *Store) CreateAPI(ctx context.Context, api *model.API) error {
-	return translate(s.db.WithContext(ctx).Create(api).Error)
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Create(api).Error), cache.Grants)
 }
 
-// SaveAPI writes an API back and makes its scopes the ones it carries. A scope
-// that keeps its id keeps every application's allowance and role's grant of
-// it, whatever it is renamed to; a scope left out is removed with them.
+// SaveAPI writes an API and makes its scopes the ones it carries. Kept scopes
+// keep their grants when renamed; dropped scopes are removed with them.
 func (s *Store) SaveAPI(ctx context.Context, api *model.API) error {
-	return translate(s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Omit(clause.Associations).Save(api).Error; err != nil {
 			return err
 		}
@@ -194,10 +192,8 @@ func (s *Store) SaveAPI(ctx context.Context, api *model.API) error {
 			return err
 		}
 
-		// The unique index on a scope's name is checked row by row, so two
-		// scopes trading names would clash halfway through. The kept scopes
-		// are moved out of the way first, onto their own ids, which no scope
-		// can be called.
+		// Names are unique per row, so kept scopes are renamed to their own ids
+		// first to let two scopes swap names.
 		if len(kept) > 0 {
 			err := tx.Exec("UPDATE api_scopes SET name = id::text WHERE api_id = ? AND id IN ?", api.ID, kept).Error
 			if err != nil {
@@ -229,13 +225,13 @@ func (s *Store) SaveAPI(ctx context.Context, api *model.API) error {
 		}
 
 		return nil
-	}))
+	})), cache.Grants)
 }
 
 // DeleteAPI removes an API for good, with its scopes, every application's
 // authorisation for it, and every role's grant of its scopes.
 func (s *Store) DeleteAPI(ctx context.Context, api *model.API) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var scopeIDs []uuid.UUID
 		if err := tx.Model(&model.APIScope{}).Where("api_id = ?", api.ID).Pluck("id", &scopeIDs).Error; err != nil {
 			return err
@@ -250,7 +246,7 @@ func (s *Store) DeleteAPI(ctx context.Context, api *model.API) error {
 		}
 
 		return tx.Unscoped().Delete(api).Error
-	})
+	}), cache.Grants)
 }
 
 // removeScopes deletes API scopes and every allowance and grant of them.
@@ -332,7 +328,7 @@ func (s *Store) ApplicationAPIAccess(ctx context.Context, applicationID uuid.UUI
 // AuthorizeApplicationAPI lets an application ask for tokens for an API, and
 // makes `scopes` — which must be the API's — the scopes it may ask for.
 func (s *Store) AuthorizeApplicationAPI(ctx context.Context, applicationID, apiID uuid.UUID, scopes []uuid.UUID) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		grant := model.ApplicationAPI{ApplicationID: applicationID, APIID: apiID}
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&grant).Error; err != nil {
 			return err
@@ -354,12 +350,12 @@ func (s *Store) AuthorizeApplicationAPI(ctx context.Context, applicationID, apiI
 		}
 
 		return nil
-	})
+	}), cache.Grants)
 }
 
 // RevokeApplicationAPI stops an application asking for tokens for an API.
 func (s *Store) RevokeApplicationAPI(ctx context.Context, applicationID, apiID uuid.UUID) error {
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return s.forgetting(ctx, s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Exec(
 			"DELETE FROM application_api_scopes WHERE application_id = ? AND api_scope_id IN (SELECT id FROM api_scopes WHERE api_id = ?)",
 			applicationID, apiID,
@@ -369,5 +365,5 @@ func (s *Store) RevokeApplicationAPI(ctx context.Context, applicationID, apiID u
 		}
 
 		return tx.Exec("DELETE FROM application_apis WHERE application_id = ? AND api_id = ?", applicationID, apiID).Error
-	})
+	}), cache.Grants)
 }

@@ -1,10 +1,5 @@
-// Package social answers the endpoints that configure signing in with an
-// account somewhere else: the providers an administrator registers this
-// server with, and what each of them is allowed to do here.
-//
-// Nothing in this package signs anybody in — that is internal/oidc, which
-// reads these records. This is the panel's half: what is stored, and what the
-// panel is told about it, which is never a secret it has stored.
+// Package social manages the social sign-in providers. Signing in happens in
+// internal/oidc; stored secrets are never sent back to the panel.
 package social
 
 import (
@@ -67,9 +62,8 @@ func (h *Handler) Get(c *gin.Context) {
 	h.answer(c, http.StatusOK, provider)
 }
 
-// Create registers a provider. It is not reachable by anyone signing in until
-// somebody has signed in with it once — the credentials are only ever proved
-// right by the provider itself.
+// Create registers a provider. Its credentials are proved only by a first
+// sign-in.
 func (h *Handler) Create(c *gin.Context) {
 	var req providerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -111,10 +105,8 @@ func (h *Handler) Create(c *gin.Context) {
 	h.answer(c, http.StatusCreated, provider)
 }
 
-// Update changes a provider's settings. Its kind and its identifier are not
-// among them: both are in the address registered with the provider, and a
-// sign-in that comes back to an address nobody answers is a worse failure
-// than having to register a second provider.
+// Update changes a provider's settings. Kind and slug are fixed, since they
+// form the registered callback address.
 func (h *Handler) Update(c *gin.Context) {
 	provider, ok := h.find(c)
 	if !ok {
@@ -134,13 +126,10 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	// Pointing a provider at a different upstream — new endpoints, a new
-	// client, a new Apple team — changes whose subjects its stored identities
-	// name. A stranger at the new upstream whose subject matched would sign
-	// in as the old owner. SSO forgets its identities in this case; the social
-	// identities of most kinds cannot re-link (their address is never proven),
-	// so here the change is refused while any identity still hangs on it, and
-	// the administrator registers a new provider instead.
+	// Pointing a provider at a different upstream changes whose subjects its
+	// identities name, so a stranger there could sign in as an existing user.
+	// The change is refused while identities remain; register a new provider
+	// instead.
 	if identityNamespace(provider) != before {
 		counts, err := h.store.SocialIdentityCounts(c.Request.Context())
 		if err != nil {
@@ -169,14 +158,9 @@ func (h *Handler) Update(c *gin.Context) {
 // identities signs people in from.
 var providerRepointed = respond.Define(http.StatusConflict, "social_provider_repointed", respond.Admin)
 
-// identityNamespace is what decides whether two settings of a provider name
-// the same people: the part of a provider a subject is only unique within. A
-// change to it means a stored subject now belongs to a different person.
-//
-// For a custom kind that is the upstream itself — its token and userinfo
-// endpoints and the client. Apple scopes its subject to the team; Facebook to
-// the app. Google, Yandex and VK keep a subject stable across the app
-// registration, so rotating their client id strands nobody.
+// identityNamespace is what a provider's subjects are unique within: the
+// endpoints and client for a custom kind, the team for Apple, the app for
+// Facebook. Google, Yandex and VK keep subjects stable across clients.
 func identityNamespace(p *model.SocialProvider) string {
 	_, token, userInfo := p.Endpoints()
 
@@ -192,13 +176,9 @@ func identityNamespace(p *model.SocialProvider) string {
 	}
 }
 
-// Secret answers with the client secret itself, for an administrator who has
-// to check what is configured against the provider's console.
-//
-// It is stored encrypted rather than hashed, so it can be read back — which
-// makes reading it an event worth recording. It takes the permission that
-// could replace it anyway, and every reading is written to the log with who
-// asked.
+// Secret returns the stored client secret so it can be checked against the
+// provider's console. It requires the permission that could replace it, and
+// every read is written to the activity log.
 func (h *Handler) Secret(c *gin.Context) {
 	provider, ok := h.find(c)
 	if !ok {
@@ -229,9 +209,8 @@ func (h *Handler) Secret(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"secret": string(secret), "kind": what})
 }
 
-// Delete removes a provider, and every identity held at it. The accounts stay
-// — a user who had no password keeps one way in fewer, which is why the panel
-// says how many people that is before it asks.
+// Delete removes a provider and its identities; the accounts stay, though some
+// may lose their only way in.
 func (h *Handler) Delete(c *gin.Context) {
 	provider, ok := h.find(c)
 	if !ok {

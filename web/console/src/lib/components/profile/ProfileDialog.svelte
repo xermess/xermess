@@ -30,12 +30,10 @@
 	);
 </script>
 
-<!-- The signed-in administrator's own account, opened the way a record is:
-     the whole window, a summary of who it is, and tabs under it. The dialog's
-     body is built when it opens and taken down when it closes, and so is
-     everything in it: every opening starts on the Account
-     tab with the forms as the account stands, and the settings are read the
-     first time their tab is shown. -->
+<!--
+	The administrator's own account in a full-window dialog. Its body is rebuilt on every
+	opening, so it always starts on the Account tab with fresh forms.
+-->
 <FullscreenDialog bind:open title="Your account">
 	<div class="summary">
 		<Thumb src={admin.avatar_url} text={initials(name)} size="md" shape="circle" tone="accent" />

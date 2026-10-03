@@ -51,14 +51,10 @@
 	// right term in the box.
 	let search = $derived(data.search);
 
-	/** The rows the search and the filter leave.
-
-	    Both live in the URL, as everywhere else in the panel, but the filtering
-	    itself is done here: there are as many providers as an installation has
-	    registered — a handful — and the endpoint answers with all of them, so
-	    asking the server again would be a round trip to do less than this line
-	    does. It runs while the page is rendered on the server too, so a shared
-	    link arrives already filtered. */
+	/**
+	 * Providers left by the search and filter (both in the URL), filtered here since the endpoint
+	 * returns them all. Runs during SSR too, so shared links arrive filtered.
+	 */
 	const providers = $derived.by(() => {
 		const term = data.search.trim().toLowerCase();
 
@@ -154,12 +150,10 @@
 		confirmingRemove = false;
 	}
 
-	/** Offering or withdrawing the ticked providers: one call each, because
-	    that is what the API takes, and the cache is refilled afterwards so a
-	    half-finished change still leaves the list right.
-	
-	    The call says only what it changes — the endpoint is a PATCH, and
-	    everything it does not mention is left as it is. */
+	/**
+	 * Enables or disables the ticked providers, one PATCH each, then refetches so a partial
+	 * failure still leaves the list right.
+	 */
 	const setEnabled = createMutation(() => ({
 		mutationFn: async (enabled: boolean) => {
 			for (const id of chosen) {

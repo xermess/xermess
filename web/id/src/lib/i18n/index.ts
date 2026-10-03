@@ -33,15 +33,9 @@ function initialize() {
 }
 
 /**
- * Builds a translator over whatever text `messages` returns.
- *
- * `svelte-i18n` owns the formatter and, in the browser, the reactive
- * dictionary. The server keeps its request's message map local and uses the
- * package's low-level formatter instead: `svelte-i18n` is a singleton, and
- * `addMessages` must not let one concurrent SSR request overwrite another.
- * The messages are still read through the function on every lookup, so
- * Svelte's existing data reactivity keeps a page redrawn when the language
- * changes.
+ * Builds a translator over `messages()`. svelte-i18n is a singleton, so on the server each
+ * request keeps its own messages and uses the low-level formatter; messages are read on every
+ * lookup, so pages redraw when the language changes.
  */
 export function translator(
 	messages: () => Messages,
@@ -118,15 +112,8 @@ function formatMessage(
 }
 
 /**
- * What to tell somebody about an error, in their language.
- *
- * The server names every problem with a code, and this app says
- * `error.<code>` from its own catalog — the same catalog, in the same
- * language, as the rest of the page. A field the sentence names is said the
- * way the form labels it (`field.<name>`), so "email" reads "Электронная
- * почта" beside the box it is about. A code this app has no sentence for
- * falls back to the server's English, and anything that is not an answer at
- * all to "something went wrong".
+ * The error message in the reader's language: `error.<code>` from the catalog, with field names
+ * as the form labels them (`field.<name>`). Unknown codes fall back to the server's English.
  */
 export function messageOf(err: unknown, t: Translate): string {
 	if (!(err instanceof ApiError)) return t('error.unknown');
@@ -152,32 +139,20 @@ export function provideTranslator(translate: Translate) {
 }
 
 /**
- * The translator, for a component that has text in it:
+ * The translator for a component; call it during component creation. Outside the layout (tests)
+ * it uses the base language.
  *
- * ```svelte
- * const t = useTranslator();
- * ...
- * <h1>{t('login.title')}</h1>
- * ```
- *
- * It has to be called while the component is being created, as every context
- * does. A component rendered outside the layout — a test, a story — gets the
- * base language rather than nothing.
+ *     const t = useTranslator();
+ *     <h1>{t('login.title')}</h1>
  */
 export function useTranslator(): Translate {
 	return getContext<Translate | undefined>(KEY) ?? translator(() => base);
 }
 
 /**
- * Which language to show somebody, given what they have asked for and what is
- * offered.
- *
- * In order: the language they chose, then the ones their browser asks for in
- * Accept-Language — by exact tag first, then by its language part, so a
- * browser asking for ru-RU is served ru — and then the installation's
- * default. Only what is offered counts wherever it appears: a saved choice of
- * a language that has since been turned off or removed is passed over, not
- * honoured into an error.
+ * Picks the language: the saved choice, then Accept-Language (exact tag, then its language
+ * part), then the default. Only offered languages count, so a choice that was since removed is
+ * skipped.
  */
 export function chooseLanguage(
 	chosen: string | undefined,

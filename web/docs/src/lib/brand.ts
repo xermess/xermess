@@ -1,15 +1,6 @@
 /**
- * What the project calls itself.
- *
- * The name is written here and nowhere else in this app, and the names built
- * from it — the cookies the examples send — are built here too. The server
- * keeps the same list in internal/brand, and its tests read this file to check
- * the two still agree.
- *
- * The guides never spell the name either: they write {{name}}, {{slug}} and
- * the other keys of PLACEHOLDERS below, and the page fills them in as it
- * renders. So renaming the project is this file, its twins in web/console and
- * web/id, the module path in go.mod, and a `git mv` of the command under cmd/.
+ * What the project calls itself, and the names built from it. The server checks this matches
+ * internal/brand. Guides write {{name}} and the other PLACEHOLDERS keys instead of the name.
  */
 export const BRAND = {
 	/** The project as a person reads it: the wordmark and the page titles. */

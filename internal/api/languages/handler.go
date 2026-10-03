@@ -1,15 +1,7 @@
-// Package languages answers the endpoints behind the panel's Languages page,
-// and the two the panel itself is drawn with.
-//
-// A language is a row and its text, one JSON object per app, all in the
-// database. The server ships some (i18n/) and imports them on its first
-// start; from then on this is where languages are added, reworded, offered,
-// made the default and removed, and a change is on the next page anybody
-// opens — the apps ask for their text while rendering, so nothing is rebuilt.
-//
-// Which keys there are is not the database's to say. It is the base
-// language's shipped groups: they are what the apps' code looks up, so a
-// translation is counted against them and a key they do not have is dropped.
+// Package languages serves the Languages page. A language is a row plus one
+// JSON text per app, all in the database, so changes apply on the next page
+// load without a rebuild. The keys are defined by the base language's shipped
+// groups.
 package languages
 
 import (
@@ -47,9 +39,7 @@ func New(st *store.Store, recorder audit.Recorder, log *slog.Logger) *Handler {
 func (h *Handler) List(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Asking for the default first creates the row on an installation that
-	// has none, so the page is never without the language everything else
-	// falls back to.
+	// Asking for the default creates it if missing.
 	if _, err := h.store.DefaultLanguage(ctx); err != nil {
 		respond.Failure(c, h.log, err, "loading the default language failed")
 		return
@@ -110,9 +100,8 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	// A copy brings the text of the apps a language is translated for, and
-	// nothing else: an older installation's row for an app there no longer
-	// is would be copied forward for ever otherwise.
+	// Copy only apps a language is translated for, so stale rows are not
+	// carried forward.
 	for app := range text {
 		if !i18n.ServesApp(language.Code, i18n.App(app)) {
 			delete(text, app)
@@ -138,9 +127,8 @@ func (h *Handler) Create(c *gin.Context) {
 	h.answer(c, http.StatusCreated, language)
 }
 
-// startingText is the text a new language copies, by app: another language's
-// here, or a shipped language's when there is no such language here. The file
-// is returned too when that is where the text came from.
+// startingText is a new language's text by app: copied from an installed
+// language, or from a shipped one (also returned).
 func (h *Handler) startingText(c *gin.Context, from string) (map[string]map[string]string, *i18n.File, error) {
 	if from == "" {
 		return nil, nil, nil
@@ -280,9 +268,8 @@ func (h *Handler) Translation(c *gin.Context) {
 	})
 }
 
-// SaveTranslation replaces one language's text for one app. Keys the app does
-// not look up are dropped and counted rather than refused, so a file from an
-// older release still imports.
+// SaveTranslation replaces one language's text for one app. Unknown keys are
+// dropped and counted, so older files still import.
 func (h *Handler) SaveTranslation(c *gin.Context) {
 	language, app, ok := h.findWithApp(c)
 	if !ok {
@@ -301,12 +288,9 @@ func (h *Handler) SaveTranslation(c *gin.Context) {
 
 	messages, ignored := i18n.Known(app, req.Messages)
 
-	// The emails are the Mail page's, a super admin's: the reset email puts
-	// a live reset link wherever its body says {link}, so whoever may word it
-	// may send that link to themselves. A translator's save keeps the email
-	// text as it is stored — kept rather than refused, because the editor
-	// sends the whole draft, stored email text included, and a refusal would
-	// stop a translator saving anything at all.
+	// Email text is super-admin only, since the reset email decides where its
+	// live link goes. A translator's save keeps the stored email text instead
+	// of failing, because the editor sends the whole draft.
 	if !session.Admin(c).IsSuperAdmin() {
 		stored, err := h.store.Translation(c.Request.Context(), language.ID, string(app))
 		if err != nil {
@@ -365,9 +349,8 @@ func (h *Handler) find(c *gin.Context) (*model.Language, bool) {
 	return language, true
 }
 
-// findWithApp is find, and the app named in the path as well. The sign-in
-// pages are the only app a language is translated for, so any other name in
-// the path is simply not an app.
+// findWithApp is find plus the app in the path; only the sign-in pages are
+// translatable.
 func (h *Handler) findWithApp(c *gin.Context) (*model.Language, i18n.App, bool) {
 	app, known := i18n.ParseApp(c.Param("app"))
 	if !known {

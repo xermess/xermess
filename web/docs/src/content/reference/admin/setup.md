@@ -9,9 +9,7 @@ generated: true
 
 ## GET /api/v1/admin/setup {#get-api-v1-admin-setup}
 
-Says whether the panel still has to be set up.
-
-The panel asks before showing its sign-in page, and sends whoever is there to the setup form instead when the answer is yes.
+Says whether the panel still needs its first administrator.
 
 | | |
 | --- | --- |

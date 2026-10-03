@@ -32,12 +32,8 @@ func (s *Store) LoginFlow(ctx context.Context, id uuid.UUID) (*model.LoginFlow, 
 	})
 }
 
-// DefaultLoginFlow returns the flow every application without one of its own
-// signs people in with.
-//
-// A database holding none gets the default written for it, as the organisation
-// does: the sign-in pages ask for this on every request, and an installation
-// whose row was removed by hand should still sign people in.
+// DefaultLoginFlow returns the flow used by applications without their own,
+// writing one if none exists.
 func (s *Store) DefaultLoginFlow(ctx context.Context) (*model.LoginFlow, error) {
 	var flow model.LoginFlow
 	if s.cache.Get(ctx, cache.LoginFlows, "default", &flow) {
@@ -63,10 +59,8 @@ func (s *Store) DefaultLoginFlow(ctx context.Context) (*model.LoginFlow, error) 
 	return &flow, nil
 }
 
-// EffectiveLoginFlow returns the flow an application signs people in with:
-// its own when it has one and that one is still offered, and the default
-// otherwise — so withdrawing a flow does not stop the applications holding it
-// from working.
+// EffectiveLoginFlow returns the application's flow if it is still enabled,
+// otherwise the default.
 func (s *Store) EffectiveLoginFlow(ctx context.Context, app *model.Application) (*model.LoginFlow, error) {
 	if app != nil && app.LoginFlowID != nil {
 		flow, err := s.LoginFlow(ctx, *app.LoginFlowID)
@@ -117,12 +111,8 @@ func (s *Store) SaveLoginFlow(ctx context.Context, flow *model.LoginFlow) error 
 	return nil
 }
 
-// demoteOtherDefaults keeps exactly one flow marked as the default: whichever
-// was just written wins, and any other holding the mark loses it.
-//
-// Making the newest one win is what lets the panel offer a plain switch. The
-// alternative — refusing a second default — would mean an administrator had
-// to find and unmark the old one first, for a rule the server can keep itself.
+// demoteOtherDefaults keeps exactly one default flow: the one just written
+// wins.
 func demoteOtherDefaults(tx *gorm.DB, flow *model.LoginFlow) error {
 	if !flow.IsDefault {
 		return nil
@@ -135,9 +125,7 @@ func demoteOtherDefaults(tx *gorm.DB, flow *model.LoginFlow) error {
 	return translate(err)
 }
 
-// ErrDefaultLoginFlow is returned when the default flow would be removed.
-// Every application without a flow of its own falls back to it, so there has
-// to be one.
+// ErrDefaultLoginFlow protects the default flow from removal.
 var ErrDefaultLoginFlow = errors.New("the default flow cannot be removed")
 
 // DeleteLoginFlow removes a flow, and lets the applications that were using

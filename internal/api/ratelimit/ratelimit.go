@@ -1,14 +1,7 @@
-// Package ratelimit slows down guessing: it limits how often one address may
-// call the endpoints that take a password or send an email.
-//
-// The per-account lockout already stops guessing one account's password. This
-// is the other half: one address trying many accounts, creating accounts in
-// bulk, or filling someone's inbox with reset links.
-//
-// With Redis configured the count is kept there, so every server process
-// shares one budget per address and a restart does not hand out a fresh one.
-// Without it — or while Redis is not answering — each process counts in its
-// own memory, which is a weaker limit rather than none.
+// Package ratelimit limits how often one address may call the endpoints that
+// take a password or send email, complementing the per-account lockout. With
+// Redis every process shares one budget per address; without it each counts in
+// memory.
 package ratelimit
 
 import (
@@ -29,17 +22,15 @@ import (
 // seconds until it may try again.
 var RateLimited = respond.Define(http.StatusTooManyRequests, "rate_limited", respond.Both)
 
-// Limiter is a token bucket per client address: `perMinute` requests a
-// minute, refilled continuously, with the whole minute's worth available at
-// once.
+// Limiter is a per-address token bucket: `perMinute` requests a minute,
+// refilled continuously, with a full minute's burst.
 type Limiter struct {
 	perMinute int
 	rate      float64 // tokens per second
 	burst     float64
 
-	// shared is the Redis the buckets are kept in, and scope keeps this
-	// limiter's buckets apart from another's there: the public and admin
-	// servers each have their own.
+	// shared is the Redis buckets are kept in; scope separates this limiter's
+	// buckets from others'.
 	shared *cache.Cache
 	scope  string
 
@@ -75,9 +66,9 @@ func (l *Limiter) Shared(c *cache.Cache, scope string) *Limiter {
 	return l
 }
 
-// Allow takes a token for `key`, and says whether there was one and, when not,
-// how long until there is. It asks Redis when there is one, and its own
-// memory when there is not or when Redis does not answer.
+// Allow takes a token for `key`, reporting whether there was one and how long
+// until the next. It uses Redis, falling back to memory when Redis is absent or
+// down.
 func (l *Limiter) Allow(ctx context.Context, key string) (bool, time.Duration) {
 	if l.burst <= 0 {
 		return true, 0
@@ -118,11 +109,8 @@ func (l *Limiter) allowLocally(key string) (bool, time.Duration) {
 	return true, 0
 }
 
-// bucketFor is the bucket a client address shares. An IPv4 address is a
-// bucket of its own; an IPv6 address shares one with its /64, because that is
-// what a client is given — a home connection, a server, a cloud instance
-// each hold a whole /64 and can send from a different address in it every
-// time, which would make a per-address limit no limit at all.
+// bucketFor groups IPv6 clients by /64, since one client can rotate through a
+// whole /64.
 func bucketFor(address string) string {
 	ip := net.ParseIP(address)
 	if ip == nil || ip.To4() != nil {
@@ -148,9 +136,8 @@ func (l *Limiter) sweep(now time.Time) {
 	}
 }
 
-// Middleware refuses a request over the limit with 429 and Retry-After. The
-// address is Gin's ClientIP, so behind a proxy LOGINER_TRUSTED_PROXIES has to
-// name it — otherwise every client shares the proxy's one budget.
+// Middleware answers 429 with Retry-After over the limit. It keys on Gin's
+// ClientIP, so behind a proxy LOGINER_TRUSTED_PROXIES must name it.
 func (l *Limiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ok, wait := l.Allow(c.Request.Context(), bucketFor(c.ClientIP()))

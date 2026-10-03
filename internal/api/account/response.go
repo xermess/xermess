@@ -18,10 +18,9 @@ var (
 	noSSOConnection     = respond.Define(http.StatusNotFound, "no_sso_connection", respond.Public)
 )
 
-// provided are the provider's problems (oidc.Problems) as answers, by code:
-// every one the provider can refuse something with is a problem of the public
-// API, so a new one needs no line here — only its sentence in the sign-in
-// pages' catalog, which the tests ask for. What differs is the status.
+// provided maps every provider problem (oidc.Problems) to a public API problem
+// by code; only the status differs, so new problems need just a catalog
+// sentence.
 var provided = func() map[string]respond.Problem {
 	statuses := map[string]int{
 		oidc.ErrInvalidCredentials.Code:  http.StatusUnauthorized,
@@ -73,11 +72,9 @@ func newRequestResponse(pending *oidc.PendingRequest) requestResponse {
 	}
 }
 
-// signedInResponse says what the page does next: follow RedirectTo back to
-// the application, or — for a temporary password — send the user to choose a
-// new one with ResetToken, or — where the login flow has the emailed code
-// step — ask for the code in Code. With none of them, the user is signed in
-// and there is nowhere to go.
+// signedInResponse says what the page does next: follow RedirectTo, choose a
+// new password with ResetToken (temporary password), or ask for the emailed
+// Code. With none, the user is signed in and there is nowhere to go.
 type signedInResponse struct {
 	RedirectTo             string              `json:"redirect_to,omitempty"`
 	PasswordChangeRequired bool                `json:"password_change_required,omitempty"`
@@ -85,10 +82,8 @@ type signedInResponse struct {
 	Code                   *oidc.CodeChallenge `json:"code,omitempty"`
 }
 
-// userResponse is a user as they see themselves. It is built by hand, so a
-// column added to users later is not published to the user by accident — the
-// roles and the additional fields an organisation keeps are not theirs to read
-// here.
+// userResponse is built by hand so new columns, roles and organisation fields
+// are never published to the user by accident.
 type userResponse struct {
 	ID            uuid.UUID  `json:"id"`
 	Email         string     `json:"email"`

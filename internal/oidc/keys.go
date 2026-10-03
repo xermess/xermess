@@ -15,24 +15,17 @@ import (
 	"loginer/internal/store"
 )
 
-// How signing keys come and go.
-//
-// A key is made, and published in the JWKS, keyPublishLead before anything is
-// signed with it: an API that caches the JWKS, even for a long time, already
-// has the new key when the first token signed with it arrives. Once it signs,
-// the key before it is retired; a retired key is still published for
-// keyRetention, longer than any token lives, so tokens it signed keep
-// verifying until they expire. After that it is deleted.
+// Signing key lifecycle: a key is published keyPublishLead before it signs, so
+// APIs caching the JWKS already have it. The key it replaces is retired but
+// published for keyRetention, longer than any token lives, then deleted.
 const (
 	keyPublishLead = 24 * time.Hour
 	keyRetention   = 48 * time.Hour
-	// keyReloadInterval is the least time between two reloads of the keys
-	// when a token names a key id this server does not know: another server
-	// may have made it.
+	// keyReloadInterval throttles reloading keys when a token names an unknown
+	// kid (another server may have made it).
 	keyReloadInterval = 30 * time.Second
-	// keyMaintenanceInterval is how often a server checks whether keys are
-	// due to rotate, retire or be deleted, and picks up what other servers
-	// did.
+	// keyMaintenanceInterval is how often keys are checked for rotation,
+	// retirement and deletion.
 	keyMaintenanceInterval = time.Minute
 )
 
@@ -61,9 +54,7 @@ type keySet struct {
 	loadedAt time.Time
 }
 
-// loadKeys reads the stored keys and makes one for any algorithm that has none,
-// so every algorithm an API may choose can be signed with from the first
-// request.
+// loadKeys reads stored keys and makes one for any algorithm without.
 func loadKeys(ctx context.Context, st *store.Store, sealer *jose.Sealer, rotation time.Duration, log *slog.Logger) (*keySet, error) {
 	ks := &keySet{store: st, sealer: sealer, rotation: rotation, log: log, now: time.Now}
 
@@ -74,10 +65,8 @@ func loadKeys(ctx context.Context, st *store.Store, sealer *jose.Sealer, rotatio
 	return ks, nil
 }
 
-// maintain brings the keys up to date: a first key for an algorithm with none,
-// a next key for one whose key is due to rotate, the old key retired once the
-// new one signs, and long-retired keys deleted. Every server runs it; the
-// store's lock and its checks make running it twice harmless.
+// maintain creates, rotates, retires and deletes keys as due. Every server runs
+// it; the store's lock makes that safe.
 func (ks *keySet) maintain(ctx context.Context) error {
 	if err := ks.reload(ctx); err != nil {
 		return err
@@ -155,11 +144,8 @@ func (ks *keySet) add(ctx context.Context, alg string, now time.Time) error {
 	return err
 }
 
-// Rotate makes a new key for every algorithm now. With `immediate`, the new
-// keys sign from now on and the old ones are retired at once; otherwise they
-// wait the usual lead. With `revoke`, the old keys are deleted and no longer
-// published, so APIs stop accepting the tokens they signed — for a key that
-// may have leaked.
+// Rotate makes a new key per algorithm. `immediate` signs with it at once;
+// `revoke` deletes the old keys so tokens they signed stop verifying.
 func (ks *keySet) Rotate(ctx context.Context, immediate, revoke bool) error {
 	// Postgres keeps microseconds; comparing a nanosecond time with the stored
 	// one would find the new key older than itself and retire it.
@@ -246,10 +232,8 @@ func (ks *keySet) reload(ctx context.Context) error {
 	return nil
 }
 
-// newestAndSigning finds, for an algorithm, the newest unretired key and the
-// one to sign with: the newest that has been published for the lead — or,
-// when none has, the oldest unretired one, which is what a fresh installation
-// has.
+// newestAndSigning returns an algorithm's newest key and the one to sign with:
+// the newest published for the lead, else the oldest unretired.
 func (ks *keySet) newestAndSigning(alg string, now time.Time) (newest, signing *storedKey) {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()

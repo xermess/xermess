@@ -13,9 +13,8 @@ func init() {
 	validate.Register("adminrole", model.RoleNamePattern.MatchString)
 }
 
-// applyTo checks the request and copies it onto a role. The permissions are
-// stored once each, in catalog order, and a name the catalog does not have is
-// refused rather than stored to grant nothing.
+// applyTo copies the request onto a role, storing permissions once each in
+// catalog order and refusing unknown names.
 func (r *roleRequest) applyTo(role *model.AdminRole) error {
 	r.clean()
 

@@ -1,16 +1,11 @@
 /**
- * Toasts: what an action came to — saved, sent, could not delete — said in a
- * corner of the screen, rather than in a message at the top of a form that
- * may be scrolled out of sight.
+ * Toasts report the outcome of an action. One toaster serves the panel; <Toaster /> in the root
+ * layout draws it.
  *
- * One toaster serves the whole panel; <Toaster /> in the root layout draws
- * it. A component reports the outcome of what the administrator just did:
+ *     notify.success('Settings saved');
+ *     notify.error(err, 'Could not save the settings');
  *
- *   notify.success('Settings saved');
- *   notify.error(err, 'Could not save the settings');
- *
- * What describes the page itself, rather than an action — "your roles let
- * you read this", "could not load the log" — stays an <Alert> in its place.
+ * State of the page itself ("could not load the log") stays an <Alert>.
  */
 import { createToaster } from '@ark-ui/svelte/toast';
 import { messageOf } from '$lib/api';

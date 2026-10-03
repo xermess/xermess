@@ -9,7 +9,7 @@ generated: true
 
 ## GET /api/v1/admin/security {#get-api-v1-admin-security}
 
-Answers how administrators are made to sign in, and how many of them have an authenticator, so the panel can say what turning it on would mean for the people who have not set one up.
+Returns the administrators' sign-in settings and how many have an authenticator.
 
 | | |
 | --- | --- |
@@ -76,7 +76,7 @@ response.raise_for_status()
 
 Changes those settings.
 
-Requiring a second factor takes effect at once: an administrator without one can do nothing but set one up the next time they load a page.
+Requiring a second factor applies on each administrator's next page load.
 
 | | |
 | --- | --- |
@@ -468,9 +468,9 @@ response.raise_for_status()
 
 ## PATCH /api/v1/admin/admins/:id {#patch-api-v1-admin-admins-id}
 
-Replaces an administrator's details, status and roles, and their password when a new one is given.
+Replaces an administrator's details, status, roles and optionally password.
 
-A new password or an account that may no longer sign in ends every session the administrator has open.
+A new password, or losing the right to sign in, ends their sessions.
 
 | | |
 | --- | --- |
@@ -635,9 +635,9 @@ response.raise_for_status()
 
 ## DELETE /api/v1/admin/admins/:id/mfa {#delete-api-v1-admin-admins-id-mfa}
 
-Removes another administrator's second factor and signs them out everywhere, for someone who lost both their phone and their recovery codes.
+Removes another administrator's second factor and signs them out everywhere.
 
-Your own is managed from your profile, with a code: resetting it here would be a way round needing one.
+Your own is managed from your profile with a code.
 
 | | |
 | --- | --- |

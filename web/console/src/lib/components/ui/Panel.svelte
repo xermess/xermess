@@ -15,14 +15,13 @@
 	let { title, icon, meta, flush = false, children }: Props = $props();
 </script>
 
-<!-- A titled block of a page: PocketBase's open accordion, as its settings
-     pages use it — a header strip on the faint tint, then the content on the
-     surface, in one bordered box with a soft drop beneath.
+<!--
+	A titled block of a page: a tinted header strip over the content, in one bordered box.
 
-     <Panel title="Sessions" icon={RiComputerLine} flush>
-       {#snippet meta()}<Tag>2 active</Tag>{/snippet}
-       <List>…</List>
-     </Panel>
+	    <Panel title="Sessions" icon={RiComputerLine} flush>
+	      {#snippet meta()}<Tag>2 active</Tag>{/snippet}
+	      <List>…</List>
+	    </Panel>
 -->
 <section class="panel">
 	<header>

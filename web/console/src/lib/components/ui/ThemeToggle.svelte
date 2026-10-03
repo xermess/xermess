@@ -14,12 +14,8 @@
 </script>
 
 <!--
-	Both icons are always rendered and CSS decides which one is shown, keyed on
-	the data-theme the server set. Choosing in JavaScript instead would mean
-	the server rendered whichever icon it guessed and the browser corrected it
-	after hydrating, which is a flicker in the corner of the screen on every
-	load. This way it is right in the first frame, and the two icons can turn
-	into each other rather than being swapped.
+	Both icons render and CSS shows the one matching the server-set data-theme, so the first
+	frame is right with no flicker.
 -->
 <Tooltip label="Switch theme">
 	{#snippet children(trigger)}

@@ -1,11 +1,6 @@
-// Package sessions is the panel's Sessions page: every session still signing
-// a user in, and ending them — one, or every one a user has along with the
-// tokens their applications hold. It is Keycloak's Sessions, and what an
-// administrator reaches for when an account is compromised or a device is
-// lost.
-//
-// Reading takes users.read and ending takes users.write: a session is part
-// of a user's account, as it is in Keycloak, rather than a thing of its own.
+// Package sessions serves the Sessions page: listing users' live sessions and
+// ending one, or all of a user's together with their applications' tokens.
+// Reading needs users.read and ending users.write.
 package sessions
 
 import (

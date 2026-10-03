@@ -93,9 +93,8 @@ func tokenOnlyParams(c *gin.Context) (oidc.ClientAuth, string, error) {
 	return auth, form.Get("token"), nil
 }
 
-// readForm reads a POST body that must be a form. A JSON body is refused with
-// a sentence saying so: it is the most common mistake calling a token
-// endpoint, and silently reading it as empty would blame a missing grant_type.
+// readForm requires a form body. JSON is refused with a clear message, since it
+// is the most common mistake at the token endpoint.
 func readForm(c *gin.Context) (url.Values, error) {
 	if c.Request.Method != http.MethodPost {
 		return nil, invalidRequest("this endpoint only accepts POST")
@@ -120,9 +119,8 @@ func readForm(c *gin.Context) (url.Values, error) {
 	return c.Request.PostForm, nil
 }
 
-// clientAuth reads how the client identified itself. HTTP Basic credentials
-// are form-encoded before they are base64-encoded (RFC 6749 section 2.3.1), so
-// they are decoded here. Using both ways at once is refused.
+// clientAuth reads how the client identified itself. Basic credentials are
+// form-decoded (RFC 6749 2.3.1); using both methods at once is refused.
 func clientAuth(c *gin.Context, form url.Values) (oidc.ClientAuth, error) {
 	if id, secret, ok := c.Request.BasicAuth(); ok {
 		if form.Get("client_secret") != "" {

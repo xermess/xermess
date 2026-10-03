@@ -1,17 +1,7 @@
 /**
- * What the project calls itself.
- *
- * The name is written here and nowhere else, and the names built from it — the
- * cookies, which have to match the ones the server sets — are built here too,
- * so the two sides cannot drift apart. The server keeps the same list in
- * internal/brand, and its tests read this file to check the two still agree.
- *
- * So renaming the project is this file, its twin in web/console, the module
- * path on the first line of go.mod, and a `git mv` of the command directory
- * under cmd/. Nothing else may spell the name.
- *
- * The product's own name comes from here rather than from a translation: a
- * product is not called something else in another language.
+ * What the project calls itself, and the cookie names built from it. The server keeps the same
+ * list in internal/brand and its tests check the two agree; nothing else may spell the name.
+ * The product name is never translated.
  */
 export const BRAND = {
 	/** The project as a person reads it: what the footer's shield names, and

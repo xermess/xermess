@@ -8,12 +8,8 @@ import (
 	"loginer/internal/model"
 )
 
-// providerResponse is a configured provider as the panel sees it.
-//
-// The secrets are not in it, and never are: a secret that has been stored can
-// be replaced but not read back, so the panel is told only whether there is
-// one. The callback address is here because it is what an administrator has
-// to paste into the provider's console, and only this server knows it.
+// providerResponse is a provider as the panel sees it: only whether secrets
+// exist, plus the callback address to paste into the provider's console.
 type providerResponse struct {
 	ID   string           `json:"id"`
 	Kind model.SocialKind `json:"kind"`
@@ -82,10 +78,8 @@ func newProviderResponse(provider model.SocialProvider, issuer string, identitie
 	}
 }
 
-// listResponse is every provider, and the kinds one may be. Both come
-// together because the panel's form needs the second to offer the first: what
-// a kind's endpoints are, whether it asks for them, and where to register
-// this server with it.
+// listResponse is every provider plus the kinds the form offers, with their
+// endpoints and registration details.
 type listResponse struct {
 	Providers []providerResponse `json:"providers"`
 	Kinds     []model.SocialSpec `json:"kinds"`

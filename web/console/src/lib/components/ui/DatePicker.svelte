@@ -63,14 +63,10 @@
 	let open = $state(false);
 </script>
 
-<!-- A date is a field like any other — the same outlined box and floating
-     label — with a calendar button at its right end. The day can be typed or
-     picked; the calendar opens on the month of the chosen day, and its title
-     steps out to months and years for a day further away.
-
-     Ark gives this the parts, the keyboard (arrows, page up and down, home and
-     end) and the parsing of what is typed. The closed field is styled in
-     styles/fields.css, the calendar in styles/ark.css. -->
+<!--
+	A date field: typed or picked from a calendar that opens on the chosen month. Ark provides
+	keyboard handling and parsing; styles are in styles/fields.css and styles/ark.css.
+-->
 <ArkDatePicker.Root
 	class="field-root"
 	data-invalid={error !== undefined || undefined}

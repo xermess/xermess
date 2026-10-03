@@ -9,20 +9,14 @@ import (
 	"loginer/internal/brand"
 )
 
-// UserCookie carries a user's session at this server: what lets the
-// authorization endpoint sign someone in to a second application without
-// asking for their password again. It is a different cookie from the
-// administrators' on purpose — signing in to an application must never sign
-// anyone in to the panel.
+// UserCookie carries a user's own session for single sign-on. It is
+// deliberately not the administrators' cookie: signing in to an application
+// must never sign anyone in to the panel.
 const UserCookie = brand.UserSessionCookie
 
-// SetUser stores a user's session token in the browser, until the session
-// expires — which the login flow that made it decides.
-// `remember` is the "stay signed in" box: without it the cookie carries no
-// Max-Age and the browser drops it when its window closes, so a machine
-// somebody was passing through forgets them. The session itself lasts as long
-// as the login flow says either way — this only decides how long the browser
-// holds on to it.
+// SetUser stores the session cookie. Without `remember` ("stay signed in") it
+// has no Max-Age and disappears with the browser window; the session's own
+// lifetime is the login flow's either way.
 func SetUser(c *gin.Context, token string, expires time.Time, remember, secure bool) {
 	maxAge := 0
 	if remember {
@@ -37,9 +31,8 @@ func ClearUser(c *gin.Context, secure bool) {
 	writeUser(c, "", -1, secure)
 }
 
-// maxAge is seconds, as http.Cookie counts them: above zero sets Max-Age,
-// zero leaves it off — a cookie for this browser window — and below zero
-// deletes the cookie.
+// maxAge is seconds: positive sets Max-Age, zero makes a browser-session
+// cookie, negative deletes it.
 func writeUser(c *gin.Context, value string, maxAge int, secure bool) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     UserCookie,
@@ -48,31 +41,23 @@ func writeUser(c *gin.Context, value string, maxAge int, secure bool) {
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		Secure:   secure,
-		// Lax, so the cookie is sent when an application sends the browser
-		// to the authorization endpoint — a top-level navigation — and not
-		// with a request another site's script makes.
+		// Lax: sent on the top-level navigation to the authorization endpoint,
+		// not on other sites' script requests.
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
-// SignInStateCookie ties a sign-in started at a provider — a social one, or an
-// organisation's — to the browser that started it.
-//
-// The state travels to the provider and comes back in the address, so whoever
-// holds one can present it in any browser: their own state and their own code,
-// walked through somebody else's browser, would sign that browser in as them,
-// and everything the person did next would go into the attacker's account.
-// The cookie is the half that cannot be put in another person's browser, and
-// the callback refuses a state that does not match it.
+// SignInStateCookie binds a provider sign-in to the browser that started it.
+// Without it, an attacker could walk a victim's browser through the attacker's
+// own state and code and sign the victim into the attacker's account.
 const SignInStateCookie = brand.SignInStateCookie
 
 // signInStatePath keeps the cookie to the provider endpoints, which are the
 // only ones that ever read it.
 const signInStatePath = "/oauth2"
 
-// SetSignInState remembers the state of a sign-in just started. It is a
-// session cookie: what bounds the sign-in is the row in the database, and the
-// cookie only has to last the trip to the provider and back.
+// SetSignInState stores the state of a sign-in just started, as a
+// browser-session cookie; the database row bounds its lifetime.
 func SetSignInState(c *gin.Context, state string, secure bool) {
 	writeSignInState(c, state, 0, secure)
 }
@@ -83,19 +68,15 @@ func ClearSignInState(c *gin.Context, secure bool) {
 	writeSignInState(c, "", -1, secure)
 }
 
-// SignInState is what the browser carries, or "" for a browser that started
-// no sign-in. Two cookies of the same name — which a neighbouring subdomain
-// can set, with a Domain and a longer path, so the browser sends both — are
-// treated as none: which one would be read is not ours to decide, so the
-// sign-in fails closed rather than on an attacker's state.
+// SignInState is the browser's state cookie, or "". Two cookies of the same
+// name (which a sibling subdomain can plant) count as none, so the sign-in
+// fails closed.
 func SignInState(c *gin.Context) string {
 	return single(c, SignInStateCookie)
 }
 
-// UserToken is the session cookie a user signs in with, or "" when there is
-// none — or when there is more than one of that name, which only a
-// neighbouring subdomain could arrange and which is read as none, so a
-// planted session cannot stand in for the browser's own.
+// UserToken is the user's session cookie, or "" when absent or duplicated (a
+// planted sibling-subdomain cookie cannot stand in).
 func UserToken(c *gin.Context) string {
 	return single(c, UserCookie)
 }
@@ -111,13 +92,9 @@ func single(c *gin.Context, name string) string {
 }
 
 func writeSignInState(c *gin.Context, value string, maxAge int, secure bool) {
-	// Most providers answer with a redirect the browser follows, but some
-	// answer by posting a form — Apple, and every SAML one. Lax carries the
-	// cookie on the first and not on the second, so where it can be Secure it
-	// is None, which is the only way a browser sends a cookie with a
-	// cross-site POST and which browsers only accept with Secure. Served over
-	// plain http, which is development, it stays Lax: the redirect providers
-	// work there, and the ones that post do not.
+	// Apple and SAML providers post their answer cross-site, which only
+	// SameSite=None cookies survive, and None requires Secure. Over plain http
+	// (development) it stays Lax.
 	sameSite := http.SameSiteLaxMode
 	if secure {
 		sameSite = http.SameSiteNoneMode

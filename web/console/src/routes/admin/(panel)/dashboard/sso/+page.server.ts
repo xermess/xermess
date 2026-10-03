@@ -4,12 +4,8 @@ import { apiGet, requirePermission } from '$lib/server/api';
 import type { PageServerLoad } from './$types';
 
 /**
- * The organisations' identity providers, and the roles a group at one can be
- * mapped to.
- *
- * The roles are only there for an administrator who may read them: the rest
- * see a connection's mappings by the role's id, and cannot change them into
- * something they could not see anyway.
+ * SSO connections, plus the roles groups can map to when the administrator may read roles;
+ * otherwise mappings show role ids.
  */
 export const load: PageServerLoad = async ({ fetch, parent }) => {
 	const { admin } = await parent();

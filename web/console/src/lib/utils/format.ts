@@ -1,10 +1,6 @@
 /**
- * How values are shown to a reader.
- *
- * Dates arrive from the API as RFC 3339 strings and are shown in the reader's
- * own locale and time zone. Anything that is not a date is handed back as it
- * came: "Invalid Date" in a table tells nobody anything, while the value
- * itself at least says what was stored.
+ * Formats values for display. Dates are shown in the reader's locale and time zone; anything
+ * unparseable is returned unchanged rather than as "Invalid Date".
  */
 export function formatDateTime(value: string): string {
 	const date = new Date(value);
@@ -125,5 +121,5 @@ export function initials(name: string): string {
 /** A number of things, the noun agreeing with it: "1 role", "3 roles". Every
     noun the panel counts takes an s, so there is no table of plurals. */
 export function countOf(n: number, noun: string): string {
-	return `${n} ${noun}${n === 1 ? '' : 's'}`;
+	return `${n.toLocaleString('en')} ${noun}${n === 1 ? '' : 's'}`;
 }

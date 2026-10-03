@@ -1,10 +1,5 @@
-// Package store is the only place in the server that writes queries.
-//
-// Everything above it — the HTTP handlers, the auth service — asks the store
-// for what it needs and gets models back. That keeps the queries in one place
-// to read and change, keeps GORM out of the handlers, and means the errors
-// the rest of the code handles are this package's own rather than the
-// driver's.
+// Package store is the only place that writes queries: everything above it gets
+// models and this package's errors.
 package store
 
 import (
@@ -33,19 +28,12 @@ func New(db *gorm.DB) *Store {
 	return &Store{db: db}
 }
 
-// WithCache puts Redis in front of the reads every request makes. A nil
-// Redis is no cache.
+// WithCache puts Redis in front of the hot reads. A nil Redis is no cache.
 //
-// Only a few reads go through it. In the cache database: what the sign-in
-// pages and the panel ask for on every render and nobody changes often — the
-// languages and their text, the organisation, the login flows, the sign-in
-// buttons, how one-time codes work. In the session database: what every
-// signed-in request reads to decide who is asking and what they may do — the
-// sessions behind the cookies, the administrators with their roles, the
-// applications by client id, the administrators' sign-in settings. Each
-// method that writes one of those forgets it once the write has committed.
-// Nothing else is cached, so nothing else can be stale: not users, not
-// tokens or codes, which are spent once and have to be spent in the database.
+// Cached: languages, the organisation, login flows, sign-in buttons and OTP
+// settings (cache database); sessions, administrators, applications by client
+// id, admin security and grants (session database). Each writer forgets what it
+// changed after commit. Users, tokens and codes are never cached.
 func (s *Store) WithCache(r *cache.Redis) *Store {
 	s.cache = r.CacheDB()
 	s.sessions = r.SessionDB()
@@ -60,15 +48,12 @@ func (s *Store) in(group string) *cache.Cache {
 	return s.cache
 }
 
-// cached reads one value through the cache: from Redis when it is there, and
-// otherwise from `load`, whose answer is then kept for the next reader. An
-// error from `load` is returned and nothing is kept.
+// cached reads a value through the cache, loading and storing it on a miss. A
+// load error is returned and nothing is stored.
 func cached[T any](ctx context.Context, s *Store, group, field string, load func() (T, error)) (T, error) {
 	var value T
-	// The generation read here is the one the value is written back into, so a
-	// write that forgets the group while `load` runs moves the group on and
-	// leaves this value in a generation nobody reads — rather than putting a
-	// stale principal back after the write cleared it.
+	// Write back into the generation read, so a write that forgets the group
+	// during `load` leaves this value unread.
 	generation, ok := s.in(group).GetAt(ctx, group, field, &value)
 	if ok {
 		return value, nil
@@ -84,9 +69,8 @@ func cached[T any](ctx context.Context, s *Store, group, field string, load func
 	return value, nil
 }
 
-// forget drops what a write changed from the cache. It is called only once
-// the write has committed: forgetting earlier would let a reader put the old
-// row back before the new one is there.
+// forget is called only after commit; forgetting earlier would let a reader
+// cache the old row again.
 func (s *Store) forget(ctx context.Context, groups ...string) {
 	ctx, cancel := afterCommit(ctx)
 	defer cancel()
@@ -100,20 +84,15 @@ func (s *Store) forget(ctx context.Context, groups ...string) {
 // may take.
 const afterCommitTimeout = 2 * time.Second
 
-// afterCommit is the context for telling the cache what a write changed. The
-// write has committed, so the news has to reach Redis whether or not the
-// request that made it is still there: a caller that hung up a moment after
-// the commit would otherwise leave every other process reading the old row
-// — the old client secret, the roles that were taken away, the session that
-// was revoked — until the cache's TTL ran out. The request's values stay; its
-// cancellation does not, and a short timeout of its own stands in for it.
+// afterCommit is the context for invalidating after a commit: it keeps the
+// request's values but not its cancellation, with a short timeout, so a caller
+// hanging up cannot leave other processes serving stale data.
 func afterCommit(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(ctx), afterCommitTimeout)
 }
 
-// forgetting is forget for a write that may have failed: it forgets once the
-// write has succeeded, and answers the write's error either way — so a write
-// reads `return s.forgetting(ctx, write(), groups...)`.
+// forgetting forgets the groups if the write succeeded and returns its error:
+// `return s.forgetting(ctx, write(), groups...)`.
 func (s *Store) forgetting(ctx context.Context, err error, groups ...string) error {
 	if err == nil {
 		s.forget(ctx, groups...)
@@ -122,14 +101,12 @@ func (s *Store) forgetting(ctx context.Context, err error, groups ...string) err
 	return err
 }
 
-// ErrNotFound is returned when a row that was asked for is not there. It
-// stands in for gorm.ErrRecordNotFound so callers do not import GORM to
-// answer a 404.
+// ErrNotFound stands in for gorm.ErrRecordNotFound so callers do not import
+// GORM.
 var ErrNotFound = errors.New("not found")
 
-// ErrDuplicate is returned when a write would repeat a value a unique index
-// forbids — the same email twice, say. It is the writer's to fix, which is
-// why it is told apart from anything else that can go wrong.
+// ErrDuplicate is a unique-index violation, such as a taken email: the caller
+// can fix it.
 var ErrDuplicate = errors.New("already exists")
 
 // translate turns what the driver returns into this package's errors.
@@ -141,9 +118,8 @@ func translate(err error) error {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		return ErrNotFound
 	case strings.Contains(strings.ToLower(err.Error()), "duplicate"):
-		// Wrapped rather than replaced: errors.Is still finds the sentinel,
-		// and what the database said is still there for DuplicateField to
-		// read the column out of.
+		// Wrapped so errors.Is still matches and DuplicateField can read the
+		// column.
 		return fmt.Errorf("%w: %s", ErrDuplicate, err)
 	default:
 		return err

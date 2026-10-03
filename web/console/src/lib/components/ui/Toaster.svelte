@@ -1,18 +1,11 @@
 <!--
-  @component
-  Draws the panel's toasts (see ./toast.ts), centred at the bottom of the
-  screen, newest nearest the edge. Mounted once, in the root layout.
+	@component
+	Draws the panel's toasts (see ./toast.ts) centred at the bottom of the screen. Mounted once
+	in the root layout.
 
-  A toast is the theme turned over — black on the light page, white on the
-  dark — so it is noticed without shouting: an icon in the brand's colour, the
-  message, and a round close button. The icon is one colour whatever the
-  toast says; its shape tells a success from a failure.
-
-  A title alone is a pill, one line tall. With a description the title stays
-  on its own line and the description sits under it in the quieter colour, and
-  the pill becomes a rounded card: two lines of text inside a pill's ends
-  would run into the curve. It pauses while the pointer is over it, and Ark
-  announces each to assistive technology as it arrives.
+	Inverted against the theme, with an icon whose shape tells success from failure. A toast with
+	a description becomes a rounded card. It pauses on hover and is announced to assistive
+	technology.
 -->
 <script lang="ts">
 	import { Toast, Toaster } from '@ark-ui/svelte/toast';

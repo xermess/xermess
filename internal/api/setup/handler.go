@@ -1,11 +1,6 @@
-// Package setup answers the two endpoints a new installation needs: whether
-// it has an administrator yet, and the one request that creates the first
-// one.
-//
-// Both are open, because there is nobody to sign in as yet. What keeps that
-// from being a way in is the store: creating an administrator is refused the
-// moment one exists, so this is a door that closes behind the first person
-// through it and can never be opened again.
+// Package setup reports whether an administrator exists and creates the first
+// one. Both endpoints are open, but the store refuses creation once anyone
+// exists, so the door closes behind the first person.
 package setup
 
 import (
@@ -32,9 +27,7 @@ func New(st *store.Store, log *slog.Logger) *Handler {
 	return &Handler{store: st, log: log}
 }
 
-// Status says whether the panel still has to be set up. The panel asks before
-// showing its sign-in page, and sends whoever is there to the setup form
-// instead when the answer is yes.
+// Status says whether the panel still needs its first administrator.
 func (h *Handler) Status(c *gin.Context) {
 	exists, err := h.store.AdminsExist(c.Request.Context())
 	if err != nil {

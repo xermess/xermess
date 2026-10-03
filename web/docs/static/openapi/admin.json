@@ -20,7 +20,7 @@
             "type": "string"
           },
           "is_default": {
-            "description": "`is_default` adds the scope to every access token for the API, whether or not it was asked for — still only when the application is allowed it and, if the API enforces roles, the user's roles grant it.",
+            "description": "`is_default` adds the scope to every token for the API, subject to the same allowance and role rules.",
             "type": "boolean"
           },
           "name": {
@@ -135,7 +135,7 @@
         "type": "object"
       },
       "AdminPermission": {
-        "description": "AdminPermission is one thing an administrator may do in the panel.\n\nThe catalog lives in code rather than in a table: each permission is a route the server guards and a control the panel shows, so a permission nothing checks for would mean nothing. Roles store the names they grant, and a name that falls out of the catalog simply stops granting anything.",
+        "description": "AdminPermission is one thing an administrator may do. The catalog is code, not a table, because each permission is a guarded route; a name that leaves the catalog stops granting anything.",
         "properties": {
           "description": {
             "type": "string"
@@ -147,7 +147,7 @@
             "type": "string"
           },
           "scopable": {
-            "description": "`scopable` says the permission can be granted for one application: a role assigned to an administrator for \"shop\" grants its scopable permissions for shop only, and its other permissions not at all.",
+            "description": "`scopable` permissions can be granted for one application; a scoped role grants only these.",
             "type": "boolean"
           }
         },
@@ -160,7 +160,7 @@
         "type": "object"
       },
       "AdminRequest": {
-        "description": "adminRequest is the body of the create and update endpoints.\n\nThere is no username: the address is the account, as it is for the first administrator. Assignments replace every role the administrator held.",
+        "description": "adminRequest is the create and update body. The address is the username, and assignments replace every role held.",
         "properties": {
           "assignments": {
             "items": {
@@ -363,7 +363,7 @@
             "type": "boolean"
           },
           "permissions": {
-            "description": "`permissions` are what the whole-panel roles add up to, `scoped_permissions` what the scoped ones add for each application, and `is_super_admin` whether one of the whole-panel roles is super_admin.",
+            "description": "`permissions` come from panel-wide roles, `scoped_permissions` from roles held per application, and `is_super_admin` from holding super_admin panel-wide.",
             "items": {
               "type": "string"
             },
@@ -436,7 +436,7 @@
         "type": "object"
       },
       "ApiRequest": {
-        "description": "apiRequest is the body of the create and update endpoints. The scopes replace the API's: a scope sent with its id is kept, with every allowance and grant of it; one sent without is new; one left out is removed.",
+        "description": "apiRequest is the create and update body. Scopes replace the API's: sent with an id they are kept, without one they are new, left out they are removed.",
         "properties": {
           "allow_offline_access": {
             "type": [
@@ -604,7 +604,7 @@
         "type": "object"
       },
       "ApplicationRequest": {
-        "description": "applicationRequest is the body of the create and update endpoints. The names are RFC 7591's client metadata where it has one.\n\nType is read on create only: it decides whether the app is a public client, which cannot change once copies of it are in use. A lifetime left at zero takes the default.",
+        "description": "applicationRequest is the body of the create and update endpoints, named after RFC 7591 client metadata. Type is read on create only. A lifetime of zero takes the default.",
         "properties": {
           "access_token_lifetime": {
             "type": "integer"
@@ -643,7 +643,7 @@
             ]
           },
           "login_flow_id": {
-            "description": "`login_flow_id` is the flow this application signs people in with. An empty string puts it back on the default flow; leaving it out leaves the flow it has.",
+            "description": "`login_flow_id`: \"\" returns to the default flow, omitted keeps the current one.",
             "type": [
               "string",
               "null"
@@ -761,7 +761,7 @@
             "type": "boolean"
           },
           "login_flow_id": {
-            "description": "`login_flow_id` is the flow this application signs people in with, null for the default one. The panel has the flows themselves; what belongs here is which of them this application named.",
+            "description": "`login_flow_id` is the application's flow, null for the default.",
             "format": "uuid",
             "type": [
               "string",
@@ -1008,7 +1008,7 @@
         "type": "object"
       },
       "AuthAdminResponse": {
-        "description": "adminResponse is an administrator as the browser sees it. It is built by hand rather than returning the model, so a column added later cannot accidentally start being published.",
+        "description": "adminResponse is built by hand so new columns are never published by accident.",
         "properties": {
           "avatar_url": {
             "type": "string"
@@ -1043,7 +1043,7 @@
             "type": "boolean"
           },
           "permissions": {
-            "description": "`permissions` are what those roles allow, `scoped_permissions` what roles held for one application add there, and `is_super_admin` whether they may manage administrators. The panel shows and hides its controls by these; the server checks them regardless.",
+            "description": "`permissions`, per-application `scoped_permissions` and `is_super_admin` drive what the panel shows; the server checks them regardless.",
             "items": {
               "type": "string"
             },
@@ -1135,7 +1135,7 @@
         "type": "object"
       },
       "ConnectionRequest": {
-        "description": "connectionRequest is what a create or an update sends.\n\nEvery field is a pointer because an update is a PATCH: nil is \"not sent\", and the stored value stands. The slug and the protocol are read only when a connection is made — both are in the addresses its provider was given. The client secret is never sent back, so an update without one keeps the one there is.",
+        "description": "connectionRequest is a PATCH: nil leaves a setting alone. Slug and protocol are read only on create, and an update without a client secret keeps the stored one.",
         "properties": {
           "client_id": {
             "description": "Omitnil, at most 255 characters.",
@@ -1324,7 +1324,7 @@
         "type": "object"
       },
       "ConnectionResponse": {
-        "description": "connectionResponse is a connection as the panel shows it: what is stored, never the secrets; how many people sign in through it; what to give the identity provider; and, for SAML, what its metadata says.",
+        "description": "connectionResponse is a connection as the panel shows it: settings without secrets, user count, provider setup details and parsed SAML metadata.",
         "properties": {
           "client_id": {
             "type": "string"
@@ -1338,7 +1338,7 @@
             "type": "string"
           },
           "domains": {
-            "description": "`domains` are the email domains the connection signs people in for, lower case. A domain belongs to one connection at most. None is every address, and then the button on the sign-in page is the only way to the connection, since no address leads to it.",
+            "description": "`domains` the connection signs people in for, lower case, each owned by one connection at most. None means every address, reachable only through its button.",
             "items": {
               "type": "string"
             },
@@ -1397,7 +1397,7 @@
             "type": "string"
           },
           "metadata_url": {
-            "description": "SAML 2.0: the provider's metadata — fetched from `metadata_url`, or pasted in when the provider only offers a file — which carries its entity ID, its sign-in address and the certificate its assertions are signed with.",
+            "description": "SAML 2.0: the provider's metadata (from `metadata_url` or pasted) with its entity ID, sign-in address and signing certificate.",
             "type": "string"
           },
           "name": {
@@ -1445,7 +1445,7 @@
             "type": "boolean"
           },
           "slug": {
-            "description": "`slug` names the connection in the addresses the provider is given — /oauth2/sso/<slug>/callback, /acs, /metadata — so it cannot change once the provider has them.",
+            "description": "`slug` is part of the addresses given to the provider (callback, ACS, metadata), so it never changes.",
             "type": "string"
           },
           "sp_certificate": {
@@ -1502,7 +1502,7 @@
         "type": "object"
       },
       "ContentRequest": {
-        "description": "contentRequest is one language's words for the emails: the keys of model.MailMessageSpecs and what they say. A key with an empty value clears the override rather than storing a blank, and the shipped text comes back.",
+        "description": "contentRequest is one language's email text. An empty value clears the override and brings the shipped text back.",
         "properties": {
           "messages": {
             "additionalProperties": {
@@ -1588,7 +1588,7 @@
         "type": "object"
       },
       "CreateRequest": {
-        "description": "createRequest is what adding a language sends.\n\nCopyFrom names where its text starts: another language here, whose text is copied — Portuguese for Brazilian Portuguese — or a language the server ships with that this installation has not got, which brings its shipped text back. Empty is a language with nothing translated yet, whose pages show the base language's text until somebody writes its own.",
+        "description": "createRequest adds a language. CopyFrom is another installed language to copy, a shipped language to restore, or empty to start untranslated.",
         "properties": {
           "code": {
             "description": "At most 16 characters, languagetag.",
@@ -1807,7 +1807,7 @@
         "type": "object"
       },
       "FieldResponse": {
-        "description": "fieldResponse is one field as the panel sees it.\n\nIt is built by hand rather than returning the model because the two kinds of field are not the same shape: an additional one is a row and has an id and timestamps, while a built-in one is a column of the record and has none. Sending a row's fields for something that is not a row would be saying it has an id of all zeros, which is not true.",
+        "description": "fieldResponse is one field as the panel sees it. Built-in fields are columns with no id or timestamps, so this is built by hand rather than returning the model.",
         "properties": {
           "id": {
             "type": "string"
@@ -1869,7 +1869,7 @@
         "type": "object"
       },
       "FlowRequest": {
-        "description": "flowRequest is what a create or an update sends.\n\nEvery field is a pointer because an update is a PATCH: nil is \"not sent\", and the stored value stands. A create reads the same struct — what it leaves out is taken from the flow a new installation starts with, so the panel can save a flow that is a name and nothing else.",
+        "description": "flowRequest is a PATCH: nil leaves a setting alone. On create, omitted settings come from the default flow.",
         "properties": {
           "allow_email_change": {
             "type": [
@@ -1971,7 +1971,7 @@
         "type": "object"
       },
       "FlowResponse": {
-        "description": "flowResponse is a flow as the panel sees it: the record, plus the two things the panel would otherwise have to work out for itself — how many applications hold it, and whether every step it names is one this server runs yet.",
+        "description": "flowResponse is a flow plus how many applications use it and whether all its steps are implemented.",
         "properties": {
           "allow_email_change": {
             "type": "boolean"
@@ -2170,7 +2170,7 @@
         "type": "object"
       },
       "IdentityProvider": {
-        "description": "identityProvider is what a SAML provider's metadata says about it, so the panel can show it is the right one — and when its certificate runs out, which is the usual way a working connection stops working.",
+        "description": "identityProvider is what SAML metadata says, including when its certificate expires (the usual cause of a sudden outage).",
         "properties": {
           "certificate_expires": {
             "format": "date-time",
@@ -2339,7 +2339,7 @@
         "type": "object"
       },
       "LanguageRequest": {
-        "description": "languageRequest is what an update sends.\n\nEvery field is a pointer because this is a PATCH: nil is \"not sent\", and the stored value stands. The code is not among them — it is in the path, and it is what every reader's saved choice names.",
+        "description": "languageRequest is a PATCH: nil leaves a setting alone. The code is in the path and cannot change.",
         "properties": {
           "is_default": {
             "type": [
@@ -2398,7 +2398,7 @@
             "additionalProperties": {
               "type": "integer"
             },
-            "description": "`coverage` is how much of each of those apps is translated, as a percentage of the keys the base language has, and `missing` how many keys each is short. The keys are the app names.",
+            "description": "`coverage` and `missing` are per app: the percentage of base keys translated and how many are missing.",
             "type": "object"
           },
           "is_default": {
@@ -2537,7 +2537,7 @@
         "type": "object"
       },
       "ListResponse": {
-        "description": "listResponse is every field a user record has, and the types a new one may have. Both come together because the panel's form needs the second to offer the first.\n\nThe built-in fields come first and are marked as such: the panel draws its table and its form from this one list, and uses the mark to know which of them it may offer to change.",
+        "description": "listResponse is every field of a user record, built-ins first and marked, plus the types a new field may have.",
         "properties": {
           "fields": {
             "items": {
@@ -2612,7 +2612,7 @@
         "type": "object"
       },
       "LoginRequest": {
-        "description": "loginRequest is the body of POST /admin/auth/login.\n\nThe password has no rule beyond being there: what a password must look like is the account's business, and a sign-in form that explains the policy is a sign-in form that helps someone guessing.",
+        "description": "loginRequest is the body of POST /admin/auth/login. The password has no rule beyond being present, so the form never describes the policy to a guesser.",
         "properties": {
           "password": {
             "type": "string"
@@ -2638,7 +2638,7 @@
             "type": "boolean"
           },
           "implemented": {
-            "description": "`implemented` says the sign-in pages run this step today. A flow may name one that is not, and the panel marks it: the flow is a plan the server is being built towards, not a promise it already keeps.",
+            "description": "`implemented` says the sign-in pages run this step today; others can be planned and are marked in the panel.",
             "type": "boolean"
           },
           "label": {
@@ -2701,7 +2701,7 @@
         "type": "object"
       },
       "MailMessageSpec": {
-        "description": "MailMessageSpec is one email this server sends, for the panel to list: what it is called, when it goes out, and the keys its subject and body are written under.\n\nThe text itself is not here. It is the sign-in pages' text, in the languages table, so a message goes out in the reader's language and is translated by whoever translates the rest — the Mail page edits those keys rather than holding a second copy of them.",
+        "description": "MailMessageSpec is one email the server sends, for the panel to list. Its text lives with the sign-in pages' translations, so it goes out in the reader's language.",
         "properties": {
           "body_key": {
             "type": "string"
@@ -2716,7 +2716,7 @@
             "type": "string"
           },
           "params": {
-            "description": "`params` are the {braces} the text may use, each with what it stands for, so the panel can list them beside the editor and refuse one it does not know.",
+            "description": "`params` are the {braces} the text may use, so the panel can list them and refuse unknown ones.",
             "items": {
               "$ref": "#/components/schemas/MailParam"
             },
@@ -2754,7 +2754,7 @@
         "type": "object"
       },
       "MailResponse": {
-        "description": "response is what the two settings endpoints answer with. The encryptions come along so the panel builds its picker from the server's catalog rather than from a list of its own.",
+        "description": "response includes the encryption options so the panel's picker comes from the server.",
         "properties": {
           "encryptions": {
             "items": {
@@ -2778,7 +2778,7 @@
         "type": "object"
       },
       "MailTestRequest": {
-        "description": "testRequest is a test message: where to send it, and the settings to send it with. The settings are the form's, so a server can be tried before it is saved; what the form leaves out is the stored value.",
+        "description": "testRequest is a test send with the form's settings, falling back to stored values.",
         "properties": {
           "encryption": {
             "type": [
@@ -2849,7 +2849,7 @@
             "description": "`application` is the application the role belongs to, or null for a global role."
           },
           "assigned": {
-            "description": "`assigned` says the role was given to the user directly, and `via` lists the directly given roles it also comes through. A role with `via` and not `assigned` is inherited; one with both is given directly and also implied, and taking it away leaves the user holding it.",
+            "description": "`assigned` means given directly; `via` lists the direct roles it also comes through. With both, removing it leaves the user holding it.",
             "type": "boolean"
           },
           "composite": {
@@ -2917,7 +2917,7 @@
         "type": "object"
       },
       "OrganizationBrand": {
-        "description": "organizationBrand is the part of the organisation the panel's header shows: what it is called, and its logo. Only what the sign-in pages already publish to anyone belongs in it.",
+        "description": "organizationBrand is the header's name and logo, already public on the sign-in pages.",
         "properties": {
           "logo_url": {
             "type": "string"
@@ -2933,7 +2933,7 @@
         "type": "object"
       },
       "OrganizationRequest": {
-        "description": "organizationRequest is what an update sends.\n\nEvery field is a pointer because this is a PATCH: nil is \"not sent\", and the stored value stands. An empty string is sent on purpose and clears the setting — which only the ones that may be empty accept.",
+        "description": "organizationRequest is a PATCH: nil leaves a setting alone, an empty string clears one that may be empty.",
         "properties": {
           "logo_url": {
             "type": [
@@ -2987,7 +2987,7 @@
         "type": "object"
       },
       "OrganizationResponse": {
-        "description": "organizationResponse is the organisation as the panel sees it. It is built by hand rather than returning the model so the row's own bookkeeping — its id, when it was last written — stays out of a record of settings, and the one date worth showing is named for what it means.",
+        "description": "organizationResponse is built by hand to keep row bookkeeping out of a settings record.",
         "properties": {
           "created_at": {
             "format": "date-time",
@@ -3055,7 +3055,7 @@
         "type": "object"
       },
       "OtpSettingsRequest": {
-        "description": "settingsRequest is what an update sends.\n\nEvery field is a pointer because this is a PATCH: nil is \"not sent\", and the stored value stands.",
+        "description": "settingsRequest is a PATCH: nil leaves a setting alone.",
         "properties": {
           "code_length": {
             "type": [
@@ -3194,7 +3194,7 @@
         "type": "object"
       },
       "PreviewRequest": {
-        "description": "previewRequest is a token request to evaluate: who for (nil for the application itself), which API, and the scope parameter as an application would send it.",
+        "description": "previewRequest is a token request to evaluate: the user (nil for the application itself), the API and the scope parameter.",
         "properties": {
           "audience": {
             "type": "string"
@@ -3233,7 +3233,7 @@
         "type": "object"
       },
       "ProfileRequest": {
-        "description": "profileRequest is the body of PATCH /admin/me: the administrator's own name and address. The current password is only needed when the address changes, since the address is what they sign in with.",
+        "description": "profileRequest is the body of PATCH /admin/me. The current password is required only when the address changes.",
         "properties": {
           "avatar_url": {
             "type": "string"
@@ -3261,7 +3261,7 @@
         "type": "object"
       },
       "ProviderRequest": {
-        "description": "providerRequest is what a create or an update sends.\n\nEvery settable field is a pointer, because this is a PATCH: a request that does not mention a setting leaves it as it is, the way the organisation's endpoint works. It matters more here than anywhere else — a caller turning a provider off sends `{\"enabled\": false}`, and that must not quietly empty the endpoints and keys around it.\n\nThe secrets are pointers for a second reason: they cannot be sent back, so only a request carrying a new value replaces one.",
+        "description": "providerRequest is a PATCH: a setting left out stays as it is, so `{\"enabled\": false}` cannot empty the rest. Secrets are never sent back, so only a new value replaces one.",
         "properties": {
           "allow_registration": {
             "type": [
@@ -3300,7 +3300,7 @@
             ]
           },
           "kind": {
-            "description": "`kind` and `slug` are read when a provider is registered and never again: the slug is in the address registered with the provider, and the kind decides which addresses those are.",
+            "description": "`kind` and `slug` are read only on registration; they decide the registered callback address.",
             "type": "string"
           },
           "link_verified_emails": {
@@ -3369,7 +3369,7 @@
         "type": "object"
       },
       "ProviderResponse": {
-        "description": "providerResponse is a configured provider as the panel sees it.\n\nThe secrets are not in it, and never are: a secret that has been stored can be replaced but not read back, so the panel is told only whether there is one. The callback address is here because it is what an administrator has to paste into the provider's console, and only this server knows it.",
+        "description": "providerResponse is a provider as the panel sees it: only whether secrets exist, plus the callback address to paste into the provider's console.",
         "properties": {
           "allow_registration": {
             "type": "boolean"
@@ -3547,10 +3547,10 @@
         "type": "object"
       },
       "RoleRequest": {
-        "description": "roleRequest is the body of the create and update endpoints.\n\nInherits holds ids, and replaces what the role had: an update sends the whole role, the same as for a user.",
+        "description": "roleRequest is the create and update body. Inherits holds ids and replaces the role's inheritance.",
         "properties": {
           "api_scopes": {
-            "description": "`api_scopes` are the ids of the API scopes the role grants, and replace what it granted. Left out, the role keeps its grants — so an administrator who cannot see APIs can still edit the rest of it.",
+            "description": "`api_scopes` replace the role's scope grants; left out, they are kept, so administrators who cannot see APIs can still edit roles.",
             "items": {
               "format": "uuid",
               "type": "string"
@@ -3623,7 +3623,7 @@
             "type": "string"
           },
           "inherited_roles": {
-            "description": "`inherited_roles` is every role holding this one includes once inheritance is followed all the way down, sorted by name. Roles of applications the administrator cannot see are left out.",
+            "description": "`inherited_roles` is every role this one includes, transitively, sorted by name; roles of invisible applications are left out.",
             "items": {
               "$ref": "#/components/schemas/RolesRoleRef"
             },
@@ -3693,7 +3693,7 @@
         "type": "object"
       },
       "RolesResponse": {
-        "description": "rolesResponse is the roles a user holds as tokens would carry them: the global roles, and each application's. An application the user holds nothing in is still listed, with empty lists.",
+        "description": "rolesResponse is the roles a user holds as tokens would carry them, listing every application even when empty.",
         "properties": {
           "applications": {
             "items": {
@@ -3750,7 +3750,7 @@
         "type": "object"
       },
       "RulesRequest": {
-        "description": "rulesRequest is what an update sends: what a field expects of its values. Its name and its type are not here, because neither may change once records hold values under them.",
+        "description": "rulesRequest is a field's rules; name and type cannot change.",
         "properties": {
           "is_required": {
             "type": "boolean"
@@ -3799,7 +3799,7 @@
         "type": "object"
       },
       "SavedResponse": {
-        "description": "savedResponse is what saving a translation answers with: the language as it now counts, and how many keys of what was sent were not ones the app looks up — a file from an older release, or a typo.",
+        "description": "savedResponse is the language after saving and how many sent keys were unknown.",
         "properties": {
           "ignored": {
             "type": "integer"
@@ -3910,7 +3910,7 @@
         "type": "object"
       },
       "SecretResponse": {
-        "description": "secretResponse is an application together with a client secret that was just made. The secret is only ever in this one answer; it is left out when none was made.",
+        "description": "secretResponse is an application with a just-issued secret, the only time it is shown.",
         "properties": {
           "application": {
             "$ref": "#/components/schemas/ApplicationResponse"
@@ -3925,7 +3925,7 @@
         "type": "object"
       },
       "SecurityRequest": {
-        "description": "securityRequest is what a change to the settings that apply to every administrator sends. The flag is a pointer so a request that does not mention it leaves it alone.",
+        "description": "securityRequest changes the settings for every administrator; an omitted flag is left alone.",
         "properties": {
           "require_mfa": {
             "type": [
@@ -3937,7 +3937,7 @@
         "type": "object"
       },
       "SecurityResponse": {
-        "description": "securityResponse is how administrators are made to sign in, and what that means for the ones there are: the panel says how many would be asked to set an authenticator up before it turns the requirement on.",
+        "description": "securityResponse is the administrators' sign-in settings and how many would have to enrol if a second factor were required.",
         "properties": {
           "administrators": {
             "description": "`administrators` is how many there are, and `with_mfa` how many of those already sign in with a second factor.",
@@ -3958,7 +3958,7 @@
         "type": "object"
       },
       "ServiceProvider": {
-        "description": "serviceProvider is what the identity provider is set up with: for OpenID Connect the redirect URI, for SAML the assertion consumer service, the entity ID, the metadata that says both, and the certificate requests are signed with.",
+        "description": "serviceProvider is what the identity provider is configured with: the OIDC redirect URI, or the SAML ACS, entity ID, metadata and certificate.",
         "properties": {
           "acs_url": {
             "type": "string"
@@ -4037,7 +4037,7 @@
         "type": "object"
       },
       "SessionsListResponse": {
-        "description": "listResponse is a page of sessions, and the session to continue after when there are more — never a total, which would mean counting every session there is on every visit.",
+        "description": "listResponse is a page of sessions and a cursor, never a total.",
         "properties": {
           "next": {
             "type": "string"
@@ -4089,7 +4089,7 @@
         "type": "object"
       },
       "SettingsRequest": {
-        "description": "settingsRequest is what an update sends.\n\nEvery field is a pointer because this is a PATCH: nil is \"not sent\", and the stored value stands. That matters most for the password — the panel never has the stored one to send back, so leaving it out is how a form saves without changing it, and an empty string is how it is cleared.",
+        "description": "settingsRequest is a PATCH: nil leaves a setting alone. The panel never receives the stored password, so omitting it keeps it and an empty string clears it.",
         "properties": {
           "encryption": {
             "type": [
@@ -4143,7 +4143,7 @@
         "type": "object"
       },
       "SettingsResponse": {
-        "description": "settingsResponse is the mail settings as the panel sees them. It is built by hand rather than returning the model so the row's own bookkeeping stays out of a record of settings — and so the password cannot leave by accident: what is said about it is whether there is one.",
+        "description": "settingsResponse is built by hand so the password can never leave; only whether one exists is said.",
         "properties": {
           "encryption": {
             "type": "string"
@@ -4184,7 +4184,7 @@
         "type": "object"
       },
       "SetupRequest": {
-        "description": "setupRequest is the form the first administrator is made from.\n\nThere is no username: the address is the account. Asking for one more thing to remember, at the one moment someone is trying to get in for the first time, buys nothing.",
+        "description": "setupRequest is the form the first administrator is made from; the address is the username.",
         "properties": {
           "email": {
             "description": "An email address, at most 255 characters.",
@@ -4211,7 +4211,7 @@
         "type": "object"
       },
       "ShippedResponse": {
-        "description": "shippedResponse is a language the server ships with that this installation does not have — one somebody removed, or one that shipped after it started — which the panel offers to add back.",
+        "description": "shippedResponse is a shipped language this installation lacks, which the panel offers to add.",
         "properties": {
           "code": {
             "type": "string"
@@ -4307,7 +4307,7 @@
         "type": "object"
       },
       "SocialListResponse": {
-        "description": "listResponse is every provider, and the kinds one may be. Both come together because the panel's form needs the second to offer the first: what a kind's endpoints are, whether it asks for them, and where to register this server with it.",
+        "description": "listResponse is every provider plus the kinds the form offers, with their endpoints and registration details.",
         "properties": {
           "kinds": {
             "items": {
@@ -4329,7 +4329,7 @@
         "type": "object"
       },
       "SocialSpec": {
-        "description": "SocialSpec is everything about a kind that is the same in every installation: where to send people, what to ask for, and how to read the answer. The catalog is in code rather than in a table for the same reason the admin permissions are — a provider that moves an endpoint is a change to this file, not to everybody's database.",
+        "description": "SocialSpec is what is the same for a kind in every installation: endpoints, scopes and how to read the answer.",
         "properties": {
           "authorize_url": {
             "description": "The endpoints. Empty in a kind whose provider is not known in advance, where the record carries them instead.",
@@ -4521,7 +4521,7 @@
             "type": "string"
           },
           "unsupported_scopes": {
-            "description": "`unsupported_scopes` are the scopes the connection would ask for that the provider does not list. Some providers refuse the whole sign-in over one — Keycloak answers invalid_scope — so the panel warns before anybody tries.",
+            "description": "`unsupported_scopes` are requested scopes the provider does not list; some providers (Keycloak) refuse the whole sign-in over one.",
             "items": {
               "type": "string"
             },
@@ -4566,7 +4566,7 @@
         "type": "object"
       },
       "TranslationRequest": {
-        "description": "translationRequest is one language's whole text for one app, replacing what was there: what the editor saves, and what an imported file is.\n\n`$name` and `$native` may come along — a file a translator wrote carries them — and are ignored here: the names are the language's own settings.",
+        "description": "translationRequest replaces one language's text for one app. `$name` and `$native` in an imported file are ignored.",
         "properties": {
           "messages": {
             "additionalProperties": {
@@ -4581,7 +4581,7 @@
         "type": "object"
       },
       "TranslationResponse": {
-        "description": "translationResponse is one language's text for one app, as the editor needs it: the keys there are, the base language's text beside each, and what this language has.",
+        "description": "translationResponse is one language's text for one app with the base text beside each key.",
         "properties": {
           "app": {
             "type": "string"
@@ -4674,7 +4674,7 @@
             "type": "array"
           },
           "social_accounts": {
-            "description": "`social_accounts` are the providers this user signs in with. Like `has_password` it is no column: the panel is told what a record amounts to, and the rows themselves are social_identities.",
+            "description": "`social_accounts` are the providers this user signs in with, loaded from social_identities.",
             "items": {
               "$ref": "#/components/schemas/SocialAccount"
             },
@@ -4703,7 +4703,7 @@
         "type": "object"
       },
       "UserRequest": {
-        "description": "userRequest is the body of the create and update endpoints.\n\nThe named fields are the built-in ones: they are columns of the record, so they are spelled out here and held to the rules in the tags. Data carries the additional fields an organisation added, whose rules live in user_fields and are applied in validation.go.",
+        "description": "userRequest is the body of the create and update endpoints. Named fields are built-in columns; Data holds additional fields, checked against user_fields in validation.go.",
         "properties": {
           "confirm_password": {
             "description": "The same as `password`.",
@@ -4735,7 +4735,7 @@
             ]
           },
           "is_password_temporary": {
-            "description": "`is_password_temporary` marks the password as one the user has to replace. Left out, a new user's password is not temporary and an existing user's keeps what it was.",
+            "description": "`is_password_temporary` forces the user to replace the password. Left out: false for a new user, unchanged otherwise.",
             "type": [
               "boolean",
               "null"
@@ -4756,7 +4756,7 @@
         "type": "object"
       },
       "UserRole": {
-        "description": "UserRole is a role users hold, either across every application or in one.\n\nA global role belongs to no application — Keycloak's realm roles — and is the same role wherever the user signs in: \"employee\", \"beta-tester\". An application role belongs to the application that defines it — Keycloak's client roles, Zitadel's project roles, Entra's app roles — so \"admin\" in one app says nothing about another. A name is unique within its scope: once among the global roles, and once within each application.\n\nThis server says which roles a user holds; what a role lets them do is decided by the applications, so a role carries no permissions of its own.\n\nA role can be composite, inheriting other roles: holding \"editor\" also means holding \"viewer\". As in Keycloak, a global role may include global roles and any application's roles, and an application role may include global roles and roles of its own application. A role marked default is given to every user created.",
+        "description": "UserRole is a role users hold: global (no application) or belonging to one application, where its name means nothing elsewhere. Names are unique within their scope. A role carries no permissions; applications decide what it allows.\n\nA role may inherit others. A global role may include global and any application's roles; an application role may include global roles and its own application's. A default role is given to every new user.",
         "properties": {
           "api_scopes": {
             "description": "`api_scopes` are the API scopes holding this role grants. A token for an API carries one only when the application is allowed it too.",
@@ -4812,7 +4812,7 @@
         "type": "object"
       },
       "UsingFlow": {
-        "description": "usingFlow is one login flow that asks for an emailed code, so the page can say who these settings are for rather than leaving an administrator to guess whether anything reads them.",
+        "description": "usingFlow is a login flow that asks for an emailed code.",
         "properties": {
           "id": {
             "type": "string"
@@ -5726,7 +5726,7 @@
         "x-super-admin": true
       },
       "patch": {
-        "description": "A new password or an account that may no longer sign in ends every session the administrator has open.",
+        "description": "A new password, or losing the right to sign in, ends their sessions.",
         "operationId": "adminsUpdate",
         "parameters": [
           {
@@ -5837,7 +5837,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Replaces an administrator's details, status and roles, and their password when a new one is given",
+        "summary": "Replaces an administrator's details, status, roles and optionally password",
         "tags": [
           "Administrators"
         ],
@@ -5846,7 +5846,7 @@
     },
     "/api/v1/admin/admins/{id}/mfa": {
       "delete": {
-        "description": "Your own is managed from your profile, with a code: resetting it here would be a way round needing one.",
+        "description": "Your own is managed from your profile with a code.",
         "operationId": "adminsResetMFA",
         "parameters": [
           {
@@ -5928,7 +5928,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Removes another administrator's second factor and signs them out everywhere, for someone who lost both their phone and their recovery codes",
+        "summary": "Removes another administrator's second factor and signs them out everywhere",
         "tags": [
           "Administrators"
         ],
@@ -6149,7 +6149,7 @@
     },
     "/api/v1/admin/apis/{id}": {
       "delete": {
-        "description": "Tokens already issued for it stay valid until they expire.",
+        "description": "Issued tokens stay valid until they expire.",
         "operationId": "apisDelete",
         "parameters": [
           {
@@ -6247,7 +6247,7 @@
             ]
           }
         ],
-        "summary": "Removes an API, its scopes, every application's authorisation for it and every role's grant of its scopes",
+        "summary": "Removes an API with its scopes, application authorisations and role grants",
         "tags": [
           "APIs"
         ],
@@ -6354,7 +6354,7 @@
         ]
       },
       "patch": {
-        "description": "Its identifier stays as it is: every service checking tokens compares against it.",
+        "description": "The identifier never changes.",
         "operationId": "apisUpdate",
         "parameters": [
           {
@@ -6488,7 +6488,7 @@
     },
     "/api/v1/admin/apis/{id}/applications": {
       "get": {
-        "description": "Granting and revoking access goes through the application's own endpoints, which check the administrator may change it.",
+        "description": "Access is changed through the application's endpoints.",
         "operationId": "apisApplications",
         "parameters": [
           {
@@ -6569,7 +6569,7 @@
             ]
           }
         ],
-        "summary": "Lists the applications the administrator can see, with what each may do with the API",
+        "summary": "Lists visible applications with their access to the API",
         "tags": [
           "APIs"
         ],
@@ -6582,7 +6582,6 @@
     },
     "/api/v1/admin/apis/{id}/logs": {
       "get": {
-        "description": "Token requests join these once the token endpoint issues tokens.",
         "operationId": "apisLogs",
         "parameters": [
           {
@@ -6662,7 +6661,7 @@
             ]
           }
         ],
-        "summary": "Lists what has happened to or involving the API, newest first: changes to it, and applications gaining or losing access",
+        "summary": "Lists changes to the API and applications gaining or losing access, newest first",
         "tags": [
           "APIs"
         ],
@@ -7181,6 +7180,13 @@
                       "code": "forbidden",
                       "error": "You do not have permission to do that."
                     }
+                  },
+                  "system_application_change": {
+                    "summary": "Only a super admin can change an application that has access to the admin API, or rotate its secret.",
+                    "value": {
+                      "code": "system_application_change",
+                      "error": "Only a super admin can change an application that has access to the admin API, or rotate its secret."
+                    }
                   }
                 },
                 "schema": {
@@ -7188,7 +7194,7 @@
                 }
               }
             },
-            "description": "Forbidden: `cross_origin`, `forbidden`"
+            "description": "Forbidden: `cross_origin`, `forbidden`, `system_application_change`"
           }
         },
         "security": [
@@ -7376,6 +7382,13 @@
                       "code": "forbidden",
                       "error": "You do not have permission to do that."
                     }
+                  },
+                  "system_api_access": {
+                    "summary": "Only a super admin can give an application access to the server's own APIs, or take it away.",
+                    "value": {
+                      "code": "system_api_access",
+                      "error": "Only a super admin can give an application access to the server's own APIs, or take it away."
+                    }
                   }
                 },
                 "schema": {
@@ -7383,7 +7396,7 @@
                 }
               }
             },
-            "description": "Forbidden: `cross_origin`, `forbidden`"
+            "description": "Forbidden: `cross_origin`, `forbidden`, `system_api_access`"
           }
         },
         "security": [
@@ -7406,7 +7419,6 @@
         ]
       },
       "put": {
-        "description": "Those scopes are the ceiling on every token the application gets for the API.",
         "operationId": "applicationsAuthorizeAPI",
         "parameters": [
           {
@@ -7511,10 +7523,10 @@
                     }
                   },
                   "system_api_access": {
-                    "summary": "Only a super admin can give an application access to the server's own APIs.",
+                    "summary": "Only a super admin can give an application access to the server's own APIs, or take it away.",
                     "value": {
                       "code": "system_api_access",
-                      "error": "Only a super admin can give an application access to the server's own APIs."
+                      "error": "Only a super admin can give an application access to the server's own APIs, or take it away."
                     }
                   }
                 },
@@ -7536,7 +7548,7 @@
             ]
           }
         ],
-        "summary": "Lets the application ask for tokens for an API, and replaces the API scopes it may ask for with the ones named",
+        "summary": "Lets the application request tokens for an API and replaces the scopes it may ask for: the ceiling on its tokens",
         "tags": [
           "Applications"
         ],
@@ -7614,6 +7626,13 @@
                       "code": "forbidden",
                       "error": "You do not have permission to do that."
                     }
+                  },
+                  "system_application_change": {
+                    "summary": "Only a super admin can change an application that has access to the admin API, or rotate its secret.",
+                    "value": {
+                      "code": "system_application_change",
+                      "error": "Only a super admin can change an application that has access to the admin API, or rotate its secret."
+                    }
                   }
                 },
                 "schema": {
@@ -7621,7 +7640,7 @@
                 }
               }
             },
-            "description": "Forbidden: `cross_origin`, `forbidden`"
+            "description": "Forbidden: `cross_origin`, `forbidden`, `system_application_change`"
           }
         },
         "security": [
@@ -7646,7 +7665,6 @@
     },
     "/api/v1/admin/applications/{id}/token-preview": {
       "post": {
-        "description": "It runs the same evaluation the token endpoint will, so what it shows is what an application will get.",
         "operationId": "applicationsTokenPreview",
         "parameters": [
           {
@@ -7769,7 +7787,7 @@
             ]
           }
         ],
-        "summary": "Shows what a token request would amount to — whether a token is issued, the decision on every scope, and the claims each token carries — without issuing anything",
+        "summary": "Runs the token endpoint's evaluation without issuing anything: whether a token is issued, each scope decision, and the claims",
         "tags": [
           "Applications"
         ],
@@ -8032,7 +8050,7 @@
     },
     "/api/v1/admin/auth/session": {
       "get": {
-        "description": "It needs no session: saying there is none is an answer.",
+        "description": "It needs no session.",
         "operationId": "authState",
         "responses": {
           "200": {
@@ -8065,7 +8083,7 @@
           }
         },
         "security": [],
-        "summary": "Says how far the session this browser carries has got, so the sign-in page knows whether to ask for a password, a code, or to set up an authenticator",
+        "summary": "Reports how far this browser's session has got (password, code, enrolment)",
         "tags": [
           "Signing in"
         ]
@@ -8138,7 +8156,7 @@
     },
     "/api/v1/admin/cache/{database}": {
       "delete": {
-        "description": "Flushing the session database signs nobody out — the sessions are read from the database again — but it does start every rate limit afresh.",
+        "description": "Flushing sessions signs nobody out, but resets every rate limit.",
         "operationId": "cachingFlush",
         "parameters": [
           {
@@ -9631,7 +9649,7 @@
         ]
       },
       "put": {
-        "description": "Keys the app does not look up are dropped and counted rather than refused, so a file from an older release still imports.",
+        "description": "Unknown keys are dropped and counted, so older files still import.",
         "operationId": "languagesSaveTranslation",
         "parameters": [
           {
@@ -9875,7 +9893,6 @@
         ]
       },
       "post": {
-        "description": "A new one is off until an administrator turns it on: pointing an application at a half-written sign-in is not something a save should be able to do by accident.",
         "operationId": "flowsCreate",
         "requestBody": {
           "content": {
@@ -9980,7 +9997,7 @@
             ]
           }
         ],
-        "summary": "Adds a flow",
+        "summary": "Adds a flow, disabled until an administrator enables it",
         "tags": [
           "Login flows"
         ],
@@ -10449,7 +10466,6 @@
     },
     "/api/v1/admin/logs/export": {
       "get": {
-        "description": "Each row says what the logs page would: the same names hidden, the same detail left out, for the same administrator.",
         "operationId": "activityExport",
         "parameters": [
           {
@@ -10571,7 +10587,7 @@
             ]
           }
         ],
-        "summary": "Writes the entries the filters match as a CSV file, newest first, up to exportLimit of them",
+        "summary": "Writes matching entries as CSV, newest first, up to exportLimit, hiding exactly what the logs page hides",
         "tags": [
           "Activity"
         ],
@@ -10645,7 +10661,6 @@
         "x-super-admin": true
       },
       "patch": {
-        "description": "What a request leaves out is left as it is, so a client that knows about one field does not clear the rest — and the password is left as it is unless one was typed, since nothing ever reads the stored one back to send it here again.",
         "operationId": "mailUpdate",
         "requestBody": {
           "content": {
@@ -10738,7 +10753,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Changes the settings",
+        "summary": "Changes the settings; omitted fields stay, including the password unless a new one is typed",
         "tags": [
           "Mail"
         ],
@@ -10803,7 +10818,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Returns the words of every email the server sends, for each language the sign-in pages are offered in: what the language says, and what English says underneath it",
+        "summary": "Returns every email's text in each offered language, with English beside it",
         "tags": [
           "Mail"
         ],
@@ -10812,7 +10827,7 @@
     },
     "/api/v1/admin/mail/content/{code}": {
       "put": {
-        "description": "Only the keys the messages are made of: this page holds a handful of a language's text and has the rest nowhere, so it merges rather than replacing (store.SaveTranslationKeys), and a key that is not an email's is refused rather than quietly dropped — a page sending one is a page with a bug, not an old file being imported.",
+        "description": "Any other key is refused as a client bug.",
         "operationId": "mailSaveContent",
         "parameters": [
           {
@@ -10949,7 +10964,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Writes one language's words for the emails",
+        "summary": "Writes one language's email text, merging only the email keys",
         "tags": [
           "Mail"
         ],
@@ -10958,7 +10973,7 @@
     },
     "/api/v1/admin/mail/test": {
       "post": {
-        "description": "It sends with what the form holds rather than with what is stored, since the point is to try a server before saving it — except for the password, which the form only holds when one has just been typed. Left out, the stored one is used, so a working server can be tested again without typing its password each time.",
+        "description": "Without a typed password the stored one is used.",
         "operationId": "mailTest",
         "requestBody": {
           "content": {
@@ -11089,7 +11104,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Sends one message, to find out whether the settings work before anybody's sign-in depends on them",
+        "summary": "Sends one message with the form's settings, so a server can be tried before saving",
         "tags": [
           "Mail"
         ],
@@ -11099,7 +11114,7 @@
     },
     "/api/v1/admin/me": {
       "get": {
-        "description": "The organisation's name and logo come with it, because every page of the panel draws them in its header. They are what the sign-in pages show any stranger, so no permission is needed to see them here — reading the rest of the organisation's settings still takes organization.read.",
+        "description": "The organisation's public name and logo come with it for the panel's header.",
         "operationId": "authMe",
         "responses": {
           "200": {
@@ -11149,13 +11164,12 @@
             "adminSession": []
           }
         ],
-        "summary": "Returns the signed-in administrator, and is what the browser calls to find out whether it still has a session",
+        "summary": "Returns the signed-in administrator, and tells the browser whether its session is still alive",
         "tags": [
           "Signing in"
         ]
       },
       "patch": {
-        "description": "It reaches nothing else about the account — not the roles, not the status — so every administrator may use it, whatever their roles allow.",
         "operationId": "authUpdateMe",
         "requestBody": {
           "content": {
@@ -11301,7 +11315,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Changes the caller's own name and address",
+        "summary": "Changes the caller's own name and address, nothing else, so every administrator may use it",
         "tags": [
           "Signing in"
         ],
@@ -12261,7 +12275,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Returns the settings, and which login flows ask for a code — so the page can say whether any of this is being used, and lead to the flow that uses it",
+        "summary": "Returns the settings and the login flows that use emailed codes",
         "tags": [
           "One-time codes"
         ],
@@ -12370,7 +12384,7 @@
     },
     "/api/v1/admin/overview": {
       "get": {
-        "description": "The five reads do not depend on each other, so they run at once: the page waits for the slowest of them rather than for all of them in a row.",
+        "description": "Its five reads run concurrently.",
         "operationId": "activityOverview",
         "responses": {
           "200": {
@@ -12439,7 +12453,7 @@
             ]
           }
         ],
-        "summary": "Is the admin panel's front page over a range of days: how much of everything there is, how signing in has gone, what each day looked like, who has been busiest, and the latest entries",
+        "summary": "Is the panel's front page for a range of days: totals, sign-in outcomes, daily activity, the busiest people and the latest entries",
         "tags": [
           "Activity"
         ],
@@ -12506,14 +12520,14 @@
             "adminSession": []
           }
         ],
-        "summary": "Answers how administrators are made to sign in, and how many of them have an authenticator, so the panel can say what turning it on would mean for the people who have not set one up",
+        "summary": "Returns the administrators' sign-in settings and how many have an authenticator",
         "tags": [
           "Administrators"
         ],
         "x-super-admin": true
       },
       "patch": {
-        "description": "Requiring a second factor takes effect at once: an administrator without one can do nothing but set one up the next time they load a page.",
+        "description": "Requiring a second factor applies on each administrator's next page load.",
         "operationId": "adminsUpdateSecurity",
         "requestBody": {
           "content": {
@@ -12741,7 +12755,7 @@
     },
     "/api/v1/admin/sessions/{id}": {
       "delete": {
-        "description": "The one the request came from is not ended here — that is signing out, which also clears the cookie — and a session that is not theirs is answered as one that does not exist.",
+        "description": "Another administrator's session is answered as not found.",
         "operationId": "authEndSession",
         "parameters": [
           {
@@ -12839,7 +12853,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Signs the administrator out of one of their other browsers",
+        "summary": "Signs one of the administrator's other browsers out",
         "tags": [
           "Signing in"
         ]
@@ -12847,7 +12861,6 @@
     },
     "/api/v1/admin/setup": {
       "get": {
-        "description": "The panel asks before showing its sign-in page, and sends whoever is there to the setup form instead when the answer is yes.",
         "operationId": "setupStatus",
         "responses": {
           "200": {
@@ -12862,7 +12875,7 @@
           }
         },
         "security": [],
-        "summary": "Says whether the panel still has to be set up",
+        "summary": "Says whether the panel still needs its first administrator",
         "tags": [
           "First administrator"
         ]
@@ -13251,7 +13264,7 @@
         ]
       },
       "post": {
-        "description": "It is not reachable by anyone signing in until somebody has signed in with it once — the credentials are only ever proved right by the provider itself.",
+        "description": "Its credentials are proved only by a first sign-in.",
         "operationId": "socialCreate",
         "requestBody": {
           "content": {
@@ -13375,7 +13388,6 @@
     },
     "/api/v1/admin/social-providers/{id}": {
       "delete": {
-        "description": "The accounts stay — a user who had no password keeps one way in fewer, which is why the panel says how many people that is before it asks.",
         "operationId": "socialDelete",
         "parameters": [
           {
@@ -13454,7 +13466,7 @@
             ]
           }
         ],
-        "summary": "Removes a provider, and every identity held at it",
+        "summary": "Removes a provider and its identities; the accounts stay, though some may lose their only way in",
         "tags": [
           "Social providers"
         ],
@@ -13558,7 +13570,7 @@
         ]
       },
       "patch": {
-        "description": "Its kind and its identifier are not among them: both are in the address registered with the provider, and a sign-in that comes back to an address nobody answers is a worse failure than having to register a second provider.",
+        "description": "Kind and slug are fixed, since they form the registered callback address.",
         "operationId": "socialUpdate",
         "parameters": [
           {
@@ -13652,6 +13664,25 @@
             },
             "description": "Forbidden: `cross_origin`, `forbidden`"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "social_provider_repointed": {
+                    "summary": "This provider already has linked accounts, so it cannot be pointed at a different one. Register a new provider instead.",
+                    "value": {
+                      "code": "social_provider_repointed",
+                      "error": "This provider already has linked accounts, so it cannot be pointed at a different one. Register a new provider instead."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Conflict: `social_provider_repointed`"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -13692,7 +13723,7 @@
     },
     "/api/v1/admin/social-providers/{id}/secret": {
       "get": {
-        "description": "It is stored encrypted rather than hashed, so it can be read back — which makes reading it an event worth recording. It takes the permission that could replace it anyway, and every reading is written to the log with who asked.",
+        "description": "It requires the permission that could replace it, and every read is written to the activity log.",
         "operationId": "socialSecret",
         "parameters": [
           {
@@ -13783,7 +13814,7 @@
             ]
           }
         ],
-        "summary": "Answers with the client secret itself, for an administrator who has to check what is configured against the provider's console",
+        "summary": "Returns the stored client secret so it can be checked against the provider's console",
         "tags": [
           "Social providers"
         ],
@@ -13871,7 +13902,7 @@
         ]
       },
       "post": {
-        "description": "A SAML one is given its own key and certificate to sign requests with, which its provider is shown.\n\nA new connection starts off: nobody signs in through it until an administrator has tried it and turned it on.",
+        "description": "A SAML connection gets its own signing key and certificate.",
         "operationId": "ssoCreate",
         "requestBody": {
           "content": {
@@ -14044,7 +14075,7 @@
             ]
           }
         ],
-        "summary": "Adds a connection",
+        "summary": "Adds a connection, disabled until an administrator turns it on",
         "tags": [
           "Single sign-on"
         ],
@@ -14939,7 +14970,6 @@
     },
     "/api/v1/admin/user-fields/{id}": {
       "delete": {
-        "description": "The values already stored under its name stay in the user records until those are next saved, at which point they are dropped: nothing is destroyed by removing a column from the panel.",
         "operationId": "fieldsDelete",
         "parameters": [
           {
@@ -15018,7 +15048,7 @@
             ]
           }
         ],
-        "summary": "Removes a field",
+        "summary": "Removes a field; stored values are dropped when each user is next saved",
         "tags": [
           "User fields"
         ],
@@ -15027,7 +15057,7 @@
         ]
       },
       "patch": {
-        "description": "Its name and its type stay as they are: records already hold values under that name and in that shape, and changing either here would leave them behind.",
+        "description": "Name and type never change, since records hold values under them.",
         "operationId": "fieldsUpdate",
         "parameters": [
           {
@@ -15150,7 +15180,7 @@
             ]
           }
         ],
-        "summary": "Changes what a field expects",
+        "summary": "Changes a field's rules",
         "tags": [
           "User fields"
         ],
@@ -15161,7 +15191,6 @@
     },
     "/api/v1/admin/user-roles": {
       "get": {
-        "description": "Two query parameters say which roles. scope is \"global\" for the global roles, \"application\" for the roles of every application the administrator can see, and empty for both. application narrows to one application's roles, whatever scope says.",
         "operationId": "rolesList",
         "parameters": [
           {
@@ -15255,7 +15284,7 @@
             ]
           }
         ],
-        "summary": "Returns a page of roles, sorted by name, each with how many users hold it and every role it includes once inheritance is followed",
+        "summary": "Returns a page of roles sorted by name, each with its member count and every role it includes. `scope` is \"global\", \"application\" or empty for both; `application` narrows to one application",
         "tags": [
           "User roles"
         ],
@@ -15577,7 +15606,7 @@
         ]
       },
       "patch": {
-        "description": "Its scope stays as it is: a role does not move between global and an application, or between applications.",
+        "description": "Its scope never changes.",
         "operationId": "rolesUpdate",
         "parameters": [
           {
@@ -15700,7 +15729,7 @@
             ]
           }
         ],
-        "summary": "Replaces a role's name, description, default flag and what it includes",
+        "summary": "Replaces a role's name, description, default flag and inheritance",
         "tags": [
           "User roles"
         ],
@@ -15945,7 +15974,6 @@
     },
     "/api/v1/admin/users": {
       "get": {
-        "description": "`search` matches the email or any text the user-defined fields hold, so one box covers the whole record rather than one column.",
         "operationId": "usersList",
         "parameters": [
           {
@@ -16030,7 +16058,7 @@
             ]
           }
         ],
-        "summary": "Returns a page of users, newest first",
+        "summary": "Returns a page of users, newest first. `search` matches the email and any field text",
         "tags": [
           "Users"
         ],
@@ -16489,7 +16517,7 @@
     },
     "/api/v1/admin/users/{id}/role-mappings": {
       "get": {
-        "description": "Roles of applications the administrator cannot see are left out.",
+        "description": "Roles of invisible applications are left out.",
         "operationId": "usersRoleMappings",
         "parameters": [
           {
@@ -16568,7 +16596,7 @@
             ]
           }
         ],
-        "summary": "Returns every role a user holds, Keycloak's role mapping: the roles given directly, and the roles that come to the user through them, each with what it comes through",
+        "summary": "Returns every role a user holds, direct and inherited, with what each comes through",
         "tags": [
           "Users"
         ],
@@ -16577,7 +16605,7 @@
         ]
       },
       "post": {
-        "description": "Each role is allowed by its scope: role_assignments.write for its application, or for the whole panel when it is global. One refused role refuses the whole request.",
+        "description": "Each needs role_assignments.write for its scope; one refusal refuses the request.",
         "operationId": "usersAssignRoles",
         "parameters": [
           {
@@ -16673,7 +16701,7 @@
             ]
           }
         ],
-        "summary": "Gives a user roles directly, global and application roles alike, leaving what they already hold as it is",
+        "summary": "Gives a user roles directly, keeping existing ones",
         "tags": [
           "Users"
         ],
@@ -16685,7 +16713,6 @@
     },
     "/api/v1/admin/users/{id}/role-mappings/{role}": {
       "delete": {
-        "description": "A role that only comes to the user through another cannot be taken away on its own: the role it comes through has to go.",
         "operationId": "usersUnassignRole",
         "parameters": [
           {
@@ -16779,7 +16806,7 @@
             ]
           }
         ],
-        "summary": "Takes away a role the user was given directly",
+        "summary": "Removes a directly held role; an inherited one is removed by removing what it comes through",
         "tags": [
           "Users"
         ],
@@ -16791,7 +16818,6 @@
     },
     "/api/v1/admin/users/{id}/roles": {
       "get": {
-        "description": "The client_id query parameter narrows the applications to one. Applications the administrator cannot see are left out.",
         "operationId": "usersRoles",
         "parameters": [
           {
@@ -16878,7 +16904,7 @@
             ]
           }
         ],
-        "summary": "Returns the roles a user holds as a token would carry them: the global roles, and for each application its roles — each as the ones given directly and every role those include",
+        "summary": "Returns the roles a user holds as a token would carry them: global roles and each application's, direct and inherited. `client_id` narrows to one application; applications the administrator cannot see are left out",
         "tags": [
           "Users"
         ],
@@ -17016,7 +17042,6 @@
     },
     "/api/v1/admin/users/{id}/social-accounts/{identity}": {
       "delete": {
-        "description": "Their account stays, and so does every other way into it.",
         "operationId": "usersDisconnect",
         "parameters": [
           {
@@ -17103,7 +17128,7 @@
             ]
           }
         ],
-        "summary": "Takes away a provider a user signs in with: an account of theirs somewhere else that should no longer reach this one",
+        "summary": "Removes a provider a user signs in with; their account and other ways in remain",
         "tags": [
           "Users"
         ],

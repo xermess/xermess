@@ -333,7 +333,7 @@ response.raise_for_status()
 | `require_role_assignment` | boolean or null |  |
 | `is_enabled` | boolean or null |  |
 | `allow_registration` | boolean or null | `allow_registration` may be left out too: a new application then offers registration on its sign-in page. |
-| `login_flow_id` | string or null | `login_flow_id` is the flow this application signs people in with. An empty string puts it back on the default flow; leaving it out leaves the flow it has. |
+| `login_flow_id` | string or null | `login_flow_id`: "" returns to the default flow, omitted keeps the current one. |
 
 #### Response
 
@@ -397,6 +397,7 @@ response.raise_for_status()
 | 401 | [`token_refused`](/reference/errors#token_refused) | This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access. |
 | 403 | [`cross_origin`](/reference/errors#cross_origin) | Requests from {origin} are not allowed. |
 | 403 | [`forbidden`](/reference/errors#forbidden) | You do not have permission to do that. |
+| 403 | [`system_application_change`](/reference/errors#system_application_change) | Only a super admin can change an application that has access to the admin API, or rotate its secret. |
 
 ## POST /api/v1/admin/applications/:id/secret {#post-api-v1-admin-applications-id-secret}
 
@@ -513,6 +514,7 @@ response.raise_for_status()
 | 401 | [`token_refused`](/reference/errors#token_refused) | This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access. |
 | 403 | [`cross_origin`](/reference/errors#cross_origin) | Requests from {origin} are not allowed. |
 | 403 | [`forbidden`](/reference/errors#forbidden) | You do not have permission to do that. |
+| 403 | [`system_application_change`](/reference/errors#system_application_change) | Only a super admin can change an application that has access to the admin API, or rotate its secret. |
 
 ## GET /api/v1/admin/applications/:id/apis {#get-api-v1-admin-applications-id-apis}
 
@@ -602,9 +604,7 @@ response.raise_for_status()
 
 ## PUT /api/v1/admin/applications/:id/apis/:api {#put-api-v1-admin-applications-id-apis-api}
 
-Lets the application ask for tokens for an API, and replaces the API scopes it may ask for with the ones named.
-
-Those scopes are the ceiling on every token the application gets for the API.
+Lets the application request tokens for an API and replaces the scopes it may ask for: the ceiling on its tokens.
 
 | | |
 | --- | --- |
@@ -716,6 +716,7 @@ response.raise_for_status()
 | 401 | [`token_refused`](/reference/errors#token_refused) | This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access. |
 | 403 | [`cross_origin`](/reference/errors#cross_origin) | Requests from {origin} are not allowed. |
 | 403 | [`forbidden`](/reference/errors#forbidden) | You do not have permission to do that. |
+| 403 | [`system_api_access`](/reference/errors#system_api_access) | Only a super admin can give an application access to the server's own APIs, or take it away. |
 
 ## DELETE /api/v1/admin/applications/:id/apis/:api {#delete-api-v1-admin-applications-id-apis-api}
 
@@ -804,12 +805,11 @@ response.raise_for_status()
 | 401 | [`token_refused`](/reference/errors#token_refused) | This access token is not accepted by the admin API: it has expired, is for another API, is not a service's token, or its application has lost access. |
 | 403 | [`cross_origin`](/reference/errors#cross_origin) | Requests from {origin} are not allowed. |
 | 403 | [`forbidden`](/reference/errors#forbidden) | You do not have permission to do that. |
+| 403 | [`system_api_access`](/reference/errors#system_api_access) | Only a super admin can give an application access to the server's own APIs, or take it away. |
 
 ## POST /api/v1/admin/applications/:id/token-preview {#post-api-v1-admin-applications-id-token-preview}
 
-Shows what a token request would amount to — whether a token is issued, the decision on every scope, and the claims each token carries — without issuing anything.
-
-It runs the same evaluation the token endpoint will, so what it shows is what an application will get.
+Runs the token endpoint's evaluation without issuing anything: whether a token is issued, each scope decision, and the claims.
 
 | | |
 | --- | --- |
@@ -1008,7 +1008,7 @@ response.raise_for_status()
 | `require_role_assignment` | boolean or null |  |
 | `is_enabled` | boolean or null |  |
 | `allow_registration` | boolean or null | `allow_registration` may be left out too: a new application then offers registration on its sign-in page. |
-| `login_flow_id` | string or null | `login_flow_id` is the flow this application signs people in with. An empty string puts it back on the default flow; leaving it out leaves the flow it has. |
+| `login_flow_id` | string or null | `login_flow_id`: "" returns to the default flow, omitted keeps the current one. |
 
 #### Response
 

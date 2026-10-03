@@ -45,8 +45,6 @@ export function specFor(step: LoginStep, kinds: LoginStepSpec[]): LoginStepSpec 
 	return kinds.find((kind) => kind.step === step);
 }
 
-// ---- A flow being edited ----------------------------------------------------
-
 /** What the editor changes: a flow without what the server keeps about it. */
 export type FlowDraft = {
 	name: string;
@@ -137,8 +135,6 @@ export function freeSlug(wanted: string, taken: string[]): string {
 	}
 }
 
-// ---- Templates ----------------------------------------------------------------
-
 export type FlowTemplate = {
 	id: string;
 	/** What the template is called on the "new flow" page, and what it is
@@ -210,8 +206,6 @@ export const TEMPLATES: FlowTemplate[] = [
 		draft: { ...base, name: '', slug: '', steps: ['identifier', 'password'] }
 	}
 ];
-
-// ---- JSON -------------------------------------------------------------------
 
 /** What an exported flow says it is, written once so the type and the file
     agree. The project's name is part of it, which is why it comes from the

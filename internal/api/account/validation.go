@@ -66,9 +66,8 @@ func (r *passwordRequest) validate() error {
 	return checkPassword(r.NewPassword)
 }
 
-// checkPassword holds a new password to the one rule there is: its length.
-// bcrypt reads no further than 72 bytes, so a longer one is refused rather
-// than quietly cut short.
+// checkPassword enforces length only; over 72 bytes is refused since bcrypt
+// would silently truncate.
 func checkPassword(password string) error {
 	switch {
 	case utf8.RuneCountInString(password) < oidc.MinPasswordLength:

@@ -83,13 +83,11 @@
 	const kind = $derived(types[form.type]);
 	const machine = $derived(form.type === 'm2m');
 
-	/** The flows this application can be pointed at: the default one, and any
-	    that is offered. A flow that has been turned off is still listed when
-	    this application is the one holding it, so the picker shows what is
-	    stored rather than silently reading as the default.
-
-	    An administrator who may not read flows gets none, and the picker is
-	    left out: the application keeps whichever flow it has. */
+	/**
+	 * Flows the application can use: the default and every enabled one, plus its current flow
+	 * even if disabled. Without permission to read flows the picker is hidden and the flow is
+	 * kept.
+	 */
 	const flows = createQuery(() => loginFlowChoicesOptions());
 
 	/** What the picker calls "no flow of its own". The request says that with

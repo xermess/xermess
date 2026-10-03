@@ -11,10 +11,8 @@ import (
 	"loginer/internal/model"
 )
 
-// ErrWrongPassword is a current password that is not theirs. Changing the
-// address they sign in with, or the password, takes the one they have: a
-// session left open on someone else's screen is not enough to take the
-// account over.
+// ErrWrongPassword is a wrong current password. Changing the address or
+// password requires it, so an unattended session cannot take the account.
 var ErrWrongPassword = errors.New("the current password is not right")
 
 // Profile is what an administrator may change about themselves.
@@ -25,9 +23,8 @@ type Profile struct {
 	AvatarURL string
 }
 
-// UpdateProfile changes the signed-in administrator's name and address. The
-// address is also what they sign in with, so a new one needs their current
-// password; a name alone does not. A taken address is store.ErrDuplicate.
+// UpdateProfile changes the administrator's name and address; a new address
+// needs the current password. A taken address is store.ErrDuplicate.
 func (s *Service) UpdateProfile(ctx context.Context, admin *model.Admin, profile Profile, currentPassword string) error {
 	if err := s.withPassword(ctx, admin); err != nil {
 		return err
@@ -48,10 +45,8 @@ func (s *Service) UpdateProfile(ctx context.Context, admin *model.Admin, profile
 	return s.store.SaveOwnAccount(ctx, admin)
 }
 
-// ChangePassword sets a new password for the signed-in administrator, given
-// the one they have, and ends every session they have open except the one
-// the change came from — the one that proved it knew the old password. A
-// password bcrypt cannot hash is model.ErrPasswordTooLong.
+// ChangePassword sets a new password given the current one and ends every other
+// session. A password bcrypt cannot hash is model.ErrPasswordTooLong.
 func (s *Service) ChangePassword(ctx context.Context, admin *model.Admin, session uuid.UUID, current, next string) error {
 	if err := s.withPassword(ctx, admin); err != nil {
 		return err
@@ -72,10 +67,8 @@ func (s *Service) ChangePassword(ctx context.Context, admin *model.Admin, sessio
 	return err
 }
 
-// withPassword fills in the password hash of an administrator a request was
-// signed in as. The session database keeps administrators without it, and
-// both checking a password and SaveOwnAccount, which writes the hash back,
-// need the one in the database.
+// withPassword loads the password hash, which cached administrators do not
+// carry.
 func (s *Service) withPassword(ctx context.Context, admin *model.Admin) error {
 	stored, err := s.store.AdminByID(ctx, admin.ID)
 	if err != nil {

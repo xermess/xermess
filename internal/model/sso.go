@@ -15,37 +15,26 @@ import (
 // no scheme, no port and no path.
 var domainPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$`)
 
-// SSOConnection is an organisation's own identity provider — Okta, Microsoft
-// Entra ID, Google Workspace, ADFS, Keycloak — that its people sign in
-// through, over OpenID Connect or SAML 2.0. It is what authentik calls a
-// source and Keycloak an identity provider, set up for a company rather than
-// for the public: where Social offers "Continue with Google" to anybody, a
-// connection usually owns email domains, and the people at those domains sign
-// in through it.
+// SSOConnection is an organisation's identity provider (Okta, Entra ID, Google
+// Workspace, ADFS, Keycloak) over OpenID Connect or SAML 2.0.
 //
-// What a connection decides, in the order a sign-in meets it:
+// What it decides:
 //
-//   - which addresses it may sign in (Domains): an identity provider says who
-//     somebody is, and with domains this server believes it for those and for
-//     no other, so a misconfigured provider cannot sign in as anyone elsewhere.
-//     Without any it is trusted for every address, as authentik and Keycloak
-//     trust a source, and people reach it only through its button;
-//   - whether those domains have to use it (EnforceDomains): their password
-//     sign-in, registration and reset are refused, and the sign-in page sends
-//     them to their provider instead;
-//   - what happens to someone this server already has (Matching) or has never
-//     seen (CreateUsers — just-in-time provisioning);
-//   - what their record says afterwards (SyncProfile), and which roles the
-//     groups the provider puts them in give them (RoleMappings, SyncRoles).
+//   - Domains: the addresses it may sign in. Without any it is trusted for
+//     every address and reached only through its button;
+//   - EnforceDomains: those domains must use it, and password sign-in,
+//     registration and reset are refused;
+//   - Matching and CreateUsers: what happens to known and new people;
+//   - SyncProfile, RoleMappings and SyncRoles: what their record and roles
+//     become.
 //
-// The secrets — the OIDC client secret and the key SAML requests are signed
-// with — are sealed with the server's secret key and never leave the server.
+// The OIDC client secret and SAML signing key are sealed with the server's
+// secret key.
 type SSOConnection struct {
 	Base
 
-	// Slug names the connection in the addresses the provider is given —
-	// /oauth2/sso/<slug>/callback, /acs, /metadata — so it cannot change once
-	// the provider has them.
+	// Slug is part of the addresses given to the provider (callback, ACS,
+	// metadata), so it never changes.
 	Slug string `gorm:"size:64;not null;uniqueIndex" json:"slug"`
 
 	// Name is what the sign-in page calls it: "Continue with <name>".
@@ -53,10 +42,9 @@ type SSOConnection struct {
 	Protocol  SSOProtocol `gorm:"type:varchar(8);not null" json:"protocol"`
 	IsEnabled bool        `gorm:"not null" json:"is_enabled"`
 
-	// Domains are the email domains the connection signs people in for, lower
-	// case. A domain belongs to one connection at most. None is every address,
-	// and then the button on the sign-in page is the only way to the
-	// connection, since no address leads to it.
+	// Domains the connection signs people in for, lower case, each owned by one
+	// connection at most. None means every address, reachable only through its
+	// button.
 	Domains StringList `gorm:"type:jsonb;serializer:json;not null" json:"domains"`
 
 	// EnforceDomains makes the connection the only way in for its domains.
@@ -73,9 +61,8 @@ type SSOConnection struct {
 	ClientSecret []byte     `gorm:"type:bytea" json:"-"`
 	Scopes       StringList `gorm:"serializer:json" json:"scopes"`
 
-	// SAML 2.0: the provider's metadata — fetched from MetadataURL, or pasted
-	// in when the provider only offers a file — which carries its entity ID,
-	// its sign-in address and the certificate its assertions are signed with.
+	// SAML 2.0: the provider's metadata (from MetadataURL or pasted) with its
+	// entity ID, sign-in address and signing certificate.
 	MetadataURL string `gorm:"size:1024" json:"metadata_url"`
 	Metadata    string `gorm:"type:text" json:"metadata"`
 	// NameIDFormat is what to ask the provider to identify people by.
@@ -83,9 +70,8 @@ type SSOConnection struct {
 	// SignRequests signs the authentication requests sent to the provider,
 	// for the providers that require it.
 	SignRequests bool `gorm:"not null" json:"sign_requests"`
-	// SPKey is the private key this server signs requests with, a PEM, sealed;
-	// SPCertificate its self-signed certificate, which the provider is given.
-	// Both are made when the connection is.
+	// SPKey is our sealed PEM signing key and SPCertificate its self-signed
+	// certificate, both made with the connection.
 	SPKey         []byte `gorm:"type:bytea" json:"-"`
 	SPCertificate string `gorm:"type:text" json:"sp_certificate"`
 
@@ -124,10 +110,8 @@ const (
 	SSOProtocolSAML SSOProtocol = "saml"
 )
 
-// SSOMatching is what to do when somebody signs in through a connection with
-// an address this server already has an account for — authentik's user
-// matching modes, for the two that make sense when the provider owns the
-// domain.
+// SSOMatching decides what happens when an address already has an account
+// (authentik's user matching modes).
 type SSOMatching string
 
 const (
@@ -181,9 +165,8 @@ func (m SSORoleMappings) Roles() []uuid.UUID {
 	return out
 }
 
-// For are the roles the mappings give someone in the given groups. Group
-// names are compared without regard to case, as providers are inconsistent
-// about it.
+// For returns the roles mapped to the given groups, compared
+// case-insensitively.
 func (m SSORoleMappings) For(groups []string) []uuid.UUID {
 	var out []uuid.UUID
 	for _, mapping := range m {
@@ -196,10 +179,8 @@ func (m SSORoleMappings) For(groups []string) []uuid.UUID {
 	return out
 }
 
-// SSOAttributeDefaults are where the usual providers put each thing, tried in
-// order when a connection names nothing: OpenID Connect's standard claims,
-// and for SAML the names Entra ID, ADFS, Okta, Google Workspace and the LDAP
-// OIDs use.
+// SSOAttributeDefaults are where common providers put each attribute, tried in
+// order when a connection names none.
 var SSOAttributeDefaults = map[SSOProtocol]map[string][]string{
 	SSOProtocolOIDC: {
 		"email":      {"email"},
@@ -231,9 +212,8 @@ var SSOAttributeDefaults = map[SSOProtocol]map[string][]string{
 	},
 }
 
-// Attribute is where to look for one thing — "email", "first_name",
-// "last_name" or "groups": the name the connection gives, or the protocol's
-// usual ones.
+// Attribute is where to look for "email", "first_name", "last_name" or
+// "groups": the connection's name or the protocol's defaults.
 func (c SSOConnection) Attribute(what string) []string {
 	named := map[string]string{
 		"email":      c.EmailAttribute,
@@ -249,9 +229,7 @@ func (c SSOConnection) Attribute(what string) []string {
 	return SSOAttributeDefaults[c.Protocol][what]
 }
 
-// AskedScopes is what to ask an OpenID Connect provider for: the connection's
-// scopes, with openid always among them, since without it there is no
-// id_token to read.
+// AskedScopes are the connection's scopes with openid always included.
 func (c SSOConnection) AskedScopes() []string {
 	scopes := []string{"openid", "email", "profile"}
 	if len(c.Scopes) > 0 {
@@ -270,10 +248,8 @@ func (c SSOConnection) OwnsEmail(email string) bool {
 	return ok && (len(c.Domains) == 0 || slices.Contains(c.Domains, domain))
 }
 
-// The addresses a connection is given to its provider at, all under the
-// issuer: the OpenID Connect redirect URI, and the SAML assertion consumer
-// service, the metadata that describes this server as a service provider,
-// and the entity ID, which is the metadata's address as is usual.
+// Addresses given to the provider, all under the issuer: the OIDC redirect URI,
+// the SAML ACS, our metadata, and the entity ID (the metadata address).
 func (c SSOConnection) CallbackURL(issuer string) string { return c.base(issuer) + "/callback" }
 func (c SSOConnection) ACSURL(issuer string) string      { return c.base(issuer) + "/acs" }
 func (c SSOConnection) MetadataURLFor(issuer string) string {
@@ -356,10 +332,8 @@ func isLocalhost(u *url.URL) bool {
 	return u.Scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1")
 }
 
-// SSOIdentity is one person at a connection's provider, and the user it signs
-// in. The subject is the provider's own id for them — the OIDC `sub`, the SAML
-// NameID — which is what identifies them reliably; the address is kept to show
-// which account at the provider it is.
+// SSOIdentity links a provider's subject (OIDC sub or SAML NameID) to a user;
+// the address is kept for display.
 type SSOIdentity struct {
 	Base
 
@@ -378,11 +352,9 @@ func (SSOIdentity) TableName() string {
 	return "sso_identities"
 }
 
-// SSOLogin is a sign-in sent to a connection's provider and not yet back: the
-// state (OIDC) or relay state (SAML) we gave it, hashed, and what the answer
-// has to be matched against — the PKCE verifier and the nonce, or the ID of
-// the SAML request the response has to be in response to. Like SocialLogin,
-// it is a row so it is single use and survives a different browser finishing.
+// SSOLogin is a sign-in sent to a connection and not yet back: the hashed
+// (relay) state and what the answer must match (PKCE verifier and nonce, or the
+// SAML request ID). Like SocialLogin it is single use.
 type SSOLogin struct {
 	Base
 

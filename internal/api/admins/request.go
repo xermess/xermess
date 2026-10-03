@@ -17,10 +17,8 @@ const targetType = "admin_user"
 // maxPageSize caps how many administrators one request can ask for.
 const maxPageSize = 200
 
-// adminRequest is the body of the create and update endpoints.
-//
-// There is no username: the address is the account, as it is for the first
-// administrator. Assignments replace every role the administrator held.
+// adminRequest is the create and update body. The address is the username, and
+// assignments replace every role held.
 type adminRequest struct {
 	Email     string `json:"email" validate:"required,email,max=255"`
 	FirstName string `json:"first_name" validate:"required,max=100"`
@@ -72,9 +70,8 @@ func listQuery(c *gin.Context) store.AdminQuery {
 	return q
 }
 
-// securityRequest is what a change to the settings that apply to every
-// administrator sends. The flag is a pointer so a request that does not
-// mention it leaves it alone.
+// securityRequest changes the settings for every administrator; an omitted flag
+// is left alone.
 type securityRequest struct {
 	RequireMFA *bool `json:"require_mfa"`
 }

@@ -1,11 +1,7 @@
 /**
- * A failed request, as the server described it: `code` names the problem, and
- * a translated page says `error.<code>` in the administrator's language with
- * `params` filled in (messageOf in $lib/i18n). `message` is the server's
- * English, which the pages not yet translated show as it is.
- *
- * `status` is 0 when the server could not be reached, and the code is then
- * `network`; an answer that was not the server's is `unknown`.
+ * A failed request as the server described it: `code` names the problem, `params` fills its
+ * sentence and `message` is the server's English. `status` is 0 with code `network` when the
+ * server was unreachable, and `unknown` for an answer that was not the server's.
  */
 export class ApiError extends Error {
 	constructor(
@@ -24,11 +20,7 @@ export class ApiError extends Error {
 	}
 }
 
-/**
- * SvelteKit hands `load` functions their own fetch, which it uses to track
- * dependencies and to replay requests on the client. Passing it in is what
- * makes `invalidate` work; anything outside a load can leave it out.
- */
+/** The fetch SvelteKit hands a load function. Passing it in is what makes `invalidate` work. */
 export type Fetch = typeof globalThis.fetch;
 
 type RequestOptions = {

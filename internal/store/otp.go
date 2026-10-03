@@ -11,11 +11,7 @@ import (
 	"loginer/internal/model"
 )
 
-// OTPSettings returns how the codes this server emails behave.
-//
-// As with the mail settings and admin_security: one row, read by its age, and
-// the default for a database that holds none — so the pages that ask for a
-// code go on working on an installation whose row was removed by hand.
+// OTPSettings returns the single row, or the default when none exists.
 func (s *Store) OTPSettings(ctx context.Context) (*model.OTPSettings, error) {
 	settings, err := cached(ctx, s, cache.OTPSettings, "settings", func() (model.OTPSettings, error) {
 		var settings model.OTPSettings
@@ -58,9 +54,8 @@ func (s *Store) SaveOTPSettings(ctx context.Context, settings *model.OTPSettings
 	return s.forgetting(ctx, translate(s.db.WithContext(ctx).Save(settings).Error), cache.OTPSettings)
 }
 
-// CreateLoginCode stores a sign-in waiting for an emailed code, and forgets
-// any the same user had waiting: asking for a code makes the one before it
-// useless, so a message somebody has already read cannot be typed back.
+// CreateLoginCode stores a sign-in waiting for a code and drops the user's
+// previous one, so an already read code cannot be used.
 func (s *Store) CreateLoginCode(ctx context.Context, code *model.LoginCode) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// One sign-in at a time per user, so two started at once leave one
@@ -69,11 +64,8 @@ func (s *Store) CreateLoginCode(ctx context.Context, code *model.LoginCode) erro
 			return translate(err)
 		}
 
-		// A code still waiting carries its guess count into the new one, so
-		// starting the sign-in over does not hand out a fresh five guesses and
-		// a used-up challenge stays used up. Only a live one — expiry already
-		// bounds how long guessing may go on — so an expired code is a clean
-		// slate.
+		// A live code's guess count carries over, so restarting the sign-in
+		// does not grant fresh guesses.
 		var prior model.LoginCode
 		err := tx.Where("user_id = ? AND used_at IS NULL AND expires_at > ?", code.UserID, code.SentAt).
 			Order("created_at DESC").First(&prior).Error
@@ -94,9 +86,7 @@ func (s *Store) CreateLoginCode(ctx context.Context, code *model.LoginCode) erro
 	})
 }
 
-// LoginCodeByHash finds the sign-in a page's handle names, with the user it
-// is for loaded: whoever is typing the code is who the session will be made
-// for, and both are needed together every time.
+// LoginCodeByHash finds a waiting sign-in by handle, with its user.
 func (s *Store) LoginCodeByHash(ctx context.Context, hash string) (*model.LoginCode, error) {
 	var code model.LoginCode
 
@@ -111,17 +101,9 @@ func (s *Store) LoginCodeByHash(ctx context.Context, hash string) (*model.LoginC
 	return &code, nil
 }
 
-// RecordLoginCodeAttempt counts one typed code against the sign-in and
-// answers how many have been counted, so the caller can say whether there are
-// any guesses left.
-//
-// Every typed code takes its guess here before it is compared, the right one
-// included, and a sign-in with none left gives none: false, and nothing
-// counted. The count is added to in the database rather than read and
-// written back, and only while it is under `max`, so guesses sent at once
-// are each counted and no more than `max` of them are ever compared —
-// written back from the row each request loaded, twenty sent together would
-// count as one, and all twenty would be checked.
+// RecordLoginCodeAttempt counts a guess before it is compared, atomically and
+// only while under `max`, so parallel guesses are each counted and at most
+// `max` are ever compared. It returns the count and false when none are left.
 func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCode, max int) (int, bool, error) {
 	var rows []struct {
 		Attempts int
@@ -145,9 +127,8 @@ func (s *Store) RecordLoginCodeAttempt(ctx context.Context, code *model.LoginCod
 	return code.Attempts, true, nil
 }
 
-// ConsumeLoginCode marks a code used. A code is used once, so the update is
-// conditional: two requests typing the right code at the same moment, and
-// only one of them makes a session.
+// ConsumeLoginCode marks a code used conditionally, so of two concurrent right
+// answers only one makes a session.
 func (s *Store) ConsumeLoginCode(ctx context.Context, code *model.LoginCode, now time.Time) (bool, error) {
 	result := s.db.WithContext(ctx).
 		Model(&model.LoginCode{}).
@@ -166,14 +147,10 @@ func (s *Store) ConsumeLoginCode(ctx context.Context, code *model.LoginCode, now
 	return true, nil
 }
 
-// ResendLoginCode replaces the code a sign-in is waiting for, without
-// starting the sign-in again: the handle the page holds stays as it is, and
-// the guesses already spent stay spent — asking for another message is not a
-// way to start the count over.
+// ResendLoginCode replaces the code without restarting: the handle stays and
+// spent guesses stay spent.
 func (s *Store) ResendLoginCode(ctx context.Context, code *model.LoginCode, hash string, sentAt, expiresAt time.Time) error {
-	// expires_at is left as it was: resending sends the same sign-in a new
-	// code, it does not start the clock over — a sign-in that keeps asking
-	// for codes should still run out when it was always going to.
+	// expires_at is unchanged: a resend does not extend the sign-in.
 	_ = expiresAt
 	err := translate(s.db.WithContext(ctx).Model(code).Updates(map[string]any{
 		"code_hash": hash,

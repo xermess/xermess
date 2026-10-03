@@ -8,12 +8,8 @@ import type { HandleFetch } from '@sveltejs/kit';
 const API_PATHS = ['/api/v1/admin'];
 
 /**
- * A fetch made while rendering on the server goes straight to the API at
- * API_URL, rather than out through the public address and back in.
- *
- * Loads call the API by path, the same as the browser does. Here the path is
- * pointed at the API's internal address, and the reader's cookies go with it:
- * a fetch from the server carries none of the browser's on its own.
+ * Server-side fetches to API paths go straight to API_URL with the reader's cookies, instead of
+ * out through the public address.
  */
 export const handleFetch: HandleFetch = async ({ event, request, fetch }) => {
 	const url = new URL(request.url);

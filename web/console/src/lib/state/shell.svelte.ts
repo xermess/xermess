@@ -3,14 +3,8 @@ import { SvelteSet } from 'svelte/reactivity';
 import { rememberClosedGroups, rememberSidebar, type SidebarState } from './sidebar';
 
 /**
- * How the panel's own frame is left: how wide the sidebar is, and which of its
- * sections are folded away.
- *
- * The header's logo block and the dashboard's sidebar are one column of the
- * screen, so they have to agree on how wide it is and fold together. The
- * panel layout makes this once per page view and hands it down as context —
- * never as module state, which on the server would be shared by every
- * request.
+ * The sidebar's width and folded groups, shared by the header and sidebar. Created per page
+ * view and passed as context; module state would be shared across requests on the server.
  */
 export type Shell = {
 	readonly collapsed: boolean;

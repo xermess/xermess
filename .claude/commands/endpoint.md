@@ -26,6 +26,6 @@ first — `internal/api/fields/` is the smallest complete example.
 6. Tests: table-driven ones for the validation, and a `TestLive…` in
    `internal/api/integration_test.go` when the route, the store or a permission
    is what you want to prove.
-7. The API table in `README.md`.
+7. `make docs`, which regenerates the API reference from the handler and its request type.
 
 Then run `/check`.

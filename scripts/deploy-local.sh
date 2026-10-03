@@ -41,6 +41,13 @@ if [[ ! -f deploy/.env ]]; then
 	echo "created deploy/.env for https://id.localhost — it is gitignored"
 fi
 
+# Redis keeps nothing on disk and reads its password at every start, so one
+# can be filled in at any time, including into a deploy/.env made before it
+# was required.
+if ! grep -qE '^REDIS_PASSWORD=.+' deploy/.env; then
+	set_value REDIS_PASSWORD "$(openssl rand -hex 32)"
+fi
+
 "${compose[@]}" up -d --build --wait
 
 cat <<'TEXT'

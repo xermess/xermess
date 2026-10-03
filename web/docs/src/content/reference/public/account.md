@@ -9,9 +9,9 @@ generated: true
 
 ## GET /api/v1/account/organization {#get-api-v1-account-organization}
 
-Describes the organisation these pages sign users in for: who the account belongs to, where to ask for help, and the agreements accepted by making one.
+Describes the organisation the sign-in pages speak for.
 
-Every sign-in page asks for it, with or without a sign-in under way, so it needs no session and names nothing about the caller.
+Public, so it needs no session.
 
 | | |
 | --- | --- |
@@ -69,9 +69,7 @@ response.raise_for_status()
 
 ## GET /api/v1/account/social-providers {#get-api-v1-account-social-providers}
 
-Lists the accounts elsewhere that users may sign in with, as the buttons on the sign-in pages.
-
-It says nothing about any of them beyond what the button needs.
+Lists the sign-in buttons, with only what a button needs.
 
 | | |
 | --- | --- |
@@ -336,7 +334,7 @@ response.raise_for_status()
 
 ## GET /api/v1/account/login-options {#get-api-v1-account-login-options}
 
-Says what these pages may offer: the options of the login flow the sign-in belongs to. `request` is the handle of a sign-in under way, which names the application whose flow applies; without one, or with one that has expired, it is the installation's default flow.
+Returns the options of the login flow for the sign-in handle `request`, or the default flow.
 
 | | |
 | --- | --- |
@@ -463,9 +461,7 @@ response.raise_for_status()
 
 ## GET /api/v1/account/languages/:code {#get-api-v1-account-languages-code}
 
-Is the text of these pages in one offered language, every key filled in.
-
-The pages ask for it while rendering, so a language added or reworded in the panel is on the next page anybody opens.
+Returns the sign-in pages' text in one offered language with every key filled in.
 
 | | |
 | --- | --- |
@@ -1225,9 +1221,9 @@ response.raise_for_status()
 
 ## POST /api/v1/account/verify-email {#post-api-v1-account-verify-email}
 
-Uses a link sent to prove an address.
+Uses a verification link.
 
-It is a POST the page makes when the person presses the button, not the link itself: a mail scanner that follows every link in an inbox would otherwise use it up.
+It is a POST made when the person presses the button, so mail scanners that follow links cannot spend it.
 
 | | |
 | --- | --- |
@@ -1627,9 +1623,9 @@ response.raise_for_status()
 
 ## POST /api/v1/account/email {#post-api-v1-account-email}
 
-Starts moving the signed-in user to another sign-in address.
+Starts moving the signed-in user to another address.
 
-It answers the same whether or not the address is already somebody else's, so this cannot be used to find out which addresses have accounts.
+It answers the same whether or not the address is taken.
 
 | | |
 | --- | --- |

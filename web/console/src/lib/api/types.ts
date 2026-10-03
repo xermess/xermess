@@ -360,12 +360,10 @@ export type FieldRules = {
 	starts_with: string;
 };
 
-/** One field of a user record.
- *
- *  `is_builtin` says which kind it is: a built-in field is a column of the
- *  record — every installation has it, and it cannot be changed or removed —
- *  while an additional one was added in the panel and its values live in
- *  `data`. The API returns both in one list, built-ins first. */
+/**
+ * One field of a user record: built-in (a column, unchangeable) or additional (added in the
+ * panel, stored in `data`). Built-ins come first.
+ */
 export type UserField = FieldRules & {
 	/** The row this field is. A built-in field is a column rather than a row,
 	    so it has none. */
@@ -636,12 +634,10 @@ export type TokenPreview = {
 	id_token?: Record<string, unknown>;
 };
 
-/** The organisation this installation belongs to. There is one, so it is a
-    record of settings rather than a list: it is read and written back.
-
-    It is also what the server shows the outside world: the terms and privacy
-    links are published in the discovery document, and the sign-in pages fall
-    back to all of it for an application that carries none of its own. */
+/**
+ * The organisation's single settings record. Its terms and privacy links are published in
+ * discovery, and the sign-in pages fall back to it for applications that set none.
+ */
 export type Organization = {
 	name: string;
 	slug: string;
@@ -721,12 +717,7 @@ export type SocialProvider = {
 	created_at: string;
 };
 
-/** What the panel sends for one.
-
-    Everything is optional because the endpoint is a PATCH: a request that
-    does not mention a setting leaves it as it is — so turning a provider off
-    is `{ is_enabled: false }` and nothing else. The kind and the slug are read
-    when it is registered and never again. */
+/** A PATCH: settings left out stay as they are. Kind and slug are read only on creation. */
 export type SocialProviderInput = {
 	kind?: SocialKind;
 	slug?: string;
@@ -1017,13 +1008,10 @@ export type SSOTestResult = {
     constants in internal/model/mail.go; change them together. */
 export type MailEncryption = 'starttls' | 'tls' | 'none';
 
-/** How this installation sends email. There is one record of it, like the
-    organisation's: it is read and written back.
-
-    The password is not here and never will be. It is stored sealed with the
-    server's secret key and nothing reads it back — `has_password` is all the
-    panel is told, so the form can say "set" rather than asking for one that
-    is already there. */
+/**
+ * How this installation sends email. The password is never returned; `has_password` says
+ * whether one is stored.
+ */
 export type MailSettings = {
 	/** Off, every message is written to the server's log instead of sent. */
 	is_enabled: boolean;
@@ -1044,12 +1032,10 @@ export type MailResponse = {
 	encryptions: MailEncryption[];
 };
 
-/** What the panel sends for the settings. Every field is optional because the
-    endpoint is a PATCH: what is left out keeps the value it has.
-
-    `password` is the one that matters: leaving it out keeps the stored one,
-    sending a new one replaces it, and sending an empty string is a server
-    that takes no credentials. */
+/**
+ * A PATCH: settings left out stay as they are. Omitting `password` keeps the stored one, a new
+ * value replaces it, and "" means no credentials.
+ */
 export type MailSettingsInput = Partial<Omit<MailSettings, 'has_password'>> & {
 	password?: string;
 };
@@ -1134,8 +1120,6 @@ export type OTPResponse = {
 
 /** What the panel sends for them: a PATCH, so what is left out stands. */
 export type OTPSettingsInput = Partial<OTPSettings>;
-
-// ---- Redis ------------------------------------------------------------------
 
 /** The two Redis databases: `cache` holds what every page reads and anybody
     may see; `sessions` holds who is signed in and what they may do, and the

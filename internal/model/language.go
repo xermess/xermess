@@ -9,35 +9,26 @@ import (
 	"github.com/google/uuid"
 )
 
-// Language is one language this installation has: what it is called, whether
-// the sign-in pages offer it, whether it is the default, and where it comes in
-// the picker. Its text is in Translations, one row per app.
-//
-// The languages the server ships with (i18n/) are imported on the first
-// start, and from then on this table is the list: a language an administrator
-// adds exists only here, and one they remove is gone, shipped or not.
-//
-// The code is an IETF language tag, "ky" or "pt-BR".
+// Language is a language the sign-in pages may offer, with its text in
+// Translations, one row per app. Shipped languages are imported on the first
+// start; after that this table is the list. Code is an IETF tag such as "ky" or
+// "pt-BR".
 type Language struct {
 	Base
 
 	Code string `gorm:"size:16;not null;uniqueIndex" json:"code"`
 
-	// Name is what the language is called in English, for the panel, and
-	// NativeName what it calls itself — which is what the picker on the sign-in
-	// pages shows, since somebody looking for their language scans for it
-	// written in it.
+	// Name is the English name for the panel; NativeName is what the language
+	// calls itself, shown in the picker.
 	Name       string `gorm:"size:64;not null" json:"name"`
 	NativeName string `gorm:"size:64;not null" json:"native_name"`
 
-	// IsEnabled shows the language in the picker on the sign-in pages. The
-	// default language is always enabled — it is what somebody sees before
-	// choosing, so it has to be one they could choose.
+	// IsEnabled shows the language in the picker; the default language is
+	// always enabled.
 	IsEnabled bool `gorm:"not null" json:"is_enabled"`
 
-	// IsDefault marks the language somebody sees before they have chosen one.
-	// Exactly one row has it; the store moves it rather than letting two rows
-	// claim it.
+	// IsDefault marks the language shown before anyone chooses; exactly one row
+	// has it.
 	IsDefault bool `gorm:"not null" json:"is_default"`
 
 	// Position is where it comes in the picker, lowest first.
@@ -51,10 +42,7 @@ func (Language) TableName() string {
 	return "languages"
 }
 
-// BaseLanguage is the language every other is a translation of: the keys it
-// has are the keys the apps look up, and its text is what a missing
-// translation falls back to. It cannot be removed. It is spelled the same
-// here as in i18n/.
+// BaseLanguage defines the keys and the fallback text. It cannot be removed.
 const BaseLanguage = "en"
 
 // DefaultLanguage is the row a fresh installation starts with.
@@ -65,10 +53,8 @@ func DefaultLanguage() Language {
 	}
 }
 
-// languageCodePattern is an IETF language tag as this project uses them: a
-// two- or three-letter language, optionally a script or a region after a
-// dash. It is deliberately narrow — the code goes into URLs, cookies and
-// file names.
+// languageCodePattern is a narrow IETF tag (language, optional script or
+// region), since codes go into URLs, cookies and file names.
 var languageCodePattern = regexp.MustCompile(`^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$`)
 
 // Validate reports the first thing wrong with a language.
@@ -101,10 +87,8 @@ func (l Language) Validate() error {
 	return nil
 }
 
-// Translation is one language's text for one app: the sign-in pages ("id") or
-// the admin panel ("console"). It is the JSON a translator writes, minus the
-// `$name` and `$native` that describe the file — those are the language's own
-// columns.
+// Translation is one language's text for one app, without the file's `$name`
+// and `$native`.
 type Translation struct {
 	Base
 
@@ -121,14 +105,10 @@ func (Translation) TableName() string {
 	return "translations"
 }
 
-// MaxMessageLength is the longest one message may be. The longest the apps
-// have is a paragraph; this is room for a translation that runs long, not for
-// a document.
+// MaxMessageLength leaves room for a long paragraph, not a document.
 const MaxMessageLength = 2000
 
-// TooLongMessage is the key of a message longer than MaxMessageLength, or ""
-// when there is none. Which keys are allowed is not the model's to know —
-// that is the base language's files.
+// TooLongMessage returns the key of a message over MaxMessageLength, or "".
 func TooLongMessage(messages map[string]string) string {
 	for key, value := range messages {
 		if utf8.RuneCountInString(value) > MaxMessageLength {

@@ -23,9 +23,7 @@ type sessionResponse struct {
 	ExpiresAt  time.Time   `json:"expires_at"`
 }
 
-// listResponse is a page of sessions, and the session to continue after
-// when there are more — never a total, which would mean counting every
-// session there is on every visit.
+// listResponse is a page of sessions and a cursor, never a total.
 type listResponse struct {
 	Sessions []sessionResponse `json:"sessions"`
 	Next     string            `json:"next,omitempty"`

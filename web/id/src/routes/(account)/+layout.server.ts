@@ -2,17 +2,10 @@ import { signIn, type LoginOptions } from '$lib/api';
 import { requireUser } from '$lib/server/session';
 import type { LayoutServerLoad } from './$types';
 
-/** Every account page is for the signed-in user; anyone else signs in first,
-    and comes back to the page they asked for.
- 
-    The login options come along because they say what a user may do with
-    their own account — change the address they sign in with, today. There is
-    no application here, so it is the installation's default flow that
-    decides, which is the flow somebody signing in to their account followed.
-
-    The organisation's timezone comes along so the dates on these pages are
-    the organisation's days, the same on the server's render and in the
-    browser. */
+/**
+ * Account pages need a signed-in user; anyone else signs in first and returns. The default
+ * flow's options (e.g. changing address) and the organisation's timezone come along.
+ */
 export const load: LayoutServerLoad = async ({ cookies, fetch, url, setHeaders }) => {
 	setHeaders({ 'cache-control': 'private, no-store' });
 

@@ -14,10 +14,8 @@ import (
 	"loginer/internal/store"
 )
 
-// What a signed-in user can do about their own account, in the id app: their
-// name, their password, where they are signed in, and which applications can
-// still act for them. Every method takes the session the request carries, so
-// a user only ever reaches their own account.
+// A signed-in user's own account. Every method takes the request's session, so
+// users only reach their own account.
 
 // ErrWrongPassword is a current password that does not match, when changing
 // it. It counts towards the lockout, as a wrong password at sign-in does.
@@ -47,9 +45,8 @@ func (s *Service) UpdateProfile(ctx context.Context, session *Session, p Profile
 	user.FirstName = strings.TrimSpace(p.FirstName)
 	user.LastName = strings.TrimSpace(p.LastName)
 
-	// Only the name is written: the row otherwise carries a snapshot from the
-	// start of the request, and writing it whole would roll back a password
-	// reset, a lock or a deactivation that committed meanwhile.
+	// Only the name is written, so a reset, lock or deactivation committed
+	// meanwhile is not rolled back.
 	if err := s.store.SaveUserProfile(ctx, user); err != nil {
 		return nil, err
 	}
@@ -59,10 +56,8 @@ func (s *Service) UpdateProfile(ctx context.Context, session *Session, p Profile
 	return user, nil
 }
 
-// ChangePassword replaces a user's password after checking the current one.
-// Every other session the user has ends, and every refresh token applications
-// hold for them is revoked: whoever might have known the old password is
-// signed out everywhere but here.
+// ChangePassword checks the current password, ends every other session and
+// revokes all refresh tokens.
 func (s *Service) ChangePassword(ctx context.Context, session *Session, current, next string, client Client) error {
 	user := session.User
 	now := s.now()

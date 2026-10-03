@@ -12,32 +12,24 @@ import (
 	"loginer/internal/brand"
 )
 
-// API is a resource server: a service applications ask for access tokens to
-// call, Auth0's API and Keycloak's audience.
-//
-// It is how tokens are down-scoped. A token is issued for one API at a time —
-// its audience — and carries only the scopes of that API the application is
-// allowed to ask for and, when the API enforces roles, the user's roles grant.
-// An API that trusts a token with its own audience therefore never sees a
-// scope meant for another service.
+// API is a resource server applications request tokens for. A token is issued
+// for one API (its audience) and carries only that API's scopes the application
+// is allowed and, if roles are enforced, the user's roles grant.
 type API struct {
 	Base
 
 	Name string `gorm:"size:100;not null" json:"name"`
-	// Identifier is the audience: the value of a token's aud claim, and what
-	// an application names to ask for a token for this API. It never
-	// changes, since every service checking tokens compares against it.
+	// Identifier is the audience (aud) applications request. It never changes,
+	// since services compare tokens against it.
 	Identifier  string `gorm:"size:255;not null;uniqueIndex" json:"identifier"`
 	Description string `gorm:"size:255" json:"description"`
 
-	// EnforceRoles grants a user's token only the scopes their roles grant.
-	// Off, the application's allowed scopes decide, for an API that makes its
-	// own decisions about users.
+	// EnforceRoles limits a user's token to the scopes their roles grant; off,
+	// the application's allowed scopes decide.
 	EnforceRoles bool `gorm:"not null" json:"enforce_roles"`
 
-	// SigningAlgorithm is how access tokens for the API are signed. It is
-	// asymmetric, so the API checks tokens with the public keys this server
-	// publishes and never holds a key that could make one.
+	// SigningAlgorithm is asymmetric, so the API verifies with published keys
+	// and never holds one that signs.
 	SigningAlgorithm string `gorm:"type:varchar(16);not null" json:"signing_algorithm"`
 
 	// TokenLifetime is how long an access token for the API lasts, in
@@ -48,11 +40,9 @@ type API struct {
 	// an access token for the API.
 	AllowOfflineAccess bool `gorm:"not null" json:"allow_offline_access"`
 
-	// System names the part of this server the API is — SystemAdminAPI or
-	// SystemAccountAPI — or is empty for an API an administrator added. A
-	// system API is made at startup and kept in step with the server: its
-	// identifier and scopes are the server's, so the panel changes neither
-	// and cannot delete it.
+	// System names the part of this server the API is (SystemAdminAPI,
+	// SystemAccountAPI), or is empty. System APIs are kept in step with the
+	// server at startup and cannot be edited or deleted.
 	System string `gorm:"type:varchar(16);not null;default:''" json:"system,omitempty"`
 
 	Scopes []APIScope `gorm:"constraint:OnDelete:CASCADE" json:"scopes,omitempty"`
@@ -63,9 +53,8 @@ func (API) TableName() string {
 	return "apis"
 }
 
-// The APIs this server is itself, which access tokens can be issued for so
-// that other software can call it: the admin API, as a service with no user,
-// and the account API, for a signed-in user.
+// This server's own APIs: the admin API (for services) and the account API (for
+// signed-in users).
 const (
 	SystemAdminAPI   = "admin"
 	SystemAccountAPI = "account"
@@ -77,16 +66,13 @@ const (
 	ScopeAccountWrite = "account.write"
 )
 
-// AdminCLIClientID is the application made at startup to call the admin API
-// with, Keycloak's admin-cli. It is a machine-to-machine application an
-// administrator gives admin API scopes and a secret before it can do anything.
+// AdminCLIClientID is the machine-to-machine application created at startup for
+// calling the admin API. It does nothing until given scopes and a secret.
 const AdminCLIClientID = "admin-cli"
 
-// SystemAPIs are the system APIs as the server defines them. The admin API's
-// scopes are the admin permissions, one for one, so a token's scopes are
-// checked with the same guards as an administrator's roles; each is a default
-// scope, so an application that asks for none gets every one it is allowed.
-// Super-admin routes are not among them: those are for a person.
+// SystemAPIs are the server's own APIs. The admin API's scopes are the admin
+// permissions one for one, each a default scope; super-admin routes are for a
+// person and are not among them.
 func SystemAPIs() []API {
 	admin := API{
 		Name:             "Admin API",
@@ -127,15 +113,13 @@ type APIScope struct {
 	Name        string    `gorm:"size:128;not null;uniqueIndex:idx_api_scopes_api_name,priority:2" json:"name"`
 	Description string    `gorm:"size:255" json:"description"`
 
-	// IsDefault adds the scope to every access token for the API, whether or
-	// not it was asked for — still only when the application is allowed it
-	// and, if the API enforces roles, the user's roles grant it.
+	// IsDefault adds the scope to every token for the API, subject to the same
+	// allowance and role rules.
 	IsDefault bool `gorm:"not null" json:"is_default"`
 }
 
-// The algorithms access tokens can be signed with. All are asymmetric: HS256
-// is left out on purpose, since every API checking tokens would have to hold
-// the secret that makes them.
+// Signing algorithms for access tokens. HS256 is excluded: every API would have
+// to hold the signing secret.
 const (
 	AlgRS256 = "RS256"
 	AlgPS256 = "PS256"
@@ -156,9 +140,8 @@ func (APIScope) TableName() string {
 	return "api_scopes"
 }
 
-// ApplicationAPI says an application may ask for tokens for an API: Auth0's
-// authorised application. Without it, a request naming the API as audience is
-// refused outright.
+// ApplicationAPI authorises an application to request tokens for an API;
+// without it the audience is refused.
 type ApplicationAPI struct {
 	ApplicationID uuid.UUID    `gorm:"type:uuid;primaryKey" json:"application_id"`
 	Application   *Application `gorm:"constraint:OnDelete:CASCADE" json:"-"`
@@ -186,9 +169,8 @@ func (ApplicationAPIScope) TableName() string {
 	return "application_api_scopes"
 }
 
-// scopeNamePattern is what an API scope may be called: lower case words
-// joined by colons, dots, dashes or underscores — "orders:read",
-// "read:orders", "billing.invoices.export".
+// scopeNamePattern: lower-case words joined by colons, dots, dashes or
+// underscores ("orders:read", "billing.invoices.export").
 var scopeNamePattern = regexp.MustCompile(`^[a-z][a-z0-9]*([:._-][a-z0-9]+)*$`)
 
 // Validate reports the first thing wrong with an API and its scopes.

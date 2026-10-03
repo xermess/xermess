@@ -8,10 +8,17 @@ import (
 )
 
 func TestFullName(t *testing.T) {
-	admin := Admin{FirstName: "Ada", LastName: "Lovelace"}
-
-	if got, want := admin.FullName(), "Ada Lovelace"; got != want {
-		t.Errorf("FullName() = %q, want %q", got, want)
+	for _, tt := range []struct {
+		first, last, want string
+	}{
+		{"Ada", "Lovelace", "Ada Lovelace"},
+		{"Ada", "", "Ada"},
+		{"", "Lovelace", "Lovelace"},
+		{"", "", ""},
+	} {
+		if got := (Admin{FirstName: tt.first, LastName: tt.last}).FullName(); got != tt.want {
+			t.Errorf("FullName(%q, %q) = %q, want %q", tt.first, tt.last, got, tt.want)
+		}
 	}
 }
 

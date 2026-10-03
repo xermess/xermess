@@ -202,9 +202,9 @@ response.raise_for_status()
 
 ## PATCH /api/v1/admin/user-fields/:id {#patch-api-v1-admin-user-fields-id}
 
-Changes what a field expects.
+Changes a field's rules.
 
-Its name and its type stay as they are: records already hold values under that name and in that shape, and changing either here would leave them behind.
+Name and type never change, since records hold values under them.
 
 | | |
 | --- | --- |
@@ -307,9 +307,7 @@ response.raise_for_status()
 
 ## DELETE /api/v1/admin/user-fields/:id {#delete-api-v1-admin-user-fields-id}
 
-Removes a field.
-
-The values already stored under its name stay in the user records until those are next saved, at which point they are dropped: nothing is destroyed by removing a column from the panel.
+Removes a field; stored values are dropped when each user is next saved.
 
 | | |
 | --- | --- |

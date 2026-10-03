@@ -7,10 +7,7 @@ const (
 	targetID   = "settings"
 )
 
-// settingsRequest is what an update sends.
-//
-// Every field is a pointer because this is a PATCH: nil is "not sent", and
-// the stored value stands.
+// settingsRequest is a PATCH: nil leaves a setting alone.
 type settingsRequest struct {
 	CodeLength      *int `json:"code_length"`
 	LifetimeMinutes *int `json:"lifetime_minutes"`

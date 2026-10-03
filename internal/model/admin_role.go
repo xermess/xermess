@@ -1,14 +1,11 @@
 package model
 
-// RoleSuperAdmin is the one built-in admin role. It grants everything,
-// including managing administrators and their roles, and cannot be edited,
-// renamed or removed.
+// RoleSuperAdmin grants everything, including managing administrators, and
+// cannot be edited or removed.
 const RoleSuperAdmin = "super_admin"
 
-// AdminRole is a named set of permissions that administrators hold.
-//
-// Other than super_admin, roles are made by a super admin in the panel —
-// "moderator", "support" — and grant names from AdminPermissions.
+// AdminRole is a named set of permissions from AdminPermissions, made by a
+// super admin.
 type AdminRole struct {
 	Base
 

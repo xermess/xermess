@@ -19,15 +19,10 @@
 	let { title, description, icon, meta, action, children }: Props = $props();
 </script>
 
-<!-- One titled group of a form. Every form is built from these, so sections
-     are spaced, ruled and titled the same way wherever they appear.
-
-     It lays itself out by its own width rather than the window's. Where there
-     is room — a full-window dialog, a settings page — the title and its
-     description sit on the left and the fields in a card beside them, so a
-     long form can be scanned down its titles. Where there is not — the flow
-     editor's inspector — it is a title over its fields, ruled off from the
-     one above. -->
+<!--
+	One titled group of a form, laid out by its own width: title beside a card of fields where
+	there is room, title above fields where there is not.
+-->
 <section class="form-section">
 	<div class="layout">
 		<header>

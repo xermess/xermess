@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { Overview } from '$lib/api';
-	import { formatShortDay } from '$lib/utils/format';
+	import { countOf, formatShortDay } from '$lib/utils/format';
 
 	type Props = {
 		daily: Overview['daily'];
@@ -195,8 +195,8 @@
 							{formatShortDay(day.day)}
 						{/if}
 					</th>
-					<td>{day.events} events</td>
-					<td>{day.failures} refused sign-ins</td>
+					<td>{countOf(day.events, 'event')}</td>
+					<td>{countOf(day.failures, 'refused sign-in')}</td>
 				</tr>
 			{/each}
 		</tbody>

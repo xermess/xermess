@@ -1,6 +1,5 @@
-// Package adminroles answers the endpoints a super admin manages admin roles
-// with: named sets of permissions from the catalog in code, which
-// administrators hold.
+// Package adminroles lets a super admin manage admin roles: named sets of
+// permissions from the catalog.
 package adminroles
 
 import (

@@ -20,13 +20,11 @@ import (
 	"loginer/internal/model"
 )
 
-// The SAML 2.0 half of enterprise single sign-on (sso.go): reading an
-// identity provider's metadata, sending the browser there with a request,
-// and verifying the response it posts back.
+// The SAML 2.0 half of enterprise SSO: metadata, the redirect with a request,
+// and verifying the posted response.
 
-// ParseSAMLMetadata reads an identity provider's metadata and checks it says
-// what a sign-in needs: somewhere to send people over HTTP-Redirect, and a
-// certificate to verify what comes back.
+// ParseSAMLMetadata checks the metadata has an HTTP-Redirect sign-in address
+// and a signing certificate.
 func ParseSAMLMetadata(metadata []byte) (*saml.EntityDescriptor, error) {
 	descriptor, err := samlsp.ParseMetadata(metadata)
 	if err != nil {

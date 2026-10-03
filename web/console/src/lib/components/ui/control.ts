@@ -1,12 +1,8 @@
 import type { ComponentType } from 'svelte';
 
 /**
- * The props every control shares.
- *
- * They map one-to-one onto the data attributes in styles/controls.css: a
- * component's job is to pass them through, not to decide what they look
- * like. Adding a size or a palette is a block of CSS there and one more
- * value here.
+ * Props every control shares, mapped one-to-one onto data attributes in styles/controls.css. A
+ * new size or palette is CSS there plus a value here.
  */
 
 /** How tall a control is. `md` is the default, and what a toolbar is built

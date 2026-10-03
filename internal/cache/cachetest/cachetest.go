@@ -1,10 +1,5 @@
-// Package cachetest opens a Redis for a test that wants one.
-//
-// The Redis is named by LOGINER_TEST_REDIS, as host:port, and signed in to
-// with LOGINER_REDIS_USERNAME and LOGINER_REDIS_PASSWORD when those are set —
-// `make test-integration` fills all three in from .env. Each test gets a key
-// prefix of its own, and its keys are removed when it ends, so tests can share
-// a Redis with a running server without either seeing the other's.
+// Package cachetest opens the Redis named by LOGINER_TEST_REDIS (host:port) for
+// a test. Each test gets its own key prefix, removed when it ends.
 package cachetest
 
 import (
@@ -29,10 +24,8 @@ import (
 // Env names the Redis the tests may use.
 const Env = "LOGINER_TEST_REDIS"
 
-// Open returns both databases of the test Redis, or nil when there is none —
-// which is two caches that never hold anything, and a server has to work with
-// that too. The tests use databases 14 and 15, which a development server is
-// unlikely to.
+// Open returns the test Redis (databases 14 and 15) or nil when none is
+// configured; the server must work either way.
 func Open(t *testing.T) *cache.Redis {
 	t.Helper()
 

@@ -84,9 +84,7 @@ response.raise_for_status()
 
 ## PATCH /api/v1/admin/mail {#patch-api-v1-admin-mail}
 
-Changes the settings.
-
-What a request leaves out is left as it is, so a client that knows about one field does not clear the rest — and the password is left as it is unless one was typed, since nothing ever reads the stored one back to send it here again.
+Changes the settings; omitted fields stay, including the password unless a new one is typed.
 
 | | |
 | --- | --- |
@@ -184,9 +182,9 @@ response.raise_for_status()
 
 ## POST /api/v1/admin/mail/test {#post-api-v1-admin-mail-test}
 
-Sends one message, to find out whether the settings work before anybody's sign-in depends on them.
+Sends one message with the form's settings, so a server can be tried before saving.
 
-It sends with what the form holds rather than with what is stored, since the point is to try a server before saving it — except for the password, which the form only holds when one has just been typed. Left out, the stored one is used, so a working server can be tested again without typing its password each time.
+Without a typed password the stored one is used.
 
 | | |
 | --- | --- |
@@ -277,7 +275,7 @@ response.raise_for_status()
 
 ## GET /api/v1/admin/mail/content {#get-api-v1-admin-mail-content}
 
-Returns the words of every email the server sends, for each language the sign-in pages are offered in: what the language says, and what English says underneath it.
+Returns every email's text in each offered language, with English beside it.
 
 | | |
 | --- | --- |
@@ -364,9 +362,9 @@ response.raise_for_status()
 
 ## PUT /api/v1/admin/mail/content/:code {#put-api-v1-admin-mail-content-code}
 
-Writes one language's words for the emails.
+Writes one language's email text, merging only the email keys.
 
-Only the keys the messages are made of: this page holds a handful of a language's text and has the rest nowhere, so it merges rather than replacing (store.SaveTranslationKeys), and a key that is not an email's is refused rather than quietly dropped — a page sending one is a page with a bug, not an old file being imported.
+Any other key is refused as a client bug.
 
 | | |
 | --- | --- |

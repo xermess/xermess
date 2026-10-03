@@ -1,11 +1,6 @@
-// Package sso answers the endpoints that set up enterprise single sign-on:
-// the organisations' own identity providers (model.SSOConnection), what each
-// is trusted for, and how the people it signs in are provisioned.
-//
-// Nothing here signs anybody in — that is internal/oidc, which reads these
-// records. This is the panel's half: what is stored, what the panel is told
-// about it (never a secret it stored), and trying a provider before relying
-// on it.
+// Package sso manages enterprise SSO connections: what each is trusted for and
+// how people are provisioned, plus a way to test a provider. Signing in happens
+// in internal/oidc; stored secrets are never sent back.
 package sso
 
 import (
@@ -77,11 +72,8 @@ func (h *Handler) Get(c *gin.Context) {
 	h.answer(c, http.StatusOK, connection)
 }
 
-// Create adds a connection. A SAML one is given its own key and certificate to
-// sign requests with, which its provider is shown.
-//
-// A new connection starts off: nobody signs in through it until an
-// administrator has tried it and turned it on.
+// Create adds a connection, disabled until an administrator turns it on. A SAML
+// connection gets its own signing key and certificate.
 func (h *Handler) Create(c *gin.Context) {
 	var req connectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -291,9 +283,8 @@ func (h *Handler) fetchMetadata(c *gin.Context, connection *model.SSOConnection,
 	return true
 }
 
-// check holds a connection to what cannot be said by looking at it alone:
-// its SAML metadata has to read, its domains cannot be another connection's,
-// and its mappings have to name roles there are.
+// check validates what needs the database: SAML metadata parses, domains are
+// not taken, and mapped roles exist.
 func (h *Handler) check(c *gin.Context, connection *model.SSOConnection) bool {
 	ctx := c.Request.Context()
 
@@ -331,10 +322,9 @@ func (h *Handler) check(c *gin.Context, connection *model.SSOConnection) bool {
 	return true
 }
 
-// giveKey makes a SAML connection its signing key and certificate. The
-// certificate names the connection's entity ID and lasts ten years: it is
-// trusted by being handed to the provider, not by an authority, and a
-// connection that stops working the day it expires helps nobody.
+// giveKey makes a SAML connection's signing key and a ten-year self-signed
+// certificate; it is trusted by being handed to the provider, so expiry only
+// causes outages.
 func (h *Handler) giveKey(connection *model.SSOConnection) error {
 	key, err := jose.Generate(jose.RS256)
 	if err != nil {

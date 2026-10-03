@@ -60,12 +60,10 @@
 
 	const canSubmit = $derived(email.trim() !== '' && password !== '' && !submitting);
 
-	/** What to do with a sign-in that the server has answered: the same three
-	    endings whether it was the password that finished it or the code, so
-	    both forms hand what they got to this.
-
-	    `next` is read by the caller before anything is awaited: once the
-	    session changes, this page's data can be replaced under it. */
+	/**
+	 * Handles a finished sign-in, from either the password or the code form. The caller reads
+	 * `next` before awaiting, since the page data can change once the session does.
+	 */
 	async function arrive(result: SignedIn, next: string) {
 		if (result.password_change_required && result.reset_token) {
 			// A temporary password: the user chooses their own before going on.

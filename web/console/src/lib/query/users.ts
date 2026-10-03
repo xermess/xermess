@@ -8,14 +8,7 @@ import { LIST_PAGE_SIZE, nextOffset } from './paging';
     role filter, all of which live in the URL. */
 export type UserListParams = { search: string; verified: string; role: string };
 
-/**
- * The users matching a search, as pages: "Show more" asks for the one after
- * the rows already shown.
- *
- * `first` is the page the server already rendered, so opening the page does
- * not fetch the same rows a second time. It belongs to this key only: a new
- * search is a new key, and a new page load, which brings its own.
- */
+/** Users matching a search as pages; `first` is the server-rendered page for this key only. */
 export function usersOptions(params: UserListParams, first: UserPage) {
 	return infiniteQueryOptions({
 		queryKey: keys.users.list(params),

@@ -10,15 +10,9 @@ import (
 	"loginer/internal/model"
 )
 
-// applyTo checks the request and copies it onto a provider.
-//
-// `creating` says whether the kind and the slug are read from it: neither may
-// change afterwards. The slug is half of the address registered with the
-// provider, and the kind decides what the other half is — changing either
-// would break every sign-in with it, silently, until somebody noticed.
-//
-// Everything else is copied only where the request mentioned it, so a change
-// to one setting is a change to one setting.
+// applyTo checks the request and copies it onto a provider. Kind and slug are
+// read only when `creating`, since they form the registered callback address.
+// Everything else changes only where the request mentions it.
 func (r *providerRequest) applyTo(provider *model.SocialProvider, sealer *jose.Sealer, creating bool) error {
 	if creating {
 		kind := model.SocialKind(strings.ToLower(strings.TrimSpace(r.Kind)))
@@ -51,9 +45,8 @@ func (r *providerRequest) applyTo(provider *model.SocialProvider, sealer *jose.S
 		provider.Position = *r.Position
 	}
 
-	// A secret that was sent replaces the stored one; one that was not leaves
-	// it alone. An empty string is how a secret is cleared, for a provider
-	// that is changing kind of credential.
+	// A sent secret replaces the stored one; an absent one keeps it; "" clears
+	// it.
 	if err := seal(sealer, r.ClientSecret, &provider.ClientSecret); err != nil {
 		return err
 	}
@@ -69,13 +62,8 @@ func (r *providerRequest) applyTo(provider *model.SocialProvider, sealer *jose.S
 	return nil
 }
 
-// lower is validate.Lower with one difference, which is why it is here: a
-// value sent empty falls back to `current` rather than clearing the field.
-//
-// Both fields it reads have a standing default — the slug is the kind's name,
-// the token auth the kind's own — and both are passed in as `current`. Sending
-// either as "" means "use the default", not "have none": a provider with no
-// slug has no address for users to come back on.
+// lower is validate.Lower except that an empty value falls back to `current`,
+// the field's default, rather than clearing it.
 func lower(sent *string, current string) string {
 	if value := strings.ToLower(validate.Text(sent, current)); value != "" {
 		return value

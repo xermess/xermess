@@ -25,12 +25,9 @@ type assignRequest struct {
 	Roles []uuid.UUID `json:"roles"`
 }
 
-// userRequest is the body of the create and update endpoints.
-//
-// The named fields are the built-in ones: they are columns of the record, so
-// they are spelled out here and held to the rules in the tags. Data carries
-// the additional fields an organisation added, whose rules live in
-// user_fields and are applied in validation.go.
+// userRequest is the body of the create and update endpoints. Named fields are
+// built-in columns; Data holds additional fields, checked against user_fields
+// in validation.go.
 type userRequest struct {
 	Email string `json:"email" validate:"required,email,max=255"`
 	// IsEmailVerified and IsActive may be left out: a new user is then
@@ -46,9 +43,8 @@ type userRequest struct {
 	// optional: left empty, the password the user has is kept.
 	Password        string `json:"password" validate:"max=72"`
 	ConfirmPassword string `json:"confirm_password" validate:"eqfield=Password"`
-	// IsPasswordTemporary marks the password as one the user has to replace.
-	// Left out, a new user's password is not temporary and an existing
-	// user's keeps what it was.
+	// IsPasswordTemporary forces the user to replace the password. Left out:
+	// false for a new user, unchanged otherwise.
 	IsPasswordTemporary *bool `json:"is_password_temporary"`
 
 	Data map[string]any `json:"data"`

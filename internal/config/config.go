@@ -14,50 +14,37 @@ import (
 	"loginer/internal/brand"
 )
 
-// Config is every setting the server has.
-//
-// There is nothing here about the first administrator: that account is made
-// on /admin/new-super-admin the first time the panel is opened, so no
-// password is ever written in a file.
+// Config is every setting the server has. The first administrator is made in
+// the panel, so no password is ever written in a file.
 type Config struct {
-	// Addr is the public listener: the OAuth 2.0 / OpenID Connect provider
-	// and the account API the id app calls. It is meant to face the
-	// internet, behind a reverse proxy.
+	// Addr is the public listener: the provider and the account API, meant to
+	// face the internet behind a proxy.
 	Addr string
 
-	// AdminAddr is the admin listener: the admin API, and nothing else. It is
-	// a separate listener so the admin API is never on the public one — bind
-	// it to an internal interface, or leave its port unpublished, and only
-	// the network the console runs on can reach it.
+	// AdminAddr is the admin API's own listener, so it is never on the public
+	// one. Keep it on an internal interface.
 	AdminAddr string
 
-	// Issuer is this server's public URL: the iss of every token it signs,
-	// and the base of every URL in its discovery document. It is the address
-	// clients reach the provider at — in the recommended setup, the id app's
-	// own origin, which the reverse proxy routes /oauth2 and /.well-known
-	// from.
+	// Issuer is this server's public URL: the iss of every token and the base
+	// of the discovery document. In the recommended setup it is the id app's
+	// origin, which the proxy routes /oauth2 and /.well-known from.
 	Issuer string
 
-	// AccountURL is where the id app is served: the users' app, with the
-	// sign-in pages and account management. The authorization endpoint sends
-	// users there to sign in, and the password reset email links there. It
-	// defaults to the issuer, since both are one origin.
+	// AccountURL is where the id app (sign-in and account pages) is served. It
+	// defaults to the issuer.
 	AccountURL string
 
 	// AdminURL is where the console is served. Only requests from its origin
 	// may change anything through the admin API.
 	AdminURL string
 
-	// CORSOrigins are extra browser origins allowed to call the cookie
-	// authenticated APIs from script, with credentials. With each app served
-	// on the same origin as the API it calls, none is needed, and none is the
-	// default: every origin listed can act as whoever is signed in.
+	// CORSOrigins are extra origins allowed to call cookie-authenticated APIs
+	// with credentials. None by default: each listed origin can act as the
+	// signed-in user.
 	CORSOrigins []string
 
-	// SecureUserCookies and SecureAdminCookies set the Secure flag on each
-	// session cookie. They follow the scheme of AccountURL and AdminURL, so a
-	// deployment on https gets them without remembering to; the
-	// LOGINER_SECURE_COOKIES setting overrides both.
+	// SecureUserCookies and SecureAdminCookies follow the scheme of AccountURL
+	// and AdminURL; LOGINER_SECURE_COOKIES overrides both.
 	SecureUserCookies  bool
 	SecureAdminCookies bool
 
@@ -65,37 +52,25 @@ type Config struct {
 	// takes over. Zero never rotates on its own.
 	KeyRotation time.Duration
 
-	// AuditRetention is how long the activity log keeps an entry. Everything
-	// else the server stores expires by itself and is swept once it has; the
-	// log would otherwise grow with every sign-in for as long as the server
-	// runs. Zero keeps every entry.
+	// AuditRetention is how long activity log entries are kept; zero keeps them
+	// forever.
 	AuditRetention time.Duration
 
-	// AdminMFARequired makes every administrator sign in with a second factor.
-	// It is what a fresh installation starts with — off, so the first
-	// administrator can get in and turn it on deliberately — and after that
-	// the setting lives in the database, where a super admin owns it.
-	// An administrator without one is made to set it up at their next sign-in,
-	// before they can do anything else.
+	// AdminMFARequired seeds whether administrators need a second factor on a
+	// fresh installation; afterwards the setting lives in the database.
 	AdminMFARequired bool
 
-	// RateLimit is how many attempts per minute one address may make at the
-	// endpoints that take a password or send an email. Zero turns the limit
-	// off.
+	// RateLimit is attempts per minute per address at the password and email
+	// endpoints; zero disables it.
 	RateLimit int
 
-	// TrustedProxies are the addresses of the proxies in front of the server,
-	// whose X-Forwarded-For header is believed about who is calling. Empty
-	// believes no one, which is right when nothing sits in front: otherwise
-	// any caller could write whatever address it liked into the activity log.
-	// Behind a proxy it has to be set, or every request — and so the rate
-	// limit — counts as the proxy's.
+	// TrustedProxies are the proxies whose X-Forwarded-For is believed. Empty
+	// believes no one. Behind a proxy it must be set, or every request (and the
+	// rate limit) counts as the proxy's.
 	TrustedProxies []string
 
-	// SecretKey encrypts the private keys tokens are signed with before they
-	// are stored. Losing it makes those keys unreadable, which signs every
-	// user out of every application; leaking it with the database lets
-	// anyone sign tokens.
+	// SecretKey seals stored private keys and secrets. Losing it signs everyone
+	// out; leaking it with the database lets anyone sign tokens.
 	SecretKey string
 
 	Mail Mail
@@ -120,13 +95,9 @@ func Origin(raw string) string {
 // `openssl rand -base64 32` comfortably exceeds.
 const minSecretKeyLength = 32
 
-// SecretKeyLooksWeak reports whether the secret key does not look like at least
-// 32 random bytes — base64 of 32 bytes is 43–44 characters, hex is 64, and
-// random text of either uses many distinct characters. It is advisory only,
-// logged at startup: the key still only has to pass minSecretKeyLength, but a
-// short or low-variety key (a human-chosen passphrase) is worth a warning,
-// because everything the server seals is only as hard to recover from a
-// database dump as the key is to guess.
+// SecretKeyLooksWeak reports whether the key does not look like 32 random
+// bytes. It only warns: sealed secrets are as hard to recover from a database
+// dump as the key is to guess.
 func SecretKeyLooksWeak(key string) bool {
 	distinct := map[rune]struct{}{}
 	for _, r := range key {
@@ -136,9 +107,7 @@ func SecretKeyLooksWeak(key string) bool {
 	return len(key) < 43 || len(distinct) < 16
 }
 
-// Mail is how email is sent. With no host, nothing is sent: each message is
-// written to the log instead, which is enough to follow a reset link while
-// developing.
+// Mail is how email is sent. With no host, messages are logged instead.
 type Mail struct {
 	Host     string
 	Port     int
@@ -156,24 +125,14 @@ type DB struct {
 	Migrate    bool
 	MigrateDir string
 
-	// MaxConns is how many connections one server process may hold open. The
-	// database refuses connections past its own limit (100 on a default
-	// Postgres), so the processes together have to stay under it — with no
-	// cap, a burst of sign-ins opens one per request until it refuses.
+	// MaxConns caps connections per process; all processes together must stay
+	// under Postgres's own limit.
 	MaxConns int
 }
 
-// Redis is two databases on one server. The cache database holds what every
-// page reads and anyone may see — the languages and their text, the
-// organisation, the login flows, the sign-in buttons. The session database
-// holds what decides who is signed in and what they may do — sessions, the
-// administrators behind them, the applications' client credentials, the
-// sign-in security settings — and the rate limit's counts. Keeping them apart
-// lets the session database be given its own persistence, eviction policy and
-// access, and lets the cache be flushed without signing anybody out.
-//
-// With no host there is no Redis: every read goes to the database and each
-// process counts on its own, which is how the server ran before it had one.
+// Redis is the cache and session databases on one server (see package cache).
+// With no host there is no Redis, and each process counts rate limits on its
+// own.
 type Redis struct {
 	Host     string
 	Port     int
@@ -198,16 +157,12 @@ func (r Redis) Addr() string {
 	return fmt.Sprintf("%s:%d", r.Host, r.Port)
 }
 
-// env names a setting the way .env spells it — the project's own prefix and
-// then the setting — so the prefix is written once, in brand, rather than in
-// every call below and in every message that has to name the variable.
+// env spells a setting's variable with the project prefix from brand.
 func env(setting string) string {
 	return brand.EnvPrefix + setting
 }
 
-// read builds the reader both loaders use: .env first, then the environment,
-// which wins. A missing .env is fine: in a container there are only
-// environment variables.
+// read loads .env, then the environment, which wins. A missing .env is fine.
 func read() (*viper.Viper, error) {
 	v := viper.New()
 	v.SetConfigFile(".env")
@@ -229,11 +184,8 @@ func Load() (Config, error) {
 	}
 
 	v.SetDefault(env("ADDR"), ":8080")
-	// Loopback by default: the admin listener carries the panel, administrator
-	// sign-in and the first-super-admin setup, so it is not exposed to every
-	// interface unless an installation says so. The container image overrides
-	// this (deploy/docker/api.Dockerfile), and the compose deployment reaches
-	// it only over the internal network.
+	// The admin listener stays on loopback unless an installation says
+	// otherwise; the container image overrides it.
 	v.SetDefault(env("ADMIN_ADDR"), "127.0.0.1:8081")
 	v.SetDefault(env("CORS_ORIGINS"), "")
 	v.SetDefault(env("TRUSTED_PROXIES"), "")
@@ -241,9 +193,8 @@ func Load() (Config, error) {
 	v.SetDefault(env("ADMIN_MFA"), "optional")
 	v.SetDefault(env("KEY_ROTATION_DAYS"), 90)
 	v.SetDefault(env("AUDIT_RETENTION_DAYS"), 365)
-	// In development the id app serves the provider on its own origin,
-	// through Vite's proxy, the same way the reverse proxy does in
-	// production.
+	// In development the id app serves the provider on its origin through
+	// Vite's proxy, as the reverse proxy does in production.
 	v.SetDefault(env("ISSUER"), "http://localhost:5173")
 	v.SetDefault(env("ADMIN_URL"), "http://localhost:5174")
 	v.SetDefault(env("SMTP_PORT"), 587)

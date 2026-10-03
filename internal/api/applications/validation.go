@@ -12,13 +12,9 @@ import (
 	"loginer/internal/model"
 )
 
-// applyTo checks the request and copies it onto an application. `creating`
-// says whether the type was taken from the request; on an update the stored
-// type stands.
-//
-// The shape of each field is checked here; what the fields mean next to each
-// other — a public client with a secret, a redirect URI that is not exact —
-// is the model's to say.
+// applyTo checks each field's shape and copies the request onto an application;
+// how fields relate is the model's to check. The type is taken from the request
+// only when `creating`.
 func (r *applicationRequest) applyTo(app *model.Application, creating bool) error {
 	r.clean()
 
@@ -54,11 +50,9 @@ func (r *applicationRequest) applyTo(app *model.Application, creating bool) erro
 	app.IsEnabled = validate.Flag(r.IsEnabled, app.IsEnabled)
 	app.AllowRegistration = validate.Flag(r.AllowRegistration, app.AllowRegistration)
 
-	// The flow is set by id, cleared by an empty string, and left alone when
-	// the request says nothing about it. A flow that has since been removed
-	// or turned off is not an error here — the store falls back to the
-	// default — so the only thing worth refusing is something that is not an
-	// id at all.
+	// The flow is set by id, cleared by "", and left alone when absent. A
+	// removed or disabled flow falls back to the default, so only a malformed
+	// id is refused.
 	if r.LoginFlowID != nil {
 		flow, err := flowID(*r.LoginFlowID)
 		if err != nil {

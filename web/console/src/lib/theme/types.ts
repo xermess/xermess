@@ -1,10 +1,6 @@
 /**
- * The shape of a theme, and the one helper a component written in TypeScript
- * needs to point at a token.
- *
- * Nothing here holds a value. theme.ts holds the values; render.ts turns them
- * into the CSS the app loads. Keeping the types apart is what lets the
- * renderer be tested against a theme of its own.
+ * The shape of a theme, kept apart from its values (theme.ts) and renderer (render.ts) so the
+ * renderer can be tested with its own theme.
  */
 
 /** A token's name as the stylesheet knows it, without the leading dashes:

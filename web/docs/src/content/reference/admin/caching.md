@@ -531,7 +531,7 @@ response.raise_for_status()
 
 Removes every key this server keeps in one database.
 
-Flushing the session database signs nobody out — the sessions are read from the database again — but it does start every rate limit afresh.
+Flushing sessions signs nobody out, but resets every rate limit.
 
 | | |
 | --- | --- |

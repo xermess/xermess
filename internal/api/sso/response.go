@@ -12,9 +12,8 @@ import (
 	"loginer/internal/oidc"
 )
 
-// connectionResponse is a connection as the panel shows it: what is stored,
-// never the secrets; how many people sign in through it; what to give the
-// identity provider; and, for SAML, what its metadata says.
+// connectionResponse is a connection as the panel shows it: settings without
+// secrets, user count, provider setup details and parsed SAML metadata.
 type connectionResponse struct {
 	model.SSOConnection
 
@@ -25,10 +24,8 @@ type connectionResponse struct {
 	IdentityProvider *identityProvider `json:"identity_provider,omitempty"`
 }
 
-// serviceProvider is what the identity provider is set up with: for OpenID
-// Connect the redirect URI, for SAML the assertion consumer service, the
-// entity ID, the metadata that says both, and the certificate requests are
-// signed with.
+// serviceProvider is what the identity provider is configured with: the OIDC
+// redirect URI, or the SAML ACS, entity ID, metadata and certificate.
 type serviceProvider struct {
 	CallbackURL string `json:"callback_url,omitempty"`
 	ACSURL      string `json:"acs_url,omitempty"`
@@ -37,9 +34,8 @@ type serviceProvider struct {
 	Certificate string `json:"certificate,omitempty"`
 }
 
-// identityProvider is what a SAML provider's metadata says about it, so the
-// panel can show it is the right one — and when its certificate runs out,
-// which is the usual way a working connection stops working.
+// identityProvider is what SAML metadata says, including when its certificate
+// expires (the usual cause of a sudden outage).
 type identityProvider struct {
 	EntityID           string     `json:"entity_id"`
 	SSOURL             string     `json:"sso_url"`
@@ -63,10 +59,8 @@ type testResponse struct {
 	TokenEndpoint         string `json:"token_endpoint,omitempty"`
 	JWKSURI               string `json:"jwks_uri,omitempty"`
 
-	// UnsupportedScopes are the scopes the connection would ask for that the
-	// provider does not list. Some providers refuse the whole sign-in over
-	// one — Keycloak answers invalid_scope — so the panel warns before
-	// anybody tries.
+	// UnsupportedScopes are requested scopes the provider does not list; some
+	// providers (Keycloak) refuse the whole sign-in over one.
 	UnsupportedScopes []string `json:"unsupported_scopes,omitempty"`
 
 	// For SAML, what its metadata said, and the metadata itself when it was

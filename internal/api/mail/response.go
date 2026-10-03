@@ -21,10 +21,8 @@ var (
 	contentKeyUnknown = respond.Define(http.StatusBadRequest, "mail_content_key_unknown", respond.Admin)
 )
 
-// settingsResponse is the mail settings as the panel sees them. It is built
-// by hand rather than returning the model so the row's own bookkeeping stays
-// out of a record of settings — and so the password cannot leave by accident:
-// what is said about it is whether there is one.
+// settingsResponse is built by hand so the password can never leave; only
+// whether one exists is said.
 type settingsResponse struct {
 	IsEnabled   bool   `json:"is_enabled"`
 	Host        string `json:"host"`
@@ -39,9 +37,8 @@ type settingsResponse struct {
 	HasPassword bool `json:"has_password"`
 }
 
-// response is what the two settings endpoints answer with. The encryptions
-// come along so the panel builds its picker from the server's catalog rather
-// than from a list of its own.
+// response includes the encryption options so the panel's picker comes from the
+// server.
 type response struct {
 	Mail        settingsResponse       `json:"mail"`
 	Encryptions []model.MailEncryption `json:"encryptions"`

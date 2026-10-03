@@ -21,22 +21,12 @@ type LogoutParams struct {
 	State                 string
 }
 
-// Logout ends the user's session at this server and returns where to send the
-// browser, and whether it ended anything.
+// Logout ends this browser's session and returns where to send it: the
+// application's registered post-logout URI, or the signed-out page.
 //
-// Where to send them is the application's registered post-logout redirect URI
-// when it named one, otherwise the sign-in app's signed-out page.
-//
-// `signedOut` is false for a request that was refused before anything was
-// ended, and for one whose `id_token_hint` names somebody other than whoever
-// this browser is signed in as. The caller clears the session cookie only when
-// it is true: this endpoint is a plain GET that anyone can put in a link, so
-// a request that is not about this browser's session must leave it as it was —
-// otherwise a link with a stranger's hint, or with no valid hint at all, would
-// sign people out as they followed it.
-//
-// It does not revoke the refresh tokens applications hold: signing out of the
-// provider is not signing out of every application, and each application
+// `signedOut` is false when the request was refused or its id_token_hint names
+// someone else. The cookie is cleared only when true, because this is a GET
+// anyone can put in a link. Refresh tokens are left alone: each application
 // ends its own session.
 func (s *Service) Logout(ctx context.Context, p LogoutParams, sessionToken string, client Client) (location string, signedOut bool, err error) {
 	clientID := p.ClientID
@@ -105,11 +95,8 @@ func (s *Service) Logout(ctx context.Context, p LogoutParams, sessionToken strin
 	return withQuery(s.accountURL+PageLoggedOut, values), signedOut, nil
 }
 
-// endSession signs this browser out, unless a hint said the request was about
-// somebody else's session. It reports whether the request was about this
-// browser at all — which is not the same as having found a session to end: a
-// cookie whose session has already expired is still this browser's, and the
-// caller may clear it.
+// endSession signs this browser out unless a hint names someone else, and
+// reports whether the request concerned this browser at all.
 func (s *Service) endSession(ctx context.Context, sessionToken, subject string, client Client) (bool, error) {
 	if subject != "" {
 		session, err := s.SessionFor(ctx, sessionToken)

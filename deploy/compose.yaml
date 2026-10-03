@@ -1,5 +1,5 @@
 # Production: Postgres, Redis, the API, the id and console apps, and Caddy in
-# front. Only Caddy publishes ports. See README.md.
+# front. Only Caddy publishes ports. See the repository README.
 #
 #   cp deploy/.env.example deploy/.env    # fill it in
 #   make deploy-up

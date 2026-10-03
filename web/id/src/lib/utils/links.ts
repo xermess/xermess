@@ -4,9 +4,8 @@ import { resolve } from '$app/paths';
 export type AuthPage = '/login' | '/register' | '/forgot-password' | '/sso';
 
 /**
- * A link to another sign-in page that keeps the sign-in under way: without the
- * handle, registering or resetting a password could not send the user back to
- * the application that asked.
+ * A link to another sign-in page that keeps the sign-in handle, so the user can still return to
+ * the application.
  */
 export function authHref(page: AuthPage, request: string | null): string {
 	const path = resolve(page);
@@ -14,10 +13,8 @@ export function authHref(page: AuthPage, request: string | null): string {
 }
 
 /**
- * Where to send the browser to sign in through an organisation's identity
- * provider: the server's own address, which sends it on. The sign-in under way
- * and where to land come along, and so does the address typed, so the
- * provider does not ask for it again.
+ * Where to send the browser for SSO: the server's start address, carrying the sign-in handle,
+ * the landing page and the typed address.
  */
 export function ssoHref(
 	slug: string,

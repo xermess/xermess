@@ -10,13 +10,9 @@ import (
 	"loginer/internal/model"
 )
 
-// applyTo copies what a request sent onto the settings and returns what it
-// changed, in the order listed here, so the activity log can say what an
-// administrator touched.
-//
-// The rules are the model's: what a host name or a from address may be is the
-// same question wherever it is asked. Nothing is written when any of them is
-// broken, since the record is only saved once this returns.
+// applyTo copies the request onto the settings using the model's rules and
+// returns what changed for the activity log. Nothing is saved if any rule
+// fails.
 func (r *settingsRequest) applyTo(settings *model.MailSettings, sealer *jose.Sealer) ([]string, error) {
 	updated := *settings
 	updated.IsEnabled = validate.Flag(r.IsEnabled, settings.IsEnabled)
@@ -27,9 +23,8 @@ func (r *settingsRequest) applyTo(settings *model.MailSettings, sealer *jose.Sea
 	updated.FromAddress = validate.Lower(r.FromAddress, settings.FromAddress)
 	updated.FromName = validate.Text(r.FromName, settings.FromName)
 
-	// A password is only ever written, never read back, so the request says
-	// one of three things: nothing, a new one, or an empty string meaning
-	// the server takes none.
+	// A password is write-only: the request sends nothing, a new one, or "" for
+	// none.
 	passwordChanged := false
 	if r.Password != nil {
 		password := *r.Password
@@ -76,18 +71,12 @@ func (r *settingsRequest) applyTo(settings *model.MailSettings, sealer *jose.Sea
 	return changed, nil
 }
 
-// settings is what a test message is sent with: the stored record with
-// whatever the form holds laid over it, and the password unsealed.
-//
-// The form's password is the one typed just now. Where none was typed the
-// stored one is unsealed instead, so testing a saved server again does not
-// mean typing its password each time.
+// settings is what a test message is sent with: the stored record overlaid with
+// the form, using the stored password when none was typed.
 func (r *testRequest) settings(stored *model.MailSettings, sealer *jose.Sealer) (mail.Settings, error) {
 	trying := *stored
 
-	// A test sends whatever is on the form, whether or not sending is
-	// switched on: turning it on after the test has worked is the order
-	// somebody would do this in.
+	// A test sends even when sending is off: you test first, then turn it on.
 	trying.IsEnabled = true
 	trying.Host = validate.Lower(r.Host, stored.Host)
 	trying.Port = validate.Number(r.Port, stored.Port)
@@ -116,10 +105,8 @@ func (r *testRequest) settings(stored *model.MailSettings, sealer *jose.Sealer) 
 	return mail.Of(trying, password), nil
 }
 
-// validate holds the words of an email to the keys there are. A key that is
-// not one of model.MailMessageSpecs' is refused: this page holds a handful of
-// a language's text, and writing anything else through it would be a bug
-// rather than an old file being imported.
+// validate refuses any key that is not an email's: anything else would be a
+// client bug.
 func (r *contentRequest) validate() error {
 	for key, text := range r.Messages {
 		if !model.IsMailMessageKey(key) {

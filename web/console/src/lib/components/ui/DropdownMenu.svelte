@@ -12,11 +12,10 @@
 		trigger: Snippet;
 		/** The rows: MenuGroup, MenuItem, MenuInfo and MenuSeparator. */
 		children: Snippet;
-		/** `avatar` for a picture of somebody, which fills more of the
-		    button than an icon does. The button is the same either way.
-		    `labelled` has words in it — an avatar and a name — for the one
-		    menu that says whose it is. It needs no tooltip, having its words
-		    on it. */
+		/**
+		 * `avatar` for a picture of somebody; `labelled` for a button with an avatar and a name,
+		 * which needs no tooltip.
+		 */
 		shape?: 'icon' | 'avatar' | 'labelled';
 		/** How wide the menu opens, so it keeps one shape whatever is in it. */
 		width?: string;
@@ -30,12 +29,10 @@
 	const id = `${uid}-trigger`;
 </script>
 
-<!-- A button in the header that opens a card of rows under it, against the
-     right edge. The button is an icon button — the same round control, the
-     same size and hover, the same tooltip — so it sits in a row of them as
-     one of the set. The card is portalled, so nothing it opens over can clip
-     it; how a row looks is MenuItem's, and what a card looks like is
-     ark.css's. -->
+<!--
+	A header icon button that opens a portalled card of rows at the right edge. Row look is
+	MenuItem's, card look is ark.css's.
+-->
 <Menu.Root positioning={{ placement: 'bottom-end', gutter: 6 }} ids={{ trigger: id }}>
 	<Tooltip.Root
 		disabled={shape === 'labelled'}

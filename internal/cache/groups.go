@@ -10,14 +10,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// TTL is how long a cached value lives if nothing forgets it first. Writes
-// forget what they change, so this only bounds how long an abandoned
-// generation takes up memory.
+// TTL only bounds how long an abandoned generation occupies memory; writes
+// forget what they change.
 const TTL = time.Hour
 
-// Get reads one cached entry of a group into `dst`, and reports whether there
-// was one. A miss, a value that no longer decodes and a Redis that did not
-// answer are all "no": the caller reads the database instead.
+// Get reads one entry into `dst`. A miss, an undecodable value and an
+// unreachable Redis all report false.
 func (c *Cache) Get(ctx context.Context, group, entry string, dst any) bool {
 	if c == nil || !c.available() || !c.settle(ctx) {
 		return false
@@ -67,12 +65,9 @@ func (c *Cache) Set(ctx context.Context, group, entry string, value any) {
 	}
 }
 
-// Forget drops everything cached in the given groups, for every server
-// process at once.
-//
-// It is called after a write has committed. When Redis cannot be reached the
-// groups are remembered as pending (see Cache.pending) and forgotten as soon
-// as it answers again.
+// Forget drops everything cached in the given groups, for every process. It is
+// called after a write commits; when Redis is unreachable the groups stay
+// pending until it answers.
 func (c *Cache) Forget(ctx context.Context, groups ...string) {
 	if c == nil || len(groups) == 0 {
 		return
@@ -100,9 +95,8 @@ func (c *Cache) Forget(ctx context.Context, groups ...string) {
 	}
 }
 
-// settle does what a write could not — moves the pending groups on and
-// removes the pending keys — and reports whether the cache may be used:
-// there is nothing left, or it has just been done.
+// settle delivers pending invalidations and reports whether the cache may be
+// used.
 func (c *Cache) settle(ctx context.Context) bool {
 	c.mu.Lock()
 	groups := make([]string, 0, len(c.pending))
@@ -158,9 +152,8 @@ func (c *Cache) incr(ctx context.Context, groups []string) error {
 	return err
 }
 
-// generationKey is the counter that says which generation of a group is
-// current. It never expires, so memory pressure evicts cached values and
-// never what says which of them may be read.
+// generationKey never expires, so memory pressure evicts values but never the
+// counter that says which may be read.
 func (c *Cache) generationKey(group string) string {
 	return c.key("cache", group, "generation")
 }
@@ -191,12 +184,9 @@ func (c *Cache) entryKey(ctx context.Context, group, entry string) (string, erro
 	return c.keyAt(group, generation, entry), nil
 }
 
-// GetAt reads an entry into dst and returns the generation it read under, so a
-// caller that misses and loads from the database can write the value back into
-// that same generation (SetAt) rather than whatever the generation has become
-// in between. Without pinning, a write that forgets the group between the read
-// and the write would otherwise have its invalidation undone: the stale value
-// would land in the new generation and be served.
+// GetAt reads an entry and returns the generation it read under, so a caller
+// that misses can write the loaded value back into that same generation
+// (SetAt). Otherwise a write that forgot the group in between would be undone.
 func (c *Cache) GetAt(ctx context.Context, group, entry string, dst any) (int64, bool) {
 	if c == nil || !c.available() || !c.settle(ctx) {
 		return 0, false
@@ -223,10 +213,8 @@ func (c *Cache) GetAt(ctx context.Context, group, entry string, dst any) (int64,
 	return generation, json.Unmarshal(raw, dst) == nil
 }
 
-// SetAt caches an entry in a named generation — the one GetAt read. A value
-// pinned to a generation that a concurrent write has already moved past lands
-// in a generation nobody reads, so it is harmlessly forgotten rather than
-// served as though it were current.
+// SetAt caches an entry in the generation GetAt read. If a write moved the
+// group on meanwhile, the value lands where nobody reads it.
 func (c *Cache) SetAt(ctx context.Context, group, entry string, value any, generation int64) {
 	if c == nil || !c.available() || !c.settle(ctx) {
 		return

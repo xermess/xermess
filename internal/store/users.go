@@ -25,14 +25,9 @@ type UserQuery struct {
 	Offset int
 }
 
-// Users returns a page of users, newest first, along with how many match the
-// query in total — which is what the panel shows above the table.
-// userSearch is the whole record as one lower-cased text — the address, the
-// names, and the additional fields' JSON — so one box searches all of it,
-// and a name typed in full ("ada lovelace") matches across the two. It is
-// written exactly as idx_users_search indexes it (migrations/
-// 20260928164719_query_indexes.go): the planner only uses a trigram index
-// for the very expression it was built on.
+// userSearch is the record as one lower-cased text, searched by one box. It
+// must match idx_users_search exactly, because Postgres uses a trigram index
+// only for the expression it was built on.
 const userSearch = `LOWER(email || ' ' || COALESCE(first_name, '') || ' ' || COALESCE(last_name, '') || ' ' || COALESCE(data, ''))`
 
 func (s *Store) Users(ctx context.Context, q UserQuery) ([]model.User, int64, error) {
@@ -84,17 +79,14 @@ func (s *Store) CreateUser(ctx context.Context, user *model.User) error {
 	return translate(s.db.WithContext(ctx).Omit("Roles.*").Create(user).Error)
 }
 
-// SaveUser writes a user back, columns and fields alike. The roles the user
-// holds are not touched: they are given and taken away one by one, with
+// SaveUser writes a user's columns and fields; roles are changed only through
 // AddUserRoles and RemoveUserRole.
 func (s *Store) SaveUser(ctx context.Context, user *model.User) error {
 	return translate(s.db.WithContext(ctx).Omit(clause.Associations).Save(user).Error)
 }
 
-// SaveUserProfile writes only the name — what a user may change about
-// themselves. Writing the whole row from a snapshot taken at the start of the
-// request would let a flurry of profile edits roll back a password reset or a
-// deactivation that committed in between.
+// SaveUserProfile writes only the name, so a stale snapshot cannot roll back a
+// reset or deactivation committed meanwhile.
 func (s *Store) SaveUserProfile(ctx context.Context, user *model.User) error {
 	return translate(s.db.WithContext(ctx).Model(user).Updates(map[string]any{
 		"first_name": user.FirstName,
@@ -102,9 +94,7 @@ func (s *Store) SaveUserProfile(ctx context.Context, user *model.User) error {
 	}).Error)
 }
 
-// DeleteUser removes a user for good rather than marking it deleted: an
-// account someone asked to have removed should not stay in the table. The
-// roles it held are let go first.
+// DeleteUser hard-deletes a user after releasing their roles.
 func (s *Store) DeleteUser(ctx context.Context, user *model.User) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Exec("DELETE FROM user_role_members WHERE user_id = ?", user.ID).Error; err != nil {
@@ -115,11 +105,9 @@ func (s *Store) DeleteUser(ctx context.Context, user *model.User) error {
 	})
 }
 
-// FieldValueTaken reports whether another user already holds this value for an
-// additional field that has to be unique. `except` is the record being
-// written, so it does not clash with itself; pass uuid.Nil when creating one.
-//
-// The values live in a JSON column, so this is a query rather than an index.
+// FieldValueTaken reports whether another user holds this value for a unique
+// additional field; `except` is the record being written (uuid.Nil when
+// creating). Values live in JSON, so this is a query, not an index.
 func (s *Store) FieldValueTaken(ctx context.Context, field string, value any, except uuid.UUID) (bool, error) {
 	text := fmt.Sprintf("%v", value)
 	if number, ok := value.(float64); ok {

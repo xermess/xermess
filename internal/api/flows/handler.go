@@ -1,12 +1,5 @@
-// Package flows answers the endpoints for login flows: the named sets of
-// steps an application signs its users in with, and the catalog of steps a
-// flow can be made of.
-//
-// Nothing here signs anybody in. A flow is a record of what a sign-in should
-// be, which internal/oidc reads the options from and the sign-in pages draw
-// themselves by; walking the steps themselves is not built yet, and the
-// catalog says which of them the server runs today so the panel can mark the
-// rest rather than pretending.
+// Package flows manages login flows and serves the catalog of steps they can
+// contain, including which steps this server runs today.
 package flows
 
 import (
@@ -72,9 +65,7 @@ func (h *Handler) Get(c *gin.Context) {
 	h.answer(c, http.StatusOK, flow)
 }
 
-// Create adds a flow. A new one is off until an administrator turns it on:
-// pointing an application at a half-written sign-in is not something a save
-// should be able to do by accident.
+// Create adds a flow, disabled until an administrator enables it.
 func (h *Handler) Create(c *gin.Context) {
 	var req flowRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

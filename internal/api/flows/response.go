@@ -8,10 +8,8 @@ import (
 	"loginer/internal/model"
 )
 
-// flowResponse is a flow as the panel sees it: the record, plus the two
-// things the panel would otherwise have to work out for itself — how many
-// applications hold it, and whether every step it names is one this server
-// runs yet.
+// flowResponse is a flow plus how many applications use it and whether all its
+// steps are implemented.
 type flowResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`

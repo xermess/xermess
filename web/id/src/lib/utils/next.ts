@@ -1,19 +1,10 @@
 /**
- * Where to go after signing in, from a `?next=` parameter.
- *
- * Only a path on this site is accepted: `next=https://evil.example` or
- * `next=//evil.example` would turn the sign-in page into a way to send someone
- * anywhere with this site's name on the link.
- *
- * Looking at the first characters is not enough. A browser strips tabs and
- * newlines out of an address before it looks at it, so `/\t/evil.example` is
- * `//evil.example` to the browser and a path to a prefix check; and a
- * backslash is a slash. So the value is parsed the way a browser parses it,
- * against a stand-in origin, and accepted only if it stayed there — and
- * what is returned is the parsed path, not the text that came in.
+ * The post-sign-in destination from `?next=`, accepted only if it stays on this site (no open
+ * redirect). Browsers strip tabs and newlines and treat \ as /, so the value is parsed like a
+ * browser would against a stand-in origin, and the parsed path is returned.
  */
 export function safeNext(next: string | null, fallback = '/'): string {
-	if (!next || !next.startsWith('/') || /[\u0000-\u001f\u007f]/.test(next)) {
+	if (!next || !next.startsWith('/') || hasControlCharacter(next)) {
 		return fallback;
 	}
 
@@ -30,4 +21,12 @@ export function safeNext(next: string | null, fallback = '/'): string {
 	}
 
 	return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+function hasControlCharacter(value: string): boolean {
+	for (let i = 0; i < value.length; i++) {
+		const code = value.charCodeAt(i);
+		if (code <= 0x1f || code === 0x7f) return true;
+	}
+	return false;
 }

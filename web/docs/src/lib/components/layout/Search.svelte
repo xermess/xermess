@@ -1,8 +1,7 @@
 <!--
-  @component
-  Search every page and every heading — on a reference page, every endpoint —
-  drawn as the console's command palette. The index is written while building
-  (routes/search.json) and fetched the first time it opens. / or ⌘K opens it.
+	@component
+	Searches every page and heading, drawn like the console's command palette. The index
+	(routes/search.json) is built ahead and fetched on first open; / or ⌘K opens it.
 -->
 <script lang="ts">
 	import { goto } from '$app/navigation';

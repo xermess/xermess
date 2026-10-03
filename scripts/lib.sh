@@ -1,7 +1,8 @@
+# shellcheck shell=bash
 # Sourced by the scripts beside it. Leaves the shell at the repository root.
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$root"
+cd "$root" || exit 1
 
 # bun installs itself in ~/.bun/bin, which non-interactive shells often miss.
 [[ -d "$HOME/.bun/bin" ]] && PATH="$HOME/.bun/bin:$PATH"

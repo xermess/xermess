@@ -1,12 +1,6 @@
-// Package jose signs and checks the JSON Web Tokens this server issues, and
-// publishes the keys it signs them with.
-//
-// It is small on purpose. The server only ever signs with its own asymmetric
-// keys — RS256, PS256 and ES256 — and only ever checks tokens it signed
-// itself, so a general JOSE library would bring algorithms, encryption modes
-// and header options that nothing here may accept. What is not written here
-// cannot be tricked into being used: there is no "none", no HMAC, and a
-// token's own header never chooses the key.
+// Package jose signs and verifies this server's JWTs and publishes its keys. It
+// is deliberately small: only RS256, PS256 and ES256 with our own keys, no
+// "none", no HMAC, and a token's header never chooses the key.
 package jose
 
 import (
@@ -36,9 +30,8 @@ const (
 // Connect client has to support, so ID tokens use it.
 var Algorithms = []string{RS256, PS256, ES256}
 
-// ErrInvalid is returned for a token that is malformed, signed by a key this
-// server does not know, or whose signature does not match. The reasons are
-// one error: none of them is the caller's to act on differently.
+// ErrInvalid covers a malformed token, an unknown key and a bad signature
+// alike; callers treat them the same.
 var ErrInvalid = errors.New("invalid token")
 
 var b64 = base64.RawURLEncoding
@@ -83,9 +76,8 @@ func Generate(algorithm string) (crypto.Signer, error) {
 	}
 }
 
-// Sign returns a compact JWS of the claims, signed with the key. `typ` is the
-// header's type: "at+jwt" for an access token (RFC 9068), "JWT" for an ID
-// token.
+// Sign returns a compact JWS. `typ` is "at+jwt" for access tokens (RFC 9068) or
+// "JWT" for ID tokens.
 func Sign(key Key, typ string, claims any) (string, error) {
 	header, err := json.Marshal(Header{Algorithm: key.Algorithm, KeyID: key.ID, Type: typ})
 	if err != nil {
@@ -143,13 +135,10 @@ func sign(key Key, input []byte) ([]byte, error) {
 	}
 }
 
-// Verify checks a compact JWS against the key `lookup` returns for its key id,
-// and decodes its claims into `claims`. The key decides the algorithm: a token
-// whose header names another one is refused, so a header can never switch the
-// check to something weaker.
-//
-// Verify checks the signature only. What the claims have to say — issuer,
-// expiry, audience — is the caller's to check, since it differs by token.
+// Verify checks a compact JWS against the key `lookup` returns for its kid and
+// decodes the claims. The key decides the algorithm, so a header cannot
+// downgrade the check. Claims (issuer, expiry, audience) are the caller's to
+// check.
 func Verify(token string, lookup func(kid string) (Key, bool), claims any) (Header, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
@@ -261,10 +250,8 @@ func (k Key) Public() (JWK, error) {
 	return jwk, nil
 }
 
-// ParseJWK reads a public key somebody else published in a JWKS — an
-// identity provider's — to verify what it signs. RSA keys verify RS256 or
-// PS256 and P-256 keys ES256; a key that says no algorithm is taken for the
-// usual one of its type.
+// ParseJWK reads another party's published public key. RSA keys verify RS256 or
+// PS256, P-256 keys ES256; a key without alg gets its type's usual one.
 func ParseJWK(jwk JWK) (Key, error) {
 	key := Key{ID: jwk.KeyID, Algorithm: jwk.Algorithm}
 
@@ -311,9 +298,8 @@ func ParseJWK(jwk JWK) (Key, error) {
 	return key, nil
 }
 
-// HalfHash is the at_hash of OpenID Connect Core 3.1.3.6: the left half of the
-// SHA-256 of a value, base64url encoded. All three algorithms here use
-// SHA-256, so it is the same for each.
+// HalfHash is at_hash (OpenID Connect Core 3.1.3.6): the base64url left half of
+// a SHA-256.
 func HalfHash(value string) string {
 	sum := sha256.Sum256([]byte(value))
 	return b64.EncodeToString(sum[:len(sum)/2])

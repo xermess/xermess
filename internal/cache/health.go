@@ -8,10 +8,8 @@ import (
 	"time"
 )
 
-// cooldown is how long the cache leaves Redis alone after it failed to
-// answer. Without it every request of an outage would wait on a dial that is
-// going to fail; with it, one request in each cooldown finds out whether Redis
-// is back and the rest go straight to the database.
+// cooldown is how long Redis is skipped after a failure, so an outage costs one
+// probe per cooldown instead of a failed dial per request.
 const cooldown = 5 * time.Second
 
 // errUnavailable is what a call answers while the cache is leaving Redis
@@ -27,14 +25,8 @@ func (c *Cache) available() bool {
 	return time.Now().After(c.downUntil)
 }
 
-// failed notes a Redis that did not answer: the cache leaves it alone for the
-// cooldown, and says so once per outage.
-//
-// A context that ended is the caller's — a browser that went away, a request
-// out of time — and says nothing about Redis, so it starts no cooldown: one
-// would send every process's reads to the database for five seconds, and
-// leave any write in those seconds unable to tell the other processes what
-// it changed.
+// failed notes a Redis that did not answer and starts a cooldown. A context
+// that ended belongs to the caller, says nothing about Redis, and starts none.
 func (c *Cache) failed(err error) {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return

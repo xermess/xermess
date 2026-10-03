@@ -8,9 +8,8 @@ import (
 	"loginer/internal/store"
 )
 
-// PublicLanguage is one language the sign-in pages may be shown in, as the
-// picker lists it: the code the pages ask for its text by, and the two names
-// — the language in English, and in itself.
+// PublicLanguage is one language in the picker: its code and its English and
+// native names.
 type PublicLanguage struct {
 	Code       string `json:"code"`
 	Name       string `json:"name"`
@@ -21,9 +20,7 @@ func publicLanguage(language model.Language) PublicLanguage {
 	return PublicLanguage{Code: language.Code, Name: language.Name, NativeName: language.NativeName}
 }
 
-// Languages is what the sign-in pages ask for when they draw their language
-// picker: the languages this installation offers, in the order it offers
-// them, and which of them somebody gets before they have chosen.
+// Languages returns the offered languages in order, and the default.
 func (s *Service) Languages(ctx context.Context) ([]PublicLanguage, string, error) {
 	offered, err := s.store.OfferedLanguages(ctx)
 	if err != nil {
@@ -43,10 +40,8 @@ func (s *Service) Languages(ctx context.Context) ([]PublicLanguage, string, erro
 	return languages, fallback.Code, nil
 }
 
-// textIn is the sign-in pages' text in a language, for what the server writes
-// itself — an email. A language that is not offered, or none given, is the
-// default one; and when even that cannot be read, the text is the shipped
-// English, so an email always goes out in something.
+// textIn is the pages' text in a language, for emails. It falls back to the
+// default language, then shipped English.
 func (s *Service) textIn(ctx context.Context, code string) map[string]string {
 	language, err := s.store.Language(ctx, code)
 	if err != nil || !language.IsEnabled {
@@ -62,12 +57,8 @@ func (s *Service) textIn(ctx context.Context, code string) map[string]string {
 	return i18n.Resolve(i18n.ID)
 }
 
-// LanguageText is the text the sign-in pages are drawn with in one language:
-// every key they look up, a missing translation already filled in from the
-// base language, so the pages have nothing to work out.
-//
-// Only a language that is offered: one that is off is somebody's work in
-// progress, and store.ErrNotFound is what anything else gets.
+// LanguageText is every key the sign-in pages use in one offered language, with
+// gaps filled from the base language.
 func (s *Service) LanguageText(ctx context.Context, code string) (PublicLanguage, map[string]string, error) {
 	language, err := s.store.Language(ctx, code)
 	if err != nil {

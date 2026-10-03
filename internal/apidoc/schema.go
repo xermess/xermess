@@ -56,14 +56,11 @@ type Property struct {
 // source it was given.
 type schemas struct {
 	loader *loader
-	// named is every named struct turned into a schema so far, by its
-	// component name, and seen what each Go type was named: one Go type is one
-	// component, however many operations mention it.
+	// named maps component names to schemas, one per Go type.
 	named map[string]*Schema
 	seen  map[*types.TypeName]string
-	// structs is each named struct's schema as it is being built, so a type
-	// that contains itself — a role that inherits roles — points back at
-	// its own schema instead of going round for ever.
+	// structs holds schemas under construction, so self-referencing types point
+	// back instead of recursing.
 	structs map[structKey]*Schema
 }
 
@@ -287,9 +284,8 @@ func wellKnown(t *types.Named) *Schema {
 	return nil
 }
 
-// validation reads a validate tag (go-playground/validator) into sentences,
-// and whether the field is required. Rules a reader does not need, such as
-// `omitempty`, are left out.
+// validation turns a validate tag into sentences and reports whether the field
+// is required.
 func validation(tag string, schema *Schema) (rules []string, required bool) {
 	if tag == "" {
 		return nil, false
@@ -341,9 +337,7 @@ func validation(tag string, schema *Schema) (rules []string, required bool) {
 	return rules, required
 }
 
-// wireNames replaces a struct's Go field names in text with the names they
-// have in JSON, as code: "IsActive may be left out" reads "`is_active` may
-// be left out". It is built once per struct: one pattern for every name.
+// wireNames replaces Go field names in text with their JSON names, as code.
 func wireNames(wire map[string]string) func(string) string {
 	names := make([]string, 0, len(wire))
 	for goName := range wire {
@@ -409,9 +403,8 @@ func (l *loader) typeDoc(obj *types.TypeName) string {
 	return ""
 }
 
-// indexDeclarations remembers where every struct field and type of the
-// loaded packages is, so their comments can be found from the type checker's
-// positions.
+// indexDeclarations records where fields and types are declared, so comments
+// can be found by position.
 func (l *loader) indexDeclarations(file *ast.File) {
 	ast.Inspect(file, func(n ast.Node) bool {
 		switch n := n.(type) {

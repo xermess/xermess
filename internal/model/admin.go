@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,10 +33,9 @@ type Admin struct {
 	FailedLoginCount int        `gorm:"not null;default:0" json:"-"`
 	LockedUntil      *time.Time `json:"locked_until,omitempty"`
 
-	// Assignments are the roles the administrator holds, each for the whole
-	// panel or for one application.
-	// Service marks an application calling the admin API with a token, made
-	// by ServiceAdmin and never stored.
+	// Assignments are the roles held, panel-wide or per application. Service
+	// marks an application calling with a token (ServiceAdmin); it is never
+	// stored.
 	Service bool `gorm:"-" json:"-"`
 
 	Assignments []AdminRoleAssignment `gorm:"constraint:OnDelete:CASCADE" json:"-"`
@@ -49,14 +49,12 @@ func (Admin) TableName() string {
 	return "admins"
 }
 
-// MinAdminPasswordLength is the shortest password an administrator may have,
-// whoever sets it: an admin account opens the panel, so it is held to more
-// than a user's.
+// MinAdminPasswordLength is stricter than a user's, since an admin account
+// opens the panel.
 const MinAdminPasswordLength = 10
 
-// SetPassword replaces the administrator's password with a hash of the one
-// given. The password itself is never stored; one bcrypt cannot hash is
-// ErrPasswordTooLong, the same as a user's.
+// SetPassword stores a bcrypt hash; a password bcrypt cannot hash is
+// ErrPasswordTooLong.
 func (a *Admin) SetPassword(password string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if errors.Is(err, bcrypt.ErrPasswordTooLong) {
@@ -73,7 +71,7 @@ func (a *Admin) SetPassword(password string) error {
 
 // FullName is the admin's display name.
 func (a Admin) FullName() string {
-	return a.FirstName + " " + a.LastName
+	return strings.TrimSpace(a.FirstName + " " + a.LastName)
 }
 
 // CanSignIn reports whether the account is in a state that allows signing in.
@@ -107,9 +105,8 @@ func (a Admin) HasPermission(name string) bool {
 	return a.HasPermissionFor(name, nil)
 }
 
-// HasPermissionFor reports whether the admin may do something to one
-// application: a role assigned for the whole panel grants it, or one assigned
-// for that application does and the permission can be scoped.
+// HasPermissionFor reports whether the admin may act on one application: via a
+// panel-wide role, or a role scoped to it for a scopable permission.
 func (a Admin) HasPermissionFor(name string, application *uuid.UUID) bool {
 	for _, assignment := range a.Assignments {
 		if assignment.Grants(name, application) {
@@ -119,9 +116,8 @@ func (a Admin) HasPermissionFor(name string, application *uuid.UUID) bool {
 	return false
 }
 
-// HasPermissionAnywhere reports whether the admin may do something to at least
-// one application, which is what opening a list that is then narrowed to
-// their applications needs.
+// HasPermissionAnywhere reports whether the admin may act on at least one
+// application.
 func (a Admin) HasPermissionAnywhere(name string) bool {
 	if a.HasPermission(name) {
 		return true
@@ -135,9 +131,8 @@ func (a Admin) HasPermissionAnywhere(name string) bool {
 	return false
 }
 
-// ApplicationsWith says which applications the admin may do something to:
-// every one when a whole-panel role grants it, otherwise the ids of the
-// applications a scoped role grants it for.
+// ApplicationsWith returns all=true for a panel-wide grant, otherwise the ids
+// of applications a scoped role grants it for.
 func (a Admin) ApplicationsWith(name string) (all bool, ids []uuid.UUID) {
 	if a.HasPermission(name) {
 		return true, nil
@@ -164,9 +159,8 @@ func (a Admin) Permissions() []string {
 	return granted
 }
 
-// ScopedPermissions is, for each application the admin holds a role for, the
-// scopable permissions they have there beyond what they hold for the whole
-// panel.
+// ScopedPermissions lists, per application, the scopable permissions held there
+// beyond the panel-wide ones.
 func (a Admin) ScopedPermissions() map[uuid.UUID][]string {
 	scoped := map[uuid.UUID][]string{}
 
@@ -189,11 +183,9 @@ func (a Admin) ScopedPermissions() map[uuid.UUID][]string {
 	return scoped
 }
 
-// ServiceAdmin is software calling the admin API with an access token — an
-// application, not a person — as the administrator the route guards and the
-// handlers see: holding exactly the permissions its token grants, for the
-// whole panel, and never a super admin. Username is the application's client
-// ID, which is what the activity log names as the actor.
+// ServiceAdmin is an application calling the admin API with a token, presented
+// as an administrator holding exactly its token's permissions and never a super
+// admin. Username is its client ID, which the activity log shows.
 func ServiceAdmin(app Application, permissions []string) *Admin {
 	return &Admin{
 		Username:  app.ClientID,

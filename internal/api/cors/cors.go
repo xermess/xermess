@@ -1,11 +1,4 @@
-// Package cors decides which browser origins may call the API.
-//
-// It is its own package rather than one more middleware: which origins are
-// allowed is configuration, it is the one piece of the request path that can
-// hand another site the ability to act as a signed-in administrator, and a
-// reader looking for that answer should find one file with one job. The
-// handler it returns is passed to middleware.Chain, which puts it in order
-// with the rest.
+// Package cors decides which browser origins may call the API with credentials.
 package cors
 
 import (
@@ -16,28 +9,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// allowedMethods and allowedHeaders are what a browser is told it may send.
-// They cover the whole API: every endpoint is one of these methods, and sends
-// either JSON or nothing.
+// What browsers are told they may send; every endpoint fits these.
 const (
 	allowedMethods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 	allowedHeaders = "Authorization, Content-Type"
 )
 
-// New lets the listed browser origins call the API, and answers the browser's
-// preflight request itself.
+// New allows exactly the listed origins, with credentials; no wildcards or
+// suffix matching, since a loose match would let any site act as the signed-in
+// user.
 //
-// Origins are compared exactly — no wildcard, no matching on suffix. The
-// panel sends its session cookie, and a browser only sends credentials to an
-// origin the server named, so being loose here would be giving any site that
-// asked the ability to act as whoever is signed in.
-//
-// The provider endpoints a browser app calls directly — the token, userinfo,
-// revocation and introspection endpoints, discovery and the keys — are open
-// to every origin instead, without credentials. They never read a cookie: a
-// caller proves itself with a client secret, a PKCE verifier or a bearer
-// token it already holds, so which site the script came from grants nothing.
-// A single-page app on any domain has to be able to reach them.
+// The provider endpoints a browser app calls directly (token, userinfo,
+// revocation, introspection, discovery, JWKS) are open to every origin without
+// credentials: they never read a cookie.
 func New(origins []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
@@ -59,9 +43,8 @@ func New(origins []string) gin.HandlerFunc {
 			return
 		}
 
-		// A request with no Origin header is not a cross-origin one: curl,
-		// another server, the panel's own server-side rendering. It gets no
-		// headers rather than matching an empty entry in the list.
+		// No Origin means not cross-origin (curl, servers, SSR): no CORS
+		// headers.
 		if origin != "" && slices.Contains(origins, origin) {
 			h := c.Writer.Header()
 			h.Set("Access-Control-Allow-Origin", origin)
@@ -74,9 +57,8 @@ func New(origins []string) gin.HandlerFunc {
 			h.Add("Vary", "Origin")
 		}
 
-		// A preflight is answered here and never reaches a route. It is
-		// answered whoever asked: a browser that was not given the headers
-		// above stops at its own check, which is where that belongs.
+		// Preflights are answered here for anyone; the browser enforces the
+		// result.
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
@@ -86,9 +68,9 @@ func New(origins []string) gin.HandlerFunc {
 	}
 }
 
-// publicPaths are the provider endpoints any origin may call. The authorization
-// and logout endpoints are not among them: a browser is sent to those, it does
-// not call them from script, and they do read the session cookie.
+// publicPaths are the provider endpoints any origin may call. Authorize and
+// logout are excluded: browsers navigate there, and they read the session
+// cookie.
 var publicPaths = []string{
 	"/oauth2/token",
 	"/oauth2/userinfo",

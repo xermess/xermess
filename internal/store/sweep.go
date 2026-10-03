@@ -11,27 +11,19 @@ import (
 	"loginer/internal/model"
 )
 
-// What the server stores and stops needing: every sign-in leaves a session,
-// a code, tokens and a line in the activity log behind, and nothing else
-// ever deletes them. Swept, the tables hold what is still alive rather than
-// everything there has ever been — which at millions of users is the
-// difference between tables that stay the size of the user base and tables
-// that grow by it every month.
+// Sweeping removes expired sessions, codes, tokens and old audit lines, so
+// tables track live data rather than growing with every sign-in.
 
 // sweepInterval is how often the sweep runs. Nothing it removes can be used
 // once it has expired, so how long it lingers is only a matter of space.
 const sweepInterval = time.Hour
 
-// sweepBatch is how many rows one DELETE removes. Deleting millions of rows
-// in one statement holds its locks until it is done; in batches, the
-// sign-ins writing the same tables are never kept waiting for long.
+// sweepBatch keeps each DELETE small so its locks never hold sign-ins up for
+// long.
 const sweepBatch = 5000
 
-// expiring are the records that end at `expires_at`: sign-in requests and
-// codes, tokens, sessions, reset and verification links, and the social and SSO sign-ins
-// nobody came back from. A refresh token shares its family's expiry, so one
-// is only ever removed once its whole family can no longer be used — reuse
-// detection never loses a token it would have caught.
+// expiring are the records that end at `expires_at`. A refresh token shares its
+// family's expiry, so reuse detection never loses a token it would have caught.
 var expiring = []any{
 	&model.AuthorizationRequest{},
 	&model.AuthorizationCode{},
@@ -45,9 +37,8 @@ var expiring = []any{
 	&model.SSOLogin{},
 }
 
-// Sweep removes every record that expired before `now` and, when
-// `auditBefore` is not zero, the activity log entries older than it. It
-// answers how many rows it removed.
+// Sweep removes records that expired before `now` and, unless `auditBefore` is
+// zero, older activity log entries. It returns the count removed.
 func (s *Store) Sweep(ctx context.Context, now, auditBefore time.Time) (int64, error) {
 	var removed int64
 
@@ -86,9 +77,8 @@ func tableName(db *gorm.DB, model any) string {
 	return statement.Schema.Table
 }
 
-// deleteInBatches deletes the rows of a table matching `where`, sweepBatch at
-// a time, until there are none left. For a table of sessions (`kind` is not
-// empty), the sessions deleted are removed from the session database too.
+// deleteInBatches deletes matching rows sweepBatch at a time. For a session
+// table (`kind` set) it also drops them from the cache.
 func (s *Store) deleteInBatches(ctx context.Context, table any, kind, where string, arg any) (int64, error) {
 	var removed int64
 
@@ -122,10 +112,9 @@ func (s *Store) deleteInBatches(ctx context.Context, table any, kind, where stri
 	}
 }
 
-// KeepSwept runs Sweep once at startup and then every sweepInterval until ctx
-// ends, keeping the activity log for `retention` (zero keeps all of it). main
-// runs it for as long as the server serves. Each server process sweeps on its
-// own; two sweeping at once delete the same rows, which is harmless.
+// KeepSwept sweeps at startup and every sweepInterval until ctx ends, keeping
+// the log for `retention` (zero keeps all). Concurrent sweeps on several
+// servers are harmless.
 func (s *Store) KeepSwept(ctx context.Context, retention time.Duration, log *slog.Logger) {
 	sweep := func() {
 		now := time.Now()

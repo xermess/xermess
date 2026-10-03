@@ -1,12 +1,8 @@
 import type { ComponentType } from 'svelte';
 
-/** One thing a Select can offer.
- *
- *  Only `value` is required, and `options` takes bare strings as well: a
- *  short list of keywords needs nothing more than itself. The rest is for the
- *  lists that carry more — an icon saying what kind of thing this is, a
- *  second line saying what choosing it means, the way PocketBase's field type
- *  picker does.
+/**
+ * One option of a Select. Only `value` is required, and bare strings are accepted; icon and
+ * description are for richer lists.
  */
 export type SelectOption<Value extends string = string> = {
 	value: Value;

@@ -1,19 +1,15 @@
 package model
 
-// AdminPermission is one thing an administrator may do in the panel.
-//
-// The catalog lives in code rather than in a table: each permission is a
-// route the server guards and a control the panel shows, so a permission
-// nothing checks for would mean nothing. Roles store the names they grant,
-// and a name that falls out of the catalog simply stops granting anything.
+// AdminPermission is one thing an administrator may do. The catalog is code,
+// not a table, because each permission is a guarded route; a name that leaves
+// the catalog stops granting anything.
 type AdminPermission struct {
 	Name        string `json:"name"`
 	Group       string `json:"group"`
 	Description string `json:"description"`
 
-	// Scopable says the permission can be granted for one application: a
-	// role assigned to an administrator for "shop" grants its scopable
-	// permissions for shop only, and its other permissions not at all.
+	// Scopable permissions can be granted for one application; a scoped role
+	// grants only these.
 	Scopable bool `json:"scopable"`
 }
 
@@ -48,10 +44,8 @@ const (
 	PermRoleAssignmentsWrite = "role_assignments.write"
 )
 
-// AdminPermissions is the catalog, in the order the panel lists it.
-//
-// Managing administrators and their roles is not here: that belongs to the
-// super_admin role alone, so it cannot be handed out by accident.
+// AdminPermissions is the catalog in panel order. Managing administrators is
+// not in it: it belongs to super_admin alone.
 var AdminPermissions = []AdminPermission{
 	{
 		Name:        PermActivityRead,

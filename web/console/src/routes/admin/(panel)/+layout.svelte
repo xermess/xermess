@@ -52,14 +52,10 @@
 		}
 	}
 
-	/* The scrolling area under the header. How wide a page may grow and how
-	   far it is inset is the dashboard frame's to say, not this.
-
-	   It is positioned so that it holds what is positioned absolutely inside
-	   it. Without that, such a box belongs to the window, and one lower than
-	   the window is tall makes the document scroll too — a second scrollbar
-	   beside this one. (Checkboxes and switches keep their hidden inputs to
-	   themselves; see styles/ark.css.) */
+	/*
+	 * The scrolling area under the header. It is positioned so absolutely positioned descendants
+	 * belong to it rather than the window, which would otherwise add a second scrollbar.
+	 */
 	main {
 		position: relative;
 		height: 100%;

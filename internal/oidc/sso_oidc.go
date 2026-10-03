@@ -17,9 +17,8 @@ import (
 	"loginer/internal/model"
 )
 
-// The OpenID Connect half of enterprise single sign-on (sso.go): reading a
-// provider's discovery document and keys, sending the browser there, and
-// turning the code it comes back with into a verified id_token.
+// The OpenID Connect half of enterprise SSO: discovery and keys, the redirect,
+// and verifying the returned id_token.
 
 // oidcDiscovery is the part of a provider's discovery document this server
 // reads.
@@ -46,9 +45,8 @@ type cached[T any] struct {
 	fetched time.Time
 }
 
-// ssoCacheLifetime is how long a discovery document or a key set is kept. A
-// key the cache does not have is fetched at once, so rotating keys is not
-// held up by it.
+// ssoCacheLifetime is how long discovery documents and key sets are cached; an
+// unknown kid triggers a fetch at once.
 const ssoCacheLifetime = time.Hour
 
 var ssoMemory = &ssoCache{
@@ -73,9 +71,8 @@ func (s *Service) Discover(ctx context.Context, issuer string) (*oidcDiscovery, 
 		return nil, err
 	}
 
-	// The document has to be the issuer's own (OpenID Connect Discovery
-	// section 4.3): one that names another issuer would have its tokens
-	// believed on this one's word.
+	// The document must be the issuer's own (OpenID Connect Discovery 4.3), or
+	// another issuer's tokens would be believed.
 	switch {
 	case strings.TrimRight(document.Issuer, "/") != issuer:
 		return nil, fmt.Errorf("the discovery document is for %q, not %q", document.Issuer, issuer)

@@ -39,10 +39,10 @@ The endpoints your application signs users in with, and gets and checks tokens f
 | [`POST /oauth2/logout`](/reference/public/oauth#post-oauth2-logout) | Signs the user out of this server, and redirects. |
 | [`POST /oauth2/revoke`](/reference/public/oauth#post-oauth2-revoke) | Revokes a refresh token. |
 | [`POST /oauth2/introspect`](/reference/public/oauth#post-oauth2-introspect) | Says whether a token is active. |
-| [`GET /oauth2/social/:slug/start`](/reference/public/oauth#get-oauth2-social-slug-start) | Sends the browser to a provider to sign in there, leaving the sign-in's state with the browser so the callback can tell this browser's answer from one somebody else's sign-in produced. |
-| [`GET /oauth2/social/:slug/callback`](/reference/public/oauth#get-oauth2-social-slug-callback) | Is where the provider sends the browser back to. |
-| [`POST /oauth2/social/:slug/callback`](/reference/public/oauth#post-oauth2-social-slug-callback) | Is where the provider sends the browser back to. |
-| [`GET /oauth2/sso/:slug/start`](/reference/public/oauth#get-oauth2-sso-slug-start) | Sends the browser to a connection's identity provider. |
+| [`GET /oauth2/social/:slug/start`](/reference/public/oauth#get-oauth2-social-slug-start) | Sends the browser to a provider and leaves the state in a cookie, binding the callback to this browser. |
+| [`GET /oauth2/social/:slug/callback`](/reference/public/oauth#get-oauth2-social-slug-callback) | Is where the provider sends the browser back. |
+| [`POST /oauth2/social/:slug/callback`](/reference/public/oauth#post-oauth2-social-slug-callback) | Is where the provider sends the browser back. |
+| [`GET /oauth2/sso/:slug/start`](/reference/public/oauth#get-oauth2-sso-slug-start) | Sends the browser to a connection's identity provider, passing the typed address as `login_hint`. |
 | [`GET /oauth2/sso/:slug/callback`](/reference/public/oauth#get-oauth2-sso-slug-callback) | Is where an OpenID Connect provider sends the browser back to. |
 | [`POST /oauth2/sso/:slug/acs`](/reference/public/oauth#post-oauth2-sso-slug-acs) | Is the assertion consumer service a SAML provider posts its response to. |
 | [`GET /oauth2/sso/:slug/metadata`](/reference/public/oauth#get-oauth2-sso-slug-metadata) | Is this server's SAML metadata as one connection's service provider: the file an identity provider is set up from. |
@@ -61,14 +61,14 @@ The API behind the hosted sign-in pages and a user's account page. Applications 
 
 | Endpoint | |
 | --- | --- |
-| [`GET /api/v1/account/organization`](/reference/public/account#get-api-v1-account-organization) | Describes the organisation these pages sign users in for: who the account belongs to, where to ask for help, and the agreements accepted by making one. |
-| [`GET /api/v1/account/social-providers`](/reference/public/account#get-api-v1-account-social-providers) | Lists the accounts elsewhere that users may sign in with, as the buttons on the sign-in pages. |
+| [`GET /api/v1/account/organization`](/reference/public/account#get-api-v1-account-organization) | Describes the organisation the sign-in pages speak for. |
+| [`GET /api/v1/account/social-providers`](/reference/public/account#get-api-v1-account-social-providers) | Lists the sign-in buttons, with only what a button needs. |
 | [`GET /api/v1/account/sso`](/reference/public/account#get-api-v1-account-sso) | Lists the organisations' identity providers the sign-in page offers a button for. |
 | [`POST /api/v1/account/sso/discover`](/reference/public/account#post-api-v1-account-sso-discover) | Says which connection an address signs in through, for "Sign in with SSO": the one that owns its domain, or no_sso_connection. |
 | [`GET /api/v1/account/requests/:handle`](/reference/public/account#get-api-v1-account-requests-handle) | Describes a sign-in under way: the application it is for, as its sign-in page shows it. |
-| [`GET /api/v1/account/login-options`](/reference/public/account#get-api-v1-account-login-options) | Says what these pages may offer: the options of the login flow the sign-in belongs to. `request` is the handle of a sign-in under way, which names the application whose flow applies; without one, or with one that has expired, it is the installation's default flow. |
+| [`GET /api/v1/account/login-options`](/reference/public/account#get-api-v1-account-login-options) | Returns the options of the login flow for the sign-in handle `request`, or the default flow. |
 | [`GET /api/v1/account/languages`](/reference/public/account#get-api-v1-account-languages) | Says which languages these pages may be shown in, and which one somebody gets before they have chosen. |
-| [`GET /api/v1/account/languages/:code`](/reference/public/account#get-api-v1-account-languages-code) | Is the text of these pages in one offered language, every key filled in. |
+| [`GET /api/v1/account/languages/:code`](/reference/public/account#get-api-v1-account-languages-code) | Returns the sign-in pages' text in one offered language with every key filled in. |
 | [`GET /api/v1/account/applications/:client_id`](/reference/public/account#get-api-v1-account-applications-client-id) | Describes an application by its client id, for the signed-out page to offer a way back to it. |
 | [`POST /api/v1/account/login`](/reference/public/account#post-api-v1-account-login) | Signs a user in and, for a sign-in under way, says where to go next. |
 | [`POST /api/v1/account/login/code`](/reference/public/account#post-api-v1-account-login-code) | Finishes a sign-in that was waiting for an emailed code, and answers as the sign-in itself does: a cookie, and where to go next. |
@@ -77,12 +77,12 @@ The API behind the hosted sign-in pages and a user's account page. Applications 
 | [`POST /api/v1/account/forgot-password`](/reference/public/account#post-api-v1-account-forgot-password) | Sends a reset link. |
 | [`GET /api/v1/account/reset-password`](/reference/public/account#get-api-v1-account-reset-password) | Says whether a reset link still works. |
 | [`POST /api/v1/account/reset-password`](/reference/public/account#post-api-v1-account-reset-password) | Sets a new password through a reset link. |
-| [`POST /api/v1/account/verify-email`](/reference/public/account#post-api-v1-account-verify-email) | Uses a link sent to prove an address. |
+| [`POST /api/v1/account/verify-email`](/reference/public/account#post-api-v1-account-verify-email) | Uses a verification link. |
 | [`POST /api/v1/account/logout`](/reference/public/account#post-api-v1-account-logout) | Signs the user out of this server in this browser. |
 | [`GET /api/v1/account/me`](/reference/public/account#get-api-v1-account-me) | Returns the signed-in user. |
 | [`PATCH /api/v1/account/me`](/reference/public/account#patch-api-v1-account-me) | Changes the signed-in user's name. |
 | [`POST /api/v1/account/password`](/reference/public/account#post-api-v1-account-password) | Replaces the signed-in user's password. |
-| [`POST /api/v1/account/email`](/reference/public/account#post-api-v1-account-email) | Starts moving the signed-in user to another sign-in address. |
+| [`POST /api/v1/account/email`](/reference/public/account#post-api-v1-account-email) | Starts moving the signed-in user to another address. |
 | [`GET /api/v1/account/sessions`](/reference/public/account#get-api-v1-account-sessions) | Lists where the signed-in user is signed in. |
 | [`DELETE /api/v1/account/sessions/:id`](/reference/public/account#delete-api-v1-account-sessions-id) | Signs one of the user's other browsers out. |
 | [`GET /api/v1/account/connected-applications`](/reference/public/account#get-api-v1-account-connected-applications) | Lists the applications that can still act for the user. |

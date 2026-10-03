@@ -15,12 +15,9 @@ import (
 	"loginer/internal/oidc"
 )
 
-// applyTo checks the request and copies it onto a connection.
-//
-// `creating` says whether the slug and the protocol are read: neither may
-// change afterwards, since both are in the addresses the identity provider
-// was given. Everything else is copied only where the request mentioned it,
-// so a change to one setting is a change to one setting.
+// applyTo checks the request and copies it onto a connection. Slug and protocol
+// are read only when `creating`; everything else changes only where the request
+// mentions it.
 func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jose.Sealer, creating bool) error {
 	if err := validate.Struct(r); err != nil {
 		return err
@@ -115,9 +112,8 @@ func (r *connectionRequest) applyTo(connection *model.SSOConnection, sealer *jos
 	return settle(connection)
 }
 
-// settle checks what a connection has to have, whoever wrote it, with a
-// problem the panel can translate for each; the model's own check is the
-// last word after them.
+// settle checks what every connection must have, with translatable problems;
+// the model's check runs last.
 func settle(connection *model.SSOConnection) error {
 	// Without domains no address leads to the connection, so it needs its
 	// button — and there is nobody to require it of.
@@ -212,9 +208,8 @@ func unsupportedScopes(scopes, supported []string) []string {
 	return out
 }
 
-// providerOf is who a connection believes: an OpenID Connect issuer, or a
-// SAML provider's entity ID. The subjects of its identities are only unique
-// within it, so a connection pointed at another one starts them afresh.
+// providerOf is who a connection trusts (OIDC issuer or SAML entity ID).
+// Subjects are unique only within it, so changing it resets identities.
 func providerOf(connection *model.SSOConnection) string {
 	if connection.Protocol == model.SSOProtocolOIDC {
 		return connection.Issuer

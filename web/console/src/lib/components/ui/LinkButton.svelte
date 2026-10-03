@@ -22,13 +22,10 @@
 	}: Props = $props();
 </script>
 
-<!-- Somewhere to go rather than something to do, so it is an anchor: it can
-     be opened in a new tab, and the browser shows where it leads. A disabled
-     link is not a thing, so one that is turned off loses its href and says so
-     to a screen reader instead.
-
-     The href belongs to whoever used this component, and it is their resolve()
-     that decides it — this one only passes it on. -->
+<!--
+	A button-styled anchor. When disabled it drops its href and sets aria-disabled. The caller
+	resolves the href.
+-->
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 <a
 	href={disabled ? undefined : href}

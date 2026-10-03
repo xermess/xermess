@@ -32,10 +32,8 @@ func New(st *store.Store, recorder audit.Recorder, log *slog.Logger) *Handler {
 	return &Handler{store: st, audit: recorder, log: log}
 }
 
-// List returns a page of users, newest first.
-//
-// `search` matches the email or any text the user-defined fields hold, so one
-// box covers the whole record rather than one column.
+// List returns a page of users, newest first. `search` matches the email and
+// any field text.
 func (h *Handler) List(c *gin.Context) {
 	ctx := c.Request.Context()
 	query := listQuery(c)
@@ -89,9 +87,8 @@ func (h *Handler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
-// fillSocialAccounts says, for each of these users, which providers they sign
-// in with. It is one query for the whole page: the panel marks the rows that
-// have one, and the record itself lists them.
+// fillSocialAccounts loads the providers each user on the page signs in with,
+// in one query.
 func (h *Handler) fillSocialAccounts(c *gin.Context, users ...*model.User) error {
 	ids := make([]uuid.UUID, 0, len(users))
 	for _, user := range users {
@@ -121,9 +118,8 @@ func pointersTo(users []model.User) []*model.User {
 	return out
 }
 
-// Disconnect takes away a provider a user signs in with: an account of
-// theirs somewhere else that should no longer reach this one. Their account
-// stays, and so does every other way into it.
+// Disconnect removes a provider a user signs in with; their account and other
+// ways in remain.
 func (h *Handler) Disconnect(c *gin.Context) {
 	user, ok := h.find(c)
 	if !ok {
@@ -210,9 +206,8 @@ func (h *Handler) Update(c *gin.Context) {
 
 	h.audit.Record(c, "user.updated", targetType, user.ID.String())
 	if req.Password != "" {
-		// A new password is the usual answer to an account being taken, so
-		// whoever holds a session or a refresh token on the old one loses
-		// it — as a reset link and the user's own change of password do.
+		// A new password usually answers a takeover, so existing sessions and
+		// refresh tokens end.
 		sessions, tokens, err := h.store.SignOutUser(c.Request.Context(), user.ID, time.Now())
 		if err != nil {
 			respond.Failure(c, h.log, err, "ending the user's sessions failed")
@@ -234,12 +229,9 @@ func (h *Handler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
-// Roles returns the roles a user holds as a token would carry them: the
-// global roles, and for each application its roles — each as the ones given
-// directly and every role those include.
-//
-// The client_id query parameter narrows the applications to one. Applications
-// the administrator cannot see are left out.
+// Roles returns the roles a user holds as a token would carry them: global
+// roles and each application's, direct and inherited. `client_id` narrows to
+// one application; applications the administrator cannot see are left out.
 func (h *Handler) Roles(c *gin.Context) {
 	user, ok := h.find(c)
 	if !ok {
@@ -263,10 +255,8 @@ func (h *Handler) Roles(c *gin.Context) {
 	c.JSON(http.StatusOK, newRolesResponse(user, apps, graph))
 }
 
-// RoleMappings returns every role a user holds, Keycloak's role mapping: the
-// roles given directly, and the roles that come to the user through them,
-// each with what it comes through. Roles of applications the administrator
-// cannot see are left out.
+// RoleMappings returns every role a user holds, direct and inherited, with what
+// each comes through. Roles of invisible applications are left out.
 func (h *Handler) RoleMappings(c *gin.Context) {
 	user, ok := h.find(c)
 	if !ok {
@@ -283,10 +273,8 @@ func (h *Handler) RoleMappings(c *gin.Context) {
 	}))
 }
 
-// AssignRoles gives a user roles directly, global and application roles
-// alike, leaving what they already hold as it is. Each role is allowed by its
-// scope: role_assignments.write for its application, or for the whole panel
-// when it is global. One refused role refuses the whole request.
+// AssignRoles gives a user roles directly, keeping existing ones. Each needs
+// role_assignments.write for its scope; one refusal refuses the request.
 func (h *Handler) AssignRoles(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -333,9 +321,8 @@ func (h *Handler) AssignRoles(c *gin.Context) {
 	h.RoleMappings(c)
 }
 
-// UnassignRole takes away a role the user was given directly. A role that
-// only comes to the user through another cannot be taken away on its own:
-// the role it comes through has to go.
+// UnassignRole removes a directly held role; an inherited one is removed by
+// removing what it comes through.
 func (h *Handler) UnassignRole(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -418,9 +405,8 @@ func (h *Handler) Delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// build checks a submitted record and returns the user to write. Passing an
-// existing user fills that one in instead of making a new one, and keeps a
-// unique field from clashing with the record's own value.
+// build checks a submitted record and returns the user to write, filling in
+// `into` when updating.
 func (h *Handler) build(c *gin.Context, req *userRequest, into *model.User) (*model.User, error) {
 	ctx := c.Request.Context()
 
@@ -448,11 +434,8 @@ func (h *Handler) build(c *gin.Context, req *userRequest, into *model.User) (*mo
 		user = &model.User{IsActive: true}
 	}
 
-	// A changed address has not been proved to be the account's, whatever the
-	// form carried: the dialog sends the current flag back unchanged, so the
-	// confirmed state would otherwise ride along to an address nobody proved,
-	// which a later social or SSO link would then trust. Changing it resets
-	// it; a fresh account the administrator marks verified keeps that.
+	// A changed address is unverified whatever the form says, or a later social
+	// or SSO link would trust an address nobody proved.
 	changedEmail := into != nil && req.Email != user.Email
 
 	user.Email = req.Email
@@ -470,9 +453,8 @@ func (h *Handler) build(c *gin.Context, req *userRequest, into *model.User) (*mo
 	}
 
 	if into == nil {
-		// A new user gets the default global roles and every enabled
-		// application's default roles, so they can sign in straight away.
-		// Any other role is given afterwards, through the role mappings.
+		// New users get the default global roles and every enabled
+		// application's default roles.
 		roles, err := h.store.DefaultUserRoles(ctx)
 		if err != nil {
 			return nil, err
@@ -484,10 +466,8 @@ func (h *Handler) build(c *gin.Context, req *userRequest, into *model.User) (*mo
 	return user, nil
 }
 
-// setPassword applies the password part of a request: a new password when one
-// was given, and whether the password the user ends up with is temporary.
-// An empty password on an update keeps the one the user has, so an
-// administrator can mark it temporary, or not, without having to replace it.
+// setPassword applies a new password if given, and the temporary flag. An empty
+// password on update keeps the current one.
 func setPassword(user *model.User, req *userRequest) error {
 	if req.Password != "" {
 		err := user.SetPassword(req.Password)
@@ -544,11 +524,8 @@ func (h *Handler) find(c *gin.Context) (*model.User, bool) {
 	return user, true
 }
 
-// respondWrite turns a failed write into an answer, telling a duplicate email
-// apart from anything else because that one is the writer's to fix. The
-// address is the only column of a user record that has to be unique; an
-// additional field that has to be is checked before the write, in
-// validation.go.
+// respondWrite answers a failed write, telling a duplicate email apart because
+// the caller can fix it. Unique additional fields are checked before the write.
 func (h *Handler) respondWrite(c *gin.Context, err error, note string) {
 	if errors.Is(err, store.ErrDuplicate) {
 		respond.Conflict(c, "a user with that email already exists")

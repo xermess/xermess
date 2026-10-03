@@ -7,9 +7,8 @@ import (
 	"time"
 )
 
-// FieldType is the kind of value a user field holds. Adding one here means
-// teaching Normalise below how to read it, and the panel how to render and
-// edit it.
+// FieldType is a user field's value type. A new one needs handling in Normalise
+// and in the panel.
 type FieldType string
 
 const (
@@ -33,16 +32,8 @@ func (t FieldType) Valid() bool {
 	return false
 }
 
-// UserField describes one field of a user record.
-//
-// A row of this table is an additional field: something an organisation added
-// in the panel, whose values live in users.data, so adding one is a row here
-// rather than a migration somebody has to write.
-//
-// The built-in fields are described with this same struct — see BuiltinFields
-// at the bottom of the file — but no row of them exists or ever should: a
-// built-in field IS a column of users. Builtin says which of the two you are
-// holding.
+// UserField describes a field of the user record: an additional field stored in
+// users.data, or (Builtin) a real column described in the same shape.
 type UserField struct {
 	Base
 
@@ -51,10 +42,8 @@ type UserField struct {
 	Type       FieldType `gorm:"type:varchar(16);not null" json:"type"`
 	IsRequired bool      `gorm:"not null;default:false" json:"is_required"`
 
-	// IsUnique means no two users may hold the same value. It is checked when a
-	// user is written, since the values live in a JSON column rather than in
-	// a column the database could index. The column is is_unique because
-	// UNIQUE is a word of SQL's own.
+	// IsUnique values are checked on write, since they live in JSON the
+	// database cannot index.
 	IsUnique bool `gorm:"not null;default:false" json:"is_unique"`
 
 	// Min and Max bound a number's value, or the length of text. Nil means
@@ -62,19 +51,16 @@ type UserField struct {
 	Min *float64 `json:"min"`
 	Max *float64 `json:"max"`
 
-	// StartsWith is a prefix text has to begin with, such as "+" for a phone
-	// number an organisation adds as a field of its own. Empty means anything
-	// is accepted.
+	// StartsWith is a required text prefix, such as "+"; empty accepts
+	// anything.
 	StartsWith string `gorm:"size:64;not null;default:''" json:"starts_with"`
 
 	// Position orders the columns in the table and the inputs in the form.
 	// Built-in fields come first, in the order BuiltinFields lists them.
 	Position int `gorm:"not null;default:0" json:"position"`
 
-	// IsBuiltin marks a field that is a column of the record rather than a row
-	// of this table. It is never stored — nothing in user_fields is built in
-	// — and is here so the panel can be given one list of fields and still
-	// know which of them it may edit.
+	// IsBuiltin marks a column of the record rather than a stored field; never
+	// stored.
 	IsBuiltin bool `gorm:"-" json:"is_builtin"`
 }
 
@@ -89,9 +75,7 @@ func (t FieldType) Prefixed() bool {
 	return t == FieldText || t == FieldEmail
 }
 
-// Validate checks the definition itself, as opposed to a value stored under
-// it: a bound the field cannot have, or a maximum below its minimum, is a
-// mistake in the panel rather than in someone's record.
+// Validate checks the field definition itself (sensible bounds).
 func (f UserField) Validate() error {
 	if !f.Type.Valid() {
 		return ErrFieldValue{f.Name, "is not a field type"}
@@ -136,10 +120,8 @@ func (e ErrFieldValue) Error() string {
 	return fmt.Sprintf("%s: %s", e.Field, e.Reason)
 }
 
-// Normalise checks a value against the field and returns it in the form that
-// should be stored: numbers as float64, booleans as bool, dates as RFC 3339,
-// and everything else trimmed. An empty value comes back as nil, which is how
-// "not set" is stored.
+// Normalise checks a value against the field and returns its stored form
+// (float64, bool, RFC 3339 date, trimmed text); empty becomes nil.
 func (f UserField) Normalise(value any) (any, error) {
 	if value == nil {
 		return nil, f.requiredError()
@@ -272,13 +254,8 @@ func (f UserField) requiredError() error {
 	return nil
 }
 
-// ---------------------------------------------------------------------------
-// The built-in fields: the columns of users, described.
-// ---------------------------------------------------------------------------
-
-// The built-in fields of a user record, by name. They are columns of the
-// users table — nothing here is ever inserted anywhere — so these names are
-// reserved: an additional field may not take one.
+// Built-in field names are users columns, so additional fields may not use
+// them.
 const (
 	FieldEmailName           = "email"
 	FieldIsEmailVerifiedName = "is_email_verified"
@@ -290,13 +267,9 @@ const (
 	FieldIsPasswordTemporaryName = "is_password_temporary"
 )
 
-// BuiltinFields describes the columns every user record has.
-//
-// They are described with the same shape as the additional ones so the panel
-// can draw one table and one form from a single list, and so the rules a
-// value keeps read the same either way. Nothing here is stored in
-// user_fields: this is the description of columns that already exist, which
-// is why none of them can be edited or removed.
+// BuiltinFields describes the columns every user has, in the same shape as
+// additional fields so the panel can draw them together. They cannot be edited
+// or removed.
 func BuiltinFields() []UserField {
 	max := func(n float64) *float64 { return &n }
 
@@ -352,8 +325,6 @@ func BuiltinFields() []UserField {
 }
 
 // IsBuiltinField reports whether a name belongs to a column of the record.
-// Additional fields are checked against this: two fields with one name would
-// be two places to look for the same thing.
 func IsBuiltinField(name string) bool {
 	for _, field := range BuiltinFields() {
 		if field.Name == name {
